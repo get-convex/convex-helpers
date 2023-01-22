@@ -37,10 +37,6 @@ export const withUser = <Ctx extends QueryCtx, Args extends any[], Output>(
     return await func({ ...ctx, user }, ...args);
   };
 };
-export default mutationWithUser(async ({ db, user }, body) => {
-  const message = { body, user: user._id };
-  await db.insert('messages', message);
-});
 
 /**
  * Wrapper for a Convex mutation function that provides a user in ctx.
