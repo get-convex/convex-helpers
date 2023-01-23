@@ -14,7 +14,7 @@ import { Id, TableNames } from "../_generated/dataModel";
  * @param tableName The table that the Id references. i.e. Id<tableName>
  * @returns a Zod object representing a Convex Id
  */
-export const zId = <TableName extends TableNames>(tableName: TableName) =>
+export const zid = <TableName extends TableNames>(tableName: TableName) =>
   z.custom<Id<TableName>>(
     (val) => val instanceof Id && val.tableName === tableName
   );
@@ -54,17 +54,17 @@ export const withZodArg = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
-  zodArgs: Arg,
+  zodArg: Arg,
   func: (
     ctx: Ctx,
-    ...args: z.output<z.ZodTuple<[z.ZodObject<Arg>]>>
+    arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
-) => withZodArgs([z.object(zodArgs)], func, zodReturn);
+) => withZodArgs([z.object(zodArg)], func, zodReturn);
 
 export const withZodFunction = <
   Ctx,
-  Args extends z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]], z.ZodUnknown>,
+  Args extends z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]], null>,
   Returns extends z.ZodTypeAny
 >(
   zFunc: z.ZodFunction<Args, Returns>,
@@ -121,7 +121,7 @@ export const queryWithZodArg = <
   zodArgs: Arg,
   func: (
     ctx: QueryCtx,
-    ...args: z.output<z.ZodTuple<Arg>>
+    arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
 ) => query(withZodArg(zodArgs, func, zodReturn));
@@ -133,7 +133,7 @@ export const mutationWithZodArg = <
   zodArgs: Arg,
   func: (
     ctx: MutationCtx,
-    ...args: z.output<z.ZodTuple<Arg>>
+    arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
 ) => mutation(withZodArg(zodArgs, func, zodReturn));
@@ -145,7 +145,7 @@ export const actionWithZodArg = <
   zodArgs: Arg,
   func: (
     ctx: ActionCtx,
-    ...args: z.output<z.ZodTuple<Arg>>
+    arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
 ) => action(withZodArg(zodArgs, func, zodReturn));
