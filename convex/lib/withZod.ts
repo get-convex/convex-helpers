@@ -15,7 +15,7 @@ import { Id, TableNames } from "../_generated/dataModel";
  * @param tableName - The table that the Id references. i.e. Id<tableName>
  * @returns - A Zod object representing a Convex Id
  */
-export const zid = <TableName extends TableNames>(tableName: TableName) =>
+export const zId = <TableName extends TableNames>(tableName: TableName) =>
   z.custom<Id<TableName>>(
     (val) => val instanceof Id && val.tableName === tableName
   );
@@ -28,7 +28,7 @@ export const zid = <TableName extends TableNames>(tableName: TableName) =>
  * @returns - zod shape for use with z.object(shape) that includes system fields
  */
 export const addSystemFields = <T>(tableName: TableNames, zObject: T) => {
-  return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
+  return { ...zObject, _id: zId(tableName), _creationTime: z.number() };
 };
 
 /**
