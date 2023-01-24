@@ -11,13 +11,25 @@ import { Id, TableNames } from "../_generated/dataModel";
 
 /**
  * Zod helper for a Convex Id, used for validation.
- * @param tableName The table that the Id references. i.e. Id<tableName>
- * @returns a Zod object representing a Convex Id
+ *
+ * @param tableName - The table that the Id references. i.e. Id<tableName>
+ * @returns - A Zod object representing a Convex Id
  */
 export const zid = <TableName extends TableNames>(tableName: TableName) =>
   z.custom<Id<TableName>>(
     (val) => val instanceof Id && val.tableName === tableName
   );
+
+/**
+ * Zod helper for adding Convex system fields to a record to return.
+ *
+ * @param tableName - The table where records are from, i.e. Document<tableName>
+ * @param zObject - The other fields you want to extract from the table.
+ * @returns - zod shape for use with z.object(shape) that includes system fields
+ */
+export const addSystemFields = <T>(tableName: TableNames, zObject: T) => {
+  return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
+};
 
 /**
  * Wraps a convex function with input and (optional) output validation via zod.
@@ -30,7 +42,7 @@ export const zid = <TableName extends TableNames>(tableName: TableName) =>
  */
 export const withZodArgs = <
   Ctx,
-  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]],
+  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]] | [],
   Returns extends z.ZodTypeAny
 >(
   zodArgs: Args,
@@ -49,7 +61,17 @@ export const withZodArgs = <
   );
 };
 
-export const withZodArg = <
+/**
+ * Wraps a convex function with input and (optional) output validation via zod.
+ *
+ * Assumes a single object argument to the function.
+ * @param zodArg - A zod object for validating the argument to func.
+ * @param func - Your function that accepts validated inputs, along with the
+ * Convex ctx arg, to be used with Convex serverless functions.
+ * @param zodReturn - An optional zod object to validate the return from func.
+ * @returns A function that can be passed to `query`, `mutation` or `action`.
+ */
+export const withZodObjectArg = <
   Ctx,
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
@@ -62,9 +84,17 @@ export const withZodArg = <
   zodReturn?: Returns
 ) => withZodArgs([z.object(zodArg)], func, zodReturn);
 
+/**
+ * Wraps a convex function with validation via zod.
+ *
+ * @param zFunc - A zod function for validating the arguments and return of func
+ * @param func - Your function that accepts validated inputs, along with the
+ * Convex ctx arg, to be used with Convex serverless functions.
+ * @returns A function that can be passed to `query`, `mutation` or `action`.
+ */
 export const withZodFunction = <
   Ctx,
-  Args extends z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]], null>,
+  Args extends z.ZodTuple<[z.ZodTypeAny, ...z.ZodTypeAny[]] | [], null>,
   Returns extends z.ZodTypeAny
 >(
   zFunc: z.ZodFunction<Args, Returns>,
@@ -78,8 +108,9 @@ export const withZodFunction = <
   };
 };
 
+// See withZodArgs
 export const queryWithZodArgs = <
-  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]],
+  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]] | [],
   Returns extends z.ZodTypeAny
 >(
   zodArgs: Args,
@@ -90,8 +121,9 @@ export const queryWithZodArgs = <
   zodReturn?: Returns
 ) => query(withZodArgs(zodArgs, func, zodReturn));
 
+// See withZodArgs
 export const mutationWithZodArgs = <
-  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]],
+  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]] | [],
   Returns extends z.ZodTypeAny
 >(
   zodArgs: Args,
@@ -102,8 +134,9 @@ export const mutationWithZodArgs = <
   zodReturn?: Returns
 ) => mutation(withZodArgs(zodArgs, func, zodReturn));
 
+// See withZodArgs
 export const actionWithZodArgs = <
-  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]],
+  Args extends [z.ZodTypeAny, ...z.ZodTypeAny[]] | [],
   Returns extends z.ZodTypeAny
 >(
   zodArgs: Args,
@@ -114,7 +147,8 @@ export const actionWithZodArgs = <
   zodReturn?: Returns
 ) => action(withZodArgs(zodArgs, func, zodReturn));
 
-export const queryWithZodArg = <
+// See withZodObjectArg
+export const queryWithZodObjectArg = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
@@ -124,9 +158,10 @@ export const queryWithZodArg = <
     arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
-) => query(withZodArg(zodArgs, func, zodReturn));
+) => query(withZodObjectArg(zodArgs, func, zodReturn));
 
-export const mutationWithZodArg = <
+// See withZodObjectArg
+export const mutationWithZodObjectArg = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
@@ -136,9 +171,10 @@ export const mutationWithZodArg = <
     arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
-) => mutation(withZodArg(zodArgs, func, zodReturn));
+) => mutation(withZodObjectArg(zodArgs, func, zodReturn));
 
-export const actionWithZodArg = <
+// See withZodObjectArg
+export const actionWithZodObjectArg = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
@@ -148,6 +184,6 @@ export const actionWithZodArg = <
     arg: z.output<z.ZodObject<Arg>>
   ) => z.input<z.ZodPromise<Returns>>,
   zodReturn?: Returns
-) => action(withZodArg(zodArgs, func, zodReturn));
+) => action(withZodObjectArg(zodArgs, func, zodReturn));
 
 export default withZodArgs;
