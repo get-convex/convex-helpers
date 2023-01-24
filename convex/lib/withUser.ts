@@ -75,3 +75,5 @@ export const queryWithUser = <Args extends any[], Output>(
 ) => {
   return query(withUser(func));
 };
+
+export default withUser;
