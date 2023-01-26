@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import { useEffect, useState } from "react";
-import { isOnline, PresenceData } from "../../hooks/usePresence";
+import { isOnline, PresenceData } from "../hooks/usePresence";
 
 const UPDATE_MS = 1000;
 

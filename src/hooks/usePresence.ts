@@ -1,7 +1,7 @@
-import { Value } from 'convex/values';
-import { useCallback, useEffect, useState } from 'react';
-import { useQuery, useMutation } from '../convex/_generated/react';
-import useSingleFlight from './useSingleFlight';
+import { Value } from "convex/values";
+import { useCallback, useEffect, useState } from "react";
+import { useQuery, useMutation } from "../../convex/_generated/react";
+import useSingleFlight from "./useSingleFlight";
 
 export type PresenceData<D> = {
   created: number;
@@ -48,12 +48,12 @@ export const usePresence = <T extends { [key: string]: Value }>(
   heartbeatPeriod = HEARTBEAT_PERIOD
 ) => {
   const [data, setData] = useState(initialData);
-  let presence: PresenceData<T>[] | undefined = useQuery('presence:list', room);
+  let presence: PresenceData<T>[] | undefined = useQuery("presence:list", room);
   if (presence) {
     presence = presence.filter((p) => p.user !== user);
   }
-  const updatePresence = useSingleFlight(useMutation('presence:update'));
-  const heartbeat = useSingleFlight(useMutation('presence:heartbeat'));
+  const updatePresence = useSingleFlight(useMutation("presence:update"));
+  const heartbeat = useSingleFlight(useMutation("presence:heartbeat"));
 
   useEffect(() => {
     void updatePresence(room, user, data);
