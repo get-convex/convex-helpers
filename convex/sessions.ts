@@ -1,6 +1,6 @@
 import { WithoutSystemFields } from "convex/server";
-import { Document, Id } from "../_generated/dataModel";
-import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
+import { Document, Id } from "./_generated/dataModel";
+import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
 
 /**
  * Wrapper for a Convex query or mutation function that provides a session in ctx.
