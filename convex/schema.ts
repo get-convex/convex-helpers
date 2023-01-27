@@ -18,5 +18,8 @@ export default defineSchema({
     .index("by_room_updated", ["room", "updated"])
     // Index for updating presence data
     .index("by_user_room", ["user", "room"]),
-  //End presence
+  // End presence
+  // For sessions:
+  sessions: defineTable(s.any()), // Make as specific as you want
+  // End sessions
 });
