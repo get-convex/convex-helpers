@@ -65,12 +65,17 @@ export const mutationWithSession = <Args extends any[], Output>(
  * Requires the sessionId as the first parameter. This is provided by default by
  * using useSessionQuery.
  * Throws an exception if there isn't a session logged in.
+ * You can't return null, because we use that sentinel value as a sign that
+ * the session hasn't been initialized yet.
  * E.g.:
  * export default queryWithSession(async ({ db, auth, session }, arg1) => {...}));
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export const queryWithSession = <Args extends any[], Output>(
+export const queryWithSession = <
+  Args extends any[],
+  Output extends NonNullable<any>
+>(
   func: (
     ctx: QueryCtx & { session: Document<"sessions"> },
     ...args: Args
@@ -80,6 +85,9 @@ export const queryWithSession = <Args extends any[], Output>(
     withSession((ctx, ...args: Args) => {
       const { session } = ctx;
       if (!session) {
+        // If the session hasn't been initialized yet, let's act like the query
+        // hasn't finished yet. On the client, it will be translated to
+        // `undefined`.
         return Promise.resolve(null);
       }
       return func({ ...ctx, session }, ...args);
