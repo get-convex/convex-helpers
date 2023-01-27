@@ -101,12 +101,13 @@ export const queryWithSession = <
  */
 export const create = mutation(async ({ db }) => {
   return db.insert("sessions", {
-    user: "User " + Math.floor(Math.random() * 10000),
+    // TODO: insert your default values here
   });
 });
 
 /**
  * Gets the current session.
+ * TODO: update based on your usecase.
  */
 export const get = queryWithSession(async ({ session }) => {
   // Depending on what sensitive data you store in here, you might
@@ -116,6 +117,7 @@ export const get = queryWithSession(async ({ session }) => {
 
 /**
  * Updates the current session data.
+ * TODO: update based on your usecase.
  */
 export const patch = mutationWithSession(
   async (
