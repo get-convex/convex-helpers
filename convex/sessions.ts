@@ -119,14 +119,15 @@ export const get = queryWithSession(async ({ session }) => {
  * Updates the current session data.
  * TODO: update based on your usecase.
  */
-export const patch = mutationWithSession(
-  async (
-    { db, session },
-    patch: Partial<WithoutSystemFields<Document<"sessions">>>
-  ) => {
-    if (!session) throw new Error("Session not initialized yet");
-    // Depending on your usecase, you might not want to allow patching
-    // all or any fields from the client.
-    db.patch(session._id, patch);
-  }
-);
+// Don't expose this by default, as it can be dangerous.
+//export const patch = mutationWithSession(
+//  async (
+//    { db, session },
+//    patch: Partial<WithoutSystemFields<Document<"sessions">>>
+//  ) => {
+//    if (!session) throw new Error("Session not initialized yet");
+//    // Depending on your usecase, you might not want to allow patching
+//    // all or any fields from the client.
+//    db.patch(session._id, patch);
+//  }
+//);
