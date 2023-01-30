@@ -1,15 +1,16 @@
-import { WithoutSystemFields } from "convex/server";
 import { Document, Id } from "./_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "./_generated/server";
 
 /**
  * Wrapper for a Convex query or mutation function that provides a session in ctx.
  *
- * Requires the sessionId as the first parameter. This is provided by default by
- * using useSessionQuery or useSessionMutation.
- * Throws an exception if there isn't a valid session.
+ * Requires an `Id<"sessions">` as the first parameter. This is provided by
+ * default by using {@link useSessionQuery} or {@link useSessionMutation}.
  * Pass this to `query`, `mutation`, or another wrapper. E.g.:
+ * ```ts
  * export default mutation(withSession(async ({ db, auth, session }, arg1) => {...}));
+ * ```
+ *
  * @param func - Your function that can now take in a `session` in the first param.
  * @returns A function to be passed to `query` or `mutation`.
  */
@@ -34,42 +35,38 @@ export const withSession = <Ctx extends QueryCtx, Args extends any[], Output>(
 /**
  * Wrapper for a Convex mutation function that provides a session in ctx.
  *
- * Requires the sessionId as the first parameter. This is provided by default by
- * using useSessionMutation.
- * Throws an exception if there isn't a valid session.
+ * Requires an `Id<"sessions">` as the first parameter. This is provided by
+ * default by using {@link useSessionMutation}.
  * E.g.:
+ * ```ts
  * export default mutationWithSession(async ({ db, auth, session }, arg1) => {...}));
- * @param func - Your function that can now take in a `session` in the ctx param.
+ * ```
+ *
+ * @param func - Your function that can now take in a `session` in the ctx
+ *   param. It will be null if the session hasn't been initialized yet.
  * @returns A Convex serverless function.
  */
 export const mutationWithSession = <Args extends any[], Output>(
   func: (
-    ctx: MutationCtx & { session: Document<"sessions"> },
+    ctx: MutationCtx & { session: Document<"sessions"> | null },
     ...args: Args
   ) => Promise<Output>
 ) => {
-  return mutation(
-    withSession((ctx, ...args: Args) => {
-      const { session } = ctx;
-      if (!session) {
-        throw new Error("Session not initialized yet");
-      }
-      return func({ ...ctx, session }, ...args);
-    })
-  );
+  return mutation(withSession(func));
 };
 
 /**
  * Wrapper for a Convex query function that provides a session in ctx.
  *
- * Requires the sessionId as the first parameter. This is provided by default by
- * using useSessionQuery.
- * Throws an exception if there isn't a session logged in.
- * You can't return null, because we use that sentinel value as a sign that
- * the session hasn't been initialized yet.
+ * Requires an `Id<"sessions">` as the first parameter. This is provided by
+ * default by using {@link useSessionQuery}.
  * E.g.:
+ * ```ts
  * export default queryWithSession(async ({ db, auth, session }, arg1) => {...}));
- * @param func - Your function that can now take in a `session` in the ctx param.
+ * ```
+ *
+ * @param func - Your function that can now take in a `session` in the ctx
+ *   param. It will be null if the session hasn't been initialized yet.
  * @returns A Convex serverless function.
  */
 export const queryWithSession = <
@@ -77,22 +74,11 @@ export const queryWithSession = <
   Output extends NonNullable<any>
 >(
   func: (
-    ctx: QueryCtx & { session: Document<"sessions"> },
+    ctx: QueryCtx & { session: Document<"sessions"> | null },
     ...args: Args
   ) => Promise<Output | null>
 ) => {
-  return query(
-    withSession((ctx, ...args: Args) => {
-      const { session } = ctx;
-      if (!session) {
-        // If the session hasn't been initialized yet, let's act like the query
-        // hasn't finished yet. On the client, it will be translated to
-        // `undefined`.
-        return Promise.resolve(null);
-      }
-      return func({ ...ctx, session }, ...args);
-    })
-  );
+  return query(withSession(func));
 };
 
 /**
@@ -105,29 +91,12 @@ export const create = mutation(async ({ db }) => {
   });
 });
 
-/**
- * Gets the current session.
- * TODO: update based on your usecase.
- */
-export const get = queryWithSession(async ({ session }) => {
-  // Depending on what sensitive data you store in here, you might
-  // want to limit what you return to clients.
-  return session;
-});
-
-/**
- * Updates the current session data.
- * TODO: update based on your usecase.
- */
-// Don't expose this by default, as it can be dangerous.
-//export const patch = mutationWithSession(
-//  async (
-//    { db, session },
-//    patch: Partial<WithoutSystemFields<Document<"sessions">>>
-//  ) => {
-//    if (!session) throw new Error("Session not initialized yet");
-//    // Depending on your usecase, you might not want to allow patching
-//    // all or any fields from the client.
-//    db.patch(session._id, patch);
-//  }
-//);
+///**
+// * Gets the current session.
+// * TODO: update based on your usecase.
+// */
+//export const get = queryWithSession(async ({ session }) => {
+//  // Depending on what sensitive data you store in here, you might
+//  // want to limit what you return to clients.
+//  return session;
+//});
