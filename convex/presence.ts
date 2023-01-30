@@ -41,7 +41,7 @@ export const update = mutation(
 );
 
 /**
- * Updates the "updated" timestampe for a given user's presence in a room.
+ * Updates the "updated" timestamp for a given user's presence in a room.
  *
  * @param room - The location associated with the presence data. Examples:
  * page, chat channel, game instance.
