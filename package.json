@@ -6,7 +6,7 @@
     "build": "tsc && vite build",
     "init": "convex init",
     "dev:server": "convex dev",
-    "dev:client": "vite --open",
+    "dev:client": "vite",
     "dev:init": "convex dev --once",
     "test": "vitest"
   },
