@@ -5,9 +5,13 @@ import { ConvexProvider } from "convex/react";
 import { API } from "../../convex/_generated/api";
 import { describe, it, expect, afterEach, vi } from "vitest";
 
+// Keep track of counter values
 let counters: Record<string, number> = {};
 
-// A mock function very similar to the implementation of `incrementCounter` in `convex/counter.ts`
+// A function very similar to the implementation of `getCounter`
+const getCounter = (name: string) => counters[name];
+
+// A function very similar to the implementation of `incrementCounter` in `convex/counter.ts`
 const incrementCounter = (name: string, increment: number) => {
   if (counters[name]) {
     counters[name] = counters[name] + increment;
@@ -17,12 +21,13 @@ const incrementCounter = (name: string, increment: number) => {
   return null;
 };
 
+// Wrap incrementCounter in a vitest function so we can keep track of function calls in tests
 const incrementCounterMock = vi.fn().mockImplementation(incrementCounter);
 
+// Initialize the Convex mock client
 const mockClient = new MockConvexReactClient<API>({
   queries: {
-    // Return the value of the requested counter.
-    "counter:getCounter": (name) => counters[name],
+    "counter:getCounter": getCounter,
   },
   mutations: {
     "counter:incrementCounter": incrementCounterMock,
@@ -31,8 +36,6 @@ const mockClient = new MockConvexReactClient<API>({
 
 const setup = () =>
   render(
-    // @ts-expect-error The mock client implementation intentionally does not fully complete
-    // the ConvexReactClient interface.
     <ConvexProvider client={mockClient}>
       <Counter />
     </ConvexProvider>
@@ -64,7 +67,8 @@ describe("Counter", () => {
     expect(incrementCounterMock).toHaveBeenCalledOnce();
     expect(incrementCounterMock).toHaveBeenCalledWith("clicks", 1);
 
-    // The MockConvexReactClient doesn't support reactivity, so we can't use it to test that components re-rendered with updated data.
+    // The MockConvexReactClient doesn't support reactivity,
+    // so we can't use it to test that components re-render with updated data.
     expect(queryByText("Here's the counter: 1")).toBeNull();
   });
 

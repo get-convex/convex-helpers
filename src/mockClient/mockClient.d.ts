@@ -1,13 +1,6 @@
-import {
-  GenericAPI,
-  NamedQuery,
-  QueryNames,
-  MutationNames,
-  ActionNames,
-  NamedMutation,
-} from "convex/browser";
+import { GenericAPI, NamedQuery, NamedMutation } from "convex/browser";
 import { NamedAction } from "convex/dist/types/api/api";
-import { Watch, ReactMutation, ReactAction } from "convex/react";
+import { ConvexReactClient } from "convex/react";
 
 export type MockQueries<API extends GenericAPI> = {
   [Name in keyof API["queries"] & string]?: (
@@ -27,7 +20,9 @@ export type MockActions<API extends GenericAPI> = {
   ) => ReturnType<NamedAction<API, Name>>;
 };
 
-export class MockConvexReactClient<API extends GenericAPI> {
+export class MockConvexReactClient<
+  API extends GenericAPI
+> extends ConvexReactClient<API> {
   queries?: MockQueries<API>;
 
   constructor({
@@ -37,22 +32,4 @@ export class MockConvexReactClient<API extends GenericAPI> {
     queries?: MockQueries<API>;
     mutations?: MockMutations<API>;
   });
-
-  setAuth(): void;
-  clearAuth(): void;
-  watchQuery<Name extends QueryNames<API>>(
-    name: Name,
-    args: Parameters<NamedQuery<API, Name>>
-  ): Watch<ReturnType<NamedQuery<API, Name>>>;
-
-  mutation<Name extends MutationNames<API>>(
-    name: Name
-  ): ReactMutation<API, Name>;
-  action<Name extends ActionNames<API>>(): ReactAction<API, Name>;
-  connectionState(): {
-    hasInflightRequests: false;
-    isWebSocketConnected: true;
-  };
-
-  close(): Promise<void>;
 }

@@ -6,7 +6,7 @@ export class MockConvexReactClient {
     this.actions = actions;
   }
 
-  setAuth() {
+  async setAuth() {
     throw new Error("Auth is not implemented");
   }
 
