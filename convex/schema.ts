@@ -22,4 +22,7 @@ export default defineSchema({
   // For sessions:
   sessions: defineTable(s.any()), // Make as specific as you want
   // End sessions
+  // For counter:
+  counter_table: defineTable({ name: s.string(), counter: s.number() }),
+  // End counter
 });
