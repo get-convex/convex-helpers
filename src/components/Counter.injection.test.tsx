@@ -1,6 +1,6 @@
 import Counter from "./Counter";
 import { render } from "@testing-library/react";
-import { MockConvexReactClient } from "../mockClient/mockClient";
+import { ConvexReactClientFake } from "../fakeConvexClient/fakeConvexClient";
 import { ConvexProvider } from "convex/react";
 import { API } from "../../convex/_generated/api";
 import { describe, it, expect, afterEach, vi } from "vitest";
@@ -25,7 +25,7 @@ const incrementCounter = (name: string, increment: number) => {
 const incrementCounterMock = vi.fn().mockImplementation(incrementCounter);
 
 // Initialize the Convex mock client
-const mockClient = new MockConvexReactClient<API>({
+const mockClient = new ConvexReactClientFake<API>({
   queries: {
     "counter:getCounter": getCounter,
   },
@@ -67,7 +67,7 @@ describe("Counter", () => {
     expect(incrementCounterMock).toHaveBeenCalledOnce();
     expect(incrementCounterMock).toHaveBeenCalledWith("clicks", 1);
 
-    // The MockConvexReactClient doesn't support reactivity,
+    // The ConvexReactClientFake doesn't support reactivity,
     // so we can't use it to test that components re-render with updated data.
     expect(queryByText("Here's the counter: 1")).toBeNull();
   });

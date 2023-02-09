@@ -1,5 +1,5 @@
 // A Mock convex client
-export class MockConvexReactClient {
+export class ConvexReactClientFake {
   constructor({ queries, mutations, actions }) {
     this.queries = queries;
     this.mutations = mutations;

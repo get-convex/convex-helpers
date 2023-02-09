@@ -20,7 +20,7 @@ export type MockActions<API extends GenericAPI> = {
   ) => ReturnType<NamedAction<API, Name>>;
 };
 
-export class MockConvexReactClient<
+export class ConvexReactClientFake<
   API extends GenericAPI
 > extends ConvexReactClient<API> {
   queries?: MockQueries<API>;
