@@ -37,7 +37,13 @@ export class ConvexReactClientFake {
   mutation(name) {
     const mutation = this.mutations && this.mutations[name];
     if (mutation) {
-      return mutation;
+      const mut = (...args) => mutation(...args);
+
+      const withOptimisticUpdate = mutation.withOptimisticUpdate
+        ? mutation.withOptimisticUpdate
+        : () => mut;
+      mut.withOptimisticUpdate = withOptimisticUpdate;
+      return mut;
     }
     throw new Error(
       `Unexpected mutation: ${name}. Try providing a function for this mutation in the mock client constructor.`
