@@ -7,7 +7,7 @@ import { useQuery, usePaginatedQuery } from '../convex/_generated/react'
  * data when the query arguments change, but instead will continue to return
  * the previously loaded data until the new data has finished loading.
  *
- * See stack.convex.dev post "Help, my data is overreacting!" for details.
+ * See https://stack.convex.dev/help-my-app-is-overreacting for details.
  * 
  * @param name - string naming the query function
  * @param ...args - any number of arguments to be passed to the query function
@@ -35,7 +35,7 @@ export const useStableQuery = ((name, ...args) => {
  * to return the previously loaded results until the new results have finished
  * loading.
  *
- * See stack.convex.dev post "Help, my data is overreacting!" for details.
+ * See https://stack.convex.dev/help-my-app-is-overreacting for details.
  * 
  * @param name - string naming the query function
  * @param options - pagination options ({ initialNumItems}) expected by usePaginatedQuery
