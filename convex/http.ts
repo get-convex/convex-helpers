@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { HonoWithConvex, HttpRouterWithHono } from "./hono_convex";
+import { HonoWithConvex, HttpRouterWithHono } from "./lib/honoWithConvex";
 
 const app: HonoWithConvex = new Hono();
 

@@ -1,6 +1,6 @@
 import { HttpRouter, PublicHttpEndpoint, RoutableMethod } from "convex/server";
 import { Hono } from "hono";
-import { httpEndpoint, HttpEndpointCtx } from "./_generated/server";
+import { httpEndpoint, HttpEndpointCtx } from "../_generated/server";
 
 // Idk where this type is supposed to come from but hack to get it working
 declare global {
