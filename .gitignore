@@ -1,6 +1,9 @@
 # For this repo, let's not all share our convex projects
 convex.json
 
+# Or our local env
+.env.local
+
 # Logs
 logs
 *.log
