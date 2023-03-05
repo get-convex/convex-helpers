@@ -11,6 +11,8 @@
 
 import type { ApiFromModules } from "convex/api";
 import type * as counter from "../counter";
+import type * as hono_convex from "../hono_convex";
+import type * as http from "../http";
 import type * as lib_withUser from "../lib/withUser";
 import type * as lib_withZod from "../lib/withZod";
 import type * as presence from "../presence";
@@ -27,6 +29,8 @@ import type * as sessions from "../sessions";
  */
 export type API = ApiFromModules<{
   counter: typeof counter;
+  hono_convex: typeof hono_convex;
+  http: typeof http;
   "lib/withUser": typeof lib_withUser;
   "lib/withZod": typeof lib_withZod;
   presence: typeof presence;
