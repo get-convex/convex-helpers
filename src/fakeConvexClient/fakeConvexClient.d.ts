@@ -4,10 +4,10 @@ import {
   NamedMutation,
   OptimisticUpdate,
 } from "convex/browser";
-import { NamedAction } from "convex/dist/types/api/api";
+import { NamedAction } from "convex/api";
 import { ConvexReactClient, ReactMutation } from "convex/react";
 
-export type FakaQueries<API extends GenericAPI> = {
+export type FakeQueries<API extends GenericAPI> = {
   [Name in keyof API["queries"] & string]?: (
     ...args: Parameters<NamedQuery<API, Name>>
   ) => ReturnType<NamedQuery<API, Name>> | undefined;
