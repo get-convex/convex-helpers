@@ -10,27 +10,83 @@ import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
  * ```ts
  * export default mutation(withSession(async ({ db, auth, session }, arg1) => {...}));
  * ```
- *
+ * Throws an exception if there isn't a valid session.
  * @param func - Your function that can now take in a `session` in the first param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-export const withSession = <Ctx extends QueryCtx, Args extends any[], Output>(
+export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
   func: (
-    ctx: Ctx & { session: Document<"sessions"> | null },
+    ctx: Ctx & { session: Document<"sessions"> },
     ...args: Args
   ) => Promise<Output>
-): ((
+): (
   ctx: Ctx,
   sessionId: Id<"sessions"> | null,
   ...args: Args
-) => Promise<Output>) => {
+) => Promise<Output>;
+/**
+ * Wrapper for a Convex query or mutation function that provides a session in ctx.
+ *
+ * Requires an `Id<"sessions">` as the first parameter. This is provided by
+ * default by using {@link useSessionQuery} or {@link useSessionMutation}.
+ * Pass this to `query`, `mutation`, or another wrapper. E.g.:
+ * ```ts
+ * export default mutation(withSession(async ({ db, auth, session }, arg1) => {...}));
+ * ```
+ * @param func - Your function that can now take in a `session` in the first param.
+ * @returns A function to be passed to `query` or `mutation`.
+ */
+export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
+  func: (
+    ctx: Ctx & { session: Document<"sessions"> | null },
+    ...args: Args
+  ) => Promise<Output>,
+  options: { optional: true }
+): (
+  ctx: Ctx,
+  sessionId: Id<"sessions"> | null,
+  ...args: Args
+) => Promise<Output>;
+/**
+ * Wrapper for a Convex query or mutation function that provides a session in ctx.
+ *
+ * Requires an `Id<"sessions">` as the first parameter. This is provided by
+ * default by using {@link useSessionQuery} or {@link useSessionMutation}.
+ * Pass this to `query`, `mutation`, or another wrapper. E.g.:
+ * ```ts
+ * export default mutation(withSession(async ({ db, auth, session }, arg1) => {...}));
+ * ```
+ * Throws an exception if there isn't a valid session unless `{optional: true}`.
+ * @param func - Your function that can now take in a `session` in the first param.
+ * @returns A function to be passed to `query` or `mutation`.
+ */
+export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
+  func: (
+    ctx: Ctx & { session: Document<"sessions"> | null },
+    ...args: Args
+  ) => Promise<Output>,
+  options?: { optional: true }
+): (
+  ctx: Ctx,
+  sessionId: Id<"sessions"> | null,
+  ...args: Args
+) => Promise<Output> {
   return async (ctx: Ctx, sessionId: Id<"sessions"> | null, ...args: Args) => {
     if (sessionId && sessionId.tableName !== "sessions")
-      throw new Error("Invalid Session ID");
+      throw new Error(
+        "Invalid Session ID. Use useSessionMutation or useSessionQuery."
+      );
     const session = sessionId ? await ctx.db.get(sessionId) : null;
+    if (!options?.optional && !session) {
+      throw new Error(
+        "Session must be initialized first. " +
+          "Are you wrapping your code with <SessionProvider>? " +
+          "Are you requiring a session from a query that executes immediately?"
+      );
+    }
     return func({ ...ctx, session }, ...args);
   };
-};
+}
 
 /**
  * Wrapper for a Convex mutation function that provides a session in ctx.
@@ -41,14 +97,12 @@ export const withSession = <Ctx extends QueryCtx, Args extends any[], Output>(
  * ```ts
  * export default mutationWithSession(async ({ db, auth, session }, arg1) => {...}));
  * ```
- *
- * @param func - Your function that can now take in a `session` in the ctx
- *   param. It will be null if the session hasn't been initialized yet.
+ * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
 export const mutationWithSession = <Args extends any[], Output>(
   func: (
-    ctx: MutationCtx & { session: Document<"sessions"> | null },
+    ctx: MutationCtx & { session: Document<"sessions"> },
     ...args: Args
   ) => Promise<Output>
 ) => {
@@ -64,9 +118,8 @@ export const mutationWithSession = <Args extends any[], Output>(
  * ```ts
  * export default queryWithSession(async ({ db, auth, session }, arg1) => {...}));
  * ```
- *
- * @param func - Your function that can now take in a `session` in the ctx
- *   param. It will be null if the session hasn't been initialized yet.
+ * If the session isn't initialized yet, it will pass null.
+ * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
 export const queryWithSession = <
@@ -78,7 +131,7 @@ export const queryWithSession = <
     ...args: Args
   ) => Promise<Output | null>
 ) => {
-  return query(withSession(func));
+  return query(withSession(func, { optional: true }));
 };
 
 /**
