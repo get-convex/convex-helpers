@@ -40,13 +40,13 @@ export const SessionProvider: React.FC<{
   storageLocation?: "localStorage" | "sessionStorage";
   children?: React.ReactNode;
 }> = ({ storageLocation, children }) => {
-  const store = window[storageLocation ?? "sessionStorage"];
-  const [sessionId, setSession] = useState<Id<"sessions"> | null>(() => {
+  const store =
     // If it's rendering in SSR or such.
-    if (typeof window === "undefined") {
-      return null;
-    }
-    const stored = store.getItem(StoreKey);
+    typeof window === undefined
+      ? null
+      : window[storageLocation ?? "sessionStorage"];
+  const [sessionId, setSession] = useState<Id<"sessions"> | null>(() => {
+    const stored = store?.getItem(StoreKey);
     if (stored) {
       return new Id("sessions", stored);
     }
@@ -57,7 +57,7 @@ export const SessionProvider: React.FC<{
   // Get or set the ID from our desired storage location, whenever it changes.
   useEffect(() => {
     if (sessionId) {
-      store.setItem(StoreKey, sessionId.id);
+      store?.setItem(StoreKey, sessionId.id);
     } else {
       void (async () => {
         setSession(await createSession());
