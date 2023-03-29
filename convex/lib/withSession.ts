@@ -1,4 +1,4 @@
-import { Document, Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
 
 /**
@@ -16,7 +16,7 @@ import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
  */
 export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
   func: (
-    ctx: Ctx & { session: Document<"sessions"> },
+    ctx: Ctx & { session: Doc<"sessions"> },
     ...args: Args
   ) => Promise<Output>
 ): (
@@ -38,7 +38,7 @@ export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
  */
 export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
   func: (
-    ctx: Ctx & { session: Document<"sessions"> | null },
+    ctx: Ctx & { session: Doc<"sessions"> | null },
     ...args: Args
   ) => Promise<Output>,
   options: { optional: true }
@@ -62,7 +62,7 @@ export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
  */
 export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
   func: (
-    ctx: Ctx & { session: Document<"sessions"> | null },
+    ctx: Ctx & { session: Doc<"sessions"> | null },
     ...args: Args
   ) => Promise<Output>,
   options?: { optional: true }
@@ -102,7 +102,7 @@ export function withSession<Ctx extends QueryCtx, Args extends any[], Output>(
  */
 export const mutationWithSession = <Args extends any[], Output>(
   func: (
-    ctx: MutationCtx & { session: Document<"sessions"> },
+    ctx: MutationCtx & { session: Doc<"sessions"> },
     ...args: Args
   ) => Promise<Output>
 ) => {
@@ -127,7 +127,7 @@ export const queryWithSession = <
   Output extends NonNullable<any>
 >(
   func: (
-    ctx: QueryCtx & { session: Document<"sessions"> | null },
+    ctx: QueryCtx & { session: Doc<"sessions"> | null },
     ...args: Args
   ) => Promise<Output | null>
 ) => {
