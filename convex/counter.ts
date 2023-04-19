@@ -2,7 +2,7 @@ import { query } from "./_generated/server";
 import { mutation } from "./_generated/server";
 
 const getCounter = query(
-  async ({ db }, counterName: string): Promise<number> => {
+  async ({ db }, { counterName }: { counterName: string }): Promise<number> => {
     const counterDoc = await db
       .query("counter_table")
       .filter((q) => q.eq(q.field("name"), counterName))
@@ -12,7 +12,10 @@ const getCounter = query(
 );
 
 const incrementCounter = mutation(
-  async ({ db }, counterName: string, increment: number) => {
+  async (
+    { db },
+    { counterName, increment }: { counterName: string; increment: number }
+  ) => {
     const counterDoc = await db
       .query("counter_table")
       .filter((q) => q.eq(q.field("name"), counterName))

@@ -9,7 +9,7 @@ A query function that takes two arguments looks like:
 // myQueryFunction.js
 import { query } from "./_generated/server";
 
-export default query(async ({ db }, first, second) => {
+export default query(async ({ db }, { first, second }) => {
   // Validate arguments here.
   if (typeof first !== "number" || first < 0) {
     throw new Error("First argument is not a non-negative number.");
@@ -31,7 +31,7 @@ export default query(async ({ db }, first, second) => {
 Using this query function in a React component looks like:
 
 ```javascript
-const data = useQuery("myQueryFunction", 10, "hello");
+const data = useQuery("myQueryFunction", { first: 10, second: "hello" });
 ```
 
 A mutation function looks like:
@@ -40,7 +40,7 @@ A mutation function looks like:
 // myMutationFunction.js
 import { mutation } from "./_generated/server";
 
-export default mutation(async ({ db }, first, second) => {
+export default mutation(async ({ db }, { first, second }) => {
   // Validate arguments here.
   if (typeof first !== "string" || typeof second !== "string") {
     throw new Error("Both arguments must be strings");
@@ -62,10 +62,12 @@ Using this mutation function in a React component looks like:
 const mutation = useMutation("myMutationFunction");
 function handleButtonPress() {
   // fire and forget, the most common way to use mutations
-  mutation("Hello!", "me");
+  mutation({ first: "Hello!", second: "me" });
   // OR
   // use the result once the mutation has completed
-  mutation("Hello!", "me").then((result) => console.log(result));
+  mutation({ first: "Hello!", second: "me" }).then((result) =>
+    console.log(result)
+  );
 }
 ```
 
