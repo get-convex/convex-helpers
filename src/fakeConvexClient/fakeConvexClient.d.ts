@@ -1,20 +1,21 @@
 import {
   GenericAPI,
+  NamedAction,
   NamedQuery,
   NamedMutation,
   OptimisticUpdate,
+  ArgsObject,
 } from "convex/browser";
-import { NamedAction } from "convex/api";
 import { ConvexReactClient, ReactMutation } from "convex/react";
 
 export type FakeQueries<API extends GenericAPI> = {
-  [Name in keyof API["queries"] & string]?: (
+  [Name in keyof API["publicQueries"] & string]?: (
     ...args: Parameters<NamedQuery<API, Name>>
   ) => ReturnType<NamedQuery<API, Name>> | undefined;
 };
 
 export type FakeMutations<API extends GenericAPI> = {
-  [Name in keyof API["mutations"] & string]?: {
+  [Name in keyof API["publicMutations"] & string]?: {
     (...args: Parameters<NamedMutation<API, Name>>): ReturnType<
       NamedMutation<API, Name>
     >;
@@ -22,14 +23,14 @@ export type FakeMutations<API extends GenericAPI> = {
     withOptimisticUpdate?(
       optimisticUpdate: OptimisticUpdate<
         API,
-        Parameters<NamedMutation<API, Name>>
+        ArgsObject<NamedMutation<API, Name>>
       >
     ): ReactMutation<API, Name>;
   };
 };
 
 export type MockActions<API extends GenericAPI> = {
-  [Name in keyof API["actions"] & string]?: (
+  [Name in keyof API["publicActions"] & string]?: (
     ...args: Parameters<NamedAction<API, Name>>
   ) => ReturnType<NamedAction<API, Name>>;
 };

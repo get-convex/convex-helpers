@@ -7,7 +7,7 @@
  * - Use Convex `auth` to authenticate users rather than passing up a "user"
  * - Check that the user is allowed to be in a given room.
  */
-import { query, mutation } from './_generated/server';
+import { query, mutation } from "./_generated/server";
 
 const LIST_LIMIT = 20;
 
@@ -22,15 +22,18 @@ const LIST_LIMIT = 20;
  * @param user - The user associated with the presence data.
  */
 export const update = mutation(
-  async ({ db }, room: string, user: string, data: any) => {
+  async (
+    { db },
+    { room, user, data }: { room: string; user: string; data: any }
+  ) => {
     const existing = await db
-      .query('presence')
-      .withIndex('by_user_room', (q) => q.eq('user', user).eq('room', room))
+      .query("presence")
+      .withIndex("by_user_room", (q) => q.eq("user", user).eq("room", room))
       .unique();
     if (existing) {
       await db.patch(existing._id, { data, updated: Date.now() });
     } else {
-      await db.insert('presence', {
+      await db.insert("presence", {
         user,
         data,
         room,
@@ -48,10 +51,10 @@ export const update = mutation(
  * @param user - The user associated with the presence data.
  */
 export const heartbeat = mutation(
-  async ({ db }, room: string, user: string) => {
+  async ({ db }, { room, user }: { room: string; user: string }) => {
     const existing = await db
-      .query('presence')
-      .withIndex('by_user_room', (q) => q.eq('user', user).eq('room', room))
+      .query("presence")
+      .withIndex("by_user_room", (q) => q.eq("user", user).eq("room", room))
       .unique();
     if (existing) {
       await db.patch(existing._id, { updated: Date.now() });
@@ -67,11 +70,11 @@ export const heartbeat = mutation(
  * @returns A list of presence objects, ordered by recent update, limited to
  * the most recent N.
  */
-export const list = query(async ({ db }, room: string) => {
+export const list = query(async ({ db }, { room }: { room: string }) => {
   const presence = await db
-    .query('presence')
-    .withIndex('by_room_updated', (q) => q.eq('room', room))
-    .order('desc')
+    .query("presence")
+    .withIndex("by_room_updated", (q) => q.eq("room", room))
+    .order("desc")
     .take(LIST_LIMIT);
   return presence.map(({ _creationTime, updated, user, data }) => ({
     created: _creationTime,

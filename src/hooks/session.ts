@@ -16,8 +16,10 @@ import {
   MutationNames,
   NamedMutation,
   NamedQuery,
+  OptionalRestArgs,
   QueryNames,
 } from "convex/browser";
+import { ReactMutation } from "convex/react";
 import React, { useContext, useEffect, useState } from "react";
 import { API } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -72,9 +74,8 @@ export const SessionProvider: React.FC<{
   );
 };
 
-type SessionFunction<Args extends any[]> = (
-  sessionId: Id<"sessions"> | null,
-  ...args: Args
+type SessionFunction<Args extends Record<string, any>> = (
+  args: Args & { sessionId: Id<"sessions"> | null }
 ) => any;
 
 type SessionFunctionArgs<Fn extends SessionFunction<any>> =
@@ -92,17 +93,13 @@ type ValidQueryNames = {
 // Like useQuery, but for a Query that takes a session ID.
 export const useSessionQuery = <Name extends ValidQueryNames>(
   name: Name,
-  ...args: SessionFunctionArgs<NamedQuery<API, Name>>
+  args: SessionFunctionArgs<NamedQuery<API, Name>>
 ) => {
   const sessionId = useContext(SessionContext);
-  // I'm sorry about this. We know that ...args are the arguments following
-  // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
-  // go easy on the poor little inference machine. Also open to ideas about how
-  // to do this correctly.
-  const newArgs = [sessionId, ...args] as unknown as Parameters<
+  const newArgs = { ...args, sessionId } as Parameters<
     NamedQuery<API, Name>
-  >;
-  return useQuery(name, ...newArgs);
+  >[0];
+  return useQuery(name, newArgs);
 };
 
 // All the valid mutations that take Id<"sessions"> | null as their first parameter.
@@ -122,15 +119,15 @@ export const useSessionMutation = <Name extends ValidMutationNames>(
   const sessionId = useContext(SessionContext);
   const originalMutation = useMutation(name);
   return (
-    ...args: SessionFunctionArgs<NamedMutation<API, Name>>
+    args: SessionFunctionArgs<NamedMutation<API, Name>>
   ): Promise<ReturnType<NamedMutation<API, Name>>> => {
     // I'm sorry about this. We know that ...args are the arguments following
     // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
     // go easy on the poor little inference machine. Also open to ideas about how
     // to do this correctly.
-    const newArgs = [sessionId, ...args] as unknown as Parameters<
+    const newArgs = { ...args, sessionId } as unknown as Parameters<
       NamedMutation<API, Name>
-    >;
-    return originalMutation(...newArgs);
+    >[0];
+    return originalMutation(newArgs);
   };
 };
