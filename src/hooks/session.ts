@@ -16,10 +16,9 @@ import {
   MutationNames,
   NamedMutation,
   NamedQuery,
-  OptionalRestArgs,
+  //OptionalRestArgs,
   QueryNames,
 } from "convex/browser";
-import { ReactMutation } from "convex/react";
 import React, { useContext, useEffect, useState } from "react";
 import { API } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
