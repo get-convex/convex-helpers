@@ -1,5 +1,11 @@
+import { defineTable } from "convex/schema";
 import { query } from "./_generated/server";
 import { mutation } from "./_generated/server";
+import { v } from "convex/values";
+
+export const counterSchema = {
+  counter_table: defineTable({ name: v.string(), counter: v.number() }),
+};
 
 const getCounter = query(
   async ({ db }, { counterName }: { counterName: string }): Promise<number> => {

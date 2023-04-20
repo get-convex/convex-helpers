@@ -1,5 +1,14 @@
 import { QueryCtx, MutationCtx, mutation, query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
+import { defineTable } from "convex/schema";
+import { v } from "convex/values";
+
+export const userSchema = {
+  users: defineTable({
+    name: v.string(),
+    tokenIdentifier: v.string(),
+  }).index("by_token", ["tokenIdentifier"]),
+};
 
 /**
  * Wrapper for a Convex query or mutation function that provides a user in ctx.
@@ -10,7 +19,11 @@ import { Doc } from "../_generated/dataModel";
  * @param func - Your function that can now take in a `user` in the first param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-export const withUser = <Ctx extends QueryCtx, Args extends Record<string, any>, Output>(
+export const withUser = <
+  Ctx extends QueryCtx,
+  Args extends Record<string, any>,
+  Output
+>(
   func: (ctx: Ctx & { user: Doc<"users"> }, args: Args) => Promise<Output>
 ): ((ctx: Ctx, args: Args) => Promise<Output>) => {
   return async (ctx: Ctx, args: Args) => {
@@ -65,10 +78,7 @@ export const mutationWithUser = <Args extends Record<string, any>, Output>(
  * @returns A Convex serverless function.
  */
 export const queryWithUser = <Args extends Record<string, any>, Output>(
-  func: (
-    ctx: QueryCtx & { user: Doc<"users"> },
-    args: Args
-  ) => Promise<Output>
+  func: (ctx: QueryCtx & { user: Doc<"users"> }, args: Args) => Promise<Output>
 ) => {
   return query(withUser(func));
 };
