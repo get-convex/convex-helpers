@@ -53,7 +53,7 @@ export const SessionProvider: React.FC<{
     }
     return null;
   });
-  const createSession = useMutation("lib/withSession:create");
+  const createSession = useMutation("sessions:create");
 
   // Get or set the ID from our desired storage location, whenever it changes.
   useEffect(() => {
@@ -61,7 +61,7 @@ export const SessionProvider: React.FC<{
       store?.setItem(StoreKey, sessionId.id);
     } else {
       void (async () => {
-        setSession(await createSession());
+        setSession(await createSession({}));
       })();
     }
   }, [sessionId, createSession, store]);

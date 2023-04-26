@@ -17,6 +17,7 @@ import type * as lib_withSession from "../lib/withSession";
 import type * as lib_withUser from "../lib/withUser";
 import type * as lib_withZod from "../lib/withZod";
 import type * as presence from "../presence";
+import type * as sessions from "../sessions";
 
 /**
  * A type describing your app's public Convex API.
@@ -35,4 +36,5 @@ export type API = ApiFromModules<{
   "lib/withUser": typeof lib_withUser;
   "lib/withZod": typeof lib_withZod;
   presence: typeof presence;
+  sessions: typeof sessions;
 }>;

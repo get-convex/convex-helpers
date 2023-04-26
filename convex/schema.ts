@@ -3,10 +3,11 @@ import { v } from "convex/values";
 import { userSchema } from "./lib/withUser";
 import { presenceSchema } from "./presence";
 import { counterSchema } from "./counter";
+import { sessionSchema } from "./sessions";
 
 export default defineSchema({
   ...userSchema,
   ...presenceSchema,
   ...counterSchema,
-  sessions: defineTable(v.any()), // Make as specific as you want
+  ...sessionSchema,
 });
