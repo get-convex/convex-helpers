@@ -42,7 +42,7 @@ export const addSystemFields = <T>(tableName: TableNames, zObject: T) => {
  */
 export const withZod = <
   Ctx,
-  Args extends { [key: string]: z.ZodTypeAny },
+  Args extends Record<string, z.ZodTypeAny>,
   Returns extends z.ZodTypeAny
 >(
   zodArg: Args,
@@ -68,7 +68,7 @@ export const withZod = <
 };
 
 // See withZod
-export const queryWithZodObjectArg = <
+export const queryWithZod = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
@@ -81,7 +81,7 @@ export const queryWithZodObjectArg = <
 ) => query(withZod(zodArgs, func, zodReturn));
 
 // See withZod
-export const mutationWithZodObjectArg = <
+export const mutationWithZod = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
@@ -94,7 +94,7 @@ export const mutationWithZodObjectArg = <
 ) => mutation(withZod(zodArgs, func, zodReturn));
 
 // See withZod
-export const actionWithZodObjectArg = <
+export const actionWithZod = <
   Arg extends { [key: string]: z.ZodTypeAny },
   Returns extends z.ZodTypeAny
 >(
