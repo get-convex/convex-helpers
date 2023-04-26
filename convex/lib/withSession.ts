@@ -153,10 +153,14 @@ export const mutationWithSession = <
  * Wrapper for a Convex query function that provides a session in ctx.
  *
  * Requires an `Id<"sessions">` as the first parameter. This is provided by
- * default by using {@link useSessionQuery}.
+ * default by using {@link useSessionQuery}. It validates and strips this
+ * parameter for you.
  * E.g.:
  * ```ts
- * export default queryWithSession(async ({ db, auth, session }, { arg1 }) => {...}));
+ * export default queryWithSession({
+ *   args: { arg1: v.any() },
+ *   handler: async ({ db, auth, session }, { arg1 }) => {...}
+ * });
  * ```
  * If the session isn't initialized yet, it will pass null.
  * @param func - Your function that can now take in a `session` in the ctx param.
