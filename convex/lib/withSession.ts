@@ -6,10 +6,12 @@ import {
 } from "convex/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
-import { /*ObjectType,*/ v, Validator } from "convex/values";
+import {
+  // TODO: import these once they're exported
+  /*ObjectType, PropertyValidators,*/ v,
+  Validator,
+} from "convex/values";
 
-// XXX These should be exported from the npm package
-type PropertyValidators = Record<string, Validator<any, any, any>>;
 const sessionIdValidator = v.union(v.id("sessions"), v.null());
 
 // Add two overloads so you can pass no arguments and get a version where
@@ -132,20 +134,20 @@ export function withSession(fn: any, options?: { optional: true }) {
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-// export function mutationWithSession<
-//   ArgsValidator extends PropertyValidators,
-//   Output
-// >(
-//   func: ValidatedFunction<
-//     MutationCtx & { session: Doc<"sessions"> },
-//     ArgsValidator,
-//     Promise<Output>
-//   >
-// ): RegisteredMutation<
-//   "public",
-//   [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
-//   Output
-// >;
+export function mutationWithSession<
+  ArgsValidator extends PropertyValidators,
+  Output
+>(
+  func: ValidatedFunction<
+    MutationCtx & { session: Doc<"sessions"> },
+    ArgsValidator,
+    Promise<Output>
+  >
+): RegisteredMutation<
+  "public",
+  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
+  Output
+>;
 export function mutationWithSession<Output>(
   func: UnvalidatedFunction<
     MutationCtx & { session: Doc<"sessions"> | null },
@@ -174,20 +176,20 @@ export function mutationWithSession(func: any): any {
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-// export function queryWithSession<
-//   ArgsValidator extends PropertyValidators,
-//   Output
-// >(
-//   func: ValidatedFunction<
-//     QueryCtx & { session: Doc<"sessions"> | null },
-//     ArgsValidator,
-//     Promise<Output>
-//   >
-// ): RegisteredQuery<
-//   "public",
-//   [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
-//   Output
-// >;
+export function queryWithSession<
+  ArgsValidator extends PropertyValidators,
+  Output
+>(
+  func: ValidatedFunction<
+    QueryCtx & { session: Doc<"sessions"> | null },
+    ArgsValidator,
+    Promise<Output>
+  >
+): RegisteredQuery<
+  "public",
+  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
+  Output
+>;
 export function queryWithSession<Output>(
   func: UnvalidatedFunction<
     QueryCtx & { session: Doc<"sessions"> | null },
@@ -198,3 +200,30 @@ export function queryWithSession<Output>(
 export function queryWithSession(func: any): any {
   return query(withSession(func, { optional: true }));
 }
+
+// XXX These should be exported from the npm package
+type PropertyValidators = Record<string, Validator<any, any, any>>;
+declare type Expand<ObjectType extends Record<any, any>> =
+  ObjectType extends Record<any, any>
+    ? {
+        [Key in keyof ObjectType]: ObjectType[Key];
+      }
+    : never;
+declare type OptionalKeys<
+  PropertyValidators extends Record<string, Validator<any, any, any>>
+> = {
+  [Property in keyof PropertyValidators]: PropertyValidators[Property]["isOptional"] extends true
+    ? Property
+    : never;
+}[keyof PropertyValidators];
+declare type RequiredKeys<
+  PropertyValidators extends Record<string, Validator<any, any, any>>
+> = Exclude<keyof PropertyValidators, OptionalKeys<PropertyValidators>>;
+declare type ObjectType<Validators extends PropertyValidators> = Expand<
+  {
+    [Property in OptionalKeys<Validators>]?: Validators[Property]["type"];
+  } & {
+    [Property in RequiredKeys<Validators>]: Validators[Property]["type"];
+  }
+>;
+// XXX end of inlined types - in the future, just import ObjectType and PropertyValidators from convex/values
