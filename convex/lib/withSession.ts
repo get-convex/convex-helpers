@@ -150,7 +150,7 @@ export function mutationWithSession<
 >;
 export function mutationWithSession<Output>(
   func: UnvalidatedFunction<
-    MutationCtx & { session: Doc<"sessions"> | null },
+    MutationCtx & { session: Doc<"sessions"> },
     [],
     Promise<Output>
   >
