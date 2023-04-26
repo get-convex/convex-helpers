@@ -1,10 +1,5 @@
-import { defineTable } from "convex/schema";
 import { mutation } from "./_generated/server";
-import { v } from "convex/values";
 
-export const sessionSchema = {
-  sessions: defineTable(v.any()), // Make as specific as you want
-};
 /**
  * Creates a session and returns the id. For use with the SessionProvider on the
  * client.

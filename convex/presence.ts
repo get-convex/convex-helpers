@@ -7,22 +7,7 @@
  * - Use Convex `auth` to authenticate users rather than passing up a "user"
  * - Check that the user is allowed to be in a given room.
  */
-import { defineTable } from "convex/schema";
 import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-
-export const presenceSchema = {
-  presence: defineTable({
-    user: v.string(),
-    room: v.string(),
-    updated: v.number(),
-    data: v.any(),
-  })
-    // Index for fetching presence data
-    .index("by_room_updated", ["room", "updated"])
-    // Index for updating presence data
-    .index("by_user_room", ["user", "room"]),
-};
 
 const LIST_LIMIT = 20;
 

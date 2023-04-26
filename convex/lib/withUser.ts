@@ -1,16 +1,5 @@
 import { MutationCtx, QueryCtx, mutation, query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
-import { defineTable } from "convex/schema";
-import { v } from "convex/values";
-
-// Copy into your convex/schema.ts like defineSchema({...userSchema, ...})
-// and modify it to suit your app.
-export const userSchema = {
-  users: defineTable({
-    name: v.string(),
-    tokenIdentifier: v.string(),
-  }).index("by_token", ["tokenIdentifier"]),
-};
 
 /**
  * Wrapper for a Convex query or mutation function that provides a user in ctx.
