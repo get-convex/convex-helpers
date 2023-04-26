@@ -1,4 +1,8 @@
-import { ValidatedFunction } from "convex/server";
+import {
+  FunctionArgs,
+  UnvalidatedFunction,
+  ValidatedFunction,
+} from "convex/server";
 import { v, Validator } from "convex/values";
 import { Doc } from "../_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
@@ -8,56 +12,58 @@ type PropertyValidators = Record<string, Validator<any, any, any>>;
 
 const sessionIdValidator = v.union(v.id("sessions"), v.null());
 
-/**
- * Wrapper for a Convex query or mutation function that provides a session in ctx.
- *
- * Requires an `Id<"sessions">` as the first parameter. This is provided by
- * default by using {@link useSessionQuery} or {@link useSessionMutation}.
- * Pass this to `query`, `mutation`, or another wrapper. E.g.:
- * ```ts
- * export default mutation(withSession(async ({ db, auth, session }, { arg1 }) => {...}));
- * ```
- * Throws an exception if there isn't a valid session.
- * @param func - Your function that can now take in a `session` in the first param.
- * @returns A function to be passed to `query` or `mutation`.
- */
 export function withSession<
   Ctx extends QueryCtx,
-  ArgsValidator extends PropertyValidators,
+  Args extends [FunctionArgs] | [],
   Output
->({
-  args,
-  handler,
-}: ValidatedFunction<
-  Ctx & { session: Doc<"sessions"> },
-  ArgsValidator,
-  Promise<Output>
->): ValidatedFunction<
+>(
+  fn: UnvalidatedFunction<
+    Ctx & { session: Doc<"sessions"> },
+    Args,
+    Promise<Output>
+  >
+): ValidatedFunction<
   Ctx,
-  ArgsValidator & { sessionId: typeof sessionIdValidator },
+  { sessionId: typeof sessionIdValidator },
   Promise<Output>
 >;
-/**
- * Wrapper for a Convex query or mutation function that provides a session in ctx.
- *
- * Requires an `Id<"sessions">` as the first parameter. This is provided by
- * default by using {@link useSessionQuery} or {@link useSessionMutation}.
- * Pass this to `query`, `mutation`, or another wrapper. E.g.:
- * ```ts
- * export default mutation(withSession(async ({ db, auth, session }, arg1) => {...}));
- * ```
- * @param func - Your function that can now take in a `session` in the first param.
- * @returns A function to be passed to `query` or `mutation`.
- */
 export function withSession<
   Ctx extends QueryCtx,
   ArgsValidator extends PropertyValidators,
   Output
 >(
-  {
-    args,
-    handler,
-  }: ValidatedFunction<
+  fn: ValidatedFunction<
+    Ctx & { session: Doc<"sessions"> },
+    ArgsValidator,
+    Promise<Output>
+  >
+): ValidatedFunction<
+  Ctx,
+  ArgsValidator & { sessionId: typeof sessionIdValidator },
+  Promise<Output>
+>;
+export function withSession<
+  Ctx extends QueryCtx,
+  Args extends [FunctionArgs] | [],
+  Output
+>(
+  fn: UnvalidatedFunction<
+    Ctx & { session: Doc<"sessions"> | null },
+    Args,
+    Promise<Output>
+  >,
+  options: { optional: true }
+): ValidatedFunction<
+  Ctx,
+  { sessionId: typeof sessionIdValidator },
+  Promise<Output>
+>;
+export function withSession<
+  Ctx extends QueryCtx,
+  ArgsValidator extends PropertyValidators,
+  Output
+>(
+  fn: ValidatedFunction<
     Ctx & { session: Doc<"sessions"> | null },
     ArgsValidator,
     Promise<Output>
@@ -75,43 +81,23 @@ export function withSession<
  * default by using {@link useSessionQuery} or {@link useSessionMutation}.
  * Pass this to `query`, `mutation`, or another wrapper. E.g.:
  * ```ts
- * export default mutation(withSession(async ({ db, auth, session }, { arg1 }) => {...}));
+ * export default mutation(withSession(
+ *   args: { arg1: v.any() },
+ *   handler: async ({ db, auth, session }, { arg1 }) => {...}
+ * ));
  * ```
  * Throws an exception if there isn't a valid session unless `{optional: true}`.
  * @param func - Your function that can now take in a `session` in the first param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-export function withSession<
-  Ctx extends QueryCtx,
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  {
-    args,
-    handler,
-  }: ValidatedFunction<
-    Ctx & { session: Doc<"sessions"> | null },
-    ArgsValidator,
-    Promise<Output>
-  >,
-  options?: { optional: true }
-): ValidatedFunction<
-  Ctx,
-  ArgsValidator & { sessionId: typeof sessionIdValidator },
-  Promise<Output>
-> {
+export function withSession(fn: any, options?: { optional: true }) {
+  const handler = fn.handler ?? fn;
+  const args = fn.args ?? {};
   return {
     args: { ...args, sessionId: sessionIdValidator },
-    handler: async (ctx: Ctx, allArgs: any) => {
+    handler: async (ctx: any, allArgs: any) => {
       const { sessionId, ...args } = allArgs;
-
-      if (sessionId && sessionId.tableName !== "sessions")
-        throw new Error(
-          "Invalid Session ID. Use useSessionMutation or useSessionQuery."
-        );
-      const session = sessionId
-        ? await ctx.db.get<"sessions">(sessionId)
-        : null;
+      const session = sessionId ? await ctx.db.get(sessionId) : null;
       if (!options?.optional && !session) {
         throw new Error(
           "Session must be initialized first. " +
@@ -131,12 +117,26 @@ export function withSession<
  * default by using {@link useSessionMutation}.
  * E.g.:
  * ```ts
- * export default mutationWithSession(async ({ db, auth, session }, { arg1 }) => {...}));
+ * export default mutationWithSession({
+ *   args: { arg1: v.any() },
+ *   handler: async ({ db, auth, session }, { arg1 }) => {...}
+ * });
  * ```
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export const mutationWithSession = <
+export function mutationWithSession<Args extends [FunctionArgs] | [], Output>(
+  fn: UnvalidatedFunction<
+    MutationCtx & { session: Doc<"sessions"> },
+    Args,
+    Promise<Output>
+  >
+): ValidatedFunction<
+  MutationCtx,
+  { sessionId: typeof sessionIdValidator },
+  Promise<Output>
+>;
+export function mutationWithSession<
   ArgsValidator extends PropertyValidators,
   Output
 >(
@@ -145,9 +145,14 @@ export const mutationWithSession = <
     ArgsValidator,
     Promise<Output>
   >
-) => {
+): ValidatedFunction<
+  MutationCtx,
+  ArgsValidator & { sessionId: typeof sessionIdValidator },
+  Promise<Output>
+>;
+export function mutationWithSession(func: any): any {
   return mutation(withSession(func));
-};
+}
 
 /**
  * Wrapper for a Convex query function that provides a session in ctx.
