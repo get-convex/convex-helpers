@@ -1,5 +1,4 @@
 import {
-  ObjectType,
   RegisteredMutation,
   RegisteredQuery,
   UnvalidatedFunction,
@@ -7,7 +6,7 @@ import {
 } from "convex/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
-import { v, Validator } from "convex/values";
+import { /*ObjectType,*/ v, Validator } from "convex/values";
 
 // XXX These should be exported from the npm package
 type PropertyValidators = Record<string, Validator<any, any, any>>;
@@ -133,20 +132,20 @@ export function withSession(fn: any, options?: { optional: true }) {
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export function mutationWithSession<
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  func: ValidatedFunction<
-    MutationCtx & { session: Doc<"sessions"> },
-    ArgsValidator,
-    Promise<Output>
-  >
-): RegisteredMutation<
-  "public",
-  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
-  Output
->;
+// export function mutationWithSession<
+//   ArgsValidator extends PropertyValidators,
+//   Output
+// >(
+//   func: ValidatedFunction<
+//     MutationCtx & { session: Doc<"sessions"> },
+//     ArgsValidator,
+//     Promise<Output>
+//   >
+// ): RegisteredMutation<
+//   "public",
+//   [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
+//   Output
+// >;
 export function mutationWithSession<Output>(
   func: UnvalidatedFunction<
     MutationCtx & { session: Doc<"sessions"> | null },
@@ -175,20 +174,20 @@ export function mutationWithSession(func: any): any {
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export function queryWithSession<
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  func: ValidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> | null },
-    ArgsValidator,
-    Promise<Output>
-  >
-): RegisteredQuery<
-  "public",
-  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
-  Output
->;
+// export function queryWithSession<
+//   ArgsValidator extends PropertyValidators,
+//   Output
+// >(
+//   func: ValidatedFunction<
+//     QueryCtx & { session: Doc<"sessions"> | null },
+//     ArgsValidator,
+//     Promise<Output>
+//   >
+// ): RegisteredQuery<
+//   "public",
+//   [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
+//   Output
+// >;
 export function queryWithSession<Output>(
   func: UnvalidatedFunction<
     QueryCtx & { session: Doc<"sessions"> | null },
