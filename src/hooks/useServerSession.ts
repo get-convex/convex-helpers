@@ -12,7 +12,14 @@
  *
  * With the `SessionProvider` inside the `ConvexProvider` but outside your app.
  */
-import { NamedAction, NamedMutation, NamedQuery } from "convex/browser";
+import type {
+  NamedAction,
+  NamedMutation,
+  NamedQuery,
+  PublicActionNames,
+  PublicQueryNames,
+  PublicMutationNames,
+} from "convex/browser";
 import React, { useContext, useEffect, useState } from "react";
 import { API } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -72,16 +79,6 @@ export const SessionProvider: React.FC<{
 };
 
 /**
- * From ObjectType, pick the properties that are assignable to T.
- */
-declare type PickByValue<ObjectType, T> = Pick<
-  ObjectType,
-  {
-    [Key in keyof ObjectType]: ObjectType[Key] extends T ? Key : never;
-  }[keyof ObjectType]
->;
-
-/**
  * Hack! This type causes TypeScript to simplify how it renders object types.
  *
  * It is functionally the identity for object types, but in practice it can
@@ -111,12 +108,14 @@ type SessionFunctionArgs<Fn extends SessionFunction<any>> = Expand<
   BetterOmit<Parameters<Fn>[0], "sessionId">
 >;
 
-// All the valid mutations that take Id<"sessions"> | null as their first parameter.
-type ValidQueryNames = keyof PickByValue<
-  API["publicQueries"],
-  SessionFunction<any>
-> &
-  string;
+// All the queries that take Id<"sessions"> | null as a parameter.
+type ValidQueryNames = {
+  [QueryName in PublicQueryNames<API>]: Parameters<
+    NamedQuery<API, QueryName>
+  > extends [args: { sessionId: Id<"sessions"> }]
+    ? QueryName
+    : never;
+}[PublicQueryNames<API>];
 
 // Like useQuery, but for a Query that takes a session ID.
 export const useSessionQuery = <Name extends ValidQueryNames>(
@@ -134,12 +133,14 @@ export const useSessionQuery = <Name extends ValidQueryNames>(
   return useQuery(name, newArgs);
 };
 
-// All the valid mutations that take Id<"sessions"> | null as their first parameter.
-type ValidMutationNames = keyof PickByValue<
-  API["publicMutations"],
-  SessionFunction<any>
-> &
-  string;
+// All the mutations that take Id<"sessions"> | null as a parameter.
+type ValidMutationNames = {
+  [MutationName in PublicMutationNames<API>]: Parameters<
+    NamedMutation<API, MutationName>
+  > extends [args: { sessionId: Id<"sessions"> }]
+    ? MutationName
+    : never;
+}[PublicMutationNames<API>];
 
 // Like useMutation, but for a Mutation that takes a session ID.
 export const useSessionMutation = <Name extends ValidMutationNames>(
@@ -161,12 +162,14 @@ export const useSessionMutation = <Name extends ValidMutationNames>(
   };
 };
 
-// All the valid actions that take Id<"sessions"> | null as their first parameter.
-type ValidActionNames = keyof PickByValue<
-  API["publicActions"],
-  SessionFunction<any>
-> &
-  string;
+// All the actions that take Id<"sessions"> | null as a parameter.
+type ValidActionNames = {
+  [ActionName in PublicActionNames<API>]: Parameters<
+    NamedAction<API, ActionName>
+  > extends [args: { sessionId: Id<"sessions"> }]
+    ? ActionName
+    : never;
+}[PublicActionNames<API>];
 
 // Like useAction, but for a Action that takes a session ID.
 export const useSessionAction = <Name extends ValidActionNames>(name: Name) => {

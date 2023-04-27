@@ -10,7 +10,7 @@ To use sessions, you'll need the files:
 
 - [withSession.ts](./convex/lib/withSession.ts) on the server-side to give you function wrappers like `mutation(withSession(...))`.
 - [sessions.ts](./convex/sessions.ts) on the server-side as a place to write your custom session creation logic.
-- [sessionClient.ts](./src/hooks/session.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
+- [useServerSession.ts](./src/hooks/useServerSession.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
 - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `s.any()`.
 
 ## Authentication: withUser
