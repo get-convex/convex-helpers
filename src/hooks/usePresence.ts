@@ -48,7 +48,9 @@ export const usePresence = <T extends { [key: string]: Value }>(
   heartbeatPeriod = HEARTBEAT_PERIOD
 ) => {
   const [data, setData] = useState(initialData);
-  let presence: PresenceData<T>[] | undefined = useQuery("presence:list", room);
+  let presence: PresenceData<T>[] | undefined = useQuery("presence:list", {
+    room,
+  });
   if (presence) {
     presence = presence.filter((p) => p.user !== user);
   }
@@ -56,9 +58,9 @@ export const usePresence = <T extends { [key: string]: Value }>(
   const heartbeat = useSingleFlight(useMutation("presence:heartbeat"));
 
   useEffect(() => {
-    void updatePresence(room, user, data);
+    void updatePresence({ room, user, data });
     const intervalId = setInterval(() => {
-      void heartbeat(room, user);
+      void heartbeat({ room, user });
     }, heartbeatPeriod);
     // Whenever we have any data change, it will get cleared.
     return () => clearInterval(intervalId);

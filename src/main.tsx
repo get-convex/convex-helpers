@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import "./index.css";
 import App from "./App";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { SessionProvider } from "./hooks/session";
+import { SessionProvider } from "./hooks/useServerSession";
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 

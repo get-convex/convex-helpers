@@ -19,7 +19,7 @@ export class ConvexReactClientFake {
       localQueryResult: () => {
         const query = this.queries && this.queries[name];
         if (query) {
-          return query(...args);
+          return query(args);
         }
         throw new Error(
           `Unexpected query: ${name}. Try providing a function for this query in the mock client constructor.`
@@ -37,7 +37,7 @@ export class ConvexReactClientFake {
   mutation(name) {
     const mutation = this.mutations && this.mutations[name];
     if (mutation) {
-      const mut = (...args) => mutation(...args);
+      const mut = (args) => mutation(args);
 
       const withOptimisticUpdate = mutation.withOptimisticUpdate
         ? mutation.withOptimisticUpdate

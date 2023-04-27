@@ -1,4 +1,4 @@
-import { QueryCtx, MutationCtx, mutation, query } from "../_generated/server";
+import { MutationCtx, QueryCtx, mutation, query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
 
 /**
@@ -6,11 +6,13 @@ import { Doc } from "../_generated/dataModel";
  *
  * Throws an exception if there isn't a user logged in.
  * Pass this to `query`, `mutation`, or another wrapper. E.g.:
- * export default mutation(withUser(async ({ db, auth, user }, arg1) => {...}));
+ * export default mutation({
+ *   handler: withUser(async ({ db, auth, user }, {args}) => {...})
+ * });
  * @param func - Your function that can now take in a `user` in the first param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-export const withUser = <Ctx extends QueryCtx, Args extends any[], Output>(
+export const withUser = <Ctx extends QueryCtx, Args extends [any] | [], Output>(
   func: (ctx: Ctx & { user: Doc<"users"> }, ...args: Args) => Promise<Output>
 ): ((ctx: Ctx, ...args: Args) => Promise<Output>) => {
   return async (ctx: Ctx, ...args: Args) => {
@@ -38,13 +40,14 @@ export const withUser = <Ctx extends QueryCtx, Args extends any[], Output>(
 /**
  * Wrapper for a Convex mutation function that provides a user in ctx.
  *
+ * Note: if you want to use input validation, use `withUser` instead.
  * Throws an exception if there isn't a user logged in.
  * E.g.:
- * export default mutationWithUser(async ({ db, auth, user }, arg1) => {...}));
+ * export default mutationWithUser(async ({ db, user }) => {...}));
  * @param func - Your function that can now take in a `user` in the ctx param.
  * @returns A Convex serverless function.
  */
-export const mutationWithUser = <Args extends any[], Output>(
+export const mutationWithUser = <Args extends [any] | [], Output>(
   func: (
     ctx: MutationCtx & {
       user: Doc<"users">;
@@ -58,13 +61,14 @@ export const mutationWithUser = <Args extends any[], Output>(
 /**
  * Wrapper for a Convex query function that provides a user in ctx.
  *
+ * Note: if you want to use input validation, use `withUser` instead.
  * Throws an exception if there isn't a user logged in.
  * E.g.:
- * export default queryWithUser(async ({ db, auth, user }, arg1) => {...}));
+ * export default queryWithUser(async ({ db, user }) => {...}));
  * @param func - Your function that can now take in a `user` in the ctx param.
  * @returns A Convex serverless function.
  */
-export const queryWithUser = <Args extends any[], Output>(
+export const queryWithUser = <Args extends [any] | [], Output>(
   func: (
     ctx: QueryCtx & { user: Doc<"users"> },
     ...args: Args
@@ -72,5 +76,3 @@ export const queryWithUser = <Args extends any[], Output>(
 ) => {
   return query(withUser(func));
 };
-
-export default withUser;

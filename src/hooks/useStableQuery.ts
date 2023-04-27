@@ -10,7 +10,7 @@ import { useQuery, usePaginatedQuery } from "../../convex/_generated/react";
  * See stack.convex.dev post "Help, my data is overreacting!" for details.
  *
  * @param name - string naming the query function
- * @param ...args - any number of arguments to be passed to the query function
+ * @param ...args - arguments to be passed to the query function
  * @returns UseQueryResult
  */
 export const useStableQuery = ((name, ...args) => {
@@ -37,12 +37,11 @@ export const useStableQuery = ((name, ...args) => {
  * See stack.convex.dev post "Help, my data is overreacting!" for details.
  *
  * @param name - string naming the query function
- * @param options - pagination options ({ initialNumItems}) expected by usePaginatedQuery
- * @param ...args - any number of arguments to be passed to the query function
+ * @param ...args - arguments to be passed to the query function
  * @returns UsePaginatedQueryResult
  */
-export const useStablePaginatedQuery = ((name, options, ...args) => {
-  const result = usePaginatedQuery(name, options, ...args);
+export const useStablePaginatedQuery = ((name, ...args) => {
+  const result = usePaginatedQuery(name, ...args);
   const stored = useRef(result); // ref objects are stable between rerenders
 
   // If data is still loading, wait and do nothing
