@@ -1,3 +1,10 @@
+/**
+ * Allows you to persist state server-side, associated with a sessionId stored
+ * on the client (in localStorage, e.g.). You wrap your mutation / query with
+ * withSession or withOptionalSession and it passes in "session" in the "ctx"
+ * (first parameter) argument to your function. withOptionalSession allows
+ * the sessionId to be null or invalid, and passes in `session: null` if so.
+ */
 import {
   RegisteredMutation,
   RegisteredQuery,
