@@ -104,15 +104,16 @@ type SessionFunction<Args extends object> = (
   args: { sessionId: Id<"sessions"> | null } & Args
 ) => any;
 
-type SessionFunctionArgs<Fn extends SessionFunction<any>> = Expand<
-  BetterOmit<Parameters<Fn>[0], "sessionId">
->;
+type SessionFunctionArgs<Fn extends SessionFunction<any>> =
+  keyof Parameters<Fn>[0] extends "sessionId"
+    ? []
+    : [Expand<BetterOmit<Parameters<Fn>[0], "sessionId">>];
 
 // All the queries that take Id<"sessions"> | null as a parameter.
 type ValidQueryNames = {
-  [QueryName in PublicQueryNames<API>]: Parameters<
+  [QueryName in PublicQueryNames<API>]: "sessionId" extends keyof Parameters<
     NamedQuery<API, QueryName>
-  > extends [args: { sessionId: Id<"sessions"> }]
+  >[0]
     ? QueryName
     : never;
 }[PublicQueryNames<API>];
@@ -120,14 +121,14 @@ type ValidQueryNames = {
 // Like useQuery, but for a Query that takes a session ID.
 export const useSessionQuery = <Name extends ValidQueryNames>(
   name: Name,
-  args?: SessionFunctionArgs<NamedQuery<API, Name>>
+  ...args: SessionFunctionArgs<NamedQuery<API, Name>>
 ) => {
   const sessionId = useContext(SessionContext);
   // I'm sorry about this. We know that ...args are the arguments following
   // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
   // go easy on the poor little inference machine. Also open to ideas about how
   // to do this correctly.
-  const newArgs = { ...(args || {}), sessionId } as unknown as Parameters<
+  const newArgs = { ...(args[0] || {}), sessionId } as unknown as Parameters<
     NamedQuery<API, Name>
   >[0];
   return useQuery(name, newArgs);
@@ -135,9 +136,9 @@ export const useSessionQuery = <Name extends ValidQueryNames>(
 
 // All the mutations that take Id<"sessions"> | null as a parameter.
 type ValidMutationNames = {
-  [MutationName in PublicMutationNames<API>]: Parameters<
+  [MutationName in PublicMutationNames<API>]: "sessionId" extends keyof Parameters<
     NamedMutation<API, MutationName>
-  > extends [args: { sessionId: Id<"sessions"> }]
+  >[0]
     ? MutationName
     : never;
 }[PublicMutationNames<API>];
@@ -149,13 +150,13 @@ export const useSessionMutation = <Name extends ValidMutationNames>(
   const sessionId = useContext(SessionContext);
   const originalMutation = useMutation(name);
   return (
-    args?: SessionFunctionArgs<NamedMutation<API, Name>>
+    ...args: SessionFunctionArgs<NamedMutation<API, Name>>
   ): Promise<ReturnType<NamedMutation<API, Name>>> => {
     // I'm sorry about this. We know that ...args are the arguments following
     // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
     // go easy on the poor little inference machine. Also open to ideas about how
     // to do this correctly.
-    const newArgs = { ...(args || {}), sessionId } as unknown as Parameters<
+    const newArgs = { ...(args[0] || {}), sessionId } as unknown as Parameters<
       NamedMutation<API, Name>
     >[0];
     return originalMutation(newArgs);
@@ -164,9 +165,9 @@ export const useSessionMutation = <Name extends ValidMutationNames>(
 
 // All the actions that take Id<"sessions"> | null as a parameter.
 type ValidActionNames = {
-  [ActionName in PublicActionNames<API>]: Parameters<
+  [ActionName in PublicActionNames<API>]: "sessionId" extends keyof Parameters<
     NamedAction<API, ActionName>
-  > extends [args: { sessionId: Id<"sessions"> }]
+  >[0]
     ? ActionName
     : never;
 }[PublicActionNames<API>];
@@ -176,15 +177,64 @@ export const useSessionAction = <Name extends ValidActionNames>(name: Name) => {
   const sessionId = useContext(SessionContext);
   const originalAction = useAction(name);
   return (
-    args?: SessionFunctionArgs<NamedAction<API, Name>>
+    ...args: SessionFunctionArgs<NamedAction<API, Name>>
   ): Promise<ReturnType<NamedAction<API, Name>>> => {
     // I'm sorry about this. We know that ...args are the arguments following
     // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
     // go easy on the poor little inference machine. Also open to ideas about how
     // to do this correctly.
-    const newArgs = { ...(args || {}), sessionId } as unknown as Parameters<
+    const newArgs = { ...(args[0] || {}), sessionId } as unknown as Parameters<
       NamedAction<API, Name>
     >[0];
     return originalAction(newArgs);
   };
 };
+
+/**
+ * TESTS
+ */
+
+/**
+ * Tests if two types are exactly the same.
+ * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
+ * (Apache Version 2.0, January 2004)
+ */
+export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
+  T
+>() => T extends Y ? 1 : 2
+  ? true
+  : false;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function assert<T extends true>() {
+  // no need to do anything! we're just asserting at compile time that the type
+  // parameter is true.
+}
+
+assert<
+  Equals<
+    SessionFunctionArgs<
+      (args: { sessionId: Id<"sessions">; args: string }) => any
+    >,
+    [{ args: string }]
+  >
+>();
+assert<
+  Equals<SessionFunctionArgs<(args: { sessionId: Id<"sessions"> }) => any>, []>
+>();
+
+// the same, but with | null
+assert<
+  Equals<
+    SessionFunctionArgs<
+      (args: { sessionId: Id<"sessions"> | null; args: string }) => any
+    >,
+    [{ args: string }]
+  >
+>();
+assert<
+  Equals<
+    SessionFunctionArgs<(args: { sessionId: Id<"sessions"> | null }) => any>,
+    []
+  >
+>();

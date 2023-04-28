@@ -12,7 +12,8 @@ import {
   Validator,
 } from "convex/values";
 
-const sessionIdValidator = v.union(v.id("sessions"), v.null());
+const sessionIdValidator = v.id("sessions");
+const optionalSessionIdValidator = v.union(v.id("sessions"), v.null());
 
 // Add two overloads so you can pass no arguments and get a version where
 // session is guaranteed, or {optional: true} and
@@ -57,7 +58,7 @@ export function withSession<
   options: { optional: true }
 ): ValidatedFunction<
   Ctx,
-  ArgsValidator & { sessionId: typeof sessionIdValidator },
+  ArgsValidator & { sessionId: typeof optionalSessionIdValidator },
   Promise<Output>
 >;
 export function withSession<Ctx extends QueryCtx, Output>(
@@ -80,7 +81,7 @@ export function withSession<Ctx extends QueryCtx, Output>(
   options: { optional: true }
 ): ValidatedFunction<
   Ctx,
-  { sessionId: typeof sessionIdValidator },
+  { sessionId: typeof optionalSessionIdValidator },
   Promise<Output>
 >;
 /**
@@ -103,7 +104,12 @@ export function withSession(fn: any, options?: { optional: true }) {
   const handler = fn.handler ?? fn;
   const args = fn.args ?? {};
   return {
-    args: { ...args, sessionId: sessionIdValidator },
+    args: {
+      ...args,
+      sessionId: options?.optional
+        ? optionalSessionIdValidator
+        : sessionIdValidator,
+    },
     handler: async (ctx: any, allArgs: any) => {
       const { sessionId, ...args } = allArgs;
       const session = sessionId ? await ctx.db.get(sessionId) : null;
@@ -187,7 +193,7 @@ export function queryWithSession<
   >
 ): RegisteredQuery<
   "public",
-  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
+  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> | null }],
   Output
 >;
 export function queryWithSession<Output>(
@@ -196,7 +202,7 @@ export function queryWithSession<Output>(
     [],
     Promise<Output>
   >
-): RegisteredQuery<"public", [{ sessionId: Id<"sessions"> }], Output>;
+): RegisteredQuery<"public", [{ sessionId: Id<"sessions"> | null }], Output>;
 export function queryWithSession(func: any): any {
   return query(withSession(func, { optional: true }));
 }
