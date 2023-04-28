@@ -20,6 +20,19 @@ See the [Stack post on withUser](https://stack.convex.dev/wrappers-as-middleware
 Use the [withUser](./convex/lib/withUser.ts) wrappers in your functions to easily look up a user.
 You'll need to add an entry in your schema similar to [convex/schema.ts](./convex/schema.ts).
 
+The one caveat is if you're using `mutation(withUser(` on a raw function (not wrapped in {handler: fn}),
+it fails to infer the ctx (db, etc.):
+
+```
+mutation(withUser(({db, user}) => {...})) // fails to infer that "db" is a DatabaseWriter
+mutation(withUser({ handler: ({db, user}) => {...} })) // Works!
+mutationWithUser({ handler: ({db, user}) => {...} })   // Works!
+mutationWithUser(({db, user}) => {...})                // Works!
+mutation(withUser(                                     // Works!
+	({db, user}: MutationCtx & {user: Doc<"users">} ) => {...}
+))
+```
+
 ## HTTP Endpoints: Using Hono for advanced functionality
 
 See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
