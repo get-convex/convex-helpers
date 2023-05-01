@@ -13,11 +13,7 @@ import {
 } from "convex/server";
 import { Doc, Id } from "../_generated/dataModel";
 import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
-import {
-  // TODO: import these once they're exported
-  /*ObjectType, PropertyValidators,*/ v,
-  Validator,
-} from "convex/values";
+import { ObjectType, PropertyValidators, v } from "convex/values";
 
 const sessionIdValidator = v.id("sessions");
 const optionalSessionIdValidator = v.union(v.id("sessions"), v.null());
@@ -226,30 +222,3 @@ export function queryWithSession<Output>(
 export function queryWithSession(func: any): any {
   return query(withOptionalSession(func));
 }
-
-// XXX These should be exported from the npm package
-type PropertyValidators = Record<string, Validator<any, any, any>>;
-declare type Expand<ObjectType extends Record<any, any>> =
-  ObjectType extends Record<any, any>
-    ? {
-        [Key in keyof ObjectType]: ObjectType[Key];
-      }
-    : never;
-declare type OptionalKeys<
-  PropertyValidators extends Record<string, Validator<any, any, any>>
-> = {
-  [Property in keyof PropertyValidators]: PropertyValidators[Property]["isOptional"] extends true
-    ? Property
-    : never;
-}[keyof PropertyValidators];
-declare type RequiredKeys<
-  PropertyValidators extends Record<string, Validator<any, any, any>>
-> = Exclude<keyof PropertyValidators, OptionalKeys<PropertyValidators>>;
-declare type ObjectType<Validators extends PropertyValidators> = Expand<
-  {
-    [Property in OptionalKeys<Validators>]?: Validators[Property]["type"];
-  } & {
-    [Property in RequiredKeys<Validators>]: Validators[Property]["type"];
-  }
->;
-// XXX end of inlined types - in the future, just import ObjectType and PropertyValidators from convex/values
