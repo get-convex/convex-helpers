@@ -53,7 +53,7 @@ export function migration<TableName extends TableNames>({
       if (dryRun) {
         throw new Error(`Dry Run: exiting`);
       }
-      return { isDone, cursor: continueCursor };
+      return { isDone, cursor: continueCursor, count: page.length };
     }
   );
 }
@@ -61,24 +61,36 @@ export function migration<TableName extends TableNames>({
 type RunMigrationParams = {
   name: keyof API["allMutations"];
   cursor?: string;
-  numItems?: number;
+  batchSize?: number;
 };
 
 export const runMigration: RegisteredAction<
   "internal",
   [RunMigrationParams],
-  Promise<void>
+  Promise<number>
 > = internalAction(
-  async ({ runMutation }, { name, cursor, numItems }: RunMigrationParams) => {
+  async ({ runMutation }, { name, cursor, batchSize }: RunMigrationParams) => {
     let isDone = false;
-    while (!isDone) {
-      const paginationOpts = { cursor, numItems };
-      const result: any = await runMutation(name, paginationOpts as any);
-      if (result.isDone === undefined) {
-        throw new Error(`${name} did not return "isDone" - is it a migration?`);
+    let total = 0;
+    console.log("Running migration ", name);
+    try {
+      while (!isDone) {
+        const args: any = { cursor, numItems: batchSize };
+        const result: any = await runMutation(name, args);
+        if (result.isDone === undefined) {
+          throw new Error(
+            `${name} did not return "isDone" - is it a migration?`
+          );
+        }
+        total += result.count;
+        ({ isDone, cursor } = result);
       }
-      ({ isDone, cursor } = result);
+    } catch (error) {
+      console.error("Migration failed on cursor ", cursor);
+      throw error;
     }
+    console.log("Migration done ", name, total);
+    return total;
   }
 );
 
