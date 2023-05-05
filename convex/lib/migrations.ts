@@ -13,12 +13,10 @@ export function migration<TableName extends TableNames>({
   table,
   batchSize,
   migrateDoc,
-  thisFnPath,
 }: {
   table: TableName;
   migrateDoc: (ctx: MutationCtx, doc: Doc<TableName>) => Promise<any>;
   batchSize?: number;
-  thisFnPath?: keyof API["allMutations"];
 }) {
   return internalMutation(
     async (
@@ -50,7 +48,7 @@ export function migration<TableName extends TableNames>({
       }
       console.log(`Done: cursor ${cursor ?? "initial"}->${continueCursor}`);
       if (isDone) {
-        console.log("Done with migration ", thisFnPath ?? `over ${table}`);
+        console.log(`Done with migration over ${table}`);
       }
       if (dryRun) {
         throw new Error(`Dry Run: exiting`);
