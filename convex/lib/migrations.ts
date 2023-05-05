@@ -26,16 +26,14 @@ export function migration<TableName extends TableNames>({
       {
         cursor,
         numItems,
-        untilDone,
         dryRun,
       }: {
         cursor?: string;
         numItems?: number;
-        untilDone?: boolean;
         dryRun?: boolean;
       }
     ) => {
-      const { db, scheduler } = ctx;
+      const { db } = ctx;
       const paginationOpts = {
         cursor: cursor ?? null,
         numItems: numItems ?? batchSize ?? DefaultBatchSize,
@@ -50,20 +48,12 @@ export function migration<TableName extends TableNames>({
           })
         )
       );
-      console.log("Done with cursor ", cursor ?? "null(initial)");
-      if (thisFnPath && untilDone && !isDone) {
-        console.log("Scheduling cursor ", continueCursor);
-        await scheduler.runAfter(0, thisFnPath, {
-          cursor: continueCursor,
-          numItems,
-          untilDone,
-        });
-      }
+      console.log(`Done: cursor ${cursor ?? "initial"}->${continueCursor}`);
       if (isDone) {
         console.log("Done with migration ", thisFnPath ?? `over ${table}`);
       }
       if (dryRun) {
-        throw new Error("Dry Run: first batch finished");
+        throw new Error(`Dry Run: exiting`);
       }
       return { isDone, cursor: continueCursor };
     }
@@ -85,7 +75,7 @@ export const runMigration: RegisteredAction<
     let isDone = false;
     while (!isDone) {
       const paginationOpts = { cursor, numItems };
-      const result: any = await runMutation(name, paginationOpts);
+      const result: any = await runMutation(name, paginationOpts as any);
       if (result.isDone === undefined) {
         throw new Error(`${name} did not return "isDone" - is it a migration?`);
       }
