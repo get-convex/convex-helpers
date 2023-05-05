@@ -40,14 +40,14 @@ export function migration<TableName extends TableNames>({
       };
       const data = await db.query(table).paginate(paginationOpts);
       const { page, isDone, continueCursor } = data;
-      await Promise.all(
-        page.map((doc) =>
-          migrateDoc(ctx, doc).catch((error) => {
-            console.error("Document failed: ", doc._id.toString(), error);
-            throw error;
-          })
-        )
-      );
+      for (const doc of page) {
+        try {
+          await migrateDoc(ctx, doc);
+        } catch (error) {
+          console.error("Document failed: ", doc._id.toString(), error);
+          throw error;
+        }
+      }
       console.log(`Done: cursor ${cursor ?? "initial"}->${continueCursor}`);
       if (isDone) {
         console.log("Done with migration ", thisFnPath ?? `over ${table}`);
