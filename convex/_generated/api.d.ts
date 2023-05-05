@@ -13,6 +13,7 @@ import type { ApiFromModules } from "convex/api";
 import type * as counter from "../counter";
 import type * as http from "../http";
 import type * as lib_honoWithConvex from "../lib/honoWithConvex";
+import type * as lib_migrations from "../lib/migrations";
 import type * as lib_relationships from "../lib/relationships";
 import type * as lib_withSession from "../lib/withSession";
 import type * as lib_withUser from "../lib/withUser";
@@ -33,6 +34,7 @@ export type API = ApiFromModules<{
   counter: typeof counter;
   http: typeof http;
   "lib/honoWithConvex": typeof lib_honoWithConvex;
+  "lib/migrations": typeof lib_migrations;
   "lib/relationships": typeof lib_relationships;
   "lib/withSession": typeof lib_withSession;
   "lib/withUser": typeof lib_withUser;
