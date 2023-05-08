@@ -20,6 +20,18 @@ See the [Stack post on withUser](https://stack.convex.dev/wrappers-as-middleware
 Use the [withUser](./convex/lib/withUser.ts) wrappers in your functions to easily look up a user.
 You'll need to add an entry in your schema similar to [convex/schema.ts](./convex/schema.ts).
 
+## Migrations: Data mutations
+
+See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
+and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
+
+Use the [migration](./convex/lib/migrations.ts) wrapper to define a function to
+run over a given table.
+It generates an internalMutation to migrate a batch of documents.
+
+Run the mutation to test it out, then run it over the whole table with the
+[runMigration](./convex/lib/migrations.ts) action.
+
 ## HTTP Endpoints: Using Hono for advanced functionality
 
 See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
