@@ -43,67 +43,71 @@ export const addSystemFields = <T>(tableName: TableNames, zObject: T) => {
 export const withZod = <
   Ctx,
   Args extends Record<string, z.ZodTypeAny>,
-  Returns extends z.ZodTypeAny
->(
-  zodArg: Args,
-  func: (
-    ctx: Ctx,
-    arg: z.output<z.ZodObject<Args>>
-  ) => z.input<z.ZodPromise<Returns>>,
-  zodReturn?: Returns
-): ((
-  ctx: Ctx,
-  args: z.input<z.ZodObject<Args>>
-) => z.output<z.ZodPromise<Returns>>) => {
+  Returns
+>({
+  args,
+  handler,
+}: {
+  args: Args;
+  handler: (ctx: Ctx, arg: z.output<z.ZodObject<Args>>) => Promise<Returns>;
+}): ((ctx: Ctx, args: z.input<z.ZodObject<Args>>) => Promise<Returns>) => {
+  const zodType = z.function(z.tuple([z.object(args)]));
   return (ctx, args) => {
     const innerFunc = (validatedArgs: z.output<z.ZodObject<Args>>) =>
-      func(ctx, validatedArgs);
+      handler(ctx, validatedArgs);
 
-    const zodType = z.function(
-      z.tuple([z.object(zodArg)]),
-      z.promise(zodReturn ?? z.unknown())
-    );
     return zodType.implement(innerFunc)(args);
   };
 };
 
 // See withZod
 export const queryWithZod = <
-  Arg extends { [key: string]: z.ZodTypeAny },
-  Returns extends z.ZodTypeAny
->(
-  zodArgs: Arg,
-  func: (
+  Args extends { [key: string]: z.ZodTypeAny },
+  Returns
+>({
+  args,
+  handler,
+}: {
+  args: Args;
+  handler: (
     ctx: QueryCtx,
-    arg: z.output<z.ZodObject<Arg>>
-  ) => z.input<z.ZodPromise<Returns>>,
-  zodReturn?: Returns
-) => query(withZod(zodArgs, func, zodReturn));
+    arg: z.output<z.ZodObject<Args>>
+  ) => Promise<Returns>;
+}): ((ctx: QueryCtx, args: z.input<z.ZodObject<Args>>) => Promise<Returns>) =>
+  query(withZod({ args, handler }));
 
 // See withZod
 export const mutationWithZod = <
-  Arg extends { [key: string]: z.ZodTypeAny },
-  Returns extends z.ZodTypeAny
->(
-  zodArgs: Arg,
-  func: (
+  Args extends { [key: string]: z.ZodTypeAny },
+  Returns
+>({
+  args,
+  handler,
+}: {
+  args: Args;
+  handler: (
     ctx: MutationCtx,
-    arg: z.output<z.ZodObject<Arg>>
-  ) => z.input<z.ZodPromise<Returns>>,
-  zodReturn?: Returns
-) => mutation(withZod(zodArgs, func, zodReturn));
+    arg: z.output<z.ZodObject<Args>>
+  ) => Promise<Returns>;
+}): ((
+  ctx: MutationCtx,
+  args: z.input<z.ZodObject<Args>>
+) => Promise<Returns>) => mutation(withZod({ args, handler }));
 
 // See withZod
 export const actionWithZod = <
-  Arg extends { [key: string]: z.ZodTypeAny },
-  Returns extends z.ZodTypeAny
->(
-  zodArgs: Arg,
-  func: (
+  Args extends { [key: string]: z.ZodTypeAny },
+  Returns
+>({
+  args,
+  handler,
+}: {
+  args: Args;
+  handler: (
     ctx: ActionCtx,
-    arg: z.output<z.ZodObject<Arg>>
-  ) => z.input<z.ZodPromise<Returns>>,
-  zodReturn?: Returns
-) => action(withZod(zodArgs, func, zodReturn));
+    arg: z.output<z.ZodObject<Args>>
+  ) => Promise<Returns>;
+}): ((ctx: ActionCtx, args: z.input<z.ZodObject<Args>>) => Promise<Returns>) =>
+  action(withZod({ args, handler }));
 
 export default withZod;
