@@ -34,10 +34,9 @@ export const addSystemFields = <T>(tableName: TableNames, zObject: T) => {
 /**
  * Wraps a Convex function with input and (optional) output validation via Zod.
  *
- * @param zodArg - A Zod object for validating the arguments to func.
- * @param func - Your function that accepts validated inputs, along with the
+ * @param args - A Zod object for validating the arguments to func.
+ * @param handler - Your function that accepts validated inputs, along with the
  * Convex ctx arg, to be used with Convex serverless functions.
- * @param zodReturn - An optional Zod object to validate the return from func.
  * @returns A function that can be passed to `query`, `mutation` or `action`.
  */
 export const withZod = <
