@@ -63,50 +63,36 @@ export const withZod = <
 export const queryWithZod = <
   Args extends { [key: string]: z.ZodTypeAny },
   Returns
->({
-  args,
-  handler,
-}: {
+>(argObject: {
   args: Args;
   handler: (
     ctx: QueryCtx,
     arg: z.output<z.ZodObject<Args>>
   ) => Promise<Returns>;
-}): ((ctx: QueryCtx, args: z.input<z.ZodObject<Args>>) => Promise<Returns>) =>
-  query(withZod({ args, handler }));
+}) => query(withZod(argObject));
 
 // See withZod
 export const mutationWithZod = <
   Args extends { [key: string]: z.ZodTypeAny },
   Returns
->({
-  args,
-  handler,
-}: {
+>(argObject: {
   args: Args;
   handler: (
     ctx: MutationCtx,
     arg: z.output<z.ZodObject<Args>>
   ) => Promise<Returns>;
-}): ((
-  ctx: MutationCtx,
-  args: z.input<z.ZodObject<Args>>
-) => Promise<Returns>) => mutation(withZod({ args, handler }));
+}) => mutation(withZod(argObject));
 
 // See withZod
 export const actionWithZod = <
   Args extends { [key: string]: z.ZodTypeAny },
   Returns
->({
-  args,
-  handler,
-}: {
+>(argObject: {
   args: Args;
   handler: (
     ctx: ActionCtx,
     arg: z.output<z.ZodObject<Args>>
   ) => Promise<Returns>;
-}): ((ctx: ActionCtx, args: z.input<z.ZodObject<Args>>) => Promise<Returns>) =>
-  action(withZod({ args, handler }));
+}) => action(withZod(argObject));
 
 export default withZod;
