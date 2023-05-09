@@ -32,6 +32,13 @@ It generates an internalMutation to migrate a batch of documents.
 Run the mutation to test it out, then run it over the whole table with the
 [runMigration](./convex/lib/migrations.ts) action.
 
+## Relationship helpers
+
+See the [Stack post on relationship helpers](https://stack.convex.dev/functional-relationships-helpers)
+and the [relationship schema structures post](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas).
+
+Use the helpers in [relationships.ts](./convex/lib/relationships.ts) to traverse database relationships in queries more cleanly.
+
 ## HTTP Endpoints: Using Hono for advanced functionality
 
 See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.

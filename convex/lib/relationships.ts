@@ -53,7 +53,16 @@ type TablesWithLookups = {
     : TableName;
 }[TableNames];
 
-// one-to-one via back reference
+/**
+ * Get a document that references a value with a field indexed `by_${field}`
+ *
+ * Useful for fetching a document with a one-to-one relationship via backref.
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param field The field on that table that should match the specified value.
+ * @param value The value to look up the document by, usually an ID.
+ * @returns The document matching the value, or null if none found.
+ */
 export async function getOneFrom<
   TableName extends TablesWithLookups,
   Field extends LookupFieldPaths<TableName>
@@ -70,7 +79,16 @@ export async function getOneFrom<
   return ret;
 }
 
-// one-to-many via back references
+/**
+ * Get a list of documents matching a value with a field indexed `by_${field}`.
+ *
+ * Useful for fetching many documents related to a given value via backrefs.
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param field The field on that table that should match the specified value.
+ * @param value The value to look up the document by, usually an ID.
+ * @returns The documents matching the value, if any.
+ */
 export async function getManyFrom<
   TableName extends TablesWithLookups,
   Field extends LookupFieldPaths<TableName>
@@ -120,6 +138,19 @@ type JoinTables = {
 }[TablesWithLookups];
 
 // many-to-many via lookup table
+/**
+ * Get related documents by using a join table.
+ *
+ * It will find all join table entries matching a value, then look up all the
+ * documents pointed to by the join table entries. Useful for many-to-many
+ * relationships.
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param toField The ID field on the table pointing at target documents.
+ * @param fromField The field on the table to compare to the value.
+ * @param value The value to match the fromField on the table, usually an ID.
+ * @returns The documents targeted by matching documents in the table, if any.
+ */
 export async function getManyVia<
   JoinTableName extends JoinTables,
   ToField extends IdFilePaths<JoinTableName, TableNames>,
@@ -142,6 +173,11 @@ export async function getManyVia<
   );
 }
 
+/**
+ * Filters out null elements from an array.
+ * @param list List of elements that might be null.
+ * @returns List of elements with nulls removed.
+ */
 export function pruneNull<T>(list: (T | null)[]): T[] {
   return list.filter((i) => i !== null) as T[];
 }
