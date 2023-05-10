@@ -74,7 +74,7 @@ export async function getOneFrom<
 ): Promise<Doc<TableName> | null> {
   const ret = db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex("by_" + field, (q) => q.eq(field, value as any))
     .unique();
   return ret;
 }
@@ -100,7 +100,7 @@ export async function getManyFrom<
 ): Promise<(Doc<TableName> | null)[]> {
   return db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex("by_" + field, (q) => q.eq(field, value as any))
     .collect();
 }
 
