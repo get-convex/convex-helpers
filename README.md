@@ -20,6 +20,15 @@ See the [Stack post on withUser](https://stack.convex.dev/wrappers-as-middleware
 Use the [withUser](./convex/lib/withUser.ts) wrappers in your functions to easily look up a user.
 You'll need to add an entry in your schema similar to [convex/schema.ts](./convex/schema.ts).
 
+## Row-level security
+
+See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
+
+Use the [RowLevelSecurity](./convex/lib/rowLevelSecurity.ts) helper to define
+`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
+server-side function. Any access to `db` inside functions wrapped with these
+will check your access rules on read/insert/modify per-document.
+
 ## Migrations: Data mutations
 
 See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
