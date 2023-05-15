@@ -34,7 +34,7 @@ type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 export type Rules<Ctx, DataModel extends GenericDataModel> = {
   [T in TableNamesInDataModel<DataModel>]?: {
     read?: Rule<Ctx, DocumentByName<DataModel, T>>;
-    write?: Rule<Ctx, DocumentByName<DataModel, T>>;
+    modify?: Rule<Ctx, DocumentByName<DataModel, T>>;
     insert?: Rule<Ctx, WithoutSystemFields<DocumentByName<DataModel, T>>>;
   };
 };
@@ -50,16 +50,15 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
  * import { DataModel } from "./_generated/dataModel";
  * import { DatabaseReader } from "./_generated/server";
  * import { RowLevelSecurity } from "./rowLevelSecurity";
- * 
+ *
  * export const {withMutationRLS} = RowLevelSecurity<{auth: Auth, db: DatabaseReader}, DataModel>(
  *  {
- *    cookies: async ({auth}, cookie) => !cookie.eaten,
- *  },
- *  {
- *    cookies: async ({auth, db}, cookie) => {
- *      const user = await getUser(auth, db);
- *      return user.isParent;  // only parents can reach the cookies.
- *    }
+ *    cookies: {
+ *      read: async ({auth}, cookie) => !cookie.eaten,
+ *      modify: async ({auth, db}, cookie) => {
+ *        const user = await getUser(auth, db);
+ *        return user.isParent;  // only parents can reach the cookies.
+ *      },
  *  }
  * );
  * // Mutation with row level security enabled.
@@ -86,17 +85,14 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
  * export default query(withUser(withRLS(...)));
  * ```
  *
- * @param readAccessRules - rule for each table, determining whether a row
- *  should be visible.
- * @param writeAccessRules - rule for each table, determining whether a row
- *  may be written by `patch`, `replace`, or `delete`.
- *  Rules do not restrict `db.insert`.
- *  If `writeAccessRules` are omitted, writes are only restricted by read
- *  access rules.
+ * @param rules - rule for each table, determining whether a row is accessible.
+ *  - "read" rule says whether a document should be visible.
+ *  - "modify" rule says whether to throw an error on `replace`, `patch`, and `delete`.
+ *  - "insert" rule says whether to throw an error on `insert`.
  *
  * @returns Functions `withQueryRLS` and `withMutationRLS` to be passed to
  * `query` or `mutation` respectively.
- *  For each row read or written, the security rules are applied.
+ *  For each row read, modified, or inserted, the security rules are applied.
  */
 export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   rules: Rules<RuleCtx, DataModel>
@@ -337,14 +333,14 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   reader: DatabaseReader<DataModel>;
   rules: Rules<Ctx, DataModel>;
 
-  async writePredicate<T extends GenericTableInfo>(
+  async modifyPredicate<T extends GenericTableInfo>(
     tableName: string,
     doc: DocumentByInfo<T>
   ): Promise<boolean> {
-    if (!this.rules[tableName]?.write) {
+    if (!this.rules[tableName]?.modify) {
       return true;
     }
-    return await this.rules[tableName]!.write!(this.ctx, doc);
+    return await this.rules[tableName]!.modify!(this.ctx, doc);
   }
 
   constructor(
@@ -378,7 +374,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     if (doc === null) {
       throw new Error("no read access or doc does not exist");
     }
-    if (!(await this.writePredicate(id.tableName, doc))) {
+    if (!(await this.modifyPredicate(id.tableName, doc))) {
       throw new Error("write access not allowed");
     }
   }
