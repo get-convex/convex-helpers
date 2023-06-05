@@ -206,7 +206,7 @@ class WrapQuery<T extends GenericTableInfo> implements Query<T> {
   async next(): Promise<IteratorResult<any>> {
     for (;;) {
       const { value, done } = await this.iterator!.next();
-      if (await this.p(value)) {
+      if (value && (await this.p(value))) {
         return { value, done };
       }
       if (done) {
