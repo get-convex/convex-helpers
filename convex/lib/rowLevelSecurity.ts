@@ -155,8 +155,8 @@ class WrapQuery<T extends GenericTableInfo> implements Query<T> {
   }
   filter(
     predicate: (q: FilterBuilder<T>) => Expression<boolean>
-  ): WrapQuery<T> {
-    return new WrapQuery(this.q.filter(predicate), this.p);
+  ): this {
+    return new WrapQuery(this.q.filter(predicate), this.p) as this;
   }
   order(order: "asc" | "desc"): WrapQuery<T> {
     return new WrapQuery(this.q.order(order), this.p);
@@ -252,8 +252,8 @@ class WrapQueryInitializer<T extends GenericTableInfo>
       this.p
     );
   }
-  filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): Query<T> {
-    return this.fullTableScan().filter(predicate);
+  filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
+    return this.fullTableScan().filter(predicate) as this;
   }
   order(order: "asc" | "desc"): OrderedQuery<T> {
     return this.fullTableScan().order(order);
