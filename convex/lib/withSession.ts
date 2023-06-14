@@ -167,7 +167,7 @@ export function mutationWithSession<
   >
 ): RegisteredMutation<
   "public",
-  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> }],
+  ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> },
   Output
 >;
 export function mutationWithSession<Output>(
@@ -176,7 +176,7 @@ export function mutationWithSession<Output>(
     [],
     Promise<Output>
   >
-): RegisteredMutation<"public", [{ sessionId: Id<"sessions"> }], Output>;
+): RegisteredMutation<"public", { sessionId: Id<"sessions"> }, Output>;
 export function mutationWithSession(func: any): any {
   return mutation(withSession(func));
 }
@@ -209,7 +209,7 @@ export function queryWithSession<
   >
 ): RegisteredQuery<
   "public",
-  [ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> | null }],
+  ObjectType<ArgsValidator> & { sessionId: Id<"sessions"> | null },
   Output
 >;
 export function queryWithSession<Output>(
@@ -218,7 +218,7 @@ export function queryWithSession<Output>(
     [],
     Promise<Output>
   >
-): RegisteredQuery<"public", [{ sessionId: Id<"sessions"> | null }], Output>;
+): RegisteredQuery<"public", { sessionId: Id<"sessions"> | null }, Output>;
 export function queryWithSession(func: any): any {
   return query(withOptionalSession(func));
 }
