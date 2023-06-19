@@ -2,8 +2,12 @@
  * Allows you to persist state server-side, associated with a sessionId stored
  * on the client (in localStorage, e.g.). You wrap your mutation / query with
  * withSession or withOptionalSession and it passes in "session" in the "ctx"
- * (first parameter) argument to your function. withOptionalSession allows
- * the sessionId to be null or invalid, and passes in `session: null` if so.
+ * (first parameter) argument to your function.
+ *
+ * There are three wrappers:
+ * - withSession
+ * - withOptionalSession -- allows the sessionId to be null or a non-existent document and passes `session: null` if so
+ * - withSessionBackwardsCompatible -- supports session IDs created with the ID class (Convex 0.16 and earlier)
  */
 import {
   ArgsArray,
@@ -23,15 +27,34 @@ import {
 import { ObjectType, PropertyValidators, v } from "convex/values";
 import { MergeArgsForRegistered, generateMiddleware } from "./middlewareUtils";
 
+/** -----------------------------------------------------------------
+ * withSession
+ * ----------------------------------------------------------------- */
+const sessionMiddlewareValidator = { sessionId: v.id("sessions") };
+const transformContextForSession = async <Ctx>(
+  ctx: Ctx & { db: DatabaseReader },
+  args: { sessionId: Id<"sessions"> }
+): Promise<Ctx & { session: Doc<"sessions"> }> => {
+  const session = (await ctx.db.get(args.sessionId)) ?? null;
+  if (session === null) {
+    throw new Error(
+      "Session must be initialized first. " +
+        "Are you wrapping your code with <SessionProvider>? " +
+        "Are you requiring a session from a query that executes immediately?"
+    );
+  }
+  return { ...ctx, session };
+};
+
 /**
  * Wrapper for a Convex query or mutation function that provides a session in ctx.
  *
- * The session will be `null` if the sessionId passed up was null or invalid.
+ * Throws an exception if there isn't a valid session.
  * Requires `sessionId` (type: Id<"sessions">) as a parameter.
  * This is provided by * default by using {@link useSessionQuery} or {@link useSessionMutation}.
  * Pass this to `query`, `mutation`, or another wrapper. E.g.:
  * ```ts
- * export default mutation(withOptionalSession({
+ * export default mutation(withSession({
  *   args: { arg1: ... },
  *   handler: async ({ db, auth, session }, { arg1 }) => {...}
  * }));
@@ -39,6 +62,16 @@ import { MergeArgsForRegistered, generateMiddleware } from "./middlewareUtils";
  * @param func - Your function that can take in a `session` in the first (ctx) param.
  * @returns A function to be passed to `query` or `mutation`.
  */
+export const withSession = generateMiddleware<
+  { db: DatabaseReader },
+  { session: Doc<"sessions"> },
+  typeof sessionMiddlewareValidator
+>(sessionMiddlewareValidator, transformContextForSession);
+
+/** -----------------------------------------------------------------
+ * withOptionalSession
+ * ----------------------------------------------------------------- */
+
 const optionalSessionMiddlewareValidator = {
   sessionId: v.union(v.null(), v.id("sessions")),
 };
@@ -57,21 +90,15 @@ const transformContextForOptionalSession = async <Ctx>(
   return { ...ctx, session };
 };
 
-export const withOptionalSession = generateMiddleware<
-  { db: DatabaseReader },
-  { session: Doc<"sessions"> | null },
-  typeof optionalSessionMiddlewareValidator
->(optionalSessionMiddlewareValidator, transformContextForOptionalSession);
-
 /**
  * Wrapper for a Convex query or mutation function that provides a session in ctx.
  *
- * Throws an exception if there isn't a valid session.
+ * The session will be `null` if the sessionId passed up was null or invalid.
  * Requires `sessionId` (type: Id<"sessions">) as a parameter.
  * This is provided by * default by using {@link useSessionQuery} or {@link useSessionMutation}.
  * Pass this to `query`, `mutation`, or another wrapper. E.g.:
  * ```ts
- * export default mutation(withSession({
+ * export default mutation(withOptionalSession({
  *   args: { arg1: ... },
  *   handler: async ({ db, auth, session }, { arg1 }) => {...}
  * }));
@@ -79,13 +106,23 @@ export const withOptionalSession = generateMiddleware<
  * @param func - Your function that can take in a `session` in the first (ctx) param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-const sessionMiddlewareValidator = { sessionId: v.string() };
-const transformContextForSession = async <Ctx>(
+export const withOptionalSession = generateMiddleware<
+  { db: DatabaseReader },
+  { session: Doc<"sessions"> | null },
+  typeof optionalSessionMiddlewareValidator
+>(optionalSessionMiddlewareValidator, transformContextForOptionalSession);
+
+/** -----------------------------------------------------------------
+ * withSessionBackwardsCompatible
+ * ----------------------------------------------------------------- */
+
+const backwardsCompatibleSessionMiddlewareValidator = { sessionId: v.string() };
+const transformContextForSessionBackwardsCompatible = async <Ctx>(
   ctx: Ctx & { db: DatabaseReader },
   args: { sessionId: string }
 ): Promise<Ctx & { session: Doc<"sessions"> }> => {
-  const normaliedId = ctx.db.normalizeId("sessions", args.sessionId);
-  const session = normaliedId ? await ctx.db.get(normaliedId) : null;
+  const normalizedId = ctx.db.normalizeId("sessions", args.sessionId);
+  const session = normalizedId ? await ctx.db.get(normalizedId) : null;
   if (!session) {
     throw new Error(
       "Session must be initialized first. " +
@@ -96,11 +133,24 @@ const transformContextForSession = async <Ctx>(
   return { ...ctx, session };
 };
 
-export const withSession = generateMiddleware<
+/**
+ * Like `withSession` but supporting sessions created using class IDs (Convex 0.16 and earlier)
+ *
+ * @param func - Your function that can take in a `session` in the first (ctx) param.
+ * @returns A function to be passed to `query` or `mutation`.
+ */
+export const withSessionBackwardsCompatible = generateMiddleware<
   { db: DatabaseReader },
   { session: Doc<"sessions"> },
-  typeof sessionMiddlewareValidator
->(sessionMiddlewareValidator, transformContextForSession);
+  typeof backwardsCompatibleSessionMiddlewareValidator
+>(
+  backwardsCompatibleSessionMiddlewareValidator,
+  transformContextForSessionBackwardsCompatible
+);
+
+/** -----------------------------------------------------------------
+ * Function wrappers
+ * ----------------------------------------------------------------- */
 
 /**
  * Wrapper for a Convex mutation function that provides a session in ctx.
