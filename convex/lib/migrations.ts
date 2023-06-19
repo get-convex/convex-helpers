@@ -1,11 +1,11 @@
-import type { RegisteredAction } from "convex/server";
-import type { API } from "../_generated/api";
+import { makeFunctionReference } from "convex/server";
 import { Doc, TableNames } from "../_generated/dataModel";
 import {
   MutationCtx,
   internalAction,
   internalMutation,
 } from "../_generated/server";
+import { v } from "convex/values";
 
 const DefaultBatchSize = 100;
 
@@ -58,25 +58,23 @@ export function migration<TableName extends TableNames>({
   );
 }
 
-type RunMigrationParams = {
-  name: keyof API["allMutations"];
-  cursor?: string;
-  batchSize?: number;
-};
-
-export const runMigration: RegisteredAction<
-  "internal",
-  [RunMigrationParams],
-  Promise<number>
-> = internalAction(
-  async ({ runMutation }, { name, cursor, batchSize }: RunMigrationParams) => {
+export const runMigration = internalAction({
+  args: {
+    name: v.string(),
+    cursor: v.optional(v.string()),
+    batchSize: v.optional(v.number()),
+  },
+  handler: async ({ runMutation }, { name, cursor, batchSize }) => {
     let isDone = false;
     let total = 0;
     console.log("Running migration ", name);
     try {
       while (!isDone) {
         const args: any = { cursor, numItems: batchSize };
-        const result: any = await runMutation(name, args);
+        const result: any = await runMutation(
+          makeFunctionReference<"mutation">(name),
+          args
+        );
         if (result.isDone === undefined) {
           throw new Error(
             `${name} did not return "isDone" - is it a migration?`
@@ -91,7 +89,7 @@ export const runMigration: RegisteredAction<
     }
     console.log("Migration done ", name, total);
     return total;
-  }
-);
+  },
+});
 
 export default migration;

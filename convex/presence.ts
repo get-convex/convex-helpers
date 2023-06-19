@@ -1,12 +1,3 @@
-/**
- * Functions related to reading & writing presence data.
- *
- * Note: this file does not currently implement authorization.
- * That is left as an exercise to the reader. Some suggestions for a production
- * app:
- * - Use Convex `auth` to authenticate users rather than passing up a "user"
- * - Check that the user is allowed to be in a given room.
- */
 import { query, mutation } from "./_generated/server";
 
 const LIST_LIMIT = 20;

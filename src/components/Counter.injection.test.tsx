@@ -2,8 +2,8 @@ import Counter from "./Counter";
 import { render } from "@testing-library/react";
 import { ConvexReactClientFake } from "../fakeConvexClient/fakeConvexClient";
 import { ConvexProvider } from "convex/react";
-import { API } from "../../convex/_generated/api";
 import { describe, it, expect, afterEach, vi } from "vitest";
+import { api } from "../../convex/_generated/api";
 
 // Keep track of counter values
 let counters: Record<string, number> = {};
@@ -32,14 +32,12 @@ const incrementCounter = ({
 const incrementCounterMock = vi.fn().mockImplementation(incrementCounter);
 
 // Initialize the Convex mock client
-const mockClient = new ConvexReactClientFake<API>({
-  queries: {
-    "counter:getCounter": getCounter,
-  },
-  mutations: {
-    "counter:incrementCounter": incrementCounterMock,
-  },
-});
+const mockClient = new ConvexReactClientFake();
+mockClient.registerQueryFake(api.counter.getCounter, getCounter);
+mockClient.registerMutationFake(
+  api.counter.incrementCounter,
+  incrementCounterMock
+);
 
 const setup = () =>
   render(

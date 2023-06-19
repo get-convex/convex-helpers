@@ -34,14 +34,13 @@ vi.mock("convex/react", async () => {
 
   return {
     ...actual,
-
-    useQueryGeneric: (queryName: string, args: Record<string, any>) => {
+    useQuery: (queryName: string, args: Record<string, any>) => {
       if (queryName !== "counter:getCounter") {
         throw new Error("Unexpected query call!");
       }
       return getCounter(args as any);
     },
-    useMutationGeneric: (mutationName: string) => {
+    useMutation: (mutationName: string) => {
       if (mutationName !== "counter:incrementCounter") {
         throw new Error("Unexpected mutation call!");
       }

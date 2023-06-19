@@ -1,5 +1,5 @@
+import { useQuery, usePaginatedQuery } from "convex/react";
 import { useRef } from "react";
-import { useQuery, usePaginatedQuery } from "../../convex/_generated/react";
 
 /**
  * Drop-in replacement for useQuery intended to be used with a parametrized query.

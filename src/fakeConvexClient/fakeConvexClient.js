@@ -1,9 +1,16 @@
 // A Mock convex client
 export class ConvexReactClientFake {
-  constructor({ queries, mutations, actions }) {
-    this.queries = queries;
-    this.mutations = mutations;
-    this.actions = actions;
+  constructor() {
+    this.queries = {};
+    this.mutations = {};
+    this.actions = {};
+  }
+
+  registerQueryFake(funcRef, impl) {
+    this.queries[getFunctionName(funcRef)] = impl;
+  }
+  registerMutationFake(funcRef, impl) {
+    this.mutations[getFunctionName(funcRef)] = impl;
   }
 
   async setAuth() {

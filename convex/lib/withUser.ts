@@ -1,21 +1,3 @@
-/**
- * Allows you to look up the user generically and pass it into your functions.
- *
- * Modify this file to fit your user's table and index name, etc.
- *
- * The one caveat is if you're using `mutation(withUser(` on a raw function
- * (not wrapped in {handler: fn}), it fails to infer the ctx (db, etc.):
- *
- * ```
- * mutation(withUser(({db, user}) => {...})) // fails to infer that "db" is a DatabaseWriter
- * mutation(withUser({ handler: ({db, user}) => {...} })) // Works!
- * mutationWithUser({ handler: ({db, user}) => {...} })   // Works!
- * mutationWithUser(({db, user}) => {...})                // Works!
- * mutation(withUser(
- * ({db, user}: MutationCtx & {user: Doc<"users">} ) => {...}
- * ))                                                     // Works!
- * ```
- */
 import { MutationCtx, QueryCtx, mutation, query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
 
