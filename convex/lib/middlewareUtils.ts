@@ -1,4 +1,4 @@
-import { ObjectType, PropertyValidators, v } from "convex/values";
+import { ObjectType, PropertyValidators } from "convex/values";
 import {
   ArgsArray,
   UnvalidatedFunction,

@@ -1,11 +1,10 @@
-import { FunctionReference, makeFunctionReference } from "convex/server";
+import { FunctionReference } from "convex/server";
 import { Doc, TableNames } from "../_generated/dataModel";
 import {
   MutationCtx,
   internalAction,
   internalMutation,
 } from "../_generated/server";
-import { v } from "convex/values";
 
 const DefaultBatchSize = 100;
 
