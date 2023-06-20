@@ -13,10 +13,12 @@ export function migration<TableName extends TableNames>({
   table,
   batchSize,
   migrateDoc,
+  fnRef,
 }: {
   table: TableName;
   migrateDoc: (ctx: MutationCtx, doc: Doc<TableName>) => Promise<any>;
   batchSize?: number;
+  fnRef?: any;
 }) {
   return internalMutation(
     async (
@@ -24,14 +26,16 @@ export function migration<TableName extends TableNames>({
       {
         cursor,
         numItems,
+        untilDone,
         dryRun,
       }: {
         cursor?: string;
         numItems?: number;
+        untilDone?: boolean;
         dryRun?: boolean;
       }
     ) => {
-      const { db } = ctx;
+      const { db, scheduler } = ctx;
       const paginationOpts = {
         cursor: cursor ?? null,
         numItems: numItems ?? batchSize ?? DefaultBatchSize,
@@ -46,12 +50,35 @@ export function migration<TableName extends TableNames>({
           throw error;
         }
       }
-      console.log(`Done: cursor ${cursor ?? "initial"}->${continueCursor}`);
-      if (isDone) {
-        console.log(`Done with migration over ${table}`);
-      }
+      console.log(
+        `${table}: Migrated ${page.length}: ${fnRef ? fnRef + " " : ""}cursor ${
+          cursor ?? "initial"
+        } -> ${continueCursor}`
+      );
       if (dryRun) {
         throw new Error(`Dry Run: exiting`);
+      }
+      if (isDone) {
+        console.log(`Done with migration for ${table}`);
+      } else if (untilDone) {
+        if (!fnRef) {
+          throw new Error(
+            "To run a migration with `untilDone`, specify `fnRef`" +
+              "in the migration definition so it can schedule itself. " +
+              "e.g. in ./convex/myModule.js :" +
+              "import api from './_generated/api';" +
+              "export const myMigration = mutation({`" +
+              "    table: 'mytable'," +
+              "    migrateDoc: async (doc) => {...}," +
+              "    fnRef: api.myModule.myMigration" +
+              "});"
+          );
+        }
+        await scheduler.runAfter(0, fnRef, {
+          cursor: continueCursor,
+          numItems,
+          untilDone,
+        });
       }
       return { isDone, cursor: continueCursor, count: page.length };
     }
