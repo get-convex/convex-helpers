@@ -1,3 +1,5 @@
+import { getFunctionName } from "convex/server";
+
 // A Mock convex client
 export class ConvexReactClientFake {
   constructor() {
