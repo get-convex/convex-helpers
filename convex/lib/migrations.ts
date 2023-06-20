@@ -1,4 +1,4 @@
-import { makeFunctionReference } from "convex/server";
+import { FunctionReference, makeFunctionReference } from "convex/server";
 import { Doc, TableNames } from "../_generated/dataModel";
 import {
   MutationCtx,
@@ -58,23 +58,24 @@ export function migration<TableName extends TableNames>({
   );
 }
 
+type RunMigrationParams = {
+  name: FunctionReference<"mutation", "public" | "internal">;
+  cursor?: string;
+  batchSize?: number;
+};
+
 export const runMigration = internalAction({
-  args: {
-    name: v.string(),
-    cursor: v.optional(v.string()),
-    batchSize: v.optional(v.number()),
-  },
-  handler: async ({ runMutation }, { name, cursor, batchSize }) => {
+  handler: async (
+    { runMutation },
+    { name, cursor, batchSize }: RunMigrationParams
+  ) => {
     let isDone = false;
     let total = 0;
     console.log("Running migration ", name);
     try {
       while (!isDone) {
         const args: any = { cursor, numItems: batchSize };
-        const result: any = await runMutation(
-          makeFunctionReference<"mutation">(name),
-          args
-        );
+        const result: any = await runMutation(name, args);
         if (result.isDone === undefined) {
           throw new Error(
             `${name} did not return "isDone" - is it a migration?`

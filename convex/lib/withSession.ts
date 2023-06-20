@@ -196,7 +196,7 @@ export function mutationWithSession(func: any): any {
 /**
  * Wrapper for a Convex query function that provides a session in ctx.
  *
- * Requires an `Id<"sessions">` as the first parameter. This is provided by
+ * Requires an `Id<"sessions">` or null as the first parameter. This is provided by
  * default by using {@link useSessionQuery}. It validates and strips this
  * parameter for you.
  * E.g.:
@@ -215,26 +215,30 @@ export function queryWithSession<
   Output
 >(
   func: ValidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> },
+    QueryCtx & { session: Doc<"sessions"> | null },
     ArgsValidator,
     Promise<Output>
   >
 ): RegisteredQuery<
   "public",
-  ObjectType<ArgsValidator> & ObjectType<typeof sessionMiddlewareValidator>,
+  ObjectType<ArgsValidator> &
+    ObjectType<typeof optionalSessionMiddlewareValidator>,
   Output
 >;
 export function queryWithSession<Args extends ArgsArray, Output>(
   func: UnvalidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> },
+    QueryCtx & { session: Doc<"sessions"> | null },
     Args,
     Promise<Output>
   >
 ): RegisteredQuery<
   "public",
-  MergeArgsForRegistered<Args, ObjectType<typeof sessionMiddlewareValidator>>,
+  MergeArgsForRegistered<
+    Args,
+    ObjectType<typeof optionalSessionMiddlewareValidator>
+  >,
   Output
 >;
 export function queryWithSession(func: any): any {
-  return query(withSession(func));
+  return query(withOptionalSession(func));
 }
