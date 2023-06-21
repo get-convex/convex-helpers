@@ -1,5 +1,4 @@
-import type { RegisteredAction } from "convex/server";
-import type { API } from "../_generated/api";
+import { FunctionReference } from "convex/server";
 import { Doc, TableNames } from "../_generated/dataModel";
 import {
   MutationCtx,
@@ -59,17 +58,16 @@ export function migration<TableName extends TableNames>({
 }
 
 type RunMigrationParams = {
-  name: keyof API["allMutations"];
+  name: FunctionReference<"mutation", "public" | "internal">;
   cursor?: string;
   batchSize?: number;
 };
 
-export const runMigration: RegisteredAction<
-  "internal",
-  [RunMigrationParams],
-  Promise<number>
-> = internalAction(
-  async ({ runMutation }, { name, cursor, batchSize }: RunMigrationParams) => {
+export const runMigration = internalAction({
+  handler: async (
+    { runMutation },
+    { name, cursor, batchSize }: RunMigrationParams
+  ) => {
     let isDone = false;
     let total = 0;
     console.log("Running migration ", name);
@@ -91,7 +89,7 @@ export const runMigration: RegisteredAction<
     }
     console.log("Migration done ", name, total);
     return total;
-  }
-);
+  },
+});
 
 export default migration;

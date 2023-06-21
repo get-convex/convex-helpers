@@ -16,9 +16,9 @@ import { Id, TableNames } from "../_generated/dataModel";
  * @returns - A Zod object representing a Convex `Id`
  */
 export const zid = <TableName extends TableNames>(tableName: TableName) =>
-  z.custom<Id<TableName>>(
-    (val) => val instanceof Id && val.tableName === tableName
-  );
+  z
+    .custom<Id<TableName>>((val) => typeof val === "string")
+    .pipe(z.coerce.string());
 
 /**
  * Zod helper for adding Convex system fields to a record to return.

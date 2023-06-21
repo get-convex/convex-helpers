@@ -12,22 +12,15 @@
  *
  * With the `SessionProvider` inside the `ConvexProvider` but outside your app.
  */
-import type {
-  NamedAction,
-  NamedMutation,
-  NamedQuery,
-  PublicActionNames,
-  PublicQueryNames,
-  PublicMutationNames,
-} from "convex/browser";
 import React, { useContext, useEffect, useState } from "react";
-import { API } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import {
-  useQuery,
-  useMutation,
-  useAction,
-} from "../../convex/_generated/react";
+  FunctionReference,
+  OptionalRestArgs,
+  makeFunctionReference,
+} from "convex/server";
+import { api } from "../../convex/_generated/api";
+import { useQuery, useMutation } from "convex/react";
 
 const StoreKey = "ConvexSessionId";
 
@@ -54,16 +47,16 @@ export const SessionProvider: React.FC<{
   const [sessionId, setSession] = useState<Id<"sessions"> | null>(() => {
     const stored = store?.getItem(StoreKey);
     if (stored) {
-      return new Id("sessions", stored);
+      return stored as Id<"sessions">;
     }
     return null;
   });
-  const createSession = useMutation("sessions:create");
+  const createSession = useMutation(api.sessions.create);
 
   // Get or set the ID from our desired storage location, whenever it changes.
   useEffect(() => {
     if (sessionId) {
-      store?.setItem(StoreKey, sessionId.id);
+      store?.setItem(StoreKey, sessionId);
     } else {
       void (async () => {
         setSession(await createSession());
@@ -78,18 +71,68 @@ export const SessionProvider: React.FC<{
   );
 };
 
-/**
- * Hack! This type causes TypeScript to simplify how it renders object types.
- *
- * It is functionally the identity for object types, but in practice it can
- * simplify expressions like `A & B`.
- */
-declare type Expand<ObjectType extends Record<any, any>> =
-  ObjectType extends Record<any, any>
-    ? {
-        [Key in keyof ObjectType]: ObjectType[Key];
-      }
-    : never;
+type SessionFunction<Args extends any> = FunctionReference<
+  "query" | "mutation",
+  "public",
+  { sessionId: Id<"sessions"> | null } & Args,
+  any
+>;
+
+type SessionFunctionArgsArray<Fn extends SessionFunction<any>> =
+  keyof Fn["_args"] extends "sessionId"
+    ? []
+    : [BetterOmit<Fn["_args"], "sessionId">];
+
+type SessionFunctionArgs<Fn extends SessionFunction<any>> =
+  keyof Fn["_args"] extends "sessionId"
+    ? EmptyObject
+    : BetterOmit<Fn["_args"], "sessionId">;
+
+// Like useQuery, but for a Query that takes a session ID.
+export function useSessionQuery<
+  Query extends FunctionReference<
+    "query",
+    "public",
+    { sessionId: Id<"sessions"> | null },
+    any
+  >
+>(
+  query: Query,
+  ...args: SessionFunctionArgsArray<Query>
+): Query["_returnType"] | undefined {
+  const sessionId = useContext(SessionContext);
+  const originalArgs = args[0] ?? {};
+
+  const newArgs = { ...originalArgs, sessionId };
+
+  return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
+}
+
+// Like useMutation, but for a Mutation that takes a session ID.
+export const useSessionMutation = <
+  Mutation extends FunctionReference<
+    "mutation",
+    "public",
+    { sessionId: string },
+    any
+  >
+>(
+  name: Mutation
+) => {
+  const sessionId = useContext(SessionContext);
+  const originalMutation = useMutation(name);
+
+  return (
+    args: SessionFunctionArgs<Mutation>
+  ): Promise<Mutation["_returnType"]> => {
+    const newArgs = { ...args, sessionId } as Mutation["_args"];
+
+    return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
+  };
+};
+
+// Type utils:
+type EmptyObject = Record<string, never>;
 
 /**
  * An `Omit<>` type that:
@@ -98,96 +141,6 @@ declare type Expand<ObjectType extends Record<any, any>> =
  */
 declare type BetterOmit<T, K extends keyof T> = {
   [Property in keyof T as Property extends K ? never : Property]: T[Property];
-};
-
-type SessionFunction<Args extends object> = (
-  args: { sessionId: Id<"sessions"> | null } & Args
-) => any;
-
-type SessionFunctionArgs<Fn extends SessionFunction<any>> =
-  keyof Parameters<Fn>[0] extends "sessionId"
-    ? []
-    : [Expand<BetterOmit<Parameters<Fn>[0], "sessionId">>];
-
-// All the queries that take Id<"sessions"> | null as a parameter.
-type ValidQueryNames = {
-  [QueryName in PublicQueryNames<API>]: "sessionId" extends keyof Parameters<
-    NamedQuery<API, QueryName>
-  >[0]
-    ? QueryName
-    : never;
-}[PublicQueryNames<API>];
-
-// Like useQuery, but for a Query that takes a session ID.
-export const useSessionQuery = <Name extends ValidQueryNames>(
-  name: Name,
-  ...args: SessionFunctionArgs<NamedQuery<API, Name>>
-) => {
-  const sessionId = useContext(SessionContext);
-  // I'm sorry about this. We know that ...args are the arguments following
-  // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
-  // go easy on the poor little inference machine. Also open to ideas about how
-  // to do this correctly.
-  const newArgs = { ...(args[0] || {}), sessionId } as unknown as Parameters<
-    NamedQuery<API, Name>
-  >[0];
-  return useQuery(name, newArgs);
-};
-
-// All the mutations that take Id<"sessions"> | null as a parameter.
-type ValidMutationNames = {
-  [MutationName in PublicMutationNames<API>]: "sessionId" extends keyof Parameters<
-    NamedMutation<API, MutationName>
-  >[0]
-    ? MutationName
-    : never;
-}[PublicMutationNames<API>];
-
-// Like useMutation, but for a Mutation that takes a session ID.
-export const useSessionMutation = <Name extends ValidMutationNames>(
-  name: Name
-) => {
-  const sessionId = useContext(SessionContext);
-  const originalMutation = useMutation(name);
-  return (
-    ...args: SessionFunctionArgs<NamedMutation<API, Name>>
-  ): Promise<ReturnType<NamedMutation<API, Name>>> => {
-    // I'm sorry about this. We know that ...args are the arguments following
-    // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
-    // go easy on the poor little inference machine. Also open to ideas about how
-    // to do this correctly.
-    const newArgs = { ...(args[0] || {}), sessionId } as unknown as Parameters<
-      NamedMutation<API, Name>
-    >[0];
-    return originalMutation(newArgs);
-  };
-};
-
-// All the actions that take Id<"sessions"> | null as a parameter.
-type ValidActionNames = {
-  [ActionName in PublicActionNames<API>]: "sessionId" extends keyof Parameters<
-    NamedAction<API, ActionName>
-  >[0]
-    ? ActionName
-    : never;
-}[PublicActionNames<API>];
-
-// Like useAction, but for a Action that takes a session ID.
-export const useSessionAction = <Name extends ValidActionNames>(name: Name) => {
-  const sessionId = useContext(SessionContext);
-  const originalAction = useAction(name);
-  return (
-    ...args: SessionFunctionArgs<NamedAction<API, Name>>
-  ): Promise<ReturnType<NamedAction<API, Name>>> => {
-    // I'm sorry about this. We know that ...args are the arguments following
-    // a Id<"sessions"> | null, so it should always work. It's hard for typescript,
-    // go easy on the poor little inference machine. Also open to ideas about how
-    // to do this correctly.
-    const newArgs = { ...(args[0] || {}), sessionId } as unknown as Parameters<
-      NamedAction<API, Name>
-    >[0];
-    return originalAction(newArgs);
-  };
 };
 
 /**
@@ -214,27 +167,26 @@ export function assert<T extends true>() {
 assert<
   Equals<
     SessionFunctionArgs<
-      (args: { sessionId: Id<"sessions">; args: string }) => any
+      FunctionReference<
+        "query",
+        "public",
+        { arg: string; sessionId: Id<"sessions"> | null },
+        any
+      >
     >,
-    [{ args: string }]
+    { arg: string }
   >
 >();
-assert<
-  Equals<SessionFunctionArgs<(args: { sessionId: Id<"sessions"> }) => any>, []>
->();
-
-// the same, but with | null
 assert<
   Equals<
     SessionFunctionArgs<
-      (args: { sessionId: Id<"sessions"> | null; args: string }) => any
+      FunctionReference<
+        "query",
+        "public",
+        { sessionId: Id<"sessions"> | null },
+        any
+      >
     >,
-    [{ args: string }]
-  >
->();
-assert<
-  Equals<
-    SessionFunctionArgs<(args: { sessionId: Id<"sessions"> | null }) => any>,
-    []
+    EmptyObject
   >
 >();
