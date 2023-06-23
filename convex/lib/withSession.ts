@@ -80,13 +80,6 @@ const transformContextForOptionalSession = async <Ctx>(
   args: ObjectType<typeof optionalSessionMiddlewareValidator>
 ): Promise<Ctx & { session: Doc<"sessions"> | null }> => {
   const session = args.sessionId ? await ctx.db.get(args.sessionId) : null;
-  if (!session) {
-    throw new Error(
-      "Session must be initialized first. " +
-        "Are you wrapping your code with <SessionProvider>? " +
-        "Are you requiring a session from a query that executes immediately?"
-    );
-  }
   return { ...ctx, session };
 };
 
@@ -123,7 +116,7 @@ const transformContextForSessionBackwardsCompatible = async <Ctx>(
 ): Promise<Ctx & { session: Doc<"sessions"> }> => {
   const normalizedId = ctx.db.normalizeId("sessions", args.sessionId);
   const session = normalizedId ? await ctx.db.get(normalizedId) : null;
-  if (!session) {
+  if (session === null) {
     throw new Error(
       "Session must be initialized first. " +
         "Are you wrapping your code with <SessionProvider>? " +
