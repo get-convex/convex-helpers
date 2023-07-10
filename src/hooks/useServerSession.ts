@@ -14,11 +14,7 @@
  */
 import React, { useContext, useEffect, useState } from "react";
 import { Id } from "../../convex/_generated/dataModel";
-import {
-  FunctionReference,
-  OptionalRestArgs,
-  makeFunctionReference,
-} from "convex/server";
+import { FunctionReference, OptionalRestArgs } from "convex/server";
 import { api } from "../../convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
 
@@ -123,9 +119,9 @@ export const useSessionMutation = <
   const originalMutation = useMutation(name);
 
   return (
-    args: SessionFunctionArgs<Mutation>
+    ...args: SessionFunctionArgsArray<Mutation>
   ): Promise<Mutation["_returnType"]> => {
-    const newArgs = { ...args, sessionId } as Mutation["_args"];
+    const newArgs = { ...(args[0] ?? {}), sessionId } as Mutation["_args"];
 
     return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
   };
