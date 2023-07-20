@@ -3,7 +3,8 @@
 			"prefix": "convex:imports",
 			"body": [
 				"import { v } from \"convex/values\";",
-				"import { api } from \"../convex/_generated/api.js\";",
+				"import { api, internal } from \"./_generated/api.js\";",
+				"import { Doc, Id } from \"./_generated/dataModel\";",
 				"import {",
 				"  action,",
 				"  internalAction,",
@@ -22,52 +23,20 @@
 			"body": [
 				"export const $1 = query({",
 				"  args: {},",
-				"  handler: async ({ db }, {}) => {",
+				"  handler: async (ctx, args) => {",
 				"    $0",
 				"  },",
 				"});",
 			],
 			"scope": "javascript,typescript",
-		},
-
-		"Convex Query 1 Param": {
-			"prefix": "convex:query-1",
-			"body": [
-				"export const ${1:queryName} = query({",
-				"  args: {",
-				"    ${2:arg}: v.${3:string()},",
-				"  },",
-				"  handler: async ({ db }, { ${2:arg} }) => {",
-				"    $0",
-				"  },",
-				"});",
-			],
-			"scope": "javascript,typescript",
-		},
-
-		"Convex Query 2 Params": {
-			"prefix": "convex:query-2",
-			"body": [
-				"export const ${1:myQuery} = query({",
-				"  args: {",
-				"    ${2:arg1}: v.${3:string()},",
-				"    ${4:arg2}: v.${5:string()},",
-				"  },",
-				"  handler: async ({ db }, { $2, $4 }) => {",
-				"    $0",
-				"  },",
-				"});",
-			],
 		},
 
 		"Convex Internal Query": {
 			"prefix": "convex:internalQuery",
 			"body": [
-				"import { internalQuery } from \"./_generated/server\";",
-				"",
 				"export const $1 = internalQuery({",
 				"  args: {},",
-				"  handler: async ({ db }, {}) => {",
+				"  handler: async (ctx, args) => {",
 				"    $0",
 				"  },",
 				"});",
@@ -78,29 +47,27 @@
 		"Convex Mutation": {
 			"prefix": "convex:mutation",
 			"body": [
-				"import { mutation } from \"./_generated/server\";",
-				"",
 				"export const $1 = mutation({",
 				"  args: {},",
-				"  handler: async ({ db }, {}) => {",
+				"  handler: async (ctx, args) => {",
 				"    $0",
 				"  },",
 				"});",
 			],
+			"scope": "javascript,typescript",
 		},
 
 		"Convex Internal Mutation": {
 			"prefix": "convex:internalMutation",
 			"body": [
-				"import { internalMutation } from \"./_generated/server\";",
-				"",
 				"export const $1 = internalMutation({",
 				"  args: {},",
-				"  handler: async ({ db }, {}) => {",
+				"  handler: async (ctx, args) => {",
 				"    $0",
 				"  },",
 				"});",
 			],
+			"scope": "javascript,typescript",
 		},
 
 		"Convex Action": {
@@ -110,11 +77,12 @@
 				"",
 				"export const $1 = action({",
 				"  args: {},",
-				"  handler: async ({ runQuery, runMutation, runAction }, {}) => {",
+				"  handler: async (ctx, args) => {",
 				"    $0",
 				"  },",
 				"});",
 			],
+			"scope": "javascript,typescript",
 		},
 
 		"Convex Internal Action": {
@@ -124,10 +92,11 @@
 				"",
 				"export const $1 = internalAction({",
 				"  args: {},",
-				"  handler: async ({ runQuery, runMutation, runAction }, {}) => {",
+				"  handler: async (ctx, args) => {",
 				"    $0",
 				"  },",
 				"});",
 			],
+			"scope": "javascript,typescript",
 		},
 	}
