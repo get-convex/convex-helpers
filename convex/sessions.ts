@@ -6,8 +6,8 @@ import { mutation } from "./_generated/server";
  * Note: if you end up importing code from other modules that use sessions,
  * you'll likely want to move this code to avoid import cycles.
  */
-export const create = mutation(async ({ db }) => {
-  return db.insert("sessions", {
+export const create = mutation(async (ctx) => {
+  return ctx.db.insert("sessions", {
     // TODO: insert your default values here
   });
 });
