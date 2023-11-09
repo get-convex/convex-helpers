@@ -2,12 +2,11 @@
   "name": "convex-helpers",
   "version": "0.0.1",
   "scripts": {
-    "dev": "npm-run-all init dev:init --parallel dev:server dev:client",
+    "dev": "npm-run-all --parallel dev:backend dev:frontend",
     "build": "tsc && vite build",
-    "init": "convex init",
-    "dev:server": "convex dev",
-    "dev:client": "vite",
-    "dev:init": "convex dev --once",
+    "dev:backend": "convex dev",
+    "dev:frontend": "vite",
+    "predev": "convex dev --once",
     "test": "vitest"
   },
   "dependencies": {
