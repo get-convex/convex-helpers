@@ -106,42 +106,6 @@ export const withOptionalSession = generateMiddleware<
 >(optionalSessionMiddlewareValidator, transformContextForOptionalSession);
 
 /** -----------------------------------------------------------------
- * withSessionBackwardsCompatible
- * ----------------------------------------------------------------- */
-
-const backwardsCompatibleSessionMiddlewareValidator = { sessionId: v.string() };
-const transformContextForSessionBackwardsCompatible = async <Ctx>(
-  ctx: Ctx & { db: DatabaseReader },
-  args: { sessionId: string }
-): Promise<Ctx & { session: Doc<"sessions"> }> => {
-  const normalizedId = ctx.db.normalizeId("sessions", args.sessionId);
-  const session = normalizedId ? await ctx.db.get(normalizedId) : null;
-  if (session === null) {
-    throw new Error(
-      "Session must be initialized first. " +
-        "Are you wrapping your code with <SessionProvider>? " +
-        "Are you requiring a session from a query that executes immediately?"
-    );
-  }
-  return { ...ctx, session };
-};
-
-/**
- * Like `withSession` but supporting sessions created using class IDs (Convex 0.16 and earlier)
- *
- * @param func - Your function that can take in a `session` in the first (ctx) param.
- * @returns A function to be passed to `query` or `mutation`.
- */
-export const withSessionBackwardsCompatible = generateMiddleware<
-  { db: DatabaseReader },
-  { session: Doc<"sessions"> },
-  typeof backwardsCompatibleSessionMiddlewareValidator
->(
-  backwardsCompatibleSessionMiddlewareValidator,
-  transformContextForSessionBackwardsCompatible
-);
-
-/** -----------------------------------------------------------------
  * Function wrappers
  * ----------------------------------------------------------------- */
 
