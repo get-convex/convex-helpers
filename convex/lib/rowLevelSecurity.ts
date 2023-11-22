@@ -383,10 +383,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     table: TableName,
     value: any
   ): Promise<any> {
-    if (
-      this.rules[table]?.insert &&
-      !(await this.rules[table]!.insert!(this.ctx, value))
-    ) {
+    const rules = this.rules[table];
+    if (rules?.insert && !(await rules.insert(this.ctx, value))) {
       throw new Error("insert access not allowed");
     }
     return await this.db.insert(table, value);
