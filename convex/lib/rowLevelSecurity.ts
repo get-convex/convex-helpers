@@ -1,6 +1,6 @@
 import {
-  DatabaseReader,
-  DatabaseWriter,
+  GenericDatabaseReader,
+  GenericDatabaseWriter,
   DocumentByInfo,
   DocumentByName,
   Expression,
@@ -11,7 +11,7 @@ import {
   IndexRange,
   IndexRangeBuilder,
   Indexes,
-  MutationCtx,
+  GenericMutationCtx,
   NamedIndex,
   NamedSearchIndex,
   NamedTableInfo,
@@ -19,7 +19,7 @@ import {
   PaginationOptions,
   PaginationResult,
   Query,
-  QueryCtx,
+  GenericQueryCtx,
   QueryInitializer,
   SearchFilter,
   SearchFilterBuilder,
@@ -98,7 +98,7 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   rules: Rules<RuleCtx, DataModel>
 ) => {
   const withMutationRLS = <
-    Ctx extends MutationCtx<DataModel>,
+    Ctx extends GenericMutationCtx<DataModel>,
     Args extends ArgsArray,
     Output
   >(
@@ -110,7 +110,7 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
     }) as Handler<Ctx, Args, Output>;
   };
   const withQueryRLS = <
-    Ctx extends QueryCtx<DataModel>,
+    Ctx extends GenericQueryCtx<DataModel>,
     Args extends ArgsArray,
     Output
   >(
@@ -279,19 +279,21 @@ class WrapQueryInitializer<T extends GenericTableInfo>
 }
 
 class WrapReader<Ctx, DataModel extends GenericDataModel>
-  implements DatabaseReader<DataModel>
+  implements GenericDatabaseReader<DataModel>
 {
   ctx: Ctx;
-  db: DatabaseReader<DataModel>;
+  db: GenericDatabaseReader<DataModel>;
+  system: GenericDatabaseReader<DataModel>["system"];
   rules: Rules<Ctx, DataModel>;
 
   constructor(
     ctx: Ctx,
-    db: DatabaseReader<DataModel>,
+    db: GenericDatabaseReader<DataModel>,
     rules: Rules<Ctx, DataModel>
   ) {
     this.ctx = ctx;
     this.db = db;
+    this.system = db.system;
     this.rules = rules;
   }
 
@@ -346,11 +348,12 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 }
 
 class WrapWriter<Ctx, DataModel extends GenericDataModel>
-  implements DatabaseWriter<DataModel>
+  implements GenericDatabaseWriter<DataModel>
 {
   ctx: Ctx;
-  db: DatabaseWriter<DataModel>;
-  reader: DatabaseReader<DataModel>;
+  db: GenericDatabaseWriter<DataModel>;
+  system: GenericDatabaseWriter<DataModel>["system"];
+  reader: GenericDatabaseReader<DataModel>;
   rules: Rules<Ctx, DataModel>;
 
   async modifyPredicate<T extends GenericTableInfo>(
@@ -365,11 +368,12 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
 
   constructor(
     ctx: Ctx,
-    db: DatabaseWriter<DataModel>,
+    db: GenericDatabaseWriter<DataModel>,
     rules: Rules<Ctx, DataModel>
   ) {
     this.ctx = ctx;
     this.db = db;
+    this.system = db.system;
     this.reader = new WrapReader(ctx, db, rules);
     this.rules = rules;
   }

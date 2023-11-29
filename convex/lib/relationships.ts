@@ -159,7 +159,9 @@ export async function getManyVia<
     Doc<JoinTableName>,
     ToField
   > extends Id<infer TargetTableName>
-    ? TargetTableName
+    ? TargetTableName extends TableNames
+      ? TargetTableName
+      : never
     : never
 >(
   db: DatabaseReader,
