@@ -6,6 +6,16 @@ export default defineSchema({
     name: v.string(),
     tokenIdentifier: v.string(),
   }).index("by_token", ["tokenIdentifier"]),
+  join_table_example: defineTable({
+    userId: v.id("users"),
+    presenceId: v.id("presence"),
+  }).index("by_userId", ["userId"]),
+  join_storage_example: defineTable({
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+  })
+    .index("by_storageId", ["storageId"])
+    .index("by_userId", ["userId"]),
   presence: defineTable({
     user: v.string(),
     room: v.string(),
