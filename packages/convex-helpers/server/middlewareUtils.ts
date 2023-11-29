@@ -17,16 +17,24 @@ export type MergeArgsForRegistered<
 
 export function splitArgs<
   ConsumedArgsValidator extends PropertyValidators,
-  Args extends Record<string, any>
+  Args extends Record<string, any>,
+  ExplicitArgsValidator extends PropertyValidators
 >(
-  consumedArgsValidator: ConsumedArgsValidator,
-  args: Args & ObjectType<ConsumedArgsValidator>
+  consumedArgsValidator: ConsumedArgsValidator | undefined,
+  args: Args & ObjectType<ConsumedArgsValidator>,
+  explicitArgs?: ExplicitArgsValidator
 ): { rest: Args; consumed: ObjectType<ConsumedArgsValidator> } {
+  if (!consumedArgsValidator) return { rest: args, consumed: {} as any };
   const rest: Record<string, any> = {};
   const consumed: Record<string, any> = {};
   for (const arg in args) {
     if (arg in consumedArgsValidator) {
       consumed[arg] = args[arg];
+      if (explicitArgs && arg in explicitArgs) {
+        throw new Error(
+          `Argument ${arg} is consumed and not accessible from the function's args`
+        );
+      }
     } else {
       rest[arg] = args[arg];
     }
