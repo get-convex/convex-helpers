@@ -21,7 +21,7 @@
   "bugs": {
     "url": "https://github.com/get-convex/convex-helpers/issues"
   },
-  "homepage": "https://github.com/get-convex/convex-helpers#readme",
+  "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
     "convex": "^1.6.2"
   },
