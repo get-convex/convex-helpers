@@ -8,7 +8,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/get-convex/convex-helpers.git"
+    "url": "git+https://github.com/get-convex/convex-helpers.git",
+    "directory": "packages/convex-helpers"
   },
   "keywords": [
     "convex",
