@@ -25,7 +25,10 @@ import {
   QueryCtx,
 } from "../_generated/server";
 import { ObjectType, PropertyValidators, v } from "convex/values";
-import { MergeArgsForRegistered, generateMiddleware } from "./middlewareUtils";
+import {
+  MergeArgsForRegistered,
+  generateMiddleware,
+} from "convex-helpers/server/middlewareUtils";
 
 /** -----------------------------------------------------------------
  * withSession
