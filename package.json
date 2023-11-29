@@ -1,6 +1,7 @@
 {
-  "name": "convex-helpers",
-  "version": "0.0.1",
+  "name": "convex-helpers-base",
+  "private": "true",
+  "description": "Home to [packages](./packages/) to complement the official convex package.",
   "scripts": {
     "dev": "npm-run-all --parallel dev:backend dev:frontend",
     "build": "tsc && vite build",
@@ -12,6 +13,7 @@
   "dependencies": {
     "classnames": "^2.3.2",
     "convex": "^1.0.2",
+    "convex-helpers": "file:packages/convex-helpers",
     "hono": "^3.0.3",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",

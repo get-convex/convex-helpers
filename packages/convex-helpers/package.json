@@ -1,0 +1,30 @@
+{
+  "name": "convex-helpers",
+  "version": "0.1.1",
+  "description": "A collection of useful code to complement the official convex package.",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/get-convex/convex-helpers.git"
+  },
+  "keywords": [
+    "convex",
+    "database",
+    "react"
+  ],
+  "author": "Ian Macartney <ian@convex.dev>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/get-convex/convex-helpers/issues"
+  },
+  "homepage": "https://github.com/get-convex/convex-helpers#readme",
+  "peerDependencies": {
+    "convex": "^1.6.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  }
+}
