@@ -6,6 +6,7 @@ import {
   GenericDataModel,
   GenericDatabaseReader,
   DocumentByName,
+  SystemTableNames,
 } from "convex/server";
 import { ConvexError, GenericId } from "convex/values";
 import { asyncMap, pruneNull } from "..";
@@ -159,7 +160,7 @@ export async function getManyFrom<
 type IdFilePaths<
   DataModel extends GenericDataModel,
   InTableName extends TablesWithLookups<DataModel>,
-  TableName extends TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel> | SystemTableNames
 > = {
   [FieldName in DataModel[InTableName]["fieldPaths"]]: FieldTypeFromFieldPath<
     DocumentByName<DataModel, InTableName>,
@@ -181,9 +182,13 @@ type LookupAndIdFilePaths<
   [FieldPath in IdFilePaths<
     DataModel,
     TableName,
-    TableNamesInDataModel<DataModel>
+    TableNamesInDataModel<DataModel> | SystemTableNames
   >]: LookupFieldPaths<DataModel, TableName> extends FieldPath ? never : true;
-}[IdFilePaths<DataModel, TableName, TableNamesInDataModel<DataModel>>];
+}[IdFilePaths<
+  DataModel,
+  TableName,
+  TableNamesInDataModel<DataModel> | SystemTableNames
+>];
 
 // The table names that  match LookupAndIdFields.
 // These are the possible "join" or "edge" or "relationship" tables.
@@ -216,7 +221,7 @@ export async function getManyVia<
   ToField extends IdFilePaths<
     DataModel,
     JoinTableName,
-    TableNamesInDataModel<DataModel>
+    TableNamesInDataModel<DataModel> | SystemTableNames
   >,
   FromField extends Exclude<
     LookupFieldPaths<DataModel, JoinTableName>,
@@ -239,8 +244,16 @@ export async function getManyVia<
   >
 ): Promise<DocumentByName<DataModel, TargetTableName>[]> {
   return pruneNull(
-    await asyncMap(await getManyFrom(db, table, fromField, value), (link) =>
-      db.get((link as any)[toField])
+    await asyncMap(
+      await getManyFrom(db, table, fromField, value),
+      async (link: DocumentByName<DataModel, JoinTableName>) => {
+        const id = link[toField] as GenericId<TargetTableName>;
+        try {
+          return await db.get(id);
+        } catch {
+          return await db.system.get(id as GenericId<SystemTableNames>);
+        }
+      }
     )
   );
 }
