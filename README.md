@@ -2,6 +2,14 @@
 
 A collection of useful code to complement the official packages.
 
+## `convex-helpers` npm package
+
+In the [packages](./packages/) directory there's the [convex-helpers](./packages/convex-helpers/)
+directory, so you can `npm install convex-helpers@latest`.
+
+It doesn't have all of the below features, but the ones it has can be used directly,
+rather than copying the code from this repo.
+
 ## Server-Persisted Session Data
 
 See the [guide on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware) for tips on how to set up and use Sessions.
