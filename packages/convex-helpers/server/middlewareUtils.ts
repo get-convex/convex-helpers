@@ -55,7 +55,7 @@ export const generateMiddleware = <
   transformContext: (
     ctx: RequiredCtx,
     args: ObjectType<ConsumedArgsValidator>
-  ) => Promise<TransformedCtx>
+  ) => TransformedCtx | Promise<TransformedCtx>
 ) => {
   // Have two overloads -- one for validated functions and one for unvalidated functions
   function withFoo<
@@ -63,23 +63,19 @@ export const generateMiddleware = <
     Output,
     Ctx
   >(
-    fn: ValidatedFunction<
-      Ctx & TransformedCtx,
-      ExistingArgsValidator,
-      Promise<Output>
-    >
+    fn: ValidatedFunction<Ctx & TransformedCtx, ExistingArgsValidator, Output>
   ): ValidatedFunction<
     Ctx & RequiredCtx,
     ConsumedArgsValidator & ExistingArgsValidator,
-    Promise<Output>
+    Output
   >;
 
   function withFoo<ExistingArgs extends ArgsArray, Output, Ctx>(
-    fn: UnvalidatedFunction<Ctx & TransformedCtx, ExistingArgs, Promise<Output>>
+    fn: UnvalidatedFunction<Ctx & TransformedCtx, ExistingArgs, Output>
   ): UnvalidatedFunction<
     Ctx & RequiredCtx,
     MergeArgs<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
-    Promise<Output>
+    Output
   >;
   function withFoo(fn: any): any {
     if (fn.args) {
@@ -90,9 +86,13 @@ export const generateMiddleware = <
           ...consumedArgsValidator,
         },
         handler: async (ctx: any, allArgs: any) => {
-          const { rest, consumed } = splitArgs(consumedArgsValidator, allArgs);
+          const { rest, consumed } = splitArgs(
+            consumedArgsValidator,
+            allArgs,
+            fn.args
+          );
           const transformedCtx = await transformContext(ctx, consumed);
-          return await handler(transformedCtx, rest);
+          return handler(transformedCtx, rest);
         },
       };
     }
@@ -101,7 +101,7 @@ export const generateMiddleware = <
       handler: async (ctx: any, allArgs: any) => {
         const { rest, consumed } = splitArgs(consumedArgsValidator, allArgs);
         const transformedCtx = await transformContext(ctx, consumed);
-        return await handler(transformedCtx, rest);
+        return handler(transformedCtx, rest);
       },
     };
   }
