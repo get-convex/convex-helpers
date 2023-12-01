@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
-    "convex": "^1.6.2"
+    "convex": "^1.6.3"
   },
   "devDependencies": {
     "typescript": "^5.2.2"
