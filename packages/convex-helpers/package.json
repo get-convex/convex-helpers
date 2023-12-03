@@ -2,7 +2,14 @@
   "name": "convex-helpers",
   "version": "0.1.2",
   "description": "A collection of useful code to complement the official convex package.",
-  "type": "module",
+  "exports": {
+    "./server*": "./dist/server*",
+    "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js"
+  },
+  "files": [
+    "dist",
+    "server"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
