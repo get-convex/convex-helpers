@@ -38,7 +38,7 @@ export function makeSessionWrappers<
   create: ValidatedFunction<
     GenericMutationCtx<DataModel>,
     PropertyValidators,
-    GenericId<TableName>
+    Promise<GenericId<TableName>>
   >,
   validate?: (
     ctx: GenericMutationCtx<DataModel>,
@@ -58,7 +58,7 @@ export function makeSessionWrappers<
       sessionId: v.union(v.null(), v.string()),
       ...(create.args ?? {}),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<SessionId> => {
       if (args.sessionId) {
         const sessionId = ctx.db.normalizeId(sessionTable, args.sessionId);
         if (sessionId) {
@@ -75,9 +75,7 @@ export function makeSessionWrappers<
           }
         }
       }
-      if (create) {
-        return create.handler(ctx, args);
-      }
+      return create.handler(ctx, args);
     },
   });
 

@@ -4,11 +4,16 @@
   "description": "A collection of useful code to complement the official convex package.",
   "exports": {
     ".": "./dist/index.js",
+    "./react": "./dist/react/index.js",
+    "./react*": "./dist/react*",
+    "./react/sessions": "./dist/react/sessions.js",
     "./server": "./dist/server/index.js",
     "./server*": "./dist/server*",
+    "./server/customFunctions": "./dist/server/customFunctions.js",
+    "./server/middlewareUtils": "./dist/server/middlewareUtils.js",
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
     "./server/relationships": "./dist/server/relationships.js",
-    "./server/customFunctions": "./dist/server/customFunctions.js",
+    "./server/sessions": "./dist/server/sessions.js",
     "./server/zod": "./dist/server/zod.js"
   },
   "files": [
