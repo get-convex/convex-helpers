@@ -54,6 +54,10 @@ Run the mutation to test it out, then run it over the whole table with the
 See the [Stack post on relationship helpers](https://stack.convex.dev/functional-relationships-helpers)
 and the [relationship schema structures post](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas).
 
+**To use `convex-helpers`, import from "convex-helpers/server/relationships"**
+
+To copy code:
+
 Use the helpers in [relationships.ts](./convex/lib/relationships.ts) to traverse database relationships in queries more cleanly.
 
 ## HTTP Endpoints: Using Hono for advanced functionality
