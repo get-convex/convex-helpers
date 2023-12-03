@@ -3,14 +3,16 @@
   "version": "0.1.2",
   "description": "A collection of useful code to complement the official convex package.",
   "exports": {
-    "./server*": "./dist/server*",
+    ".": "./dist/index.js",
     "./server": "./dist/server/index.js",
+    "./server*": "./dist/server*",
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
     "./server/relationships": "./dist/server/relationships.js",
     "./server/middlewareUtils": "./dist/server/middlewareUtils.js"
   },
   "files": [
     "dist",
+    "index.ts",
     "server"
   ],
   "scripts": {
