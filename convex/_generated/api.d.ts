@@ -17,6 +17,7 @@ import type {
 import type * as counter from "../counter.js";
 import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as http from "../http.js";
+import type * as lib_fromPackage from "../lib/fromPackage.js";
 import type * as lib_honoWithConvex from "../lib/honoWithConvex.js";
 import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_relationships from "../lib/relationships.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   counter: typeof counter;
   customFunctionExample: typeof customFunctionExample;
   http: typeof http;
+  "lib/fromPackage": typeof lib_fromPackage;
   "lib/honoWithConvex": typeof lib_honoWithConvex;
   "lib/migrations": typeof lib_migrations;
   "lib/relationships": typeof lib_relationships;
