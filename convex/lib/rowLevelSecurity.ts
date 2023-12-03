@@ -171,7 +171,7 @@ class WrapQuery<T extends GenericTableInfo> implements Query<T> {
     return await asyncFilter(results, this.p);
   }
   async take(n: number): Promise<DocumentByInfo<T>[]> {
-    const results = [];
+    const results: DocumentByInfo<T>[] = [];
     for await (const result of this) {
       results.push(result);
       if (results.length >= n) {
@@ -187,7 +187,7 @@ class WrapQuery<T extends GenericTableInfo> implements Query<T> {
     return null;
   }
   async unique(): Promise<DocumentByInfo<T> | null> {
-    let uniqueResult = null;
+    let uniqueResult: DocumentByInfo<T> | null = null;
     for await (const result of this) {
       if (uniqueResult === null) {
         uniqueResult = result;
