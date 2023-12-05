@@ -58,7 +58,7 @@ export const generateMiddlewareContextOnly = <
   transformContext: (
     ctx: OriginalCtx,
     args: ObjectType<ConsumedArgsValidator>
-  ) => Promise<TransformedCtx>
+  ) => TransformedCtx | Promise<TransformedCtx>
 ) => {
   function withFoo<
     ExistingArgsValidator extends PropertyValidators,
@@ -122,7 +122,7 @@ export const generateQueryWithMiddleware = <
   transformContext: (
     ctx: GenericQueryCtx<DataModel>,
     args: ObjectType<ConsumedArgsValidator>
-  ) => Promise<TransformedCtx>
+  ) => Promise<TransformedCtx> | TransformedCtx
 ) => {
   const withFoo = generateMiddlewareContextOnly(
     consumedArgsValidator,
@@ -133,25 +133,21 @@ export const generateQueryWithMiddleware = <
     ExistingArgsValidator extends PropertyValidators,
     Output
   >(
-    fn: ValidatedFunction<
-      TransformedCtx,
-      ExistingArgsValidator,
-      Promise<Output>
-    >
+    fn: ValidatedFunction<TransformedCtx, ExistingArgsValidator, Output>
   ): RegisteredQuery<
-    "public",
-    ObjectType<ExistingArgsValidator> & ObjectType<ConsumedArgsValidator>,
+    Visibility,
+    ObjectType<ExistingArgsValidator & ConsumedArgsValidator>,
     Output
   >;
 
   function queryWithFoo<ExistingArgs extends ArgsArray, Output>(
-    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Promise<Output>>
+    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Output>
   ): RegisteredQuery<
-    "public",
+    Visibility,
     MergeArgsForRegistered<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
     Output
   >;
-  function queryWithFoo(fn: any): any {
+  function queryWithFoo(fn: any) {
     return query(withFoo(fn));
   }
 
@@ -169,7 +165,7 @@ export const generateMutationWithMiddleware = <
   transformContext: (
     ctx: GenericMutationCtx<DataModel>,
     args: ObjectType<ConsumedArgsValidator>
-  ) => Promise<TransformedCtx>
+  ) => Promise<TransformedCtx> | TransformedCtx
 ) => {
   const withFoo = generateMiddlewareContextOnly(
     consumedArgsValidator,
@@ -180,25 +176,21 @@ export const generateMutationWithMiddleware = <
     ExistingArgsValidator extends PropertyValidators,
     Output
   >(
-    fn: ValidatedFunction<
-      TransformedCtx,
-      ExistingArgsValidator,
-      Promise<Output>
-    >
+    fn: ValidatedFunction<TransformedCtx, ExistingArgsValidator, Output>
   ): RegisteredMutation<
-    "public",
-    ObjectType<ExistingArgsValidator> & ObjectType<ConsumedArgsValidator>,
+    Visibility,
+    ObjectType<ExistingArgsValidator & ConsumedArgsValidator>,
     Output
   >;
 
   function mutationWithFoo<ExistingArgs extends ArgsArray, Output>(
-    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Promise<Output>>
+    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Output>
   ): RegisteredMutation<
-    "public",
+    Visibility,
     MergeArgsForRegistered<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
     Output
   >;
-  function mutationWithFoo(fn: any): any {
+  function mutationWithFoo(fn: any) {
     return mutation(withFoo(fn));
   }
 
@@ -216,7 +208,7 @@ export const generateActionWithMiddleware = <
   transformContext: (
     ctx: GenericActionCtx<DataModel>,
     args: ObjectType<ConsumedArgsValidator>
-  ) => Promise<TransformedCtx>
+  ) => Promise<TransformedCtx> | TransformedCtx
 ) => {
   const withFoo = generateMiddlewareContextOnly(
     consumedArgsValidator,
@@ -227,25 +219,21 @@ export const generateActionWithMiddleware = <
     ExistingArgsValidator extends PropertyValidators,
     Output
   >(
-    fn: ValidatedFunction<
-      TransformedCtx,
-      ExistingArgsValidator,
-      Promise<Output>
-    >
+    fn: ValidatedFunction<TransformedCtx, ExistingArgsValidator, Output>
   ): RegisteredAction<
-    "public",
-    ObjectType<ExistingArgsValidator> & ObjectType<ConsumedArgsValidator>,
+    Visibility,
+    ObjectType<ExistingArgsValidator & ConsumedArgsValidator>,
     Output
   >;
 
   function actionWithFoo<ExistingArgs extends ArgsArray, Output>(
-    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Promise<Output>>
+    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Output>
   ): RegisteredAction<
-    "public",
+    Visibility,
     MergeArgsForRegistered<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
     Output
   >;
-  function actionWithFoo(fn: any): any {
+  function actionWithFoo(fn: any) {
     return action(withFoo(fn));
   }
 
