@@ -8,7 +8,7 @@ import {
   DocumentByName,
   SystemTableNames,
 } from "convex/server";
-import { ConvexError, GenericId } from "convex/values";
+import { GenericId } from "convex/values";
 import { asyncMap, pruneNull } from "..";
 
 /**
@@ -72,6 +72,8 @@ type TablesWithLookups<
     : TableName;
 }[TableNames];
 
+class MissingDocumentError extends Error {}
+
 /**
  * Get a document that references a value with a field indexed `by_${field}`
  *
@@ -97,7 +99,7 @@ export async function getOneFrom<
     .withIndex("by_" + field, (q) => q.eq(field, value as any))
     .unique();
   if (ret === null) {
-    throw new ConvexError(
+    throw new MissingDocumentError(
       `Can't find a document in ${table} with field ${field} equal to ${value}`
     );
   }
