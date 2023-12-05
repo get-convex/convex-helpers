@@ -26,8 +26,15 @@ import {
   SearchIndexes,
   TableNamesInDataModel,
   WithoutSystemFields,
+  queryGeneric,
+  mutationGeneric,
 } from "convex/server";
 import { GenericId } from "convex/values";
+import {
+  generateMiddlewareContextOnly,
+  generateMutationWithMiddleware,
+  generateQueryWithMiddleware,
+} from "./middleware";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -97,41 +104,58 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
 export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   rules: Rules<RuleCtx, DataModel>
 ) => {
-  const withMutationRLS = <
-    Ctx extends GenericMutationCtx<DataModel>,
-    Args extends ArgsArray,
-    Output
-  >(
-    f: Handler<Ctx, Args, Output>
-  ): Handler<Ctx, Args, Output> => {
-    return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapWriter(ctx, ctx.db, rules);
-      return (f as any)({ ...ctx, db: wrappedDb }, ...args);
-    }) as Handler<Ctx, Args, Output>;
-  };
-  const withQueryRLS = <
-    Ctx extends GenericQueryCtx<DataModel>,
-    Args extends ArgsArray,
-    Output
-  >(
-    f: Handler<Ctx, Args, Output>
-  ): Handler<Ctx, Args, Output> => {
-    return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapReader(ctx, ctx.db, rules);
-      return (f as any)({ ...ctx, db: wrappedDb }, ...args);
-    }) as Handler<Ctx, Args, Output>;
-  };
   return {
-    withMutationRLS,
-    withQueryRLS,
+    withQueryRLS: addQueryRLS(rules),
+    withMutationRLS: addMutationRLS(rules),
   };
 };
 
-type ArgsArray = [] | [FunctionArgs<any>];
-type Handler<Ctx, Args extends ArgsArray, Output> = (
-  ctx: Ctx,
-  ...args: Args
-) => Output;
+export function wrapQueryDB<
+  DataModel extends GenericDataModel,
+  Ctx // extends GenericQueryCtx<DataModel> = GenericQueryCtx<DataModel>
+>(rules: Rules<Ctx, DataModel>) {
+  return (ctx: Ctx & GenericQueryCtx<DataModel>) => ({
+    ...ctx,
+    db: new WrapReader(ctx, ctx.db, rules),
+  });
+}
+export function wrapMutationDB<DataModel extends GenericDataModel, Ctx>(
+  rules: Rules<Ctx, DataModel>
+) {
+  return (
+    ctx: Ctx & GenericMutationCtx<DataModel>
+  ): Ctx & GenericMutationCtx<DataModel> => ({
+    ...ctx,
+    db: new WrapWriter(ctx, ctx.db, rules),
+  });
+}
+
+export const addQueryRLS = <Ctx, DataModel extends GenericDataModel>(
+  rules: Rules<Ctx, DataModel>
+) => generateMiddlewareContextOnly({}, wrapQueryDB(rules));
+
+export const addMutationRLS = <Ctx, DataModel extends GenericDataModel>(
+  rules: Rules<Ctx, DataModel>
+) => generateMiddlewareContextOnly({}, wrapMutationDB(rules));
+
+/**
+ * Not recommended b/c it doesn't let you cache any lookups
+ */
+export const queryWithRLS = <DataModel extends GenericDataModel>(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) => generateQueryWithMiddleware(queryGeneric, {}, wrapQueryDB(rules));
+
+export const mutationWithRLS = <DataModel extends GenericDataModel>(
+  rules: Rules<GenericMutationCtx<DataModel>, DataModel>
+) => generateMutationWithMiddleware(mutationGeneric, {}, wrapMutationDB(rules));
+
+export const internalQueryWithRLS = <DataModel extends GenericDataModel>(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) => generateQueryWithMiddleware(queryGeneric, {}, wrapQueryDB(rules));
+
+export const internalMutationWithRLS = <DataModel extends GenericDataModel>(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) => generateMutationWithMiddleware(mutationGeneric, {}, wrapMutationDB(rules));
 
 type AuthPredicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>
