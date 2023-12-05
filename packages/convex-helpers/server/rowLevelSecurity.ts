@@ -5,7 +5,6 @@ import {
   DocumentByName,
   Expression,
   FilterBuilder,
-  FunctionArgs,
   GenericDataModel,
   GenericTableInfo,
   IndexRange,
@@ -139,23 +138,40 @@ export const addMutationRLS = <Ctx, DataModel extends GenericDataModel>(
 ) => generateMiddlewareContextOnly({}, wrapMutationDB(rules));
 
 /**
- * Not recommended b/c it doesn't let you cache any lookups
+ * If you just want to read from the DB, you can use this.
+ * Later, you can use `generateQueryWithMiddleware` along
+ * with a custom function using wrapQueryDB with rules that
+ * depend on values generated once at the start of the function.
+ * E.g. Looking up a user to use for your rules:
+ * //TODO: Add example
  */
-export const queryWithRLS = <DataModel extends GenericDataModel>(
+export const BasicRowLevelSecurity = <DataModel extends GenericDataModel>(
   rules: Rules<GenericQueryCtx<DataModel>, DataModel>
-) => generateQueryWithMiddleware(queryGeneric, {}, wrapQueryDB(rules));
+) => ({
+  queryWithRLS: generateQueryWithMiddleware(
+    queryGeneric,
+    {},
+    wrapQueryDB(rules)
+  ),
 
-export const mutationWithRLS = <DataModel extends GenericDataModel>(
-  rules: Rules<GenericMutationCtx<DataModel>, DataModel>
-) => generateMutationWithMiddleware(mutationGeneric, {}, wrapMutationDB(rules));
+  mutationWithRLS: generateMutationWithMiddleware(
+    mutationGeneric,
+    {},
+    wrapMutationDB(rules)
+  ),
 
-export const internalQueryWithRLS = <DataModel extends GenericDataModel>(
-  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
-) => generateQueryWithMiddleware(queryGeneric, {}, wrapQueryDB(rules));
+  internalQueryWithRLS: generateQueryWithMiddleware(
+    queryGeneric,
+    {},
+    wrapQueryDB(rules)
+  ),
 
-export const internalMutationWithRLS = <DataModel extends GenericDataModel>(
-  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
-) => generateMutationWithMiddleware(mutationGeneric, {}, wrapMutationDB(rules));
+  internalMutationWithRLS: generateMutationWithMiddleware(
+    mutationGeneric,
+    {},
+    wrapMutationDB(rules)
+  ),
+});
 
 type AuthPredicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>

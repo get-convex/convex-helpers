@@ -1,4 +1,4 @@
-import { RowLevelSecurity, mutationWithRLS } from "./rowLevelSecurity";
+import { RowLevelSecurity, BasicRowLevelSecurity } from "./rowLevelSecurity";
 
 import { mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
@@ -62,7 +62,7 @@ queryGeneric(
     })
   )
 );
-const m = mutationWithRLS({
+const { mutationWithRLS } = BasicRowLevelSecurity({
   cookies: {
     insert: async (ctx) => {
       ctx.db;
@@ -76,7 +76,7 @@ const m = mutationWithRLS({
     },
   },
 });
-m({
+mutationWithRLS({
   args: {},
   handler: async (ctx) => {
     ctx.db;
