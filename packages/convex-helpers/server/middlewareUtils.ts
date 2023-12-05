@@ -3,6 +3,17 @@ import {
   ArgsArray,
   UnvalidatedFunction,
   ValidatedFunction,
+  RegisteredQuery,
+  RegisteredMutation,
+  RegisteredAction,
+  GenericQueryCtx,
+  GenericDataModel,
+  QueryBuilder,
+  FunctionVisibility,
+  GenericMutationCtx,
+  MutationBuilder,
+  ActionBuilder,
+  GenericActionCtx,
 } from "convex/server";
 
 export type MergeArgs<
@@ -38,18 +49,17 @@ export function splitArgs<
   } as any;
 }
 
-export const generateMiddleware = <
-  RequiredCtx extends Record<string, any>,
+export const generateMiddlewareContextOnly = <
+  OriginalCtx extends Record<string, any>,
   TransformedCtx extends Record<string, any>,
   ConsumedArgsValidator extends PropertyValidators
 >(
   consumedArgsValidator: ConsumedArgsValidator,
   transformContext: (
-    ctx: RequiredCtx,
+    ctx: OriginalCtx,
     args: ObjectType<ConsumedArgsValidator>
   ) => Promise<TransformedCtx>
 ) => {
-  // Have two overloads -- one for validated functions and one for unvalidated functions
   function withFoo<
     ExistingArgsValidator extends PropertyValidators,
     Output,
@@ -61,7 +71,7 @@ export const generateMiddleware = <
       Promise<Output>
     >
   ): ValidatedFunction<
-    Ctx & RequiredCtx,
+    Ctx & OriginalCtx,
     ConsumedArgsValidator & ExistingArgsValidator,
     Promise<Output>
   >;
@@ -69,7 +79,7 @@ export const generateMiddleware = <
   function withFoo<ExistingArgs extends ArgsArray, Output, Ctx>(
     fn: UnvalidatedFunction<Ctx & TransformedCtx, ExistingArgs, Promise<Output>>
   ): UnvalidatedFunction<
-    Ctx & RequiredCtx,
+    Ctx & OriginalCtx,
     MergeArgs<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
     Promise<Output>
   >;
@@ -84,7 +94,7 @@ export const generateMiddleware = <
         handler: async (ctx: any, allArgs: any) => {
           const { rest, consumed } = splitArgs(consumedArgsValidator, allArgs);
           const transformedCtx = await transformContext(ctx, consumed);
-          return await handler(transformedCtx, rest);
+          return await handler({ ...ctx, ...transformedCtx }, rest);
         },
       };
     }
@@ -93,10 +103,151 @@ export const generateMiddleware = <
       handler: async (ctx: any, allArgs: any) => {
         const { rest, consumed } = splitArgs(consumedArgsValidator, allArgs);
         const transformedCtx = await transformContext(ctx, consumed);
-        return await handler(transformedCtx, rest);
+        return await handler({ ...ctx, ...transformedCtx }, rest);
       },
     };
   }
 
   return withFoo;
+};
+
+export const generateQueryWithMiddleware = <
+  TransformedCtx extends Record<string, any>,
+  ConsumedArgsValidator extends PropertyValidators,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel
+>(
+  query: QueryBuilder<DataModel, Visibility>,
+  consumedArgsValidator: ConsumedArgsValidator,
+  transformContext: (
+    ctx: GenericQueryCtx<DataModel>,
+    args: ObjectType<ConsumedArgsValidator>
+  ) => Promise<TransformedCtx>
+) => {
+  const withFoo = generateMiddlewareContextOnly(
+    consumedArgsValidator,
+    transformContext
+  );
+
+  function queryWithFoo<
+    ExistingArgsValidator extends PropertyValidators,
+    Output
+  >(
+    fn: ValidatedFunction<
+      TransformedCtx,
+      ExistingArgsValidator,
+      Promise<Output>
+    >
+  ): RegisteredQuery<
+    "public",
+    ObjectType<ExistingArgsValidator> & ObjectType<ConsumedArgsValidator>,
+    Output
+  >;
+
+  function queryWithFoo<ExistingArgs extends ArgsArray, Output>(
+    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Promise<Output>>
+  ): RegisteredQuery<
+    "public",
+    MergeArgsForRegistered<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
+    Output
+  >;
+  function queryWithFoo(fn: any): any {
+    return query(withFoo(fn));
+  }
+
+  return queryWithFoo;
+};
+
+export const generateMutationWithMiddleware = <
+  TransformedCtx extends Record<string, any>,
+  ConsumedArgsValidator extends PropertyValidators,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel
+>(
+  mutation: MutationBuilder<DataModel, Visibility>,
+  consumedArgsValidator: ConsumedArgsValidator,
+  transformContext: (
+    ctx: GenericMutationCtx<DataModel>,
+    args: ObjectType<ConsumedArgsValidator>
+  ) => Promise<TransformedCtx>
+) => {
+  const withFoo = generateMiddlewareContextOnly(
+    consumedArgsValidator,
+    transformContext
+  );
+
+  function mutationWithFoo<
+    ExistingArgsValidator extends PropertyValidators,
+    Output
+  >(
+    fn: ValidatedFunction<
+      TransformedCtx,
+      ExistingArgsValidator,
+      Promise<Output>
+    >
+  ): RegisteredMutation<
+    "public",
+    ObjectType<ExistingArgsValidator> & ObjectType<ConsumedArgsValidator>,
+    Output
+  >;
+
+  function mutationWithFoo<ExistingArgs extends ArgsArray, Output>(
+    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Promise<Output>>
+  ): RegisteredMutation<
+    "public",
+    MergeArgsForRegistered<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
+    Output
+  >;
+  function mutationWithFoo(fn: any): any {
+    return mutation(withFoo(fn));
+  }
+
+  return mutationWithFoo;
+};
+
+export const generateActionWithMiddleware = <
+  TransformedCtx extends Record<string, any>,
+  ConsumedArgsValidator extends PropertyValidators,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel
+>(
+  action: ActionBuilder<DataModel, Visibility>,
+  consumedArgsValidator: ConsumedArgsValidator,
+  transformContext: (
+    ctx: GenericActionCtx<DataModel>,
+    args: ObjectType<ConsumedArgsValidator>
+  ) => Promise<TransformedCtx>
+) => {
+  const withFoo = generateMiddlewareContextOnly(
+    consumedArgsValidator,
+    transformContext
+  );
+
+  function actionWithFoo<
+    ExistingArgsValidator extends PropertyValidators,
+    Output
+  >(
+    fn: ValidatedFunction<
+      TransformedCtx,
+      ExistingArgsValidator,
+      Promise<Output>
+    >
+  ): RegisteredAction<
+    "public",
+    ObjectType<ExistingArgsValidator> & ObjectType<ConsumedArgsValidator>,
+    Output
+  >;
+
+  function actionWithFoo<ExistingArgs extends ArgsArray, Output>(
+    fn: UnvalidatedFunction<TransformedCtx, ExistingArgs, Promise<Output>>
+  ): RegisteredAction<
+    "public",
+    MergeArgsForRegistered<ExistingArgs, ObjectType<ConsumedArgsValidator>>,
+    Output
+  >;
+  function actionWithFoo(fn: any): any {
+    return action(withFoo(fn));
+  }
+
+  return actionWithFoo;
 };
