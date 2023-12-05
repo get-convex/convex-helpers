@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { Mod, customQuery, splitArgs } from "./mod";
-import { ObjectType, PropertyValidators, Value } from "convex/values";
+import { ObjectType, PropertyValidators } from "convex/values";
 import {
   FunctionVisibility,
   GenericDataModel,
@@ -76,24 +76,17 @@ export function zCustomQuery<
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
 ) {
   const argsValidator = { z: v.string() };
-  function customQuery<
-    ExistingArgsValidator extends ZodValidator,
-    ReturnsValidator extends ZodValidator,
-    ReturnsValidator extends z.ZodObject = ReturnsValidator extends never
-      ? infer Output
-      : z.output<z.ZodObject<ReturnsValidator>>
-  >(fn: {
+  function customQuery<ExistingArgsValidator extends ZodValidator, Output>(fn: {
     args: ExistingArgsValidator;
     handler: (
       ctx: ModCtx,
       args: z.output<z.ZodObject<ExistingArgsValidator>> & ModMadeArgs
     ) => Output | Promise<Output>;
-    returns?: ReturnsValidator;
   }): RegisteredQuery<
     Visibility,
     // z.input<z.ZodObject<ExistingArgsValidator>>
     ObjectType<typeof argsValidator & ModArgsValidator>,
-    Promise<Output /* adjust output if exists */>
+    Promise<Output>
   > {
     const zodArgs = z.object(fn.args);
     return query({
@@ -105,14 +98,7 @@ export function zCustomQuery<
         const [split, rest] = splitArgs(mod.args, allArgs);
         // TODO: handle optional input
         const { ctx: modCtx, args: modArgs } = await mod.input(ctx, split);
-        const output = await fn.handler(modCtx, {
-          ...zodArgs.parse(rest),
-          ...modArgs,
-        });
-        if (fn.returns) {
-          return z.object(fn.returns).parse(output);
-        }
-        return output;
+        return await fn.handler(modCtx, { ...zodArgs.parse(rest), ...modArgs });
       },
     });
   }
