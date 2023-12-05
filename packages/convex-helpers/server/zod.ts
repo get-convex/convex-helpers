@@ -71,7 +71,6 @@ export function zCustomQuery<
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel
 >(
-  // _visibility: Visibility,
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
 ) {
@@ -84,15 +83,17 @@ export function zCustomQuery<
     ) => Output | Promise<Output>;
   }): RegisteredQuery<
     Visibility,
-    // z.input<z.ZodObject<ExistingArgsValidator>>
+    // or ObjectType<typeof zodToConvex(fn.args) & ModArgsValidator>
     ObjectType<typeof argsValidator & ModArgsValidator>,
     Promise<Output>
   > {
     const zodArgs = z.object(fn.args);
     return query({
       args: {
+        // ...zodToConvex(fn.args),
         ...argsValidator,
         ...mod.args,
+        // } as typeof zodToConvex(fn.args) & ModArgsValidator,
       } as typeof argsValidator & ModArgsValidator,
       handler: async (ctx: GenericQueryCtx<DataModel>, allArgs: any) => {
         const [split, rest] = splitArgs(mod.args, allArgs);
