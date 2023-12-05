@@ -26,21 +26,42 @@ import {
   SearchIndexes,
   TableNamesInDataModel,
   WithoutSystemFields,
+  GenericDocument,
 } from "convex/server";
 import { GenericId } from "convex/values";
 
-type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
+type Rule<
+  DataModel extends GenericDataModel,
+  Ctx,
+  D extends GenericDocument
+> = (
+  args:
+    | {
+        ctx: Ctx & { db: GenericDatabaseReader<DataModel> };
+        doc: D;
+        operation: "get" | "list";
+      }
+    | {
+        ctx: Ctx & { db: GenericDatabaseWriter<DataModel> };
+        doc: D;
+        operation: "update" | "delete";
+      }
+    | {
+        ctx: Ctx & { db: GenericDatabaseWriter<DataModel> };
+        doc: WithoutSystemFields<D>;
+        operation: "insert";
+      }
+) => Promise<boolean>;
 
 export type Rules<Ctx, DataModel extends GenericDataModel> = {
-  [T in TableNamesInDataModel<DataModel>]?: {
-    read?: Rule<Ctx, DocumentByName<DataModel, T>>;
-    modify?: Rule<Ctx, DocumentByName<DataModel, T>>;
-    insert?: Rule<Ctx, WithoutSystemFields<DocumentByName<DataModel, T>>>;
-  };
+  [T in TableNamesInDataModel<DataModel>]?: Rule<
+    Ctx,
+    DocumentByName<DataModel, T>
+  >;
 };
 
 /**
- * Apply row level security (RLS) to queries and mutations with the returned
+ * Apply a policy to database reads and writes.
  * middleware functions.
  *
  * Example:
