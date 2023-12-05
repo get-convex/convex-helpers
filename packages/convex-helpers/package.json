@@ -8,7 +8,7 @@
     "./server*": "./dist/server*",
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
     "./server/relationships": "./dist/server/relationships.js",
-    "./server/middlewareUtils": "./dist/server/middlewareUtils.js"
+    "./server/middleware": "./dist/server/middleware.js"
   },
   "files": [
     "dist",
