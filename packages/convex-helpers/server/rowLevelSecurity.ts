@@ -104,10 +104,48 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   rules: Rules<RuleCtx, DataModel>
 ) => {
   return {
-    withQueryRLS: addQueryRLS(rules),
-    withMutationRLS: addMutationRLS(rules),
+    withQueryRLS: wrapQueryWithRLS(rules),
+    withMutationRLS: wrapMutationWIthRLS(rules),
   };
 };
+
+/**
+ * If you just want to read from the DB, you can use this.
+ * Later, you can use `generateQueryWithMiddleware` along
+ * with a custom function using wrapQueryDB with rules that
+ * depend on values generated once at the start of the function.
+ * E.g. Looking up a user to use for your rules:
+ * //TODO: Add example
+ */
+export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) {
+  return {
+    queryWithRLS: generateQueryWithMiddleware(
+      queryGeneric,
+      {},
+      wrapQueryDB(rules)
+    ),
+
+    mutationWithRLS: generateMutationWithMiddleware(
+      mutationGeneric,
+      {},
+      wrapMutationDB(rules)
+    ),
+
+    internalQueryWithRLS: generateQueryWithMiddleware(
+      queryGeneric,
+      {},
+      wrapQueryDB(rules)
+    ),
+
+    internalMutationWithRLS: generateMutationWithMiddleware(
+      mutationGeneric,
+      {},
+      wrapMutationDB(rules)
+    ),
+  };
+}
 
 export function wrapQueryDB<
   DataModel extends GenericDataModel,
@@ -129,49 +167,17 @@ export function wrapMutationDB<DataModel extends GenericDataModel, Ctx>(
   });
 }
 
-export const addQueryRLS = <Ctx, DataModel extends GenericDataModel>(
+export function wrapQueryWithRLS<Ctx, DataModel extends GenericDataModel>(
   rules: Rules<Ctx, DataModel>
-) => generateMiddlewareContextOnly({}, wrapQueryDB(rules));
+) {
+  return generateMiddlewareContextOnly({}, wrapQueryDB(rules));
+}
 
-export const addMutationRLS = <Ctx, DataModel extends GenericDataModel>(
+export function wrapMutationWIthRLS<Ctx, DataModel extends GenericDataModel>(
   rules: Rules<Ctx, DataModel>
-) => generateMiddlewareContextOnly({}, wrapMutationDB(rules));
-
-/**
- * If you just want to read from the DB, you can use this.
- * Later, you can use `generateQueryWithMiddleware` along
- * with a custom function using wrapQueryDB with rules that
- * depend on values generated once at the start of the function.
- * E.g. Looking up a user to use for your rules:
- * //TODO: Add example
- */
-export const BasicRowLevelSecurity = <DataModel extends GenericDataModel>(
-  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
-) => ({
-  queryWithRLS: generateQueryWithMiddleware(
-    queryGeneric,
-    {},
-    wrapQueryDB(rules)
-  ),
-
-  mutationWithRLS: generateMutationWithMiddleware(
-    mutationGeneric,
-    {},
-    wrapMutationDB(rules)
-  ),
-
-  internalQueryWithRLS: generateQueryWithMiddleware(
-    queryGeneric,
-    {},
-    wrapQueryDB(rules)
-  ),
-
-  internalMutationWithRLS: generateMutationWithMiddleware(
-    mutationGeneric,
-    {},
-    wrapMutationDB(rules)
-  ),
-});
+) {
+  return generateMiddlewareContextOnly({}, wrapMutationDB(rules));
+}
 
 type AuthPredicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>
