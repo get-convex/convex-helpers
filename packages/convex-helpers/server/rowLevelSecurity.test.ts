@@ -1,9 +1,43 @@
 import { RowLevelSecurity, BasicRowLevelSecurity } from "./rowLevelSecurity";
 
-import { mutationGeneric, queryGeneric } from "convex/server";
+import {
+  GenericDataModel,
+  GenericQueryCtx,
+  mutationGeneric,
+  queryGeneric,
+} from "convex/server";
 import { v } from "convex/values";
 import { generateMiddlewareContextOnly } from "./middleware";
 
+const { withQueryRLS: testWrap } = RowLevelSecurity({
+  cookies: {
+    insert: async (ctx: GenericQueryCtx<GenericDataModel>) => {
+      ctx.db;
+      return true;
+    },
+  },
+});
+const addA = generateMiddlewareContextOnly({}, (ctx) => ({
+  ...ctx,
+  a: 1 as const,
+}));
+// works both ways when RLS only depends on QueryCtx
+queryGeneric(
+  addA(
+    testWrap(async (ctx) => {
+      ctx.a;
+      ctx.db;
+    })
+  )
+);
+queryGeneric(
+  testWrap(
+    addA(async (ctx) => {
+      ctx.a;
+      ctx.db;
+    })
+  )
+);
 const { withMutationRLS, withQueryRLS } = RowLevelSecurity({
   cookies: {
     insert: async (ctx: { a: 1 }) => {
@@ -20,10 +54,7 @@ const { withMutationRLS, withQueryRLS } = RowLevelSecurity({
     },
   },
 });
-const addA = generateMiddlewareContextOnly({}, (ctx) => ({
-  ...ctx,
-  a: 1 as const,
-}));
+// can pass in custom query to custom RLS
 mutationGeneric(
   addA({
     args: { b: v.number() },
@@ -75,6 +106,9 @@ const { mutationWithRLS } = BasicRowLevelSecurity({
       return true;
     },
   },
+});
+mutationWithRLS(async (ctx) => {
+  ctx.db;
 });
 mutationWithRLS({
   args: {},
