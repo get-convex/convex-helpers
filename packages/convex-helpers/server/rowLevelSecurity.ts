@@ -34,7 +34,7 @@ import {
   QueryBuilder,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { customMutation, customQuery } from "./mod";
+import { customCtx, customMutation, customQuery } from "./mod";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -148,43 +148,22 @@ export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
   return {
     queryWithRLS: customQuery(
       queryGeneric as QueryBuilder<DataModel, "public">,
-      {
-        args: {},
-        input: ({ ctx }) => ({
-          ctx: { db: wrapDatabaseReader(ctx, ctx.db, rules) },
-          args: {},
-        }),
-      }
+      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
     ),
 
     mutationWithRLS: customMutation(
       mutationGeneric as MutationBuilder<DataModel, "public">,
-      {
-        args: {},
-        input: ({ ctx }) => ({
-          ctx: { db: wrapDatabaseWriter(ctx, ctx.db, rules) },
-          args: {},
-        }),
-      }
+      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
     ),
 
     internalQueryWithRLS: customQuery(
       internalQueryGeneric as QueryBuilder<DataModel, "internal">,
-      {
-        args: {},
-        input: ({ ctx }) => ({
-          ctx: { db: wrapDatabaseReader(ctx, ctx.db, rules) },
-          args: {},
-        }),
-      }
+      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
     ),
 
     internalMutationWithRLS: customMutation(
       internalMutationGeneric as MutationBuilder<DataModel, "internal">,
-      {
-        args: {},
-        input: (ctx) => [{ db: wrapDatabaseWriter(ctx, ctx.db, rules) }, {}],
-      }
+      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
     ),
   };
 }

@@ -55,6 +55,16 @@ export type Mod<
     | { ctx: ModCtx; args: ModMadeArgs };
 };
 
+export const customCtx = <
+  Ctx extends Record<string, any>,
+  ModCtx extends Record<string, any>
+>(
+  mod: (original: Ctx) => Promise<ModCtx> | ModCtx
+): Mod<Ctx, EmptyObject, ModCtx, EmptyObject> => ({
+  args: {},
+  input: async ({ ctx }) => ({ ctx: await mod(ctx), args: {} }),
+});
+
 export type EmptyObject = Record<string, never>;
 export const Noop = {
   args: {},
