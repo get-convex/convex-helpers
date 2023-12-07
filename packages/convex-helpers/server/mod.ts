@@ -21,7 +21,10 @@ export function splitArgs<
 >(
   splitArgsValidator: SplitArgsValidator,
   args: Args & ObjectType<SplitArgsValidator>
-): [ObjectType<SplitArgsValidator>, Args] {
+): {
+  split: ObjectType<SplitArgsValidator>;
+  rest: Omit<Args, keyof SplitArgsValidator>;
+} {
   const rest: Record<string, any> = {};
   const split: Record<string, any> = {};
   for (const arg in args) {
@@ -31,7 +34,10 @@ export function splitArgs<
       rest[arg] = args[arg];
     }
   }
-  return [split, rest] as [ObjectType<SplitArgsValidator>, Args];
+  return { split, rest } as {
+    split: ObjectType<SplitArgsValidator>;
+    rest: Args;
+  };
 }
 
 export type Mod<
@@ -108,7 +114,7 @@ export function customQuery<
           ...inputArgs,
         },
         handler: async (ctx, allArgs: any) => {
-          const [split, rest] = splitArgs(inputArgs, allArgs);
+          const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod({ ctx, args: split });
           return await fn.handler(
             { ...ctx, ...added.ctx },
@@ -186,7 +192,7 @@ export function customMutation<
           ...inputArgs,
         },
         handler: async (ctx, allArgs: any) => {
-          const [split, rest] = splitArgs(inputArgs, allArgs);
+          const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod({ ctx, args: split });
           return await fn.handler(
             { ...ctx, ...added.ctx },
@@ -264,7 +270,7 @@ export function customAction<
           ...inputArgs,
         },
         handler: async (ctx, allArgs: any) => {
-          const [split, rest] = splitArgs(inputArgs, allArgs);
+          const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod({ ctx, args: split });
           return await fn.handler(
             { ...ctx, ...added.ctx },
