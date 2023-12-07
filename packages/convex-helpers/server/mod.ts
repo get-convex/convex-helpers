@@ -37,16 +37,16 @@ export function splitArgs<
 export type Mod<
   Ctx extends Record<string, any>,
   ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>
+  ModCtx extends Record<string, any> = EmptyObject,
+  ModMadeArgs extends Record<string, any> = EmptyObject
 > = {
   args: ModArgsValidator;
   input: (original: {
     ctx: Ctx;
     args: ObjectType<ModArgsValidator>;
   }) =>
-    | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
-    | { ctx: ModCtx; args: ModMadeArgs };
+    | Promise<{ ctx?: ModCtx; args?: ModMadeArgs }>
+    | { ctx?: ModCtx; args?: ModMadeArgs };
 };
 
 export type EmptyObject = Record<string, never>;
@@ -56,13 +56,23 @@ export const Noop = {
     return {};
   },
 };
+type a = typeof Noop extends Mod<{}, infer a, {}, infer b> ? b : never;
+
+type A<T extends Record<string, any>> = {
+  a?: T;
+};
+
+function f<T extends Record<string, any> = EmptyObject>(a?: A<T>) {
+  return a;
+}
+const c = f({});
 
 export function customQuery<
   ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
-  DataModel extends GenericDataModel
+  DataModel extends GenericDataModel,
+  ModCtx extends Record<string, any> = EmptyObject,
+  ModMadeArgs extends Record<string, any> = EmptyObject
 >(
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>

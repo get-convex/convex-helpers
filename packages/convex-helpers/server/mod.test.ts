@@ -7,9 +7,7 @@ import { customQuery } from "./mod";
  */
 const addCtxArg = customQuery(query, {
   args: {},
-  input: async () => {
-    return { ctx: { a: "hi" }, args: {} };
-  },
+  input: async () => ({ ctx: { a: "hi" } }),
 });
 const addC = addCtxArg({
   args: {},
@@ -36,13 +34,12 @@ queryMatches(addCU2, {}, { ctxA: "" });
  */
 const addArg = customQuery(query, {
   args: {},
-  input: async () => {
-    return { ctx: {}, args: { a: "hi" } };
-  },
+  input: async () => ({ args: { a: "hi" } }),
 });
 const add = addArg({
   args: {},
   handler: async (_ctx, args) => {
+    _ctx.blah;
     return { argsA: args.a }; // !!!
   },
 });
