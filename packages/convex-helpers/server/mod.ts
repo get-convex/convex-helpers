@@ -1,10 +1,18 @@
 import { ObjectType, PropertyValidators } from "convex/values";
 import {
+  ActionBuilder,
+  ArgsArray,
   FunctionVisibility,
+  GenericActionCtx,
   GenericDataModel,
+  GenericMutationCtx,
   GenericQueryCtx,
+  MutationBuilder,
   QueryBuilder,
+  RegisteredAction,
+  RegisteredMutation,
   RegisteredQuery,
+  UnvalidatedFunction,
 } from "convex/server";
 
 export function splitArgs<
@@ -55,13 +63,10 @@ export function customQuery<
   DataModel extends GenericDataModel
 >(
   query: QueryBuilder<DataModel, Visibility>,
-  // TODO:
-  // | MutationBuilder<DataModel, Visibility>
-  // | ActionBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
 ) {
-  // // TODO: add overload for unvalidated function
-  function customQuery<
+  // Overload for validated functions
+  function customQueryBuilder<
     ExistingArgsValidator extends PropertyValidators,
     Output
   >(fn: {
@@ -74,20 +79,222 @@ export function customQuery<
     Visibility,
     ObjectType<ExistingArgsValidator & ModArgsValidator>,
     Promise<Output>
-  > {
+  >;
+  // Overload for unvalidated functions
+  function customQueryBuilder<
+    Output,
+    ExistingArgs extends ArgsArray = OneArgArray
+  >(
+    fn: UnvalidatedFunction<
+      GenericQueryCtx<DataModel> & ModCtx,
+      ExistingArgs,
+      Output | Promise<Output>
+    >
+  ): RegisteredQuery<
+    Visibility,
+    ArgsArrayToObject<ExistingArgs>,
+    Promise<Output>
+  >;
+  function customQueryBuilder(fn: any): any {
+    // Looking forward to when input / args / ... are optional
+    const inputMod = mod.input ?? Noop.input;
+    const inputArgs = mod.args ?? Noop.args;
+    if ("args" in fn) {
+      return query({
+        args: {
+          ...fn.args,
+          ...inputArgs,
+        },
+        handler: async (ctx, allArgs: any) => {
+          const [split, rest] = splitArgs(inputArgs, allArgs);
+          const [modCtx, modArgs] = await inputMod(ctx, split);
+          return await fn.handler(
+            { ...ctx, ...modCtx },
+            { ...rest, ...modArgs }
+          );
+        },
+      });
+    }
+    if (Object.keys(inputArgs).length > 0) {
+      throw new Error(
+        "If you're using a custom function with arguments for the input " +
+          "modifier, you must declare the arguments for the function too."
+      );
+    }
+    const handler = fn.handler ?? fn;
     return query({
-      args: {
-        ...fn.args,
-        ...mod.args,
-      } as ExistingArgsValidator & ModArgsValidator,
-      handler: async (ctx: GenericQueryCtx<DataModel>, allArgs: any) => {
-        const [split, rest] = splitArgs(mod.args, allArgs);
-        // TODO: handle optional input
-        const [modCtx, modArgs] = await mod.input(ctx, split);
-        return await fn.handler({ ...ctx, ...modCtx }, { ...rest, ...modArgs });
+      handler: async (ctx, args: any) => {
+        const [modCtx] = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, args);
       },
     });
   }
 
-  return customQuery;
+  return customQueryBuilder;
 }
+
+export function customMutation<
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel
+>(
+  mutation: MutationBuilder<DataModel, Visibility>,
+  mod: Mod<GenericMutationCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
+) {
+  // Overload for validated functions
+  function customMutationBuilder<
+    ExistingArgsValidator extends PropertyValidators,
+    Output
+  >(fn: {
+    args: ExistingArgsValidator;
+    handler: (
+      ctx: GenericMutationCtx<DataModel> & ModCtx,
+      args: ObjectType<ExistingArgsValidator> & ModMadeArgs
+    ) => Output | Promise<Output>;
+  }): RegisteredMutation<
+    Visibility,
+    ObjectType<ExistingArgsValidator & ModArgsValidator>,
+    Promise<Output>
+  >;
+  // Overload for unvalidated functions
+  function customMutationBuilder<
+    Output,
+    ExistingArgs extends ArgsArray = OneArgArray
+  >(
+    fn: UnvalidatedFunction<
+      GenericMutationCtx<DataModel> & ModCtx,
+      ExistingArgs,
+      Output | Promise<Output>
+    >
+  ): RegisteredMutation<
+    Visibility,
+    ArgsArrayToObject<ExistingArgs>,
+    Promise<Output>
+  >;
+  function customMutationBuilder(fn: any): any {
+    // Looking forward to when input / args / ... are optional
+    const inputMod = mod.input ?? Noop.input;
+    const inputArgs = mod.args ?? Noop.args;
+    if ("args" in fn) {
+      return mutation({
+        args: {
+          ...fn.args,
+          ...inputArgs,
+        },
+        handler: async (ctx, allArgs: any) => {
+          const [split, rest] = splitArgs(inputArgs, allArgs);
+          const [modCtx, modArgs] = await inputMod(ctx, split);
+          return await fn.handler(
+            { ...ctx, ...modCtx },
+            { ...rest, ...modArgs }
+          );
+        },
+      });
+    }
+    if (Object.keys(inputArgs).length > 0) {
+      throw new Error(
+        "If you're using a custom function with arguments for the input " +
+          "modifier, you must declare the arguments for the function too."
+      );
+    }
+    const handler = fn.handler ?? fn;
+    return mutation({
+      handler: async (ctx, args: any) => {
+        const [modCtx] = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, args);
+      },
+    });
+  }
+
+  return customMutationBuilder;
+}
+
+export function customAction<
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel
+>(
+  action: ActionBuilder<DataModel, Visibility>,
+  mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
+) {
+  // Overload for validated functions
+  function customActionBuilder<
+    ExistingArgsValidator extends PropertyValidators,
+    Output
+  >(fn: {
+    args: ExistingArgsValidator;
+    handler: (
+      ctx: GenericActionCtx<DataModel> & ModCtx,
+      args: ObjectType<ExistingArgsValidator> & ModMadeArgs
+    ) => Output | Promise<Output>;
+  }): RegisteredAction<
+    Visibility,
+    ObjectType<ExistingArgsValidator & ModArgsValidator>,
+    Promise<Output>
+  >;
+  // Overload for unvalidated functions
+  function customActionBuilder<
+    Output,
+    ExistingArgs extends ArgsArray = OneArgArray
+  >(
+    fn: UnvalidatedFunction<
+      GenericActionCtx<DataModel> & ModCtx,
+      ExistingArgs,
+      Output | Promise<Output>
+    >
+  ): RegisteredAction<
+    Visibility,
+    ArgsArrayToObject<ExistingArgs>,
+    Promise<Output>
+  >;
+  function customActionBuilder(fn: any): any {
+    // Looking forward to when input / args / ... are optional
+    const inputMod = mod.input ?? Noop.input;
+    const inputArgs = mod.args ?? Noop.args;
+    if ("args" in fn) {
+      return action({
+        args: {
+          ...fn.args,
+          ...inputArgs,
+        },
+        handler: async (ctx, allArgs: any) => {
+          const [split, rest] = splitArgs(inputArgs, allArgs);
+          const [modCtx, modArgs] = await inputMod(ctx, split);
+          return await fn.handler(
+            { ...ctx, ...modCtx },
+            { ...rest, ...modArgs }
+          );
+        },
+      });
+    }
+    if (Object.keys(inputArgs).length > 0) {
+      throw new Error(
+        "If you're using a custom function with arguments for the input " +
+          "modifier, you must declare the arguments for the function too."
+      );
+    }
+    const handler = fn.handler ?? fn;
+    return action({
+      handler: async (ctx, args: any) => {
+        const [modCtx] = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, args);
+      },
+    });
+  }
+
+  return customActionBuilder;
+}
+
+// Copied from convex/server since they weren't exported
+export type DefaultFunctionArgs = Record<string, unknown>;
+type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
+  [ArgsObject];
+type ArgsArrayToObject<Args extends ArgsArray> = Args extends OneArgArray<
+  infer ArgsObject
+>
+  ? ArgsObject
+  : EmptyObject;

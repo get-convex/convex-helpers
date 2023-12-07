@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import { useQuery } from "convex/react";
 import { ApiFromModules, queryGeneric as query } from "convex/server";
 import { customQuery } from "./mod";
 
@@ -18,8 +17,20 @@ const addC = addCtxArg({
     return { ctxA: ctx.a }; // !!!
   },
 });
-const addCtxResult = useQuery(api.test.addC);
-console.log(addCtxResult?.ctxA);
+queryMatches(addC, {}, { ctxA: "" });
+// Unvalidated
+const addCU = addCtxArg({
+  handler: async (ctx) => {
+    return { ctxA: ctx.a }; // !!!
+  },
+});
+// Unvalidated variant 2
+queryMatches(addCU, {}, { ctxA: "" });
+const addCU2 = addCtxArg(async (ctx) => {
+  return { ctxA: ctx.a }; // !!!
+});
+queryMatches(addCU2, {}, { ctxA: "" });
+
 /**
  * Adding arg
  */
@@ -35,8 +46,17 @@ const add = addArg({
     return { argsA: args.a }; // !!!
   },
 });
-const addResult = useQuery(api.test.add);
-console.log(addResult?.argsA);
+queryMatches(add, {}, { argsA: "" });
+const addUnverified = addArg({
+  handler: async (_ctx, args) => {
+    return { argsA: args.a }; // !!!
+  },
+});
+queryMatches(addUnverified, {}, { argsA: "" });
+const addUnverified2 = addArg(async (_ctx, args) => {
+  return { argsA: args.a }; // !!!
+});
+queryMatches(addUnverified2, {}, { argsA: "" });
 /**
  * Consuming arg, add to ctx
  */
@@ -53,8 +73,7 @@ const consume = consumeArg({
     return { ctxA: ctx.a };
   },
 });
-const consumeResult = useQuery(api.test.consume, { a: "hi" });
-console.log(consumeResult?.ctxA);
+queryMatches(consume, { a: "" }, { ctxA: "" });
 /**
  * Passing Through arg, also add to ctx for fun
  */
@@ -70,8 +89,7 @@ const passThrough = passThrougArg({
     return { ctxA: ctx.a, argsA: args.a }; // !!!
   },
 });
-const passThroughResult = useQuery(api.test.passThrough, { a: "hi" });
-console.log(passThroughResult?.ctxA, passThroughResult?.argsA);
+queryMatches(passThrough, { a: "" }, { ctxA: "", argsA: "" });
 /**
  * Modify arg type, don't need to re-defined "a" arg
  */
@@ -88,8 +106,7 @@ const modify = modifyArg({
     return { ctxA: ctx.a, argsA: args.a };
   },
 });
-const modifyResult = useQuery(api.test.modify, { a: "hi" });
-console.log(modifyResult?.ctxA.charAt, modifyResult?.argsA.toFixed); // !!!
+queryMatches(modify, { a: "" }, { ctxA: "", argsA: 0 }); // !!!
 
 /**
  * Redefine arg type with the same type: OK!
@@ -104,8 +121,7 @@ const redefine = redefineArg({
     return { argsA: args.a };
   },
 });
-const redefineResult = useQuery(api.test.redefine, { a: "hi" });
-console.log(redefineResult?.argsA.charAt);
+queryMatches(redefine, { a: "" }, { argsA: "" });
 /**
  * Redefine arg type with different type: error!
  */
@@ -124,9 +140,7 @@ const never: never = null as never;
 // Errors if you pass a string to "a".
 // One caveat is that if you don't have a second param, it's ok passing no
 // params ({a: never} seems to type check as {} which means optional params)
-const badRedefineResult = useQuery(api.test.badRedefine, { b: 3, a: never });
-console.log(badRedefineResult?.argsA);
-
+queryMatches(badRedefine, { b: 3, a: never }, { argsA: never });
 /**
  * Test helpers
  */
@@ -142,20 +156,26 @@ declare const api: ApiFromModules<{
     addC: typeof addC;
   };
 }>;
+
 /**
  * Tests if two types are exactly the same.
  * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
  * (Apache Version 2.0, January 2004)
  */
-
-export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
-  T
->() => T extends Y ? 1 : 2
+type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
+  ? 1
+  : 2
   ? true
   : false;
 
-export function assert<T extends true>() {
+function assert<T extends true>() {
   // no need to do anything! we're just asserting at compile time that the type
   // parameter is true.
   return true as T;
 }
+
+function queryMatches<
+  A,
+  T extends (ctx: any, args: A) => any,
+  V extends Awaited<ReturnType<T>>
+>(_f: T, _a: A, _v: V) {}
