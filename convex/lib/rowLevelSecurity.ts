@@ -5,7 +5,6 @@ import {
   DocumentByName,
   Expression,
   FilterBuilder,
-  FunctionArgs,
   GenericDataModel,
   GenericTableInfo,
   IndexRange,
@@ -26,8 +25,15 @@ import {
   SearchIndexes,
   TableNamesInDataModel,
   WithoutSystemFields,
+  queryGeneric,
+  mutationGeneric,
 } from "convex/server";
 import { GenericId } from "convex/values";
+import {
+  generateMiddlewareContextOnly,
+  generateMutationWithMiddleware,
+  generateQueryWithMiddleware,
+} from "convex-helpers/server/middleware";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -97,41 +103,81 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
 export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   rules: Rules<RuleCtx, DataModel>
 ) => {
-  const withMutationRLS = <
-    Ctx extends GenericMutationCtx<DataModel>,
-    Args extends ArgsArray,
-    Output
-  >(
-    f: Handler<Ctx, Args, Output>
-  ): Handler<Ctx, Args, Output> => {
-    return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapWriter(ctx, ctx.db, rules);
-      return (f as any)({ ...ctx, db: wrappedDb }, ...args);
-    }) as Handler<Ctx, Args, Output>;
-  };
-  const withQueryRLS = <
-    Ctx extends GenericQueryCtx<DataModel>,
-    Args extends ArgsArray,
-    Output
-  >(
-    f: Handler<Ctx, Args, Output>
-  ): Handler<Ctx, Args, Output> => {
-    return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapReader(ctx, ctx.db, rules);
-      return (f as any)({ ...ctx, db: wrappedDb }, ...args);
-    }) as Handler<Ctx, Args, Output>;
-  };
   return {
-    withMutationRLS,
-    withQueryRLS,
+    withQueryRLS: wrapQueryWithRLS(rules),
+    withMutationRLS: wrapMutationWIthRLS(rules),
   };
 };
 
-type ArgsArray = [] | [FunctionArgs<any>];
-type Handler<Ctx, Args extends ArgsArray, Output> = (
-  ctx: Ctx,
-  ...args: Args
-) => Output;
+/**
+ * If you just want to read from the DB, you can use this.
+ * Later, you can use `generateQueryWithMiddleware` along
+ * with a custom function using wrapQueryDB with rules that
+ * depend on values generated once at the start of the function.
+ * E.g. Looking up a user to use for your rules:
+ * //TODO: Add example
+ */
+export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) {
+  return {
+    queryWithRLS: generateQueryWithMiddleware(
+      queryGeneric,
+      {},
+      wrapQueryDB(rules)
+    ),
+
+    mutationWithRLS: generateMutationWithMiddleware(
+      mutationGeneric,
+      {},
+      wrapMutationDB(rules)
+    ),
+
+    internalQueryWithRLS: generateQueryWithMiddleware(
+      queryGeneric,
+      {},
+      wrapQueryDB(rules)
+    ),
+
+    internalMutationWithRLS: generateMutationWithMiddleware(
+      mutationGeneric,
+      {},
+      wrapMutationDB(rules)
+    ),
+  };
+}
+
+export function wrapQueryDB<
+  DataModel extends GenericDataModel,
+  Ctx // extends GenericQueryCtx<DataModel> = GenericQueryCtx<DataModel>
+>(rules: Rules<Ctx, DataModel>) {
+  return (ctx: Ctx & GenericQueryCtx<DataModel>) => ({
+    ...ctx,
+    db: new WrapReader(ctx, ctx.db, rules),
+  });
+}
+export function wrapMutationDB<DataModel extends GenericDataModel, Ctx>(
+  rules: Rules<Ctx, DataModel>
+) {
+  return (
+    ctx: Ctx & GenericMutationCtx<DataModel>
+  ): Ctx & GenericMutationCtx<DataModel> => ({
+    ...ctx,
+    db: new WrapWriter(ctx, ctx.db, rules),
+  });
+}
+
+export function wrapQueryWithRLS<Ctx, DataModel extends GenericDataModel>(
+  rules: Rules<Ctx, DataModel>
+) {
+  return generateMiddlewareContextOnly({}, wrapQueryDB(rules));
+}
+
+export function wrapMutationWIthRLS<Ctx, DataModel extends GenericDataModel>(
+  rules: Rules<Ctx, DataModel>
+) {
+  return generateMiddlewareContextOnly({}, wrapMutationDB(rules));
+}
 
 type AuthPredicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>

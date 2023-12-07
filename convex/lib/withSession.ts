@@ -19,6 +19,8 @@ import {
 import { Doc, Id } from "../_generated/dataModel";
 import {
   DatabaseReader,
+  internalMutation,
+  internalQuery,
   mutation,
   MutationCtx,
   query,
@@ -27,8 +29,10 @@ import {
 import { ObjectType, PropertyValidators, v } from "convex/values";
 import {
   MergeArgsForRegistered,
-  generateMiddleware,
-} from "convex-helpers/server/middlewareUtils";
+  generateMiddlewareContextOnly,
+  generateMutationWithMiddleware,
+  generateQueryWithMiddleware,
+} from "convex-helpers/server/middleware";
 
 /** -----------------------------------------------------------------
  * withSession
@@ -65,7 +69,7 @@ const transformContextForSession = async <Ctx>(
  * @param func - Your function that can take in a `session` in the first (ctx) param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-export const withSession = generateMiddleware<
+export const withSession = generateMiddlewareContextOnly<
   { db: DatabaseReader },
   { session: Doc<"sessions"> },
   typeof sessionMiddlewareValidator
@@ -102,7 +106,7 @@ const transformContextForOptionalSession = async <Ctx>(
  * @param func - Your function that can take in a `session` in the first (ctx) param.
  * @returns A function to be passed to `query` or `mutation`.
  */
-export const withOptionalSession = generateMiddleware<
+export const withOptionalSession = generateMiddlewareContextOnly<
   { db: DatabaseReader },
   { session: Doc<"sessions"> | null },
   typeof optionalSessionMiddlewareValidator
@@ -125,34 +129,12 @@ export const withOptionalSession = generateMiddleware<
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export function mutationWithSession<
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  func: ValidatedFunction<
-    MutationCtx & { session: Doc<"sessions"> },
-    ArgsValidator,
-    Promise<Output>
-  >
-): RegisteredMutation<
-  "public",
-  ObjectType<ArgsValidator> & ObjectType<typeof sessionMiddlewareValidator>,
-  Output
->;
-export function mutationWithSession<Args extends ArgsArray, Output>(
-  func: UnvalidatedFunction<
-    MutationCtx & { session: Doc<"sessions"> },
-    Args,
-    Promise<Output>
-  >
-): RegisteredMutation<
-  "public",
-  MergeArgsForRegistered<Args, ObjectType<typeof sessionMiddlewareValidator>>,
-  Output
->;
-export function mutationWithSession(func: any): any {
-  return mutation(withSession(func));
-}
+export const mutationWithSession = generateMutationWithMiddleware(
+  mutation,
+  sessionMiddlewareValidator,
+  transformContextForSession
+);
+
 /**
  * Wrapper for a Convex query function that provides a session in ctx.
  *
@@ -170,35 +152,28 @@ export function mutationWithSession(func: any): any {
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export function queryWithSession<
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  func: ValidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> | null },
-    ArgsValidator,
-    Promise<Output>
-  >
-): RegisteredQuery<
-  "public",
-  ObjectType<ArgsValidator> &
-    ObjectType<typeof optionalSessionMiddlewareValidator>,
-  Output
->;
-export function queryWithSession<Args extends ArgsArray, Output>(
-  func: UnvalidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> | null },
-    Args,
-    Promise<Output>
-  >
-): RegisteredQuery<
-  "public",
-  MergeArgsForRegistered<
-    Args,
-    ObjectType<typeof optionalSessionMiddlewareValidator>
-  >,
-  Output
->;
-export function queryWithSession(func: any): any {
-  return query(withOptionalSession(func));
-}
+export const queryWithSession = generateQueryWithMiddleware(
+  query,
+  sessionMiddlewareValidator,
+  transformContextForSession
+);
+
+/**
+ * For use when calling from an action that has a sessionId and you
+ * want to initialize the session on the wrapped mutation.
+ */
+export const innerMutationWithSession = generateMutationWithMiddleware(
+  internalMutation,
+  sessionMiddlewareValidator,
+  transformContextForSession
+);
+
+/**
+ * For use when calling from an action that has a sessionId and you
+ * want to initialize the session on the wrapped query.
+ */
+export const innerQueryWithSession = generateQueryWithMiddleware(
+  internalQuery,
+  sessionMiddlewareValidator,
+  transformContextForSession
+);
