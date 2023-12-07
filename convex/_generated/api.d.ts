@@ -16,6 +16,7 @@ import type {
 } from "convex/server";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
+import type * as lib_crud from "../lib/crud.js";
 import type * as lib_honoWithConvex from "../lib/honoWithConvex.js";
 import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_relationships from "../lib/relationships.js";
@@ -37,6 +38,7 @@ import type * as sessions from "../sessions.js";
 declare const fullApi: ApiFromModules<{
   counter: typeof counter;
   http: typeof http;
+  "lib/crud": typeof lib_crud;
   "lib/honoWithConvex": typeof lib_honoWithConvex;
   "lib/migrations": typeof lib_migrations;
   "lib/relationships": typeof lib_relationships;
