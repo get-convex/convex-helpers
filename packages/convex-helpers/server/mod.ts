@@ -26,27 +26,39 @@ export function splitArgs<
   return [split, rest] as [ObjectType<SplitArgsValidator>, Args];
 }
 
+export type Mod<
+  Ctx extends Record<string, any>,
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>
+> = {
+  args: ModArgsValidator;
+  input: (
+    ctx: Ctx,
+    args: ObjectType<ModArgsValidator>
+  ) =>
+    | Promise<{
+        ctx: ModCtx;
+        args: ModMadeArgs;
+      }>
+    | {
+        ctx: ModCtx;
+        args: ModMadeArgs;
+      };
+};
+
 export function customQuery<
-  DataModel extends GenericDataModel,
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
-  Visibility extends FunctionVisibility
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel
 >(
   query: QueryBuilder<DataModel, Visibility>,
   // TODO:
   // | MutationBuilder<DataModel, Visibility>
   // | ActionBuilder<DataModel, Visibility>,
-  mod: {
-    args: ModArgsValidator;
-    input: (
-      ctx: GenericQueryCtx<DataModel>,
-      args: ObjectType<ModArgsValidator>
-    ) => Promise<{
-      ctx: ModCtx;
-      args: ModMadeArgs;
-    }>;
-  }
+  mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
 ) {
   // // TODO: add overload for unvalidated function
   function customQuery<
