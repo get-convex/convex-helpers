@@ -130,6 +130,7 @@ const never: never = null as never;
 // params ({a: never} seems to type check as {} which means optional params)
 const badRedefineResult = useQuery(api.test.badRedefine, { b: 3, a: never });
 console.log(badRedefineResult?.argsA);
+
 /**
  * Test helpers
  */

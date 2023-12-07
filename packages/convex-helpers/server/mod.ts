@@ -47,6 +47,21 @@ export type Mod<
       };
 };
 
+export type EmptyObject = Record<string, never>;
+export function Noop<Ctx extends Record<string, any>>(): Mod<
+  Ctx,
+  EmptyObject,
+  Ctx,
+  EmptyObject
+> {
+  return {
+    args: {},
+    input(ctx) {
+      return { ctx, args: {} };
+    },
+  };
+}
+
 export function customQuery<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
