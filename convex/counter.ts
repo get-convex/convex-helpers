@@ -9,7 +9,7 @@ import {
 import { wrapDatabaseReader } from "convex-helpers/server/rowLevelSecurity";
 import { getUserByTokenIdentifier } from "./lib/withUser";
 
-const myQuery = customQuery(
+const authenticatedQuery = customQuery(
   query,
   customCtx(async (ctx) => {
     const user = await getUserByTokenIdentifier(ctx);
@@ -19,8 +19,12 @@ const myQuery = customQuery(
           insert: async ({ user }, doc) => {
             return doc.user === user._id;
           },
-          read: async () => {
-            return true;
+          read: async ({ user }, doc) => {
+            const userRooms = await ctx.db
+              .query("presence")
+              .withIndex("by_user_room", (q) => q.eq("user", user._id))
+              .collect();
+            return userRooms.map((p) => p.room).includes(doc.room);
           },
           modify: async ({ user }, doc) => {
             return doc.user === user._id;
@@ -31,12 +35,31 @@ const myQuery = customQuery(
   })
 );
 
+export const getPresence = authenticatedQuery({
+  args: { presenceId: v.id("presence") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.presenceId);
+  },
+});
+
 const apiMutation = customMutation(mutation, {
   args: { apiKey: v.string() },
-  input: async ({ ctx, args }) => {
-    if (args.apiKey !== process.env.API_LEY) throw new Error("Invalid API key");
+  input: async (ctx, args) => {
+    if (args.apiKey !== process.env.API_KEY) throw new Error("Invalid API key");
     // validate api key in DB
     return { ctx: {}, args: {} };
+  },
+});
+
+export const fnCalledFromMyBackend = apiMutation({
+  args: { increment: v.number() },
+  handler: async (ctx, args) => {
+    const counter = await ctx.db.query("counter_table").first();
+    if (!counter) throw new Error("Counter not found");
+    await ctx.db.patch(counter._id, {
+      counter: counter.counter + args.increment,
+    });
+    return { success: true };
   },
 });
 
