@@ -5,7 +5,6 @@ import {
   mutation,
   MutationCtx,
   query,
-  QueryCtx,
 } from "../_generated/server";
 import { Id, TableNames } from "../_generated/dataModel";
 import { zCustomQuery } from "convex-helpers/server/zod";

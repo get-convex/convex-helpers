@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { useCallback } from "react";
 
 const Counter = () => {
-  const simpleQ = useQuery(api.lib.withZod.simple, { c: "hi", z: "i@g.com" });
+  const simpleQ = useQuery(api.counter.simple, { c: "hi", z: "i@g.com" });
 
   const counter =
     useQuery(api.counter.getCounter, { counterName: "clicks" }) ?? 0;
