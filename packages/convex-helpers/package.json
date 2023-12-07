@@ -17,7 +17,9 @@
     "server"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "watch": "chokidar 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run clean && npm run build' --initial"
   },
   "repository": {
     "type": "git",
@@ -39,6 +41,7 @@
     "convex": "^1.6.3"
   },
   "devDependencies": {
+    "chokidar-cli": "^3.0.0",
     "typescript": "^5.2.2"
   }
 }
