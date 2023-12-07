@@ -26,8 +26,15 @@ import {
   SearchIndexes,
   TableNamesInDataModel,
   WithoutSystemFields,
+  queryGeneric,
+  mutationGeneric,
+  internalQueryGeneric,
+  internalMutationGeneric,
+  MutationBuilder,
+  QueryBuilder,
 } from "convex/server";
 import { GenericId } from "convex/values";
+import { customMutation, customQuery } from "./mod";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -126,6 +133,68 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
     withQueryRLS,
   };
 };
+
+/**
+ * If you just want to read from the DB, you can use this.
+ * Later, you can use `generateQueryWithMiddleware` along
+ * with a custom function using wrapQueryDB with rules that
+ * depend on values generated once at the start of the function.
+ * E.g. Looking up a user to use for your rules:
+ * //TODO: Add example
+ */
+export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) {
+  return {
+    queryWithRLS: customQuery(
+      queryGeneric as QueryBuilder<DataModel, "public">,
+      {
+        args: {},
+        input: (ctx) => [{ db: wrapDatabaseReader(ctx, ctx.db, rules) }, {}],
+      }
+    ),
+
+    mutationWithRLS: customMutation(
+      mutationGeneric as MutationBuilder<DataModel, "public">,
+      {
+        args: {},
+        input: (ctx) => [{ db: wrapDatabaseWriter(ctx, ctx.db, rules) }, {}],
+      }
+    ),
+
+    internalQueryWithRLS: customQuery(
+      internalQueryGeneric as QueryBuilder<DataModel, "internal">,
+      {
+        args: {},
+        input: (ctx) => [{ db: wrapDatabaseReader(ctx, ctx.db, rules) }, {}],
+      }
+    ),
+
+    internalMutationWithRLS: customMutation(
+      internalMutationGeneric as MutationBuilder<DataModel, "internal">,
+      {
+        args: {},
+        input: (ctx) => [{ db: wrapDatabaseWriter(ctx, ctx.db, rules) }, {}],
+      }
+    ),
+  };
+}
+
+export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
+  ctx: Ctx,
+  db: GenericDatabaseReader<DataModel>,
+  rules: Rules<Ctx, DataModel>
+): GenericDatabaseReader<DataModel> {
+  return new WrapReader(ctx, db, rules);
+}
+
+export function wrapDatabaseWriter<Ctx, DataModel extends GenericDataModel>(
+  ctx: Ctx,
+  db: GenericDatabaseWriter<DataModel>,
+  rules: Rules<Ctx, DataModel>
+): GenericDatabaseWriter<DataModel> {
+  return new WrapWriter(ctx, db, rules);
+}
 
 type ArgsArray = [] | [FunctionArgs<any>];
 type Handler<Ctx, Args extends ArgsArray, Output> = (
@@ -325,7 +394,9 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     return await this.rules[tableName]!.read!(this.ctx, doc);
   }
 
-  async get<TableName extends string>(id: GenericId<TableName>): Promise<any> {
+  async get<TableName extends string>(
+    id: GenericId<TableName>
+  ): Promise<DocumentByName<DataModel, TableName> | null> {
     const doc = await this.db.get(id);
     if (doc) {
       const tableName = this.tableName(id);
