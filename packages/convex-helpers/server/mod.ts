@@ -53,7 +53,7 @@ export type EmptyObject = Record<string, never>;
 export const Noop = {
   args: {},
   input() {
-    return {};
+    return { args: {}, ctx: {} };
   },
 };
 
