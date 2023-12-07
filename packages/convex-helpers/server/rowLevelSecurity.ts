@@ -150,7 +150,10 @@ export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
       queryGeneric as QueryBuilder<DataModel, "public">,
       {
         args: {},
-        input: (ctx) => [{ db: wrapDatabaseReader(ctx, ctx.db, rules) }, {}],
+        input: ({ ctx }) => ({
+          ctx: { db: wrapDatabaseReader(ctx, ctx.db, rules) },
+          args: {},
+        }),
       }
     ),
 
@@ -158,7 +161,10 @@ export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
       mutationGeneric as MutationBuilder<DataModel, "public">,
       {
         args: {},
-        input: (ctx) => [{ db: wrapDatabaseWriter(ctx, ctx.db, rules) }, {}],
+        input: ({ ctx }) => ({
+          ctx: { db: wrapDatabaseWriter(ctx, ctx.db, rules) },
+          args: {},
+        }),
       }
     ),
 
@@ -166,7 +172,10 @@ export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
       internalQueryGeneric as QueryBuilder<DataModel, "internal">,
       {
         args: {},
-        input: (ctx) => [{ db: wrapDatabaseReader(ctx, ctx.db, rules) }, {}],
+        input: ({ ctx }) => ({
+          ctx: { db: wrapDatabaseReader(ctx, ctx.db, rules) },
+          args: {},
+        }),
       }
     ),
 
