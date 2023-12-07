@@ -36,31 +36,16 @@ export type Mod<
   input: (
     ctx: Ctx,
     args: ObjectType<ModArgsValidator>
-  ) =>
-    | Promise<{
-        ctx: ModCtx;
-        args: ModMadeArgs;
-      }>
-    | {
-        ctx: ModCtx;
-        args: ModMadeArgs;
-      };
+  ) => Promise<[ModCtx, ModMadeArgs]> | [ModCtx, ModMadeArgs];
 };
 
 export type EmptyObject = Record<string, never>;
-export function Noop<Ctx extends Record<string, any>>(): Mod<
-  Ctx,
-  EmptyObject,
-  Ctx,
-  EmptyObject
-> {
-  return {
-    args: {},
-    input(ctx) {
-      return { ctx, args: {} };
-    },
-  };
-}
+export const Noop = {
+  args: {},
+  input() {
+    return [{}, {}];
+  },
+};
 
 export function customQuery<
   ModArgsValidator extends PropertyValidators,
@@ -82,7 +67,7 @@ export function customQuery<
   >(fn: {
     args: ExistingArgsValidator;
     handler: (
-      ctx: ModCtx,
+      ctx: GenericQueryCtx<DataModel> & ModCtx,
       args: ObjectType<ExistingArgsValidator> & ModMadeArgs
     ) => Output | Promise<Output>;
   }): RegisteredQuery<
@@ -98,8 +83,8 @@ export function customQuery<
       handler: async (ctx: GenericQueryCtx<DataModel>, allArgs: any) => {
         const [split, rest] = splitArgs(mod.args, allArgs);
         // TODO: handle optional input
-        const { ctx: modCtx, args: modArgs } = await mod.input(ctx, split);
-        return await fn.handler(modCtx, { ...rest, ...modArgs });
+        const [modCtx, modArgs] = await mod.input(ctx, split);
+        return await fn.handler({ ...ctx, ...modCtx }, { ...rest, ...modArgs });
       },
     });
   }

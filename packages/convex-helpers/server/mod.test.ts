@@ -8,8 +8,8 @@ import { customQuery } from "./mod";
  */
 const addCtxArg = customQuery(query, {
   args: {},
-  input: async (ctx) => {
-    return { ctx: { ...ctx, a: "hi" }, args: {} };
+  input: async () => {
+    return [{ a: "hi" }, {}];
   },
 });
 const addC = addCtxArg({
@@ -25,8 +25,8 @@ console.log(addCtxResult?.ctxA);
  */
 const addArg = customQuery(query, {
   args: {},
-  input: async (ctx, {}) => {
-    return { ctx, args: { a: "hi" } };
+  input: async () => {
+    return [{}, { a: "hi" }];
   },
 });
 const add = addArg({
@@ -42,8 +42,8 @@ console.log(addResult?.argsA);
  */
 const consumeArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (ctx, { a }) => {
-    return { ctx: { ...ctx, a }, args: {} };
+  input: async (_ctx, { a }) => {
+    return [{ a }, {}];
   },
 });
 const consume = consumeArg({
@@ -60,8 +60,8 @@ console.log(consumeResult?.ctxA);
  */
 const passThrougArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (ctx, args) => {
-    return { ctx: { ...ctx, a: args.a }, args };
+  input: async (_ctx, args) => {
+    return [{ a: args.a }, args];
   },
 });
 const passThrough = passThrougArg({
@@ -77,8 +77,8 @@ console.log(passThroughResult?.ctxA, passThroughResult?.argsA);
  */
 const modifyArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (ctx, { a }) => {
-    return { ctx: { ...ctx, a }, args: { a: 123 } }; // !!!
+  input: async (_ctx, { a }) => {
+    return [{ a }, { a: 123 }]; // !!!
   },
 });
 const modify = modifyArg({
@@ -96,9 +96,7 @@ console.log(modifyResult?.ctxA.charAt, modifyResult?.argsA.toFixed); // !!!
  */
 const redefineArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (ctx, args) => {
-    return { ctx, args };
-  },
+  input: async (_ctx, args) => [{}, args],
 });
 const redefine = redefineArg({
   args: { a: v.string() },
@@ -113,9 +111,7 @@ console.log(redefineResult?.argsA.charAt);
  */
 const badRedefineArg = customQuery(query, {
   args: { a: v.string(), b: v.number() },
-  input: async (ctx, args) => {
-    return { ctx, args };
-  },
+  input: async (_ctx, args) => [{}, args],
 });
 const badRedefine = badRedefineArg({
   args: { a: v.number() },
