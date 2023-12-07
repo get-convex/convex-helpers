@@ -8,7 +8,7 @@ import { customQuery } from "./mod";
 const addCtxArg = customQuery(query, {
   args: {},
   input: async () => {
-    return [{ a: "hi" }, {}];
+    return { ctx: { a: "hi" }, args: {} };
   },
 });
 const addC = addCtxArg({
@@ -37,7 +37,7 @@ queryMatches(addCU2, {}, { ctxA: "" });
 const addArg = customQuery(query, {
   args: {},
   input: async () => {
-    return [{}, { a: "hi" }];
+    return { ctx: {}, args: { a: "hi" } };
   },
 });
 const add = addArg({
@@ -62,8 +62,8 @@ queryMatches(addUnverified2, {}, { argsA: "" });
  */
 const consumeArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (_ctx, { a }) => {
-    return [{ a }, {}];
+  input: async ({ args: { a } }) => {
+    return { ctx: { a }, args: {} };
   },
 });
 const consume = consumeArg({
@@ -79,8 +79,8 @@ queryMatches(consume, { a: "" }, { ctxA: "" });
  */
 const passThrougArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (_ctx, args) => {
-    return [{ a: args.a }, args];
+  input: async ({ args }) => {
+    return { ctx: { a: args.a }, args };
   },
 });
 const passThrough = passThrougArg({
@@ -95,8 +95,8 @@ queryMatches(passThrough, { a: "" }, { ctxA: "", argsA: "" });
  */
 const modifyArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (_ctx, { a }) => {
-    return [{ a }, { a: 123 }]; // !!!
+  input: async ({ args: { a } }) => {
+    return { ctx: { a }, args: { a: 123 } }; // !!!
   },
 });
 const modify = modifyArg({
@@ -113,7 +113,7 @@ queryMatches(modify, { a: "" }, { ctxA: "", argsA: 0 }); // !!!
  */
 const redefineArg = customQuery(query, {
   args: { a: v.string() },
-  input: async (_ctx, args) => [{}, args],
+  input: async ({ args }) => ({ ctx: {}, args }),
 });
 const redefine = redefineArg({
   args: { a: v.string() },
@@ -127,7 +127,7 @@ queryMatches(redefine, { a: "" }, { argsA: "" });
  */
 const badRedefineArg = customQuery(query, {
   args: { a: v.string(), b: v.number() },
-  input: async (_ctx, args) => [{}, args],
+  input: async ({ args }) => ({ ctx: {}, args }),
 });
 const badRedefine = badRedefineArg({
   args: { a: v.number() },
