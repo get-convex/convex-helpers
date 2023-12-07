@@ -3,6 +3,8 @@ import { useQuery, useMutation } from "convex/react";
 import { useCallback } from "react";
 
 const Counter = () => {
+  const simpleQ = useQuery(api.lib.withZod.simple, { c: "hi", z: "i@g.com" });
+
   const counter =
     useQuery(api.counter.getCounter, { counterName: "clicks" }) ?? 0;
   const increment = useMutation(api.counter.incrementCounter);
@@ -13,6 +15,9 @@ const Counter = () => {
 
   return (
     <div>
+      <p>
+        {"SimpleQ:"} {simpleQ}
+      </p>
       <p>
         {"Here's the counter:"} {counter}
       </p>

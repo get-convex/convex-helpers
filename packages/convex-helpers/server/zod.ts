@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { Mod, customQuery, splitArgs } from "./mod";
-import { ObjectType, PropertyValidators } from "convex/values";
+import {
+  ConvexError,
+  ObjectType,
+  PropertyValidators,
+  Validator,
+} from "convex/values";
 import {
   FunctionVisibility,
   GenericDataModel,
@@ -16,37 +21,10 @@ type ZodFn<Ctx, Args extends ZodValidator, Returns> = {
   handler: (ctx: Ctx, arg: z.output<z.ZodObject<Args>>) => Promise<Returns>;
 };
 
-function zQueryCustom<
-  Args extends ZodValidator,
-  Returns,
-  Visibility extends FunctionVisibility,
-  DataModel extends GenericDataModel
->(
-  _visibility: Visibility,
-  fn: ZodFn<GenericQueryCtx<DataModel>, Args, Returns>
-) {
-  const zodArgs = z.object(fn.args);
-  const argsValidator = { a: v.string() };
-  const query = customQuery(
-    queryGeneric as QueryBuilder<DataModel, Visibility>,
-    {
-      args: argsValidator,
-      input: async (ctx, args) => ({ ctx, args: zodArgs.parse(args) }),
-    }
-  );
-  return query({
-    args: {}, // all added by customQuery
-    handler: async (ctx, args) => {
-      return fn.handler(ctx, args);
-    },
-  });
-}
 const argsValidator = { a: v.string() };
 
 /**
- * Doesn't work well: doesn't translate things through
- * @param args
- * @returns
+ * TODO
  */
 export const zodMod = <
   Ctx extends Record<string, any>,
@@ -55,13 +33,24 @@ export const zodMod = <
   args: Args
 ): Mod<Ctx, typeof argsValidator, Ctx, z.output<z.ZodObject<Args>>> => {
   const zodArgs = z.object(args);
-  return {
-    args: argsValidator,
-    input: async (ctx: Ctx, args: ObjectType<typeof argsValidator>) => ({
-      ctx,
-      args: zodArgs.parse(args),
-    }),
-  };
+  // TODO: const argsValidator = zodToConvex(zodArgs);
+  try {
+    const validatedArgs = zodArgs.parse(args);
+    return {
+      args: argsValidator,
+      input: async (ctx: Ctx, args: ObjectType<typeof argsValidator>) => ({
+        ctx,
+        args: validatedArgs,
+      }),
+    };
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      throw new ConvexError({
+        ZodError: JSON.parse(JSON.stringify(e.errors, null, 2)),
+      });
+    }
+    throw e;
+  }
 };
 
 export function zCustomQuery<
@@ -99,72 +88,57 @@ export function zCustomQuery<
         const [split, rest] = splitArgs(mod.args, allArgs);
         // TODO: handle optional input
         const { ctx: modCtx, args: modArgs } = await mod.input(ctx, split);
-        return await fn.handler(modCtx, { ...zodArgs.parse(rest), ...modArgs });
+        try {
+          const validatedArgs = zodArgs.parse(rest);
+          return await fn.handler(modCtx, {
+            ...validatedArgs,
+            ...modArgs,
+          });
+        } catch (e) {
+          if (e instanceof z.ZodError) {
+            throw new ConvexError({
+              ZodError: JSON.parse(JSON.stringify(e.errors, null, 2)),
+            });
+          }
+          throw e;
+        }
       },
     });
   }
 
   return customQuery;
 }
-function zQuery<
-  Args extends ZodValidator,
-  Returns,
-  Visibility extends FunctionVisibility,
-  DataModel extends GenericDataModel
->(
-  // _visibility: Visibility,
-  query2: QueryBuilder<DataModel, Visibility>,
-  fn: ZodFn<GenericQueryCtx<DataModel>, Args, Returns>
-) {
-  const zodArgs = z.object(fn.args);
-  const argsValidator = { a: v.string() };
-  // const query = customQuery(
-  //   queryGeneric as QueryBuilder<DataModel, Visibility>,
-  //   {
-  //     args: argsValidator,
-  //     input: async (ctx, args) => ({ ctx, args: zodArgs.parse(args) }),
-  //   }
-  // );
-  return query2({
-    args: argsValidator,
-    handler: async (ctx, args) => {
-      return fn.handler(ctx, zodArgs.parse(args));
-    },
-  });
-}
 
-const simple = zQuery(queryGeneric, {
-  args: { a: z.custom<Error>(() => new Error()) },
-  handler: async (ctx, { a }) => {
-    ctx.db;
-    a;
-    return 123 as const;
-  },
-});
+// type a = [1, 3];
+// const a: a = [1, 3];
 
-const simpleQ = useQuery(api.test.simple, { a: "hi" });
-console.log(simpleQ?.toFixed);
+// const zQ = zCustomQuery(queryGeneric, {
+//   args: { sessionId: v.string() },
+//   input: async (ctx, args) => ({
+//     ctx: { ...ctx, user: "U", session: args.sessionId },
+//     args: { status: "validated" as const },
+//   }),
+// });
 
-import { useQuery } from "convex/react";
-import { ApiFromModules } from "convex/server";
-declare const api: ApiFromModules<{
-  test: {
-    simple: typeof simple;
-  };
-}>;
+// const simple = zQ({
+//   args: { z: z.custom<Error>(() => new Error()) },
+//   handler: async (ctx, { status, z }) => {
+//     ctx.db;
+//     ctx.session;
+//     ctx.user;
+//     status;
+//     z.message;
+//     return 123 as const;
+//   },
+// });
 
-export const withZod = <Ctx, Args extends ZodValidator, Returns>({
-  args,
-  handler,
-}: {
-  args: Args;
-  handler: (ctx: Ctx, arg: z.output<z.ZodObject<Args>>) => Promise<Returns>;
-}): ((ctx: Ctx, args: z.input<z.ZodObject<Args>>) => Promise<Returns>) => {
-  const zodType = z.function(z.tuple([z.object(args)]));
-  return (ctx, args) => {
-    const innerFunc = (validatedArgs: z.output<z.ZodObject<Args>>) =>
-      handler(ctx, validatedArgs);
+// const simpleQ = useQuery(api.test.simple, { z: "hi", sessionId: "123" });
+// console.log(simpleQ?.toFixed);
 
-    return zodType.implement(innerFunc)(args);
-  };
-};
+// import { useQuery } from "convex/react";
+// import { ApiFromModules } from "convex/server";
+// declare const api: ApiFromModules<{
+//   test: {
+//     simple: typeof simple;
+//   };
+// }>;
