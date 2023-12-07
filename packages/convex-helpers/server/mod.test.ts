@@ -62,7 +62,7 @@ queryMatches(addUnverified2, {}, { argsA: "" });
  */
 const consumeArg = customQuery(query, {
   args: { a: v.string() },
-  input: async ({ args: { a } }) => {
+  input: async (_ctx, { a }) => {
     return { ctx: { a }, args: {} };
   },
 });
@@ -79,7 +79,7 @@ queryMatches(consume, { a: "" }, { ctxA: "" });
  */
 const passThrougArg = customQuery(query, {
   args: { a: v.string() },
-  input: async ({ args }) => {
+  input: async (_ctx, args) => {
     return { ctx: { a: args.a }, args };
   },
 });
@@ -95,7 +95,7 @@ queryMatches(passThrough, { a: "" }, { ctxA: "", argsA: "" });
  */
 const modifyArg = customQuery(query, {
   args: { a: v.string() },
-  input: async ({ args: { a } }) => {
+  input: async (_ctx, { a }) => {
     return { ctx: { a }, args: { a: 123 } }; // !!!
   },
 });
@@ -113,7 +113,7 @@ queryMatches(modify, { a: "" }, { ctxA: "", argsA: 0 }); // !!!
  */
 const redefineArg = customQuery(query, {
   args: { a: v.string() },
-  input: async ({ args }) => ({ ctx: {}, args }),
+  input: async (_ctx, args) => ({ ctx: {}, args }),
 });
 const redefine = redefineArg({
   args: { a: v.string() },
@@ -127,7 +127,7 @@ queryMatches(redefine, { a: "" }, { argsA: "" });
  */
 const badRedefineArg = customQuery(query, {
   args: { a: v.string(), b: v.number() },
-  input: async ({ args }) => ({ ctx: {}, args }),
+  input: async (_ctx, args) => ({ ctx: {}, args }),
 });
 const badRedefine = badRedefineArg({
   args: { a: v.number() },

@@ -47,10 +47,10 @@ export type Mod<
   ModMadeArgs extends Record<string, any>
 > = {
   args: ModArgsValidator;
-  input: (original: {
-    ctx: Ctx;
-    args: ObjectType<ModArgsValidator>;
-  }) =>
+  input: (
+    ctx: Ctx,
+    args: ObjectType<ModArgsValidator>
+  ) =>
     | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
     | { ctx: ModCtx; args: ModMadeArgs };
 };
@@ -62,7 +62,7 @@ export const customCtx = <
   mod: (original: Ctx) => Promise<ModCtx> | ModCtx
 ): Mod<Ctx, EmptyObject, ModCtx, EmptyObject> => ({
   args: {},
-  input: async ({ ctx }) => ({ ctx: await mod(ctx), args: {} }),
+  input: async (ctx) => ({ ctx: await mod(ctx), args: {} }),
 });
 
 export type EmptyObject = Record<string, never>;
@@ -125,7 +125,7 @@ export function customQuery<
         },
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod({ ctx, args: split });
+          const added = await inputMod(ctx, split);
           return await fn.handler(
             { ...ctx, ...added.ctx },
             { ...rest, ...added.args }
@@ -142,7 +142,7 @@ export function customQuery<
     const handler = fn.handler ?? fn;
     return query({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod({ ctx, args });
+        const { ctx: modCtx } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, args);
       },
     });
@@ -203,7 +203,7 @@ export function customMutation<
         },
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod({ ctx, args: split });
+          const added = await inputMod(ctx, split);
           return await fn.handler(
             { ...ctx, ...added.ctx },
             { ...rest, ...added.args }
@@ -220,7 +220,7 @@ export function customMutation<
     const handler = fn.handler ?? fn;
     return mutation({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod({ ctx, args });
+        const { ctx: modCtx } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, args);
       },
     });
@@ -281,7 +281,7 @@ export function customAction<
         },
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod({ ctx, args: split });
+          const added = await inputMod(ctx, split);
           return await fn.handler(
             { ...ctx, ...added.ctx },
             { ...rest, ...added.args }
@@ -298,7 +298,7 @@ export function customAction<
     const handler = fn.handler ?? fn;
     return action({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod({ ctx, args });
+        const { ctx: modCtx } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, args);
       },
     });
