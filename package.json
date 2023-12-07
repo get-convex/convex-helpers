@@ -7,7 +7,7 @@
     "build": "tsc && vite build",
     "dev:backend": "convex dev",
     "dev:frontend": "vite",
-    "predev": "convex dev --once",
+    "predev": "convex dev --until-success",
     "test": "vitest"
   },
   "dependencies": {
