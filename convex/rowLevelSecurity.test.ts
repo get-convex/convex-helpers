@@ -11,7 +11,7 @@ import {
   customCtx,
   customMutation,
   customQuery,
-} from "convex-helpers/server/mod";
+} from "convex-helpers/server/customFunctions";
 
 const { mutationWithRLS } = BasicRowLevelSecurity<DataModel>({
   counter_table: {

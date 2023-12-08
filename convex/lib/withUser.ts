@@ -21,7 +21,7 @@ import {
   customCtx,
   customMutation,
   customQuery,
-} from "convex-helpers/server/mod";
+} from "convex-helpers/server/customFunctions";
 
 export async function getUserByTokenIdentifier<Ctx extends QueryCtx>(ctx: Ctx) {
   const identity = await ctx.auth.getUserIdentity();

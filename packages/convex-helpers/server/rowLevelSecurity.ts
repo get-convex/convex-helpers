@@ -34,7 +34,7 @@ import {
   QueryBuilder,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { customCtx, customMutation, customQuery } from "./mod";
+import { customCtx, customMutation, customQuery } from "./customFunctions";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 

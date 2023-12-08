@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { ApiFromModules, queryGeneric as query } from "convex/server";
-import { customCtx, customQuery } from "./mod";
+import { queryGeneric as query } from "convex/server";
+import { customCtx, customQuery } from "./customFunctions";
 
 /**
  * Adding ctx

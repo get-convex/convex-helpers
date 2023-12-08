@@ -56,16 +56,17 @@ export type Mod<
 };
 
 export const customCtx = <
-  Ctx extends Record<string, any>,
-  ModCtx extends Record<string, any>
+  InCtx extends Record<string, any>,
+  OutCtx extends Record<string, any>
 >(
-  mod: (original: Ctx) => Promise<ModCtx> | ModCtx
-): Mod<Ctx, EmptyObject, ModCtx, EmptyObject> => ({
+  mod: (original: InCtx) => Promise<OutCtx> | OutCtx
+): Mod<InCtx, EmptyObject, OutCtx, EmptyObject> => ({
   args: {},
   input: async (ctx) => ({ ctx: await mod(ctx), args: {} }),
 });
 
-export type EmptyObject = Record<string, never>;
+type EmptyObject = Record<string, never>;
+
 export const Noop = {
   args: {},
   input() {
@@ -308,7 +309,7 @@ export function customAction<
 }
 
 // Copied from convex/server since they weren't exported
-export type DefaultFunctionArgs = Record<string, unknown>;
+type DefaultFunctionArgs = Record<string, unknown>;
 type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
   [ArgsObject];
 type ArgsArrayToObject<Args extends ArgsArray> = Args extends OneArgArray<
