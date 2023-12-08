@@ -111,6 +111,10 @@ export function customQuery<
     >
   ): RegisteredQuery<
     Visibility,
+    // Unvalidated functions are only allowed when there are no mod args.
+    // So we don't include the mod args in the output type.
+    // This allows us to use a customFunction (that doesn't modify ctx/args)
+    // as a parameter to other customFunctions, e.g. with RLS.
     ArgsArrayToObject<ExistingArgs>,
     Promise<Output>
   >;
@@ -189,6 +193,10 @@ export function customMutation<
     >
   ): RegisteredMutation<
     Visibility,
+    // Unvalidated functions are only allowed when there are no mod args.
+    // So we don't include the mod args in the output type.
+    // This allows us to use a customFunction (that doesn't modify ctx/args)
+    // as a parameter to other customFunctions, e.g. with RLS.
     ArgsArrayToObject<ExistingArgs>,
     Promise<Output>
   >;
@@ -267,6 +275,10 @@ export function customAction<
     >
   ): RegisteredAction<
     Visibility,
+    // Unvalidated functions are only allowed when there are no mod args.
+    // So we don't include the mod args in the output type.
+    // This allows us to use a customFunction (that doesn't modify ctx/args)
+    // as a parameter to other customFunctions, e.g. with RLS.
     ArgsArrayToObject<ExistingArgs>,
     Promise<Output>
   >;

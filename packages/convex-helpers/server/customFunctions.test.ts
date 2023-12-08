@@ -76,6 +76,8 @@ const consume = consumeArg({
 });
 queryMatches(consume, { a: "" }, { ctxA: "" });
 
+// NOTE: We don't test for unvalidated functions when args are present
+
 /**
  * Passing Through arg, also add to ctx for fun
  */
