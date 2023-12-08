@@ -1,16 +1,16 @@
 import { v } from "convex/values";
 import { ApiFromModules, queryGeneric as query } from "convex/server";
-import { customQuery } from "./mod";
+import { customCtx, customQuery } from "./mod";
 
 /**
  * Adding ctx
  */
-const addCtxArg = customQuery(query, {
-  args: {},
-  input: async () => {
-    return { ctx: { a: "hi" }, args: {} };
-  },
-});
+const addCtxArg = customQuery(
+  query,
+  customCtx(() => {
+    return { a: "hi" };
+  })
+);
 const addC = addCtxArg({
   args: {},
   handler: async (ctx) => {
@@ -57,6 +57,7 @@ const addUnverified2 = addArg(async (_ctx, args) => {
   return { argsA: args.a }; // !!!
 });
 queryMatches(addUnverified2, {}, { argsA: "" });
+
 /**
  * Consuming arg, add to ctx
  */
@@ -74,6 +75,7 @@ const consume = consumeArg({
   },
 });
 queryMatches(consume, { a: "" }, { ctxA: "" });
+
 /**
  * Passing Through arg, also add to ctx for fun
  */
@@ -90,6 +92,7 @@ const passThrough = passThrougArg({
   },
 });
 queryMatches(passThrough, { a: "" }, { ctxA: "", argsA: "" });
+
 /**
  * Modify arg type, don't need to re-defined "a" arg
  */
@@ -122,6 +125,7 @@ const redefine = redefineArg({
   },
 });
 queryMatches(redefine, { a: "" }, { argsA: "" });
+
 /**
  * Redefine arg type with different type: error!
  */
@@ -141,21 +145,10 @@ const never: never = null as never;
 // One caveat is that if you don't have a second param, it's ok passing no
 // params ({a: never} seems to type check as {} which means optional params)
 queryMatches(badRedefine, { b: 3, a: never }, { argsA: never });
+
 /**
  * Test helpers
  */
-
-declare const api: ApiFromModules<{
-  test: {
-    badRedefine: typeof badRedefine;
-    redefine: typeof redefine;
-    modify: typeof modify;
-    consume: typeof consume;
-    passThrough: typeof passThrough;
-    add: typeof add;
-    addC: typeof addC;
-  };
-}>;
 
 /**
  * Tests if two types are exactly the same.
