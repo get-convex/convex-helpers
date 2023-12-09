@@ -1,36 +1,38 @@
-import { action, mutation, query } from "./_generated/server";
+import { QueryCtx, action, mutation, query } from "./_generated/server";
 import { getManyVia } from "convex-helpers/server/relationships";
 import { v } from "convex/values";
 import {
   customCtx,
   customMutation,
   customQuery,
-} from "convex-helpers/server/mod";
-import { wrapDatabaseReader } from "convex-helpers/server/rowLevelSecurity";
+} from "convex-helpers/server/customFunctions";
+import {
+  Rules,
+  wrapDatabaseReader,
+  wrapDatabaseWriter,
+} from "convex-helpers/server/rowLevelSecurity";
 import { getUserByTokenIdentifier } from "./lib/withUser";
+import { DataModel, Doc } from "./_generated/dataModel";
 
+const rules: Rules<{ user: Doc<"users"> }, DataModel> = {
+  presence: {
+    insert: async ({ user }, doc) => {
+      return doc.user === user._id;
+    },
+    read: async ({ user }, doc) => {
+      return true;
+    },
+    modify: async ({ user }, doc) => {
+      return doc.user === user._id;
+    },
+  },
+};
 const authenticatedQuery = customQuery(
   query,
   customCtx(async (ctx) => {
     const user = await getUserByTokenIdentifier(ctx);
     return {
-      db: wrapDatabaseReader({ user }, ctx.db, {
-        presence: {
-          insert: async ({ user }, doc) => {
-            return doc.user === user._id;
-          },
-          read: async ({ user }, doc) => {
-            const userRooms = await ctx.db
-              .query("presence")
-              .withIndex("by_user_room", (q) => q.eq("user", user._id))
-              .collect();
-            return userRooms.map((p) => p.room).includes(doc.room);
-          },
-          modify: async ({ user }, doc) => {
-            return doc.user === user._id;
-          },
-        },
-      }),
+      db: wrapDatabaseReader({ user }, ctx.db, rules),
     };
   })
 );
@@ -110,8 +112,28 @@ export const upload = action({
   },
 });
 
-const incrementCounter = mutation(
-  async (
+const myMutation = customMutation(mutation, {
+  args: { sessionId: v.string() },
+  input: async (ctx, args) => {
+    const user = await getUserByTokenIdentifier(ctx);
+    const db = wrapDatabaseWriter({ user }, ctx.db, {
+      presence: {
+        modify: async ({ user }, doc) => {
+          return doc.user === user._id;
+        },
+      },
+    });
+    const sessionId = ctx.db.normalizeId("sessions", args.sessionId);
+    if (!sessionId) throw new Error("Invalid session ID");
+    const session = await db.get(sessionId);
+    if (!session) throw new Error("Session not found");
+    return { ctx: { user, session, db }, args: {} };
+  },
+});
+
+const incrementCounter = myMutation({
+  args: { counterName: v.string(), increment: v.number() },
+  handler: async (
     ctx,
     { counterName, increment }: { counterName: string; increment: number }
   ) => {
@@ -128,7 +150,7 @@ const incrementCounter = mutation(
       counterDoc.counter += increment;
       await ctx.db.replace(counterDoc._id, counterDoc);
     }
-  }
-);
+  },
+});
 
 export { getCounter, incrementCounter };
