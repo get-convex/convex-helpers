@@ -9,104 +9,17 @@
  * - withOptionalSession -- allows the sessionId to be null or a non-existent document and passes `session: null` if so
  * - withSessionBackwardsCompatible -- supports session IDs created with the ID class (Convex 0.16 and earlier)
  */
+import { mutation, query } from "../_generated/server";
+import { v } from "convex/values";
 import {
-  ArgsArray,
-  RegisteredMutation,
-  RegisteredQuery,
-  UnvalidatedFunction,
-  ValidatedFunction,
-} from "convex/server";
-import { Doc, Id } from "../_generated/dataModel";
-import {
-  DatabaseReader,
-  mutation,
-  MutationCtx,
-  query,
-  QueryCtx,
-} from "../_generated/server";
-import { ObjectType, PropertyValidators, v } from "convex/values";
-import {
-  MergeArgsForRegistered,
-  generateMiddleware,
-} from "convex-helpers/server/middlewareUtils";
+  customMutation,
+  customQuery,
+} from "convex-helpers/server/customFunctions";
 
-/** -----------------------------------------------------------------
- * withSession
- * ----------------------------------------------------------------- */
-const sessionMiddlewareValidator = { sessionId: v.id("sessions") };
-const transformContextForSession = async <Ctx>(
-  ctx: Ctx & { db: DatabaseReader },
-  args: { sessionId: Id<"sessions"> }
-): Promise<Ctx & { session: Doc<"sessions"> }> => {
-  const session = (await ctx.db.get(args.sessionId)) ?? null;
-  if (session === null) {
-    throw new Error(
-      "Session must be initialized first. " +
-        "Are you wrapping your code with <SessionProvider>? " +
-        "Are you requiring a session from a query that executes immediately?"
-    );
-  }
-  return { ...ctx, session };
-};
-
-/**
- * Wrapper for a Convex query or mutation function that provides a session in ctx.
- *
- * Throws an exception if there isn't a valid session.
- * Requires `sessionId` (type: Id<"sessions">) as a parameter.
- * This is provided by * default by using {@link useSessionQuery} or {@link useSessionMutation}.
- * Pass this to `query`, `mutation`, or another wrapper. E.g.:
- * ```ts
- * export default mutation(withSession({
- *   args: { arg1: ... },
- *   handler: async ({ db, auth, session }, { arg1 }) => {...}
- * }));
- * ```
- * @param func - Your function that can take in a `session` in the first (ctx) param.
- * @returns A function to be passed to `query` or `mutation`.
- */
-export const withSession = generateMiddleware<
-  { db: DatabaseReader },
-  { session: Doc<"sessions"> },
-  typeof sessionMiddlewareValidator
->(sessionMiddlewareValidator, transformContextForSession);
-
-/** -----------------------------------------------------------------
- * withOptionalSession
- * ----------------------------------------------------------------- */
-
-const optionalSessionMiddlewareValidator = {
+export const sessionIdValidator = { sessionId: v.id("sessions") };
+export const nullableSessionIdValidator = {
   sessionId: v.union(v.null(), v.id("sessions")),
 };
-const transformContextForOptionalSession = async <Ctx>(
-  ctx: Ctx & { db: DatabaseReader },
-  args: ObjectType<typeof optionalSessionMiddlewareValidator>
-): Promise<Ctx & { session: Doc<"sessions"> | null }> => {
-  const session = args.sessionId ? await ctx.db.get(args.sessionId) : null;
-  return { ...ctx, session };
-};
-
-/**
- * Wrapper for a Convex query or mutation function that provides a session in ctx.
- *
- * The session will be `null` if the sessionId passed up was null or invalid.
- * Requires `sessionId` (type: Id<"sessions">) as a parameter.
- * This is provided by * default by using {@link useSessionQuery} or {@link useSessionMutation}.
- * Pass this to `query`, `mutation`, or another wrapper. E.g.:
- * ```ts
- * export default mutation(withOptionalSession({
- *   args: { arg1: ... },
- *   handler: async ({ db, auth, session }, { arg1 }) => {...}
- * }));
- * ```
- * @param func - Your function that can take in a `session` in the first (ctx) param.
- * @returns A function to be passed to `query` or `mutation`.
- */
-export const withOptionalSession = generateMiddleware<
-  { db: DatabaseReader },
-  { session: Doc<"sessions"> | null },
-  typeof optionalSessionMiddlewareValidator
->(optionalSessionMiddlewareValidator, transformContextForOptionalSession);
 
 /** -----------------------------------------------------------------
  * Function wrappers
@@ -125,80 +38,48 @@ export const withOptionalSession = generateMiddleware<
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export function mutationWithSession<
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  func: ValidatedFunction<
-    MutationCtx & { session: Doc<"sessions"> },
-    ArgsValidator,
-    Promise<Output>
-  >
-): RegisteredMutation<
-  "public",
-  ObjectType<ArgsValidator> & ObjectType<typeof sessionMiddlewareValidator>,
-  Output
->;
-export function mutationWithSession<Args extends ArgsArray, Output>(
-  func: UnvalidatedFunction<
-    MutationCtx & { session: Doc<"sessions"> },
-    Args,
-    Promise<Output>
-  >
-): RegisteredMutation<
-  "public",
-  MergeArgsForRegistered<Args, ObjectType<typeof sessionMiddlewareValidator>>,
-  Output
->;
-export function mutationWithSession(func: any): any {
-  return mutation(withSession(func));
-}
+export const mutationWithSession = customMutation(mutation, {
+  args: { sessionId: v.id("sessions") },
+  input: async (ctx, args) => {
+    const session = (await ctx.db.get(args.sessionId)) ?? null;
+    if (session === null) {
+      throw new Error(
+        "Session must be initialized first. " +
+          "Are you wrapping your code with <SessionProvider>? " +
+          "Are you requiring a session from a query that executes immediately?"
+      );
+    }
+    return { ctx: { ...ctx, session }, args: {} };
+  },
+});
+
 /**
  * Wrapper for a Convex query function that provides a session in ctx.
  *
- * Requires an `Id<"sessions">` or null as the first parameter. This is provided by
+ * Requires an `sessionId: Id<"sessions">` parameter or null. This is provided by
  * default by using {@link useSessionQuery}. It validates and strips this
  * parameter for you.
  * E.g.:
  * ```ts
  * export default queryWithSession({
  *   args: { arg1: v.any() },
- *   handler: async ({ db, auth, session }, { arg1 }) => {...}
+ *   handler: async ({ db, auth, session }, { arg1 }) => {
+ *     // ...use the session here as usual
+ *   }
  * });
  * ```
  * If the session isn't initialized yet, it will pass null.
  * @param func - Your function that can now take in a `session` in the ctx param.
  * @returns A Convex serverless function.
  */
-export function queryWithSession<
-  ArgsValidator extends PropertyValidators,
-  Output
->(
-  func: ValidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> | null },
-    ArgsValidator,
-    Promise<Output>
-  >
-): RegisteredQuery<
-  "public",
-  ObjectType<ArgsValidator> &
-    ObjectType<typeof optionalSessionMiddlewareValidator>,
-  Output
->;
-export function queryWithSession<Args extends ArgsArray, Output>(
-  func: UnvalidatedFunction<
-    QueryCtx & { session: Doc<"sessions"> | null },
-    Args,
-    Promise<Output>
-  >
-): RegisteredQuery<
-  "public",
-  MergeArgsForRegistered<
-    Args,
-    ObjectType<typeof optionalSessionMiddlewareValidator>
-  >,
-  Output
->;
-export function queryWithSession(func: any): any {
-  return query(withOptionalSession(func));
-}
+export const queryWithSession = customQuery(query, {
+  args: {
+    sessionId: v.union(v.null(), v.id("sessions")),
+  },
+  input: async (ctx, args) => {
+    const sessionId =
+      args.sessionId && ctx.db.normalizeId("sessions", args.sessionId);
+    const session = (sessionId && (await ctx.db.get(sessionId))) ?? null;
+    return { ctx: { ...ctx, session }, args: {} };
+  },
+});
