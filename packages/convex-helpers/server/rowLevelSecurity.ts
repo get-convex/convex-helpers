@@ -26,15 +26,8 @@ import {
   SearchIndexes,
   TableNamesInDataModel,
   WithoutSystemFields,
-  queryGeneric,
-  mutationGeneric,
-  internalQueryGeneric,
-  internalMutationGeneric,
-  MutationBuilder,
-  QueryBuilder,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { customCtx, customMutation, customQuery } from "./customFunctions";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -49,6 +42,7 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
 /**
  * Apply row level security (RLS) to queries and mutations with the returned
  * middleware functions.
+ * @deprecated Use `wrapDatabaseReader`/`Writer` with `customFunction` instead.
  *
  * Example:
  * ```
@@ -135,38 +129,38 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
 };
 
 /**
- * If you just want to read from the DB, you can use this.
+ * If you just want to read from the DB, you can copy this.
  * Later, you can use `generateQueryWithMiddleware` along
  * with a custom function using wrapQueryDB with rules that
  * depend on values generated once at the start of the function.
  * E.g. Looking up a user to use for your rules:
  * //TODO: Add example
- */
-export function BasicRowLevelSecurity<DataModel extends GenericDataModel>(
+export function BasicRowLevelSecurity(
   rules: Rules<GenericQueryCtx<DataModel>, DataModel>
 ) {
   return {
     queryWithRLS: customQuery(
-      queryGeneric as QueryBuilder<DataModel, "public">,
+      query,
       customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
     ),
 
     mutationWithRLS: customMutation(
-      mutationGeneric as MutationBuilder<DataModel, "public">,
+      mutation,
       customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
     ),
 
     internalQueryWithRLS: customQuery(
-      internalQueryGeneric as QueryBuilder<DataModel, "internal">,
+      internalQuery,
       customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
     ),
 
     internalMutationWithRLS: customMutation(
-      internalMutationGeneric as MutationBuilder<DataModel, "internal">,
+      internalMutation,
       customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
     ),
   };
 }
+ */
 
 export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
