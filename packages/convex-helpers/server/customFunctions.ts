@@ -15,30 +15,12 @@ import {
   UnvalidatedFunction,
 } from "convex/server";
 
-export function splitArgs<
-  SplitArgsValidator extends PropertyValidators,
-  Args extends Record<string, any>
->(
-  splitArgsValidator: SplitArgsValidator,
-  args: Args & ObjectType<SplitArgsValidator>
-): {
-  split: ObjectType<SplitArgsValidator>;
-  rest: Omit<Args, keyof SplitArgsValidator>;
-} {
-  const rest: Record<string, any> = {};
-  const split: Record<string, any> = {};
-  for (const arg in args) {
-    if (arg in splitArgsValidator) {
-      split[arg] = args[arg];
-    } else {
-      rest[arg] = args[arg];
-    }
-  }
-  return { split, rest } as {
-    split: ObjectType<SplitArgsValidator>;
-    rest: Args;
-  };
-}
+export const Noop = {
+  args: {},
+  input() {
+    return { args: {}, ctx: {} };
+  },
+};
 
 export type Mod<
   Ctx extends Record<string, any>,
@@ -55,24 +37,17 @@ export type Mod<
     | { ctx: ModCtx; args: ModMadeArgs };
 };
 
-export const customCtx = <
+export function customCtx<
   InCtx extends Record<string, any>,
   OutCtx extends Record<string, any>
 >(
   mod: (original: InCtx) => Promise<OutCtx> | OutCtx
-): Mod<InCtx, EmptyObject, OutCtx, EmptyObject> => ({
-  args: {},
-  input: async (ctx) => ({ ctx: await mod(ctx), args: {} }),
-});
-
-type EmptyObject = Record<string, never>;
-
-export const Noop = {
-  args: {},
-  input() {
-    return { args: {}, ctx: {} };
-  },
-};
+): Mod<InCtx, EmptyObject, OutCtx, EmptyObject> {
+  return {
+    args: {},
+    input: async (ctx) => ({ ctx: await mod(ctx), args: {} }),
+  };
+}
 
 export function customQuery<
   ModArgsValidator extends PropertyValidators,
@@ -84,40 +59,6 @@ export function customQuery<
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
 ) {
-  // Overload for validated functions
-  function customQueryBuilder<
-    ExistingArgsValidator extends PropertyValidators,
-    Output
-  >(fn: {
-    args: ExistingArgsValidator;
-    handler: (
-      ctx: GenericQueryCtx<DataModel> & ModCtx,
-      args: ObjectType<ExistingArgsValidator> & ModMadeArgs
-    ) => Output | Promise<Output>;
-  }): RegisteredQuery<
-    Visibility,
-    ObjectType<ExistingArgsValidator & ModArgsValidator>,
-    Promise<Output>
-  >;
-  // Overload for unvalidated functions
-  function customQueryBuilder<
-    Output,
-    ExistingArgs extends ArgsArray = OneArgArray
-  >(
-    fn: UnvalidatedFunction<
-      GenericQueryCtx<DataModel> & ModCtx,
-      ExistingArgs,
-      Output | Promise<Output>
-    >
-  ): RegisteredQuery<
-    Visibility,
-    // Unvalidated functions are only allowed when there are no mod args.
-    // So we don't include the mod args in the output type.
-    // This allows us to use a customFunction (that doesn't modify ctx/args)
-    // as a parameter to other customFunctions, e.g. with RLS.
-    ArgsArrayToObject<ExistingArgs>,
-    Promise<Output>
-  >;
   function customQueryBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
     const inputMod = mod.input ?? Noop.input;
@@ -153,7 +94,14 @@ export function customQuery<
     });
   }
 
-  return customQueryBuilder;
+  return customQueryBuilder as CustomBuilder<
+    "query",
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    GenericQueryCtx<DataModel>,
+    Visibility
+  >;
 }
 
 export function customMutation<
@@ -166,40 +114,6 @@ export function customMutation<
   mutation: MutationBuilder<DataModel, Visibility>,
   mod: Mod<GenericMutationCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
 ) {
-  // Overload for validated functions
-  function customMutationBuilder<
-    ExistingArgsValidator extends PropertyValidators,
-    Output
-  >(fn: {
-    args: ExistingArgsValidator;
-    handler: (
-      ctx: GenericMutationCtx<DataModel> & ModCtx,
-      args: ObjectType<ExistingArgsValidator> & ModMadeArgs
-    ) => Output | Promise<Output>;
-  }): RegisteredMutation<
-    Visibility,
-    ObjectType<ExistingArgsValidator & ModArgsValidator>,
-    Promise<Output>
-  >;
-  // Overload for unvalidated functions
-  function customMutationBuilder<
-    Output,
-    ExistingArgs extends ArgsArray = OneArgArray
-  >(
-    fn: UnvalidatedFunction<
-      GenericMutationCtx<DataModel> & ModCtx,
-      ExistingArgs,
-      Output | Promise<Output>
-    >
-  ): RegisteredMutation<
-    Visibility,
-    // Unvalidated functions are only allowed when there are no mod args.
-    // So we don't include the mod args in the output type.
-    // This allows us to use a customFunction (that doesn't modify ctx/args)
-    // as a parameter to other customFunctions, e.g. with RLS.
-    ArgsArrayToObject<ExistingArgs>,
-    Promise<Output>
-  >;
   function customMutationBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
     const inputMod = mod.input ?? Noop.input;
@@ -235,7 +149,14 @@ export function customMutation<
     });
   }
 
-  return customMutationBuilder;
+  return customMutationBuilder as CustomBuilder<
+    "mutation",
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    GenericMutationCtx<DataModel>,
+    Visibility
+  >;
 }
 
 export function customAction<
@@ -247,41 +168,14 @@ export function customAction<
 >(
   action: ActionBuilder<DataModel, Visibility>,
   mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
-) {
-  // Overload for validated functions
-  function customActionBuilder<
-    ExistingArgsValidator extends PropertyValidators,
-    Output
-  >(fn: {
-    args: ExistingArgsValidator;
-    handler: (
-      ctx: GenericActionCtx<DataModel> & ModCtx,
-      args: ObjectType<ExistingArgsValidator> & ModMadeArgs
-    ) => Output | Promise<Output>;
-  }): RegisteredAction<
-    Visibility,
-    ObjectType<ExistingArgsValidator & ModArgsValidator>,
-    Promise<Output>
-  >;
-  // Overload for unvalidated functions
-  function customActionBuilder<
-    Output,
-    ExistingArgs extends ArgsArray = OneArgArray
-  >(
-    fn: UnvalidatedFunction<
-      GenericActionCtx<DataModel> & ModCtx,
-      ExistingArgs,
-      Output | Promise<Output>
-    >
-  ): RegisteredAction<
-    Visibility,
-    // Unvalidated functions are only allowed when there are no mod args.
-    // So we don't include the mod args in the output type.
-    // This allows us to use a customFunction (that doesn't modify ctx/args)
-    // as a parameter to other customFunctions, e.g. with RLS.
-    ArgsArrayToObject<ExistingArgs>,
-    Promise<Output>
-  >;
+): CustomBuilder<
+  "action",
+  ModArgsValidator,
+  ModCtx,
+  ModMadeArgs,
+  GenericActionCtx<DataModel>,
+  Visibility
+> {
   function customActionBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
     const inputMod = mod.input ?? Noop.input;
@@ -317,10 +211,122 @@ export function customAction<
     });
   }
 
-  return customActionBuilder;
+  return customActionBuilder as CustomBuilder<
+    "action",
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    GenericActionCtx<DataModel>,
+    Visibility
+  >;
 }
 
+export function splitArgs<
+  SplitArgsValidator extends PropertyValidators,
+  Args extends Record<string, any>
+>(
+  splitArgsValidator: SplitArgsValidator,
+  args: Args & ObjectType<SplitArgsValidator>
+): {
+  split: ObjectType<SplitArgsValidator>;
+  rest: Omit<Args, keyof SplitArgsValidator>;
+} {
+  const rest: Record<string, any> = {};
+  const split: Record<string, any> = {};
+  for (const arg in args) {
+    if (arg in splitArgsValidator) {
+      split[arg] = args[arg];
+    } else {
+      rest[arg] = args[arg];
+    }
+  }
+  return { split, rest } as {
+    split: ObjectType<SplitArgsValidator>;
+    rest: Args;
+  };
+}
+
+type Registration<
+  type extends "query" | "mutation" | "action",
+  Visibility extends FunctionVisibility,
+  Args extends DefaultFunctionArgs,
+  Output
+> = {
+  query: RegisteredQuery<Visibility, Args, Promise<Output>>;
+  mutation: RegisteredMutation<Visibility, Args, Promise<Output>>;
+  action: RegisteredAction<Visibility, Args, Promise<Output>>;
+}[type];
+
+type ValidatedWrapper<
+  FuncType extends "query" | "mutation" | "action",
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
+  InputCtx,
+  Visibility extends FunctionVisibility
+> = <ExistingArgsValidator extends PropertyValidators, Output>(fn: {
+  args: ExistingArgsValidator;
+  handler: (
+    ctx: InputCtx & ModCtx,
+    args: ObjectType<ExistingArgsValidator> & ModMadeArgs
+  ) => Output | Promise<Output>;
+}) => Registration<
+  FuncType,
+  Visibility,
+  ObjectType<ExistingArgsValidator & ModArgsValidator>,
+  Promise<Output>
+>;
+
+type UnvalidatedWrapper<
+  FuncType extends "query" | "mutation" | "action",
+  ModCtx extends Record<string, any>,
+  InputCtx,
+  Visibility extends FunctionVisibility
+> = <Output, ExistingArgs extends ArgsArray = OneArgArray>(
+  fn: UnvalidatedFunction<
+    InputCtx & ModCtx,
+    ExistingArgs,
+    Output | Promise<Output>
+  >
+) => Registration<
+  FuncType,
+  Visibility,
+  // Unvalidated functions are only allowed when there are no mod args.
+  // So we don't include the mod args in the output type.
+  // This allows us to use a customFunction (that doesn't modify ctx/args)
+  // as a parameter to other customFunctions, e.g. with RLS.
+  ArgsArrayToObject<ExistingArgs>,
+  Promise<Output>
+>;
+
+type CustomBuilder<
+  FuncType extends "query" | "mutation" | "action",
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
+  InputCtx,
+  Visibility extends FunctionVisibility
+> = ModArgsValidator extends EmptyObject
+  ? ValidatedWrapper<
+      FuncType,
+      ModArgsValidator,
+      ModCtx,
+      ModMadeArgs,
+      InputCtx,
+      Visibility
+    > &
+      UnvalidatedWrapper<FuncType, ModCtx, InputCtx, Visibility>
+  : ValidatedWrapper<
+      FuncType,
+      ModArgsValidator,
+      ModCtx,
+      ModMadeArgs,
+      InputCtx,
+      Visibility
+    >;
+
 // Copied from convex/server since they weren't exported
+type EmptyObject = Record<string, never>;
 type DefaultFunctionArgs = Record<string, unknown>;
 type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
   [ArgsObject];

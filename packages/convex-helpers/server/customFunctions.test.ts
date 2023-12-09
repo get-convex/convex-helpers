@@ -78,6 +78,22 @@ queryMatches(consume, { a: "" }, { ctxA: "" });
 
 // NOTE: We don't test for unvalidated functions when args are present
 
+// These are all errors, as expected
+// const consumeUnvalidated = consumeArg({
+//   handler: async (ctx, emptyArgs: {}) => {
+//     assert<Equals<typeof emptyArgs, {}>>(); // !!!
+//     return { ctxA: ctx.a };
+//   },
+// });
+// queryMatches(consumeUnvalidated, { a: "" }, { ctxA: "" });
+// const consumeUnvalidatedWithArgs = consumeArg(
+//   async (ctx, args: { b: number }) => {
+//     assert<Equals<typeof args, { b: number }>>(); // !!!
+//     return { ctxA: ctx.a };
+//   }
+// );
+// queryMatches(consumeUnvalidatedWithArgs, { a: "", b: 3 }, { ctxA: "" });
+
 /**
  * Passing Through arg, also add to ctx for fun
  */
