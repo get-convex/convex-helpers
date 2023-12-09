@@ -51,7 +51,6 @@ const addUser = customCtx(async (ctx: QueryCtx) => ({
 /**
  * Wrapper for a Convex mutation function that provides a user in ctx.
  *
- * Note: if you want to use input validation, use `withUser` instead.
  * Throws an exception if there isn't a user logged in.
  * E.g.:
  * export default mutationWithUser(async ({ db, user }) => {...}));
@@ -63,7 +62,6 @@ export const mutationWithUser = customMutation(mutation, addUser);
 /**
  * Wrapper for a Convex query function that provides a user in ctx.
  *
- * Note: if you want to use input validation, use `withUser` instead.
  * Throws an exception if there isn't a user logged in.
  * E.g.:
  * export default queryWithUser(async ({ db, user }) => {...}));
