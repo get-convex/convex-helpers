@@ -10,6 +10,8 @@ directory, so you can `npm install convex-helpers@latest`.
 It doesn't have all of the below features, but the ones it has can be used directly,
 rather than copying the code from this repo.
 
+See the [README](./packages/convex-helpers/README.md) for more details.
+
 ## Server-Persisted Session Data
 
 See the [guide on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware) for tips on how to set up and use Sessions.

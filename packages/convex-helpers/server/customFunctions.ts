@@ -1,3 +1,15 @@
+/**
+ * This file contains helpers for defining custom functions that modify the
+ * context and arguments of a Convex function. Allows you to:
+ *
+ * - Run authentication logic before the request starts.
+ * - Look up commonly used data and add it to the ctx argument.
+ * - Replace a ctx or argument field with a different value, such as a version
+ *   of `db` that runs custom functions on data access.
+ * - Consume arguments from the client that are not passed to the query, such
+ *   as taking in an authentication parameter like an API key or session ID.
+ *   These arguments must be sent up by the client along with each request.
+ */
 import { ObjectType, PropertyValidators } from "convex/values";
 import {
   ActionBuilder,
@@ -68,15 +80,8 @@ export const NoOp = {
 };
 
 /**
- * customQuery helps define custom behavior for each query it defines, allowing
- * you to:
- * - Run authentication logic before the request starts.
- * - Look up commonly used data and add it to the ctx argument.
- * - Replace a ctx or argument field with a different value, such as a version
- *   of `db` that runs custom functions on data access.
- * - Consume arguments from the client that are not passed to the query, such
- *   as taking in an authentication parameter like an API key or session ID.
- *   These arguments must be sent up by the client along with each request.
+ * customQuery helps define custom behavior on top of `query` or `internalQuery`
+ * by passing a function that modifies the ctx and args.
  *
  * Example usage:
  * ```js
@@ -182,15 +187,8 @@ export function customQuery<
 }
 
 /**
- * customMutation helps define custom behavior for each mutation it defines,
- * allowing you to:
- * - Run authentication logic before the request starts.
- * - Look up commonly used data and add it to the ctx argument.
- * - Replace a ctx or argument field with a different value, such as a version
- *   of `db` that runs custom functions on data access.
- * - Consume arguments from the client that are not passed to the mutation, such
- *   as taking in an authentication parameter like an API key or session ID.
- *   These arguments must be sent up by the client along with each request.
+ * customMutation helps define custom behavior on top of `mutation`
+ * or `internalMutation` by passing a function that modifies the ctx and args.
  *
  * Example usage:
  * ```js
@@ -296,15 +294,8 @@ export function customMutation<
 }
 
 /**
- * customAction helps define custom behavior for each action it defines,
- * allowing you to:
- * - Run authentication logic before the request starts.
- * - Look up commonly used data and add it to the ctx argument.
- * - Replace a ctx or argument field with a different value, such as a version
- *   of `db` that runs custom functions on data access.
- * - Consume arguments from the client that are not passed to the action, such
- *   as taking in an authentication parameter like an API key or session ID.
- *   These arguments must be sent up by the client along with each request.
+ * customAction helps define custom behavior on top of `action`
+ * or `internalAction` by passing a function that modifies the ctx and args.
  *
  * Example usage:
  * ```js
