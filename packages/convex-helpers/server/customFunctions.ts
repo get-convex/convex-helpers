@@ -15,13 +15,15 @@ import {
   UnvalidatedFunction,
 } from "convex/server";
 
-export const Noop = {
-  args: {},
-  input() {
-    return { args: {}, ctx: {} };
-  },
-};
-
+/**
+ * A modifier for a query, mutation, or action.
+ *
+ * This defines what arguments are required for the modifier, and how to modify
+ * the ctx and args. If the required args are not returned, they will not be
+ * provided for the modified function. All returned ctx and args will show up
+ * in the type signature for the modified function.
+ * To remove something from `ctx`, you can return it as `undefined`.
+ */
 export type Mod<
   Ctx extends Record<string, any>,
   ModArgsValidator extends PropertyValidators,
@@ -37,6 +39,12 @@ export type Mod<
     | { ctx: ModCtx; args: ModMadeArgs };
 };
 
+/**
+ * A helper for defining a Mod when your mod doesn't need to add or remove
+ * anything from args.
+ * @param mod A function that defines how to modify the ctx.
+ * @returns A ctx delta to be applied to the original ctx.
+ */
 export function customCtx<
   InCtx extends Record<string, any>,
   OutCtx extends Record<string, any>
@@ -49,6 +57,75 @@ export function customCtx<
   };
 }
 
+/**
+ * A Mod that doesn't add or remove any context or args.
+ */
+export const NoOp = {
+  args: {},
+  input() {
+    return { args: {}, ctx: {} };
+  },
+};
+
+/**
+ * customQuery helps define custom behavior for each query it defines, allowing
+ * you to:
+ * - Run authentication logic before the request starts.
+ * - Look up commonly used data and add it to the ctx argument.
+ * - Replace a ctx or argument field with a different value, such as a version
+ *   of `db` that runs custom functions on data access.
+ * - Consume arguments from the client that are not passed to the query, such
+ *   as taking in an authentication parameter like an API key or session ID.
+ *   These arguments must be sent up by the client along with each request.
+ *
+ * Example usage:
+ * ```js
+ * const myQueryBuilder = customQuery(query, {
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * });
+ *
+ * // Using the custom builder
+ * export const getSomeData = myQueryBuilder({
+ *   args: { someArg: v.string() },
+ *   handler: async (ctx, args) => {
+ *     const { db, user, session, scheduler } = ctx;
+ *     const { someArg } = args;
+ *     // ...
+ *   }
+ * });
+ * ```
+ *
+ * Simple usage only modifying ctx:
+ * ```js
+ * const myInternalQuery = customQuery(
+ *   internalQuery,
+ *   customCtx(async (ctx) => {
+ *     return {
+ *       // Throws an exception if the user isn't logged in
+ *       user: await getUserByTokenIdentifier(ctx),
+ *     };
+ *   })
+ * );
+ *
+ * // Using it
+ * export const getUser = myInternalQuery({
+ *   args: {},
+ *   handler: async (ctx, args) => {
+ *     return ctx.user;
+ *   },
+ * });
+ *
+ * @param query The query to be modified. Usually `query` or `internalQuery`
+ *   from `_generated/server`.
+ * @param mod The modifier to be applied to the query, changing ctx and args.
+ * @returns A new query builder to define queries with modified ctx and args.
+ */
 export function customQuery<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
@@ -61,8 +138,8 @@ export function customQuery<
 ) {
   function customQueryBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? Noop.input;
-    const inputArgs = mod.args ?? Noop.args;
+    const inputMod = mod.input ?? NoOp.input;
+    const inputArgs = mod.args ?? NoOp.args;
     if ("args" in fn) {
       return query({
         args: {
@@ -104,6 +181,65 @@ export function customQuery<
   >;
 }
 
+/**
+ * customMutation helps define custom behavior for each mutation it defines,
+ * allowing you to:
+ * - Run authentication logic before the request starts.
+ * - Look up commonly used data and add it to the ctx argument.
+ * - Replace a ctx or argument field with a different value, such as a version
+ *   of `db` that runs custom functions on data access.
+ * - Consume arguments from the client that are not passed to the mutation, such
+ *   as taking in an authentication parameter like an API key or session ID.
+ *   These arguments must be sent up by the client along with each request.
+ *
+ * Example usage:
+ * ```js
+ * const myMutationBuilder = customMutation(mutation, {
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * });
+ *
+ * // Using the custom builder
+ * export const setSomeData = myMutationBuilder({
+ *   args: { someArg: v.string() },
+ *   handler: async (ctx, args) => {
+ *     const { db, user, session, scheduler } = ctx;
+ *     const { someArg } = args;
+ *     // ...
+ *   }
+ * });
+ * ```
+ *
+ * Simple usage only modifying ctx:
+ * ```js
+ * const myUserMutation = customMutation(
+ *   mutation,
+ *   customCtx(async (ctx) => {
+ *     return {
+ *       // Throws an exception if the user isn't logged in
+ *       user: await getUserByTokenIdentifier(ctx),
+ *     };
+ *   })
+ * );
+ *
+ * // Using it
+ * export const setMyName = myUserMutation({
+ *   args: { name: v.string() },
+ *   handler: async (ctx, args) => {
+ *     await ctx.db.patch(ctx.user._id, { name: args.name });
+ *   },
+ * });
+ *
+ * @param mutation The mutation to be modified. Usually `mutation` or `internalMutation`
+ *   from `_generated/server`.
+ * @param mod The modifier to be applied to the mutation, changing ctx and args.
+ * @returns A new mutation builder to define queries with modified ctx and args.
+ */
 export function customMutation<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
@@ -116,8 +252,8 @@ export function customMutation<
 ) {
   function customMutationBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? Noop.input;
-    const inputArgs = mod.args ?? Noop.args;
+    const inputMod = mod.input ?? NoOp.input;
+    const inputArgs = mod.args ?? NoOp.args;
     if ("args" in fn) {
       return mutation({
         args: {
@@ -159,6 +295,67 @@ export function customMutation<
   >;
 }
 
+/**
+ * customAction helps define custom behavior for each action it defines,
+ * allowing you to:
+ * - Run authentication logic before the request starts.
+ * - Look up commonly used data and add it to the ctx argument.
+ * - Replace a ctx or argument field with a different value, such as a version
+ *   of `db` that runs custom functions on data access.
+ * - Consume arguments from the client that are not passed to the action, such
+ *   as taking in an authentication parameter like an API key or session ID.
+ *   These arguments must be sent up by the client along with each request.
+ *
+ * Example usage:
+ * ```js
+ * const myActionBuilder = customAction(action, {
+ *   args: { secretKey: v.string() },
+ *   input: async (ctx, args) => {
+ *     // Very basic authorization, e.g. from trusted backends.
+ *     if (args.secretKey !== process.env.SECRET_KEY) {
+ *       throw new Error("Invalid secret key");
+ *     }
+ *     const user = await ctx.runQuery(internal.users.getUser, {});
+ *     return { ctx: { user }, args: {} };
+ *   },
+ * });
+ *
+ * // Using the custom builder
+ * export const runSomeAction = myActionBuilder({
+ *   args: { someArg: v.string() },
+ *   handler: async (ctx, args) => {
+ *     const { user, scheduler } = ctx;
+ *     const { someArg } = args;
+ *     // ...
+ *   }
+ * });
+ * ```
+ *
+ * Simple usage only modifying ctx:
+ * ```js
+ * const myUserAction = customAction(
+ *   internalAction,
+ *   customCtx(async (ctx) => {
+ *     return {
+ *       // Throws an exception if the user isn't logged in
+ *       user: await ctx.runQuery(internal.users.getUser, {});
+ *     };
+ *   })
+ * );
+ *
+ * // Using it
+ * export const sendUserEmail = myUserAction({
+ *   args: { subject: v.string(), body: v.string() },
+ *   handler: async (ctx, args) => {
+ *     await sendEmail(ctx.user.email, args.subject, args.body);
+ *   },
+ * });
+ *
+ * @param action The action to be modified. Usually `action` or `internalAction`
+ *   from `_generated/server`.
+ * @param mod The modifier to be applied to the action, changing ctx and args.
+ * @returns A new action builder to define queries with modified ctx and args.
+ */
 export function customAction<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
@@ -178,8 +375,8 @@ export function customAction<
 > {
   function customActionBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? Noop.input;
-    const inputArgs = mod.args ?? Noop.args;
+    const inputMod = mod.input ?? NoOp.input;
+    const inputArgs = mod.args ?? NoOp.args;
     if ("args" in fn) {
       return action({
         args: {
@@ -221,7 +418,14 @@ export function customAction<
   >;
 }
 
-export function splitArgs<
+/**
+ *
+ * @param splitArgsValidator The args that should be split out from the rest.
+ *   As an object mapping arg names to validators (v.* from convex/values).
+ * @param args The arguments to a function, including values to be split out.
+ * @returns The args split into two objects: `split` and `rest` based on keys.
+ */
+function splitArgs<
   SplitArgsValidator extends PropertyValidators,
   Args extends Record<string, any>
 >(
@@ -229,7 +433,7 @@ export function splitArgs<
   args: Args & ObjectType<SplitArgsValidator>
 ): {
   split: ObjectType<SplitArgsValidator>;
-  rest: Omit<Args, keyof SplitArgsValidator>;
+  rest: { [k in Exclude<keyof Args, keyof SplitArgsValidator>]: Args[k] };
 } {
   const rest: Record<string, any> = {};
   const split: Record<string, any> = {};
@@ -246,8 +450,12 @@ export function splitArgs<
   };
 }
 
+/**
+ * A Convex function (query, mutation, or action) to be registered for the API.
+ * Convenience to specify the registration type based on function type.
+ */
 type Registration<
-  type extends "query" | "mutation" | "action",
+  FuncType extends "query" | "mutation" | "action",
   Visibility extends FunctionVisibility,
   Args extends DefaultFunctionArgs,
   Output
@@ -255,9 +463,13 @@ type Registration<
   query: RegisteredQuery<Visibility, Args, Promise<Output>>;
   mutation: RegisteredMutation<Visibility, Args, Promise<Output>>;
   action: RegisteredAction<Visibility, Args, Promise<Output>>;
-}[type];
+}[FuncType];
 
-type ValidatedWrapper<
+/**
+ * A builder that customizes a Convex function using argument validation.
+ * e.g. `query({ args: {}, handler: async (ctx, args) => {} })`
+ */
+type ValidatedBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
@@ -277,7 +489,12 @@ type ValidatedWrapper<
   Promise<Output>
 >;
 
-type UnvalidatedWrapper<
+/**
+ * A builder that customizes a Convex function which doesn't validate arguments.
+ * e.g. `query(async (ctx, args) => {})`
+ * or `query({ handler: async (ctx, args) => {} })`
+ */
+type UnvalidatedBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModCtx extends Record<string, any>,
   InputCtx,
@@ -299,6 +516,11 @@ type UnvalidatedWrapper<
   Promise<Output>
 >;
 
+/**
+ * A builder that customizes a Convex function, whether or not it validates
+ * arguments. If the customization requires arguments, however, the resulting
+ * builder will require argument validation too.
+ */
 type CustomBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModArgsValidator extends PropertyValidators,
@@ -307,7 +529,7 @@ type CustomBuilder<
   InputCtx,
   Visibility extends FunctionVisibility
 > = ModArgsValidator extends EmptyObject
-  ? ValidatedWrapper<
+  ? ValidatedBuilder<
       FuncType,
       ModArgsValidator,
       ModCtx,
@@ -315,8 +537,8 @@ type CustomBuilder<
       InputCtx,
       Visibility
     > &
-      UnvalidatedWrapper<FuncType, ModCtx, InputCtx, Visibility>
-  : ValidatedWrapper<
+      UnvalidatedBuilder<FuncType, ModCtx, InputCtx, Visibility>
+  : ValidatedBuilder<
       FuncType,
       ModArgsValidator,
       ModCtx,
