@@ -51,11 +51,13 @@ export type Mod<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
+  ExtraArgs extends Record<string, any> = {},
 > = {
   args: ModArgsValidator;
   input: (
     ctx: Ctx,
     args: ObjectType<ModArgsValidator>,
+    extra: ExtraArgs,
   ) =>
     | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
     | { ctx: ModCtx; args: ModMadeArgs };
@@ -147,9 +149,16 @@ export function customQuery<
   ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = {},
 >(
   query: QueryBuilder<DataModel, Visibility>,
-  mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
+  mod: Mod<
+    GenericQueryCtx<DataModel>,
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    ExtraArgs
+  >,
 ) {
   return customFnBuilder(query, mod) as CustomBuilder<
     "query",
@@ -157,7 +166,8 @@ export function customQuery<
     ModCtx,
     ModMadeArgs,
     GenericQueryCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
@@ -219,13 +229,15 @@ export function customMutation<
   ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = {},
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
   mod: Mod<
     GenericMutationCtx<DataModel>,
     ModArgsValidator,
     ModCtx,
-    ModMadeArgs
+    ModMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(mutation, mod) as CustomBuilder<
@@ -234,7 +246,8 @@ export function customMutation<
     ModCtx,
     ModMadeArgs,
     GenericMutationCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
@@ -298,16 +311,24 @@ export function customAction<
   ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = {},
 >(
   action: ActionBuilder<DataModel, Visibility>,
-  mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
+  mod: Mod<
+    GenericActionCtx<DataModel>,
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    ExtraArgs
+  >,
 ): CustomBuilder<
   "action",
   ModArgsValidator,
   ModCtx,
   ModMadeArgs,
   GenericActionCtx<DataModel>,
-  Visibility
+  Visibility,
+  ExtraArgs
 > {
   return customFnBuilder(action, mod) as CustomBuilder<
     "action",
@@ -315,27 +336,30 @@ export function customAction<
     ModCtx,
     ModMadeArgs,
     GenericActionCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
 function customFnBuilder(
   builder: (args: any) => any,
-  mod: Mod<any, any, any, any>,
+  mod: Mod<any, any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
-    const handler = fn.handler ?? fn;
-    if ("args" in fn) {
+    // N.B.: This is fine if it's a function
+    const { args, handler = fn, returns, ...extra } = fn;
+    if (args) {
       return builder({
-        args: addArgs(fn.args, inputArgs),
-        returns: fn.returns,
+        args: addArgs(args, inputArgs),
+        returns,
         handler: async (ctx: any, allArgs: any) => {
           const added = await inputMod(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
+            extra,
           );
           const args = omit(allArgs, Object.keys(inputArgs));
           return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
@@ -351,7 +375,7 @@ function customFnBuilder(
     return builder({
       returns: fn.returns,
       handler: async (ctx: any, args: any) => {
-        const added = await inputMod(ctx, args);
+        const added = await inputMod(ctx, args, extra);
         return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
       },
     });
@@ -430,6 +454,7 @@ export type CustomBuilder<
   ModMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility,
+  ExtraArgs extends Record<string, any>,
 > = {
   <
     ArgsValidator extends PropertyValidators | void | Validator<any, any, any>,
@@ -439,14 +464,14 @@ export type CustomBuilder<
       ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
   >(
     func:
-      | {
+      | ({
           args?: ArgsValidator;
           returns?: ReturnsValidator;
           handler: (
             ctx: Overwrite<InputCtx, ModCtx>,
             ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
           ) => ReturnValue;
-        }
+        } & ExtraArgs)
       | {
           (
             ctx: Overwrite<InputCtx, ModCtx>,
@@ -474,6 +499,7 @@ export type CustomCtx<Builder> =
     infer ModCtx,
     any,
     infer InputCtx,
+    any,
     any
   >
     ? Overwrite<InputCtx, ModCtx>
