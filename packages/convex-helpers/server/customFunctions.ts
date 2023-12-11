@@ -13,7 +13,6 @@
 import { ObjectType, PropertyValidators } from "convex/values";
 import {
   ActionBuilder,
-  ArgsArray,
   FunctionVisibility,
   GenericActionCtx,
   GenericDataModel,
@@ -488,12 +487,13 @@ type ValidatedBuilder<
 type UnvalidatedBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility
-> = <Output, ExistingArgs extends ArgsArray = OneArgArray>(
+> = <Output, ExistingArgs extends DefaultFunctionArgs = DefaultFunctionArgs>(
   fn: UnvalidatedFunction<
     InputCtx & ModCtx,
-    ExistingArgs,
+    [ExistingArgs & ModMadeArgs],
     Output | Promise<Output>
   >
 ) => Registration<
@@ -503,7 +503,7 @@ type UnvalidatedBuilder<
   // So we don't include the mod args in the output type.
   // This allows us to use a customFunction (that doesn't modify ctx/args)
   // as a parameter to other customFunctions, e.g. with RLS.
-  ArgsArrayToObject<ExistingArgs>,
+  ExistingArgs,
   Promise<Output>
 >;
 
@@ -528,7 +528,7 @@ type CustomBuilder<
       InputCtx,
       Visibility
     > &
-      UnvalidatedBuilder<FuncType, ModCtx, InputCtx, Visibility>
+      UnvalidatedBuilder<FuncType, ModCtx, ModMadeArgs, InputCtx, Visibility>
   : ValidatedBuilder<
       FuncType,
       ModArgsValidator,
@@ -541,10 +541,3 @@ type CustomBuilder<
 // Copied from convex/server since they weren't exported
 type EmptyObject = Record<string, never>;
 type DefaultFunctionArgs = Record<string, unknown>;
-type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
-  [ArgsObject];
-type ArgsArrayToObject<Args extends ArgsArray> = Args extends OneArgArray<
-  infer ArgsObject
->
-  ? ArgsObject
-  : EmptyObject;
