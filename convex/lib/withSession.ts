@@ -45,8 +45,7 @@ export const mutationWithSession = customMutation(mutation, {
     if (session === null) {
       throw new Error(
         "Session must be initialized first. " +
-          "Are you wrapping your code with <SessionProvider>? " +
-          "Are you requiring a session from a query that executes immediately?"
+          "Are you wrapping your code with <SessionProvider>?"
       );
     }
     return { ctx: { ...ctx, session }, args: {} };
