@@ -1,8 +1,7 @@
-import { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
-import { mutation } from "./_generated/server";
+import { DataModel } from "../_generated/dataModel";
+import { query } from "../_generated/server";
+import { mutation } from "../_generated/server";
 import {
-  BasicRowLevelSecurity,
   Rules,
   wrapDatabaseReader,
   wrapDatabaseWriter,
@@ -12,8 +11,9 @@ import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
+import { BasicRowLevelSecurity } from "./rowLevelSecurity";
 
-const { mutationWithRLS } = BasicRowLevelSecurity<DataModel>({
+const { mutationWithRLS } = BasicRowLevelSecurity({
   counter_table: {
     insert: async (ctx) => {
       ctx.db.query("counter_table");
