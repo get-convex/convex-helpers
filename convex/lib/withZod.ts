@@ -8,7 +8,7 @@ import {
 } from "../_generated/server";
 import { Id, TableNames } from "../_generated/dataModel";
 import { zCustomQuery } from "convex-helpers/server/zod";
-import { Noop } from "convex-helpers/server/mod";
+import { NoOp } from "convex-helpers/server/customFunctions";
 
 /**
  * Create a validator for a Convex `Id`.
@@ -61,7 +61,7 @@ export const withZod = <
 };
 
 // See withZod
-export const queryWithZod = zCustomQuery(query, Noop());
+export const queryWithZod = zCustomQuery(query, NoOp);
 
 // See withZod
 export const mutationWithZod = <
