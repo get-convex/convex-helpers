@@ -26,6 +26,7 @@ import type * as lib_withUser from "../lib/withUser.js";
 import type * as lib_withZod from "../lib/withZod.js";
 import type * as presence from "../presence.js";
 import type * as sessions from "../sessions.js";
+import type * as zodExample from "../zodExample.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   "lib/withZod": typeof lib_withZod;
   presence: typeof presence;
   sessions: typeof sessions;
+  zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

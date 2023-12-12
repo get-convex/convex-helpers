@@ -1,5 +1,5 @@
 import { query } from "./_generated/server";
-import { zCustomQuery } from "convex-helpers/server/zod";
+import { zCustomQuery, zid } from "convex-helpers/server/zod";
 import { v } from "convex/values";
 import { z } from "zod";
 
@@ -9,10 +9,10 @@ const zQuery = zCustomQuery(query, {
 });
 
 export const simple = zQuery({
-  args: { z: z.string().email() },
-  handler: async (ctx, { z }) => {
+  args: { z: z.string().email(), counterId: zid("counter_table") },
+  handler: async (ctx, { z, counterId }) => {
     ctx.c;
     ctx.db;
-    return z + ctx.c;
+    return { z, ctxC: ctx.c, counter: await ctx.db.get(counterId) };
   },
 });
