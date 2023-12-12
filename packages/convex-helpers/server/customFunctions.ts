@@ -415,7 +415,7 @@ export function customAction<
  * @param args The arguments to a function, including values to be split out.
  * @returns The args split into two objects: `split` and `rest` based on keys.
  */
-function splitArgs<
+export function splitArgs<
   SplitArgsValidator extends PropertyValidators,
   Args extends Record<string, any>
 >(
@@ -444,7 +444,7 @@ function splitArgs<
  * A Convex function (query, mutation, or action) to be registered for the API.
  * Convenience to specify the registration type based on function type.
  */
-type Registration<
+export type Registration<
   FuncType extends "query" | "mutation" | "action",
   Visibility extends FunctionVisibility,
   Args extends DefaultFunctionArgs,
