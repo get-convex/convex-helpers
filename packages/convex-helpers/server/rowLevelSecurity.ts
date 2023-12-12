@@ -42,6 +42,7 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
 /**
  * Apply row level security (RLS) to queries and mutations with the returned
  * middleware functions.
+ * @deprecated Use `wrapDatabaseReader`/`Writer` with `customFunction` instead.
  *
  * Example:
  * ```
@@ -126,6 +127,56 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
     withQueryRLS,
   };
 };
+
+/**
+ * If you just want to read from the DB, you can copy this.
+ * Later, you can use `generateQueryWithMiddleware` along
+ * with a custom function using wrapQueryDB with rules that
+ * depend on values generated once at the start of the function.
+ * E.g. Looking up a user to use for your rules:
+ * //TODO: Add example
+export function BasicRowLevelSecurity(
+  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+) {
+  return {
+    queryWithRLS: customQuery(
+      query,
+      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
+    ),
+
+    mutationWithRLS: customMutation(
+      mutation,
+      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
+    ),
+
+    internalQueryWithRLS: customQuery(
+      internalQuery,
+      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
+    ),
+
+    internalMutationWithRLS: customMutation(
+      internalMutation,
+      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
+    ),
+  };
+}
+ */
+
+export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
+  ctx: Ctx,
+  db: GenericDatabaseReader<DataModel>,
+  rules: Rules<Ctx, DataModel>
+): GenericDatabaseReader<DataModel> {
+  return new WrapReader(ctx, db, rules);
+}
+
+export function wrapDatabaseWriter<Ctx, DataModel extends GenericDataModel>(
+  ctx: Ctx,
+  db: GenericDatabaseWriter<DataModel>,
+  rules: Rules<Ctx, DataModel>
+): GenericDatabaseWriter<DataModel> {
+  return new WrapWriter(ctx, db, rules);
+}
 
 type ArgsArray = [] | [FunctionArgs<any>];
 type Handler<Ctx, Args extends ArgsArray, Output> = (
@@ -325,7 +376,9 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     return await this.rules[tableName]!.read!(this.ctx, doc);
   }
 
-  async get<TableName extends string>(id: GenericId<TableName>): Promise<any> {
+  async get<TableName extends string>(
+    id: GenericId<TableName>
+  ): Promise<DocumentByName<DataModel, TableName> | null> {
     const doc = await this.db.get(id);
     if (doc) {
       const tableName = this.tableName(id);
