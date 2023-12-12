@@ -61,7 +61,7 @@ const addUnverified = addArg({
   },
 });
 queryMatches(addUnverified, {}, { argsA: "" });
-const addUnverified2 = addArg(async (_ctx, args) => {
+const addUnverified2 = addArg((_ctx, args) => {
   return { argsA: args.a }; // !!!
 });
 queryMatches(addUnverified2, {}, { argsA: "" });
@@ -193,8 +193,8 @@ function assert<T extends true>() {
   return true as T;
 }
 
-function queryMatches<
-  A,
-  T extends (ctx: any, args: A) => any,
-  V extends Awaited<ReturnType<T>>
->(_f: T, _a: A, _v: V) {}
+function queryMatches<A, T extends (ctx: any, args: A) => any>(
+  _f: T,
+  _a: A,
+  _v: Awaited<ReturnType<T>>
+) {}

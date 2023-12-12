@@ -38,6 +38,10 @@ const authenticatedQueryBuilder = customQuery(
   })
 );
 
+export const unvalidatedQuery = authenticatedQueryBuilder((ctx) => {
+  return { user: ctx.user };
+});
+
 export const getPresence = authenticatedQueryBuilder({
   args: { presenceId: v.id("presence") },
   handler: async (ctx, args) => {
