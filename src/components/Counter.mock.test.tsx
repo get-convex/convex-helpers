@@ -7,14 +7,21 @@ import * as convexReact from "convex/react";
 let counters: Record<string, number> = {};
 
 // A function very similar to the implementation of `getCounter`
-const getCounter = (name: string) => counters[name];
+const getCounter = ({ counterName }: { counterName: string }) =>
+  counters[counterName];
 
 // A function very similar to the implementation of `incrementCounter` in `convex/counter.ts`
-const incrementCounter = (name: string, increment: number) => {
-  if (counters[name]) {
-    counters[name] = counters[name] + increment;
+const incrementCounter = ({
+  counterName,
+  increment,
+}: {
+  counterName: string;
+  increment: number;
+}) => {
+  if (counters[counterName]) {
+    counters[counterName] = counters[counterName] + increment;
   } else {
-    counters[name] = increment;
+    counters[counterName] = increment;
   }
   return null;
 };
@@ -27,14 +34,13 @@ vi.mock("convex/react", async () => {
 
   return {
     ...actual,
-
-    useQueryGeneric: (queryName: string, ...args: any[]) => {
+    useQuery: (queryName: string, args: Record<string, any>) => {
       if (queryName !== "counter:getCounter") {
         throw new Error("Unexpected query call!");
       }
-      return getCounter(args[0]);
+      return getCounter(args as any);
     },
-    useMutationGeneric: (mutationName: string) => {
+    useMutation: (mutationName: string) => {
       if (mutationName !== "counter:incrementCounter") {
         throw new Error("Unexpected mutation call!");
       }
@@ -69,7 +75,10 @@ describe("Counter", () => {
 
     // The mocked incrementCounter function will be called.
     expect(incrementCounterMock).toHaveBeenCalledOnce();
-    expect(incrementCounterMock).toHaveBeenCalledWith("clicks", 1);
+    expect(incrementCounterMock).toHaveBeenCalledWith({
+      counterName: "clicks",
+      increment: 1,
+    });
 
     // The mocked query doesn't support reactivity,
     // so we can't use it to test that components re-render with updated data.
@@ -78,7 +87,7 @@ describe("Counter", () => {
 
   it("renders the counter with seeded data", async () => {
     // Update the test state before rendering the component to seed the getCounter query.
-    incrementCounter("clicks", 100);
+    incrementCounter({ counterName: "clicks", increment: 100 });
 
     const { getByText } = setup();
 

@@ -2,21 +2,28 @@ import Counter from "./Counter";
 import { render } from "@testing-library/react";
 import { ConvexReactClientFake } from "../fakeConvexClient/fakeConvexClient";
 import { ConvexProvider } from "convex/react";
-import { API } from "../../convex/_generated/api";
 import { describe, it, expect, afterEach, vi } from "vitest";
+import { api } from "../../convex/_generated/api";
 
 // Keep track of counter values
 let counters: Record<string, number> = {};
 
 // A function very similar to the implementation of `getCounter`
-const getCounter = (name: string) => counters[name];
+const getCounter = ({ counterName }: { counterName: string }) =>
+  counters[counterName];
 
 // A function very similar to the implementation of `incrementCounter` in `convex/counter.ts`
-const incrementCounter = (name: string, increment: number) => {
-  if (counters[name]) {
-    counters[name] = counters[name] + increment;
+const incrementCounter = ({
+  counterName,
+  increment,
+}: {
+  counterName: string;
+  increment: number;
+}) => {
+  if (counters[counterName]) {
+    counters[counterName] = counters[counterName] + increment;
   } else {
-    counters[name] = increment;
+    counters[counterName] = increment;
   }
   return null;
 };
@@ -25,14 +32,12 @@ const incrementCounter = (name: string, increment: number) => {
 const incrementCounterMock = vi.fn().mockImplementation(incrementCounter);
 
 // Initialize the Convex mock client
-const mockClient = new ConvexReactClientFake<API>({
-  queries: {
-    "counter:getCounter": getCounter,
-  },
-  mutations: {
-    "counter:incrementCounter": incrementCounterMock,
-  },
-});
+const mockClient = new ConvexReactClientFake();
+mockClient.registerQueryFake(api.counter.getCounter, getCounter);
+mockClient.registerMutationFake(
+  api.counter.incrementCounter,
+  incrementCounterMock
+);
 
 const setup = () =>
   render(
@@ -65,7 +70,10 @@ describe("Counter", () => {
 
     // The mocked incrementCounter function will be called.
     expect(incrementCounterMock).toHaveBeenCalledOnce();
-    expect(incrementCounterMock).toHaveBeenCalledWith("clicks", 1);
+    expect(incrementCounterMock).toHaveBeenCalledWith({
+      counterName: "clicks",
+      increment: 1,
+    });
 
     // The ConvexReactClientFake doesn't support reactivity,
     // so we can't use it to test that components re-render with updated data.
@@ -74,7 +82,7 @@ describe("Counter", () => {
 
   it("renders the counter with seeded data", async () => {
     // Update the test state before rendering the component to seed the getCounter query.
-    incrementCounter("clicks", 100);
+    incrementCounter({ counterName: "clicks", increment: 100 });
 
     const { getByText } = setup();
 
