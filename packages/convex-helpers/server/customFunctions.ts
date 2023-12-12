@@ -450,9 +450,9 @@ type Registration<
   Args extends DefaultFunctionArgs,
   Output
 > = {
-  query: RegisteredQuery<Visibility, Args, Promise<Output>>;
-  mutation: RegisteredMutation<Visibility, Args, Promise<Output>>;
-  action: RegisteredAction<Visibility, Args, Promise<Output>>;
+  query: RegisteredQuery<Visibility, Args, Output>;
+  mutation: RegisteredMutation<Visibility, Args, Output>;
+  action: RegisteredAction<Visibility, Args, Output>;
 }[FuncType];
 
 /**
@@ -471,12 +471,12 @@ type ValidatedBuilder<
   handler: (
     ctx: InputCtx & ModCtx,
     args: ObjectType<ExistingArgsValidator> & ModMadeArgs
-  ) => Output | Promise<Output>;
+  ) => Output;
 }) => Registration<
   FuncType,
   Visibility,
   ObjectType<ExistingArgsValidator & ModArgsValidator>,
-  Promise<Output>
+  Output
 >;
 
 /**
@@ -494,7 +494,7 @@ type UnvalidatedBuilder<
   fn: UnvalidatedFunction<
     InputCtx & ModCtx,
     [ExistingArgs & ModMadeArgs],
-    Output | Promise<Output>
+    Output
   >
 ) => Registration<
   FuncType,
@@ -504,7 +504,7 @@ type UnvalidatedBuilder<
   // This allows us to use a customFunction (that doesn't modify ctx/args)
   // as a parameter to other customFunctions, e.g. with RLS.
   ExistingArgs,
-  Promise<Output>
+  Output
 >;
 
 /**

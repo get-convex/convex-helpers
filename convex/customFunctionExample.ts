@@ -32,6 +32,7 @@ const authenticatedQueryBuilder = customQuery(
   customCtx(async (ctx) => {
     const user = await getUserByTokenIdentifier(ctx);
     return {
+      user,
       db: wrapDatabaseReader({ user }, ctx.db, rules),
     };
   })
