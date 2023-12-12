@@ -61,7 +61,7 @@ export function customCtx<
   OutCtx extends Record<string, any>
 >(
   mod: (original: InCtx) => Promise<OutCtx> | OutCtx
-): Mod<InCtx, EmptyObject, OutCtx, EmptyObject> {
+): Mod<InCtx, {}, OutCtx, {}> {
   return {
     args: {},
     input: async (ctx) => ({ ctx: await mod(ctx), args: {} }),

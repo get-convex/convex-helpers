@@ -31,6 +31,14 @@ const addCU2 = addCtxArg(async (ctx) => {
 });
 queryMatches(addCU2, {}, { ctxA: "" });
 
+const addCtxWithExistingArg = addCtxArg({
+  args: { b: v.string() },
+  handler: async (ctx, args) => {
+    return { ctxA: ctx.a, argB: args.b }; // !!!
+  },
+});
+queryMatches(addCtxWithExistingArg, { b: "" }, { ctxA: "", argB: "" });
+
 /**
  * Adding arg
  */
