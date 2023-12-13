@@ -1,11 +1,14 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { Table } from "convex-helpers/server";
+
+const Users = Table("users", {
+  name: v.string(),
+  tokenIdentifier: v.string(),
+});
 
 export default defineSchema({
-  users: defineTable({
-    name: v.string(),
-    tokenIdentifier: v.string(),
-  }).index("by_token", ["tokenIdentifier"]),
+  users: Users.table.index("by_token", ["tokenIdentifier"]),
   join_table_example: defineTable({
     userId: v.id("users"),
     presenceId: v.id("presence"),
