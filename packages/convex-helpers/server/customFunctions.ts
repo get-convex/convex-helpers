@@ -469,8 +469,8 @@ type ValidatedBuilder<
 > = <ExistingArgsValidator extends PropertyValidators, Output>(fn: {
   args: ExistingArgsValidator;
   handler: (
-    ctx: InputCtx & ModCtx,
-    args: ObjectType<ExistingArgsValidator> & ModMadeArgs
+    ctx: Overwrite<InputCtx, ModCtx>,
+    args: Overwrite<ObjectType<ExistingArgsValidator>, ModMadeArgs>
   ) => Output;
 }) => Registration<
   FuncType,
@@ -492,8 +492,8 @@ type UnvalidatedBuilder<
   Visibility extends FunctionVisibility
 > = <Output, ExistingArgs extends DefaultFunctionArgs = DefaultFunctionArgs>(
   fn: UnvalidatedFunction<
-    InputCtx & ModCtx,
-    [ExistingArgs & ModMadeArgs],
+    Overwrite<InputCtx, ModCtx>,
+    [Overwrite<ExistingArgs, ModMadeArgs>],
     Output
   >
 ) => Registration<
@@ -538,6 +538,7 @@ type CustomBuilder<
       Visibility
     >;
 
+type Overwrite<T, U> = Omit<T, keyof U> & U;
 // Copied from convex/server since they weren't exported
 type EmptyObject = Record<string, never>;
 type DefaultFunctionArgs = Record<string, unknown>;
