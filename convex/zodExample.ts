@@ -67,3 +67,11 @@ export const kitchenSink = zQuery({
   //   email: z.string().url(),
   // }),
 });
+
+export const dateRoundTrip = zQuery({
+  args: { date: z.string().transform((s) => new Date(Date.parse(s))) },
+  handler: async (ctx, args) => {
+    return args.date;
+  },
+  output: z.date().transform((d) => d.toISOString()),
+});

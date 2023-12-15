@@ -1,9 +1,10 @@
 import { api } from "../../convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
 import { convexToJson } from "convex/values";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 const ZodExample = () => {
+  const [date, setDate] = useState(new Date().toISOString());
   const counterId = useQuery(api.zodExample.getCounterId);
   const zodResult = useQuery(
     api.zodExample.kitchenSink,
@@ -36,12 +37,20 @@ const ZodExample = () => {
         }
       : "skip"
   );
-  console.log({ zodResult });
+  const dateRoundTrip = useQuery(api.zodExample.dateRoundTrip, {
+    date,
+    sessionId: null,
+  });
+  console.log({ zodResult, dateRoundTrip });
 
   return (
     <div>
       <details>
         <summary>{"Zod result:"}</summary>
+        <div>Date: {dateRoundTrip}</div>
+        <button onClick={() => setDate(new Date().toISOString())}>
+          Update Date
+        </button>
         <pre style={{ whiteSpace: "break-spaces" }}>
           <code>
             {zodResult &&
