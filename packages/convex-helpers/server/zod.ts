@@ -112,20 +112,24 @@ export function zCustomQuery<
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
-          try {
-            const validated = z.object(fn.args).parse(rest);
-            return await fn.handler(
-              { ...ctx, ...added.ctx },
-              { ...validated, ...added.args }
-            );
-          } catch (e) {
-            if (e instanceof z.ZodError) {
-              throw new ConvexError({
-                ZodError: JSON.parse(JSON.stringify(e.errors, null, 2)),
-              });
-            }
-            throw e;
+          const parsed = z.object(fn.args).safeParse(rest);
+          if (!parsed.success) {
+            throw new ConvexError({
+              ZodError: JSON.parse(
+                JSON.stringify(parsed.error.errors, null, 2)
+              ),
+            });
           }
+          const result = await fn.handler(
+            { ...ctx, ...added.ctx },
+            { ...parsed.data, ...added.args }
+          );
+          if (fn.output) {
+            // We don't catch the error here. It's a developer error and we
+            // don't want to risk exposing the unexpected value to the client.
+            return fn.output.parse(result);
+          }
+          return result;
         },
       });
     }
@@ -232,20 +236,24 @@ export function zCustomMutation<
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
-          try {
-            const validated = z.object(fn.args).parse(rest);
-            return await fn.handler(
-              { ...ctx, ...added.ctx },
-              { ...validated, ...added.args }
-            );
-          } catch (e) {
-            if (e instanceof z.ZodError) {
-              throw new ConvexError({
-                ZodError: JSON.parse(JSON.stringify(e.errors, null, 2)),
-              });
-            }
-            throw e;
+          const parsed = z.object(fn.args).safeParse(rest);
+          if (!parsed.success) {
+            throw new ConvexError({
+              ZodError: JSON.parse(
+                JSON.stringify(parsed.error.errors, null, 2)
+              ),
+            });
           }
+          const result = await fn.handler(
+            { ...ctx, ...added.ctx },
+            { ...parsed.data, ...added.args }
+          );
+          if (fn.output) {
+            // We don't catch the error here. It's a developer error and we
+            // don't want to risk exposing the unexpected value to the client.
+            return fn.output.parse(result);
+          }
+          return result;
         },
       });
     }
@@ -352,20 +360,24 @@ export function zCustomAction<
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
-          try {
-            const validated = z.object(fn.args).parse(rest);
-            return await fn.handler(
-              { ...ctx, ...added.ctx },
-              { ...validated, ...added.args }
-            );
-          } catch (e) {
-            if (e instanceof z.ZodError) {
-              throw new ConvexError({
-                ZodError: JSON.parse(JSON.stringify(e.errors, null, 2)),
-              });
-            }
-            throw e;
+          const parsed = z.object(fn.args).safeParse(rest);
+          if (!parsed.success) {
+            throw new ConvexError({
+              ZodError: JSON.parse(
+                JSON.stringify(parsed.error.errors, null, 2)
+              ),
+            });
           }
+          const result = await fn.handler(
+            { ...ctx, ...added.ctx },
+            { ...parsed.data, ...added.args }
+          );
+          if (fn.output) {
+            // We don't catch the error here. It's a developer error and we
+            // don't want to risk exposing the unexpected value to the client.
+            return fn.output.parse(result);
+          }
+          return result;
         },
       });
     }
@@ -405,17 +417,24 @@ type ValidatedBuilder<
   ModMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility
-> = <ExistingArgsValidator extends ZodValidator, Output>(fn: {
+> = <
+  ExistingArgsValidator extends ZodValidator,
+  Output,
+  ZodOutput extends z.ZodTypeAny | undefined = undefined
+>(fn: {
   args: ExistingArgsValidator;
   handler: (
     ctx: InputCtx & ModCtx,
     args: z.output<z.ZodObject<ExistingArgsValidator>> & ModMadeArgs
-  ) => Output;
+  ) => ZodOutput extends z.ZodTypeAny
+    ? z.input<ZodOutput> | Promise<z.input<ZodOutput>>
+    : Output;
+  output?: ZodOutput;
 }) => Registration<
   FuncType,
   Visibility,
   z.input<z.ZodObject<ExistingArgsValidator>> & ObjectType<ModArgsValidator>,
-  Output
+  ZodOutput extends z.ZodTypeAny ? Promise<z.output<ZodOutput>> : Output
 >;
 
 /**

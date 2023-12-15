@@ -63,4 +63,7 @@ export const kitchenSink = zQuery({
       counter: await ctx.db.get(args.counterId),
     };
   },
+  // output: z.object({
+  //   email: z.string().url(),
+  // }),
 });
