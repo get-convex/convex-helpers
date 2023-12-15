@@ -8,7 +8,8 @@
     "./server*": "./dist/server*",
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
     "./server/relationships": "./dist/server/relationships.js",
-    "./server/customFunctions": "./dist/server/customFunctions.js"
+    "./server/customFunctions": "./dist/server/customFunctions.js",
+    "./server/zod": "./dist/server/zod.js"
   },
   "files": [
     "dist",
@@ -37,7 +38,8 @@
   },
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
-    "convex": "^1.6.3"
+    "convex": "^1.6.3",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "chokidar-cli": "^3.0.0",

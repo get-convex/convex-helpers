@@ -5,9 +5,10 @@ import {
   mutation,
   MutationCtx,
   query,
-  QueryCtx,
 } from "../_generated/server";
 import { Id, TableNames } from "../_generated/dataModel";
+import { zCustomQuery } from "convex-helpers/server/zod";
+import { NoOp } from "convex-helpers/server/customFunctions";
 
 /**
  * Create a validator for a Convex `Id`.
@@ -60,16 +61,7 @@ export const withZod = <
 };
 
 // See withZod
-export const queryWithZod = <
-  Args extends { [key: string]: z.ZodTypeAny },
-  Returns
->(argObject: {
-  args: Args;
-  handler: (
-    ctx: QueryCtx,
-    arg: z.output<z.ZodObject<Args>>
-  ) => Promise<Returns>;
-}) => query(withZod(argObject));
+export const queryWithZod = zCustomQuery(query, NoOp);
 
 // See withZod
 export const mutationWithZod = <
