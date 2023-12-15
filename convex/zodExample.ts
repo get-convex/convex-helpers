@@ -64,7 +64,7 @@ export const kitchenSink = zQuery({
     };
   },
   // output: z.object({
-  //   email: z.string().url(),
+  //   email: z.string().email(),
   // }),
 });
 
