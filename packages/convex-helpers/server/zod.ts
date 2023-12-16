@@ -500,9 +500,12 @@ type CustomBuilder<
 type EmptyObject = Record<string, never>;
 type DefaultFunctionArgs = Record<string, unknown>;
 
-type ConvexValidatorFromZodValidator<Z extends z.ZodTypeAny> =
-  Z extends z.ZodNull
-    ? Validator<null>
+type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
+  // Keep this in sync with zodToConvex implementation
+  Z extends Zid<infer TableName>
+    ? Validator<GenericId<TableName>>
+    : Z extends z.ZodString
+    ? Validator<string>
     : Z extends z.ZodNumber
     ? Validator<number>
     : Z extends z.ZodNaN
@@ -511,46 +514,44 @@ type ConvexValidatorFromZodValidator<Z extends z.ZodTypeAny> =
     ? Validator<bigint>
     : Z extends z.ZodBoolean
     ? Validator<boolean>
-    : Z extends z.ZodString
-    ? Validator<string>
-    : Z extends z.ZodLiteral<infer Literal>
-    ? Validator<Literal>
+    : Z extends z.ZodNull
+    ? Validator<null>
+    : Z extends z.ZodUnknown
+    ? Validator<any, false, string>
+    : Z extends z.ZodAny
+    ? Validator<any, false, string>
     : Z extends z.ZodArray<infer Inner>
-    ? Validator<ConvexValidatorFromZodValidator<Inner>["type"][]>
-    : Z extends z.ZodTuple<infer Inner>
-    ? Validator<ConvexValidatorFromZodValidator<Inner[number]>["type"][]>
+    ? Validator<ConvexValidatorFromZod<Inner>["type"][]>
     : Z extends z.ZodObject<infer ZodShape>
     ? ReturnType<
         typeof v.object<{
-          [key in keyof ZodShape]: ConvexValidatorFromZodValidator<
-            ZodShape[key]
-          >;
+          [key in keyof ZodShape]: ConvexValidatorFromZod<ZodShape[key]>;
         }>
       >
     : Z extends z.ZodUnion<infer T>
     ? Validator<
-        ConvexValidatorFromZodValidator<T[number]>["type"],
+        ConvexValidatorFromZod<T[number]>["type"],
         false,
-        ConvexValidatorFromZodValidator<T[number]>["fieldPaths"]
+        ConvexValidatorFromZod<T[number]>["fieldPaths"]
       >
     : Z extends z.ZodDiscriminatedUnion<any, infer T>
     ? Validator<
-        ConvexValidatorFromZodValidator<T[number]>["type"],
+        ConvexValidatorFromZod<T[number]>["type"],
         false,
-        ConvexValidatorFromZodValidator<T[number]>["fieldPaths"]
+        ConvexValidatorFromZod<T[number]>["fieldPaths"]
       >
+    : Z extends z.ZodTuple<infer Inner>
+    ? Validator<ConvexValidatorFromZod<Inner[number]>["type"][]>
+    : Z extends z.ZodLazy<infer Inner>
+    ? ConvexValidatorFromZod<Inner>
+    : Z extends z.ZodLiteral<infer Literal>
+    ? Validator<Literal>
     : Z extends z.ZodEnum<infer T>
     ? Validator<T[number]>
+    : Z extends z.ZodEffects<infer Inner>
+    ? ConvexValidatorFromZod<Inner>
     : Z extends z.ZodOptional<infer Inner>
-    ? ConvexValidatorFromZodValidator<Inner> extends Validator<
-        infer InnerConvex,
-        false,
-        infer InnerFieldPaths
-      >
-      ? Validator<InnerConvex | undefined, true, InnerFieldPaths>
-      : never
-    : Z extends z.ZodDefault<infer Inner> // Treat like optional
-    ? ConvexValidatorFromZodValidator<Inner> extends Validator<
+    ? ConvexValidatorFromZod<Inner> extends Validator<
         infer InnerConvex,
         false,
         infer InnerFieldPaths
@@ -558,7 +559,7 @@ type ConvexValidatorFromZodValidator<Z extends z.ZodTypeAny> =
       ? Validator<InnerConvex | undefined, true, InnerFieldPaths>
       : never
     : Z extends z.ZodNullable<infer Inner>
-    ? ConvexValidatorFromZodValidator<Inner> extends Validator<
+    ? ConvexValidatorFromZod<Inner> extends Validator<
         infer InnerConvex,
         infer InnerOptional,
         infer InnerFieldPaths
@@ -566,23 +567,23 @@ type ConvexValidatorFromZodValidator<Z extends z.ZodTypeAny> =
       ? Validator<null | InnerConvex, InnerOptional, InnerFieldPaths>
       : never
     : Z extends z.ZodBranded<infer Inner, any>
-    ? ConvexValidatorFromZodValidator<Inner>
-    : Z extends z.ZodEffects<infer Inner>
-    ? ConvexValidatorFromZodValidator<Inner>
-    : Z extends z.ZodLazy<infer Inner>
-    ? ConvexValidatorFromZodValidator<Inner>
-    : Z extends z.ZodPipeline<infer Inner, any> // Validate input type
-    ? ConvexValidatorFromZodValidator<Inner>
+    ? ConvexValidatorFromZod<Inner>
+    : Z extends z.ZodDefault<infer Inner> // Treat like optional
+    ? ConvexValidatorFromZod<Inner> extends Validator<
+        infer InnerConvex,
+        false,
+        infer InnerFieldPaths
+      >
+      ? Validator<InnerConvex | undefined, true, InnerFieldPaths>
+      : never
     : Z extends z.ZodReadonly<infer Inner>
-    ? ConvexValidatorFromZodValidator<Inner>
-    : Z extends z.ZodUnknown
-    ? Validator<any, false, string>
-    : Z extends z.ZodAny
-    ? Validator<any, false, string>
+    ? ConvexValidatorFromZod<Inner>
+    : Z extends z.ZodPipeline<infer Inner, any> // Validate input type
+    ? ConvexValidatorFromZod<Inner>
     : // Some that are a bit unknown
       // : Z extends z.ZodDate ? Validator<number>
-      // : Z extends z.ZodNever ? Validator<never>
       // : Z extends z.ZodSymbol ? Validator<symbol>
+      // : Z extends z.ZodNever ? Validator<never>
       // : Z extends z.ZodIntersection<infer T, infer U>
       // ? Validator<
       //     ConvexValidatorFromZodValidator<T>["type"] &
@@ -603,66 +604,62 @@ type ConvexValidatorFromZodValidator<Z extends z.ZodTypeAny> =
 
 export function zodToConvex<Z extends z.ZodTypeAny>(
   zod: Z
-): ConvexValidatorFromZodValidator<Z> {
+): ConvexValidatorFromZod<Z> {
   const typeName: ZodFirstPartyTypeKind | "ConvexId" = zod._def.typeName;
   switch (typeName) {
     case "ConvexId":
-      return v.id(zod._def.tableName) as ConvexValidatorFromZodValidator<Z>;
+      return v.id(zod._def.tableName) as ConvexValidatorFromZod<Z>;
     case "ZodString":
-      return v.string() as ConvexValidatorFromZodValidator<Z>;
+      return v.string() as ConvexValidatorFromZod<Z>;
     case "ZodNumber":
     case "ZodNaN":
-      return v.number() as ConvexValidatorFromZodValidator<Z>;
+      return v.number() as ConvexValidatorFromZod<Z>;
     case "ZodBigInt":
-      return v.int64() as ConvexValidatorFromZodValidator<Z>;
+      return v.int64() as ConvexValidatorFromZod<Z>;
     case "ZodBoolean":
-      return v.boolean() as ConvexValidatorFromZodValidator<Z>;
+      return v.boolean() as ConvexValidatorFromZod<Z>;
     case "ZodNull":
-      return v.null() as ConvexValidatorFromZodValidator<Z>;
+      return v.null() as ConvexValidatorFromZod<Z>;
     case "ZodAny":
     case "ZodUnknown":
-      return v.any() as ConvexValidatorFromZodValidator<Z>;
+      return v.any() as ConvexValidatorFromZod<Z>;
     case "ZodArray":
       const inner = zodToConvex(zod._def.type);
       if (inner.isOptional) {
         throw new Error("Arrays of optional values are not supported");
       }
-      return v.array(inner) as ConvexValidatorFromZodValidator<Z>;
+      return v.array(inner) as ConvexValidatorFromZod<Z>;
     case "ZodObject":
       return v.object(
         zodToConvexValidator(zod._def.shape())
-      ) as ConvexValidatorFromZodValidator<Z>;
+      ) as ConvexValidatorFromZod<Z>;
     case "ZodUnion":
     case "ZodDiscriminatedUnion":
       return v.union(
         ...zod._def.options.map((v: z.ZodTypeAny) => zodToConvex(v))
-      ) as ConvexValidatorFromZodValidator<Z>;
+      ) as ConvexValidatorFromZod<Z>;
     case "ZodTuple":
       const allTypes = zod._def.items.map((v: z.ZodTypeAny) => zodToConvex(v));
       if (zod._def.rest) {
         allTypes.push(zodToConvex(zod._def.rest));
       }
-      return v.array(
-        v.union(...allTypes)
-      ) as ConvexValidatorFromZodValidator<Z>;
+      return v.array(v.union(...allTypes)) as ConvexValidatorFromZod<Z>;
     case "ZodLazy":
-      return zodToConvex(
-        zod._def.getter()
-      ) as ConvexValidatorFromZodValidator<Z>;
+      return zodToConvex(zod._def.getter()) as ConvexValidatorFromZod<Z>;
     case "ZodLiteral":
-      return v.literal(zod._def.value) as ConvexValidatorFromZodValidator<Z>;
+      return v.literal(zod._def.value) as ConvexValidatorFromZod<Z>;
     case "ZodEnum":
       return v.union(
         ...zod._def.values.map((l: string | number | boolean | bigint) =>
           v.literal(l)
         )
-      ) as ConvexValidatorFromZodValidator<Z>;
+      ) as ConvexValidatorFromZod<Z>;
     case "ZodEffects":
-      return zodToConvex(zod._def.schema) as ConvexValidatorFromZodValidator<Z>;
+      return zodToConvex(zod._def.schema) as ConvexValidatorFromZod<Z>;
     case "ZodOptional":
       return v.optional(
         zodToConvex((zod as any).unwrap()) as any
-      ) as ConvexValidatorFromZodValidator<Z>;
+      ) as ConvexValidatorFromZod<Z>;
     case "ZodNullable":
       const nullable = zodToConvex((zod as any).unwrap());
       if (nullable.isOptional) {
@@ -670,25 +667,21 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
         // Casting to any to ignore the mismatch of optional
         return v.optional(
           v.union(v.null(), nullable as any)
-        ) as ConvexValidatorFromZodValidator<Z>;
+        ) as ConvexValidatorFromZod<Z>;
       }
-      return v.union(v.null(), nullable) as ConvexValidatorFromZodValidator<Z>;
+      return v.union(v.null(), nullable) as ConvexValidatorFromZod<Z>;
     case "ZodBranded":
-      return zodToConvex(
-        (zod as any).unwrap()
-      ) as ConvexValidatorFromZodValidator<Z>;
+      return zodToConvex((zod as any).unwrap()) as ConvexValidatorFromZod<Z>;
     case "ZodDefault":
       const withDefault = zodToConvex(zod._def.innerType);
       if (withDefault.isOptional) {
-        return withDefault as ConvexValidatorFromZodValidator<Z>;
+        return withDefault as ConvexValidatorFromZod<Z>;
       }
-      return v.optional(withDefault) as ConvexValidatorFromZodValidator<Z>;
+      return v.optional(withDefault) as ConvexValidatorFromZod<Z>;
     case "ZodReadonly":
-      return zodToConvex(
-        zod._def.innerType
-      ) as ConvexValidatorFromZodValidator<Z>;
+      return zodToConvex(zod._def.innerType) as ConvexValidatorFromZod<Z>;
     case "ZodPipeline":
-      return zodToConvex(zod._def.in) as ConvexValidatorFromZodValidator<Z>;
+      return zodToConvex(zod._def.in) as ConvexValidatorFromZod<Z>;
     default:
       throw new Error(`Unknown zod type: ${typeName}`);
     // N/A or not supported
@@ -711,7 +704,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
 export function zodToConvexValidator<Z extends ZodValidator>(zod: Z) {
   return Object.fromEntries(
     Object.entries(zod).map(([k, v]) => [k, zodToConvex(v)])
-  ) as { [k in keyof Z]: ConvexValidatorFromZodValidator<Z[k]> };
+  ) as { [k in keyof Z]: ConvexValidatorFromZod<Z[k]> };
 }
 
 interface ZidDef<TableName extends string> extends ZodTypeDef {
