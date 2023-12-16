@@ -1,4 +1,4 @@
-import { zCustomQuery, zodToConvexValidator } from "./zod";
+import { zCustomQuery, zodToConvexFields } from "./zod";
 import { z } from "zod";
 import { v } from "convex/values";
 import { useQuery } from "convex/react";
@@ -157,7 +157,7 @@ declare const api: ApiFromModules<{
 
 assert(
   sameType(
-    zodToConvexValidator({
+    zodToConvexFields({
       s: z.string().email().max(5),
       n: z.number(),
       nan: z.nan(),
@@ -189,7 +189,7 @@ assert(
 );
 assert(
   sameType(
-    zodToConvexValidator({
+    zodToConvexFields({
       simpleArray: z.array(z.boolean()),
       tuple: z.tuple([z.boolean(), z.boolean()]),
       enum: z.enum(["a", "b"]),
@@ -221,7 +221,7 @@ assert(
 );
 assert(
   sameType(
-    zodToConvexValidator({
+    zodToConvexFields({
       transformed: z.transformer(z.string(), {
         type: "refinement",
         refinement: () => true,

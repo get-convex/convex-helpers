@@ -1,5 +1,10 @@
 import { query } from "./_generated/server";
-import { zCustomQuery, zid } from "convex-helpers/server/zod";
+import {
+  zCustomQuery,
+  zid,
+  zodToConvexFields,
+} from "convex-helpers/server/zod";
+import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { z } from "zod";
 
@@ -22,38 +27,45 @@ export const getCounterId = query({
   },
 });
 
+const kitchenSinkValidator = {
+  email: z.string().email(),
+  counterId: zid("counter_table"),
+  num: z.number().min(0),
+  nan: z.nan(),
+  bigint: z.bigint(),
+  bool: z.boolean(),
+  null: z.null(),
+  any: z.unknown(),
+  array: z.array(z.string()),
+  object: z.object({ a: z.string(), b: z.number() }),
+  union: z.union([z.string(), z.number()]),
+  discriminatedUnion: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("a"), a: z.string() }),
+    z.object({ kind: z.literal("b"), b: z.number() }),
+  ]),
+  literal: z.literal("hi"),
+  tuple: z.tuple([z.string(), z.number()]),
+  lazy: z.lazy(() => z.string()),
+  enum: z.enum(["a", "b"]),
+  effect: z.effect(z.string(), {
+    refinement: () => true,
+    type: "refinement",
+  }),
+  optional: z.object({ a: z.string(), b: z.number() }).optional(),
+  nullable: z.nullable(z.string()),
+  branded: z.string().brand("branded"),
+  default: z.string().default("default"),
+  readonly: z.object({ a: z.string(), b: z.number() }).readonly(),
+  pipeline: z.number().pipe(z.coerce.string()),
+};
+
+// Example of how you'd define a table in schema.ts with zod validators
+defineTable(zodToConvexFields(kitchenSinkValidator)).index("by_email", [
+  "email",
+]);
+
 export const kitchenSink = zQuery({
-  args: {
-    email: z.string().email(),
-    counterId: zid("counter_table"),
-    num: z.number().min(0),
-    nan: z.nan(),
-    bigint: z.bigint(),
-    bool: z.boolean(),
-    null: z.null(),
-    any: z.unknown(),
-    array: z.array(z.string()),
-    object: z.object({ a: z.string(), b: z.number() }),
-    union: z.union([z.string(), z.number()]),
-    discriminatedUnion: z.discriminatedUnion("kind", [
-      z.object({ kind: z.literal("a"), a: z.string() }),
-      z.object({ kind: z.literal("b"), b: z.number() }),
-    ]),
-    literal: z.literal("hi"),
-    tuple: z.tuple([z.string(), z.number()]),
-    lazy: z.lazy(() => z.string()),
-    enum: z.enum(["a", "b"]),
-    effect: z.effect(z.string(), {
-      refinement: () => true,
-      type: "refinement",
-    }),
-    optional: z.object({ a: z.string(), b: z.number() }).optional(),
-    nullable: z.nullable(z.string()),
-    branded: z.string().brand("branded"),
-    default: z.string().default("default"),
-    readonly: z.object({ a: z.string(), b: z.number() }).readonly(),
-    pipeline: z.number().pipe(z.coerce.string()),
-  },
+  args: kitchenSinkValidator,
   handler: async (ctx, args) => {
     ctx.session;
     ctx.db;
@@ -63,9 +75,12 @@ export const kitchenSink = zQuery({
       counter: await ctx.db.get(args.counterId),
     };
   },
-  // output: z.object({
-  //   email: z.string().email(),
-  // }),
+  // output: z
+  //   .object({
+  //     email: z.string().email(),
+  //   })
+  // You can add .strict() to fail if any more fields are passed
+  //   .strict(),
 });
 
 export const dateRoundTrip = zQuery({

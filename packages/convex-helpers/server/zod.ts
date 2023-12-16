@@ -103,7 +103,7 @@ export function zCustomQuery<
   const inputArgs = mod.args ?? NoOp.args;
   function customQueryBuilder(fn: any): any {
     if ("args" in fn) {
-      const convexValidator = zodToConvexValidator(fn.args);
+      const convexValidator = zodToConvexFields(fn.args);
       return query({
         args: {
           ...convexValidator,
@@ -227,7 +227,7 @@ export function zCustomMutation<
   const inputArgs = mod.args ?? NoOp.args;
   function customMutationBuilder(fn: any): any {
     if ("args" in fn) {
-      const convexValidator = zodToConvexValidator(fn.args);
+      const convexValidator = zodToConvexFields(fn.args);
       return mutation({
         args: {
           ...convexValidator,
@@ -351,7 +351,7 @@ export function zCustomAction<
   const inputArgs = mod.args ?? NoOp.args;
   function customActionBuilder(fn: any): any {
     if ("args" in fn) {
-      const convexValidator = zodToConvexValidator(fn.args);
+      const convexValidator = zodToConvexFields(fn.args);
       return action({
         args: {
           ...convexValidator,
@@ -602,6 +602,11 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
       // : Z extends z.ZodTypeAny
       never;
 
+/**
+ * Turn a Zod validator into a Convex Validator.
+ * @param zod Zod validator can be a Zod object, or a Zod type like `z.string()`
+ * @returns Convex Validator (e.g. `v.string()` from "convex/values")
+ */
 export function zodToConvex<Z extends z.ZodTypeAny>(
   zod: Z
 ): ConvexValidatorFromZod<Z> {
@@ -631,7 +636,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
       return v.array(inner) as ConvexValidatorFromZod<Z>;
     case "ZodObject":
       return v.object(
-        zodToConvexValidator(zod._def.shape())
+        zodToConvexFields(zod._def.shape())
       ) as ConvexValidatorFromZod<Z>;
     case "ZodUnion":
     case "ZodDiscriminatedUnion":
@@ -701,7 +706,14 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
   }
 }
 
-export function zodToConvexValidator<Z extends ZodValidator>(zod: Z) {
+/**
+ * Like zodToConvex, but it takes in a bare object, as expected by Convex
+ * function arguments, or the argument to defineTable.
+ *
+ * @param zod Object with string keys and Zod validators as values
+ * @returns Object with the same keys, but with Convex validators as values
+ */
+export function zodToConvexFields<Z extends ZodValidator>(zod: Z) {
   return Object.fromEntries(
     Object.entries(zod).map(([k, v]) => [k, zodToConvex(v)])
   ) as { [k in keyof Z]: ConvexValidatorFromZod<Z[k]> };
