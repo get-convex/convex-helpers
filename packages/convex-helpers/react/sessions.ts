@@ -16,7 +16,12 @@
  * two sessionIds on the first load.
  */
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import { FunctionReference, OptionalRestArgs } from "convex/server";
+import {
+  FunctionArgs,
+  FunctionReference,
+  FunctionReturnType,
+  OptionalRestArgs,
+} from "convex/server";
 import { useQuery, useMutation } from "convex/react";
 import { GenericId } from "convex/values";
 
@@ -41,14 +46,14 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
     any
   >;
   type SessionQueryArgsArray<Fn extends SessionFunction<any>> =
-    keyof Fn["_args"] extends "sessionId"
+    keyof FunctionArgs<Fn> extends "sessionId"
       ? [args?: EmptyObject | "skip"]
-      : [args: BetterOmit<Fn["_args"], "sessionId"> | "skip"];
+      : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
 
   type SessionMutationArgsArray<Fn extends SessionFunction<any>> =
-    keyof Fn["_args"] extends "sessionId"
+    keyof FunctionArgs<Fn> extends "sessionId"
       ? []
-      : [args: BetterOmit<Fn["_args"], "sessionId">];
+      : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
   /**
    * Context for a Convex session, creating a server session and providing the id.
    *
@@ -100,7 +105,7 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
   >(
     query: Query,
     ...args: SessionQueryArgsArray<Query>
-  ): Query["_returnType"] | undefined {
+  ): FunctionReturnType<Query> | undefined {
     const skip = args[0] === "skip";
     const sessionId = useContext(SessionContext);
     const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
@@ -125,8 +130,11 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
     return useCallback(
       (
         ...args: SessionMutationArgsArray<Mutation>
-      ): Promise<Mutation["_returnType"]> => {
-        const newArgs = { ...(args[0] ?? {}), sessionId } as Mutation["_args"];
+      ): Promise<FunctionReturnType<Mutation>> => {
+        const newArgs = {
+          ...(args[0] ?? {}),
+          sessionId,
+        } as FunctionArgs<Mutation>;
 
         return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
       },
