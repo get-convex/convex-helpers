@@ -15,7 +15,7 @@
  * Note: If you are rendering your app in StrictMode, you may generate
  * two sessionIds on the first load.
  */
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { FunctionReference, OptionalRestArgs } from "convex/server";
 import { useQuery, useMutation } from "convex/react";
 import { GenericId } from "convex/values";
@@ -122,13 +122,16 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
     const sessionId = useContext(SessionContext);
     const originalMutation = useMutation(name);
 
-    return (
-      ...args: SessionMutationArgsArray<Mutation>
-    ): Promise<Mutation["_returnType"]> => {
-      const newArgs = { ...(args[0] ?? {}), sessionId } as Mutation["_args"];
+    return useCallback(
+      (
+        ...args: SessionMutationArgsArray<Mutation>
+      ): Promise<Mutation["_returnType"]> => {
+        const newArgs = { ...(args[0] ?? {}), sessionId } as Mutation["_args"];
 
-      return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
-    };
+        return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
+      },
+      [sessionId, originalMutation]
+    );
   }
 
   return { SessionProvider, useSessionQuery, useSessionMutation };
