@@ -538,6 +538,17 @@ type CustomBuilder<
       Visibility
     >;
 
+export type CustomCtx<Builder> = Builder extends ValidatedBuilder<
+  any,
+  any,
+  infer ModCtx,
+  any,
+  infer InputCtx,
+  any
+>
+  ? Overwrite<InputCtx, ModCtx>
+  : never;
+
 type Overwrite<T, U> = Omit<T, keyof U> & U;
 // Copied from convex/server since they weren't exported
 type EmptyObject = Record<string, never>;
