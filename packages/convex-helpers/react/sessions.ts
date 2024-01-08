@@ -15,38 +15,40 @@
  * Note: If you are rendering your app in StrictMode, you may generate
  * two sessionIds on the first load.
  */
-import React, { useContext, useEffect, useState } from 'react';
-import { FunctionReference, OptionalRestArgs } from 'convex/server';
-import { useQuery, useMutation } from 'convex/react';
-import { GenericId } from 'convex/values';
+import React, { useContext, useEffect, useState } from "react";
+import { FunctionReference, OptionalRestArgs } from "convex/server";
+import { useQuery, useMutation } from "convex/react";
+import { GenericId } from "convex/values";
 
 export function makeUseSessionHooks<SessionId extends GenericId<any>>(
   createOrValidateSession: FunctionReference<
-    'mutation',
-    'public',
+    "mutation",
+    "public",
     {
       sessionId: string | null;
     },
     SessionId
   >,
   storageKey?: string,
-  storageLocation?: 'localStorage' | 'sessionStorage',
+  storageLocation?: "localStorage" | "sessionStorage"
 ) {
   const SessionContext = React.createContext<SessionId | null>(null);
 
   type SessionFunction<Args extends any> = FunctionReference<
-    'query' | 'mutation',
-    'public',
+    "query" | "mutation",
+    "public",
     { sessionId: SessionId | null } & Args,
     any
   >;
   type SessionQueryArgsArray<Fn extends SessionFunction<any>> =
-    keyof Fn['_args'] extends 'sessionId'
-      ? [args?: EmptyObject | 'skip']
-      : [args: BetterOmit<Fn['_args'], 'sessionId'> | 'skip'];
+    keyof Fn["_args"] extends "sessionId"
+      ? [args?: EmptyObject | "skip"]
+      : [args: BetterOmit<Fn["_args"], "sessionId"> | "skip"];
 
   type SessionMutationArgsArray<Fn extends SessionFunction<any>> =
-    keyof Fn['_args'] extends 'sessionId' ? [] : [args: BetterOmit<Fn['_args'], 'sessionId'>];
+    keyof Fn["_args"] extends "sessionId"
+      ? []
+      : [args: BetterOmit<Fn["_args"], "sessionId">];
   /**
    * Context for a Convex session, creating a server session and providing the id.
    *
@@ -62,8 +64,10 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
   }> = ({ waitForSessionId, children }) => {
     const store =
       // If it's rendering in SSR or such.
-      typeof window === 'undefined' ? null : window[storageLocation ?? 'sessionStorage'];
-    const storeKey = storageKey ?? 'convex-session-id';
+      typeof window === "undefined"
+        ? null
+        : window[storageLocation ?? "sessionStorage"];
+    const storeKey = storageKey ?? "convex-session-id";
     const [sessionId, setSession] = useState<SessionId | null>(null);
     const createOrValidate = useMutation(createOrValidateSession);
 
@@ -81,32 +85,47 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
     return React.createElement(
       SessionContext.Provider,
       { value: sessionId },
-      waitForSessionId && !sessionId ? null : children,
+      waitForSessionId && !sessionId ? null : children
     );
   };
 
   // Like useQuery, but for a Query that takes a session ID.
   function useSessionQuery<
-    Query extends FunctionReference<'query', 'public', { sessionId: SessionId | null }, any>,
-  >(query: Query, ...args: SessionQueryArgsArray<Query>): Query['_returnType'] | undefined {
-    const skip = args[0] === 'skip';
+    Query extends FunctionReference<
+      "query",
+      "public",
+      { sessionId: SessionId | null },
+      any
+    >
+  >(
+    query: Query,
+    ...args: SessionQueryArgsArray<Query>
+  ): Query["_returnType"] | undefined {
+    const skip = args[0] === "skip";
     const sessionId = useContext(SessionContext);
-    const originalArgs = args[0] === 'skip' ? {} : args[0] ?? {};
+    const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
 
-    const newArgs = skip ? 'skip' : { ...originalArgs, sessionId };
+    const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
 
     return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
   }
 
   // Like useMutation, but for a Mutation that takes a session ID.
   function useSessionMutation<
-    Mutation extends FunctionReference<'mutation', 'public', { sessionId: SessionId }, any>,
+    Mutation extends FunctionReference<
+      "mutation",
+      "public",
+      { sessionId: SessionId },
+      any
+    >
   >(name: Mutation) {
     const sessionId = useContext(SessionContext);
     const originalMutation = useMutation(name);
 
-    return (...args: SessionMutationArgsArray<Mutation>): Promise<Mutation['_returnType']> => {
-      const newArgs = { ...(args[0] ?? {}), sessionId } as Mutation['_args'];
+    return (
+      ...args: SessionMutationArgsArray<Mutation>
+    ): Promise<Mutation["_returnType"]> => {
+      const newArgs = { ...(args[0] ?? {}), sessionId } as Mutation["_args"];
 
       return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
     };
@@ -134,12 +153,14 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
    * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
    * (Apache Version 2.0, January 2004)
    */
-  type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+  type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
+    T
+  >() => T extends Y ? 1 : 2
     ? true
     : false;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function assert<T extends true>() {
+  function assert<_ extends true>() {
     // no need to do anything! we're just asserting at compile time that the type
     // parameter is true.
   }
@@ -147,23 +168,38 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
   assert<
     Equals<
       SessionQueryArgsArray<
-        FunctionReference<'query', 'public', { arg: string; sessionId: SessionId | null }, any>
+        FunctionReference<
+          "query",
+          "public",
+          { arg: string; sessionId: SessionId | null },
+          any
+        >
       >,
-      [{ arg: string } | 'skip']
+      [{ arg: string } | "skip"]
     >
   >();
   assert<
     Equals<
       SessionQueryArgsArray<
-        FunctionReference<'query', 'public', { sessionId: SessionId | null }, any>
+        FunctionReference<
+          "query",
+          "public",
+          { sessionId: SessionId | null },
+          any
+        >
       >,
-      [args?: EmptyObject | 'skip' | undefined]
+      [args?: EmptyObject | "skip" | undefined]
     >
   >();
   assert<
     Equals<
       SessionMutationArgsArray<
-        FunctionReference<'mutation', 'public', { arg: string; sessionId: SessionId | null }, any>
+        FunctionReference<
+          "mutation",
+          "public",
+          { arg: string; sessionId: SessionId | null },
+          any
+        >
       >,
       [{ arg: string }]
     >
@@ -171,7 +207,12 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
   assert<
     Equals<
       SessionMutationArgsArray<
-        FunctionReference<'query', 'public', { sessionId: SessionId | null }, any>
+        FunctionReference<
+          "query",
+          "public",
+          { sessionId: SessionId | null },
+          any
+        >
       >,
       []
     >
