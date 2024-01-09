@@ -142,7 +142,11 @@ export function makeUseSessionHooks<SessionId extends GenericId<any>>(
     );
   }
 
-  return { SessionProvider, useSessionQuery, useSessionMutation };
+  function useSessionId() {
+    return useContext(SessionContext);
+  }
+
+  return { SessionProvider, useSessionId, useSessionQuery, useSessionMutation };
 
   // Type utils:
   type EmptyObject = Record<string, never>;
