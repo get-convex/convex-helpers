@@ -21,7 +21,7 @@ import type * as lib_honoWithConvex from "../lib/honoWithConvex.js";
 import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_relationships from "../lib/relationships.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
-import type * as lib_withSession from "../lib/withSession.js";
+import type * as lib_sessions from "../lib/sessions.js";
 import type * as lib_withUser from "../lib/withUser.js";
 import type * as lib_withZod from "../lib/withZod.js";
 import type * as presence from "../presence.js";
@@ -43,7 +43,7 @@ declare const fullApi: ApiFromModules<{
   "lib/migrations": typeof lib_migrations;
   "lib/relationships": typeof lib_relationships;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
-  "lib/withSession": typeof lib_withSession;
+  "lib/sessions": typeof lib_sessions;
   "lib/withUser": typeof lib_withUser;
   "lib/withZod": typeof lib_withZod;
   presence: typeof presence;

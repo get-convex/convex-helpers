@@ -23,11 +23,6 @@ import { makeSessionValidator } from "convex-helpers/server/sessions";
  */
 export const createOrValidate = makeSessionValidator("sessions");
 
-export const sessionIdValidator = { sessionId: v.id("sessions") };
-export const nullableSessionIdValidator = {
-  sessionId: v.union(v.null(), v.id("sessions")),
-};
-
 /** -----------------------------------------------------------------
  * Function wrappers
  * ----------------------------------------------------------------- */

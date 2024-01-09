@@ -19,7 +19,7 @@ export const { SessionProvider, useSessionMutation, useSessionQuery } =
   makeUseSessionHooks(
     // The function you expose to validate or create a session.
     // This is the same as the one you pass to `makeSessionWrappers`.
-    api.lib.withSession.createOrValidate,
+    api.lib.sessions.createOrValidate,
     // The key to use in localStorage or sessionStorage
     "ConvexSessionId",
     // Where to store the session ID.
