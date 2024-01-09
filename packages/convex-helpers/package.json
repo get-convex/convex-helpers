@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "",
+  "version": "0.1.8",
   "description": "A collection of useful code to complement the official convex package.",
   "exports": {
     ".": "./dist/index.js",
