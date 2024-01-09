@@ -19,6 +19,7 @@
   "files": [
     "dist",
     "index.ts",
+    "react",
     "server"
   ],
   "scripts": {
