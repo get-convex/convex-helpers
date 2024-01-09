@@ -16,7 +16,7 @@
  * two sessionIds on the first load.
  */
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import {
+import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
