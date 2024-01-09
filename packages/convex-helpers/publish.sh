@@ -18,7 +18,10 @@ grep '"version":' package.json || {
 }
 read -p "Enter the new version number: " version
 
-sed -i '' "s/\"version\": \".*\"/\"version\": \"$version\"/g" package.json
+if [ -n "$version" ]; then
+  sed -i '' "s/\"version\": \".*\"/\"version\": \"$version\"/g" package.json
+fi
+
 
 npm publish --dry-run
 echo "^^^ DRY RUN ^^^"
