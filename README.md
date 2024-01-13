@@ -10,7 +10,12 @@ directory, so you can `npm install convex-helpers@latest`.
 It doesn't have all of the below features, but the ones it has can be used directly,
 rather than copying the code from this repo.
 
-See the [README](./packages/convex-helpers/README.md) for more details.
+See the [README](./packages/convex-helpers/README.md) for more details on:
+
+1. Customizing Functions (customQuery, customMutation, customAction).
+1. Relationship utilities to navigate database references.
+1. Row-Level Security (to be used with Custom Functions).
+1. Zod validation for function arguments and schemas.
 
 ## Server-Persisted Session Data
 
@@ -30,15 +35,6 @@ See the [Stack post on withUser](https://stack.convex.dev/wrappers-as-middleware
 Use the [withUser](./convex/lib/withUser.ts) wrappers in your functions to easily look up a user.
 You'll need to add an entry in your schema similar to [convex/schema.ts](./convex/schema.ts).
 
-## Row-level security
-
-See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
-
-Use the [RowLevelSecurity](./convex/lib/rowLevelSecurity.ts) helper to define
-`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
-server-side function. Any access to `db` inside functions wrapped with these
-will check your access rules on read/insert/modify per-document.
-
 ## Migrations: Data mutations
 
 See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
@@ -50,17 +46,6 @@ It generates an internalMutation to migrate a batch of documents.
 
 Run the mutation to test it out, then run it over the whole table with the
 [runMigration](./convex/lib/migrations.ts) action.
-
-## Relationship helpers
-
-See the [Stack post on relationship helpers](https://stack.convex.dev/functional-relationships-helpers)
-and the [relationship schema structures post](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas).
-
-**To use `convex-helpers`, import from "convex-helpers/server/relationships"**
-
-To copy code:
-
-Use the helpers in [relationships.ts](./convex/lib/relationships.ts) to traverse database relationships in queries more cleanly.
 
 ## HTTP Endpoints: Using Hono for advanced functionality
 
@@ -90,11 +75,3 @@ Related files:
 - [usePresence.ts](./src/hooks/usePresence.ts) for client-side React hooks. Modify to match your server API.
 - (optional)[useTypingIndicator.ts](./src/hooks/useTypingIndicator.ts) for specifically doing typing indicator presence.
 - (optional)[Facepile.tsx](./src/components/Facepile.tsx) for showing a facepile based on presence data. Intended to be used as an example to extend.
-
-## Zod Validation
-
-Update: now Convex has argument validation. If you are just checking types, it
-should suffice: https://docs.convex.dev/functions/args-validation
-See the [Stack post on Zod validation](https://stack.convex.dev/wrappers-as-middleware-zod-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
-
-You'll need the [withZod.ts](./convex/lib/withZod.ts) file.

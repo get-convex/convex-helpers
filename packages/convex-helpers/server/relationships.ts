@@ -10,7 +10,9 @@ import { GenericId } from "convex/values";
 import { asyncMap, nullThrows } from "..";
 
 /**
- * getAll returns a list of Documents for the `Id`s passed in.
+ * getAll returns a list of Documents (or null) for the `Id`s passed in.
+ *
+ * Nulls are returned for documents not found.
  * @param db A DatabaseReader, usually passed from a mutation or query ctx.
  * @param ids An list (or other iterable) of Ids pointing to a table.
  * @returns The Documents referenced by the Ids, in order. `null` if not found.
@@ -26,7 +28,9 @@ export async function getAll<
 }
 
 /**
- * getAllOrThrow returns a list of Documents or null for the `Id`s passed in.
+ * getAllOrThrow returns a list of Documents for the `Id`s passed in.
+ *
+ * It throws if any documents are not found (null).
  * @param db A DatabaseReader, usually passed from a mutation or query ctx.
  * @param ids An list (or other iterable) of Ids pointing to a table.
  * @returns The Documents referenced by the Ids, in order. `null` if not found.
@@ -69,11 +73,12 @@ type TablesWithLookups<
 /**
  * Get a document matching the given value for a specified field.
  *
+ * Throws if not found.
  * Useful for fetching a document with a one-to-one relationship via backref.
  * Requires the table to have an index on the field named the same as the field.
  * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
  *
- * Getting "string" is not assignable to parameter of type never?
+ * Getting 'string' is not assignable to parameter of type 'never'?
  * Make sure your index is named after your field.
  *
  * @param db DatabaseReader, passed in from the function ctx
@@ -105,11 +110,12 @@ export async function getOneFromOrThrow<
 /**
  * Get a document matching the given value for a specified field.
  *
+ * `null` if not found.
  * Useful for fetching a document with a one-to-one relationship via backref.
  * Requires the table to have an index on the field named the same as the field.
  * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
  *
- * Getting "string" is not assignable to parameter of type never?
+ * Getting 'string' is not assignable to parameter of type 'never'?
  * Make sure your index is named after your field.
  *
  * @param db DatabaseReader, passed in from the function ctx
@@ -141,7 +147,7 @@ export async function getOneFrom<
  * Requires the table to have an index on the field named the same as the field.
  * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
  *
- * Getting "string" is not assignable to parameter of type never?
+ * Getting 'string' is not assignable to parameter of type 'never'?
  * Make sure your index is named after your field.
  *
  * @param db DatabaseReader, passed in from the function ctx
@@ -215,9 +221,18 @@ type JoinTables<DataModel extends GenericDataModel> = {
 /**
  * Get related documents by using a join table.
  *
+ * Any missing documents referenced by the join table will be null.
  * It will find all join table entries matching a value, then look up all the
  * documents pointed to by the join table entries. Useful for many-to-many
  * relationships.
+ *
+ * Requires your join table to have an index on the fromField named the same as
+ * the fromField, and another field that is an Id type.
+ * e.g. `defineTable({ a: v.string(), b: v.id("users") }).index("a", ["a"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param toField The ID field on the table pointing at target documents.
@@ -269,9 +284,18 @@ export async function getManyVia<
 /**
  * Get related documents by using a join table.
  *
+ * Throws an error if any documents referenced by the join table are missing.
  * It will find all join table entries matching a value, then look up all the
  * documents pointed to by the join table entries. Useful for many-to-many
  * relationships.
+ *
+ * Requires your join table to have an index on the fromField named the same as
+ * the fromField, and another field that is an Id type.
+ * e.g. `defineTable({ a: v.string(), b: v.id("users") }).index("a", ["a"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param toField The ID field on the table pointing at target documents.
