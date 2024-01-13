@@ -92,6 +92,7 @@ export function BasicRowLevelSecurity(
 /**
  * Apply row level security (RLS) to queries and mutations with the returned
  * middleware functions.
+ * @deprecated Use `wrapDatabaseReader`/`Writer` with `customFunction` instead.
  *
  * Example:
  * ```
