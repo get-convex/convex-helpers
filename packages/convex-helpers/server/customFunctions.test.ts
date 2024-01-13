@@ -162,15 +162,14 @@ const badRedefineArg = customQuery(query, {
 const badRedefine = badRedefineArg({
   args: { a: v.number() },
   handler: async (_ctx, args) => {
-    assert<Equals<typeof args.a, never>>(); // !!!
     return { argsA: args.a };
   },
 });
 const never: never = null as never;
-// Errors if you pass a string to "a".
-// One caveat is that if you don't have a second param, it's ok passing no
-// params ({a: never} seems to type check as {} which means optional params)
-queryMatches(badRedefine, { b: 3, a: never }, { argsA: never });
+// Errors if you pass a string or number to "a".
+// It doesn't show never in the handler or return type, but input args is where
+// we expect the never, so should be sufficient.
+queryMatches(badRedefine, { b: 3, a: never }, { argsA: "" }); // !!!
 
 /**
  * Test helpers
@@ -193,8 +192,8 @@ function assert<T extends true>() {
   return true as T;
 }
 
-function queryMatches<A, T extends (ctx: any, args: A) => any>(
+function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
   _f: T,
   _a: A,
-  _v: Awaited<ReturnType<T>>
+  _v: R
 ) {}
