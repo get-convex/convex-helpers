@@ -1,7 +1,5 @@
 import {
   FieldTypeFromFieldPath,
-  Indexes,
-  NamedTableInfo,
   TableNamesInDataModel,
   GenericDataModel,
   GenericDatabaseReader,
@@ -43,23 +41,19 @@ export async function getAllOrThrow<
   return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
 }
 
-// `FieldPath`s that have a `"FieldPath"` index on [`FieldPath`, ...]
-// type LookupFieldPaths<TableName extends TableNames> =   {[FieldPath in DataModel[TableName]["fieldPaths"]]: FieldPath extends keyof DataModel[TableName]["indexes"]? Indexes<NamedTableInfo<DataModel, TableName>>[FieldPath][0] extends FieldPath ? FieldPath : never: never}[DataModel[TableName]["fieldPaths"]]
-
-// `FieldPath`s that have a `"by_${FieldPath}""` index on [`FieldPath`, ...]
+// `FieldPath`s that have a `.index(FieldPath, [FieldPath, ...])` on the table.
 type LookupFieldPaths<
   DataModel extends GenericDataModel,
   TableName extends string = TableNamesInDataModel<DataModel>
 > = {
-  [FieldPath in DataModel[TableName]["fieldPaths"]]: `by_${FieldPath}` extends keyof DataModel[TableName]["indexes"]
-    ? Indexes<
-        NamedTableInfo<DataModel, TableName>
-      >[`by_${FieldPath}`][0] extends FieldPath
+  [FieldPath in DataModel[TableName]["fieldPaths"]]: FieldPath extends keyof DataModel[TableName]["indexes"]
+    ? DataModel[TableName]["indexes"][FieldPath][0] extends FieldPath
       ? FieldPath
       : never
     : never;
 }[DataModel[TableName]["fieldPaths"]];
 
+// Tables that have a lookup field - a field with a self-titled index.
 type TablesWithLookups<
   DataModel extends GenericDataModel,
   TableNames extends string = TableNamesInDataModel<DataModel>
@@ -73,9 +67,15 @@ type TablesWithLookups<
 }[TableNames];
 
 /**
- * Get a document that references a value with a field indexed `by_${field}`
+ * Get a document matching the given value for a specified field.
  *
  * Useful for fetching a document with a one-to-one relationship via backref.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting "string" is not assignable to parameter of type never?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param field The field on that table that should match the specified value.
@@ -94,7 +94,7 @@ export async function getOneFromOrThrow<
 ): Promise<DocumentByName<DataModel, TableName>> {
   const ret = await db
     .query(table)
-    .withIndex("by_" + field, (q) => q.eq(field, value as any))
+    .withIndex(field, (q) => q.eq(field, value as any))
     .unique();
   return nullThrows(
     ret,
@@ -103,9 +103,15 @@ export async function getOneFromOrThrow<
 }
 
 /**
- * Get a document that references a value with a field indexed `by_${field}`
+ * Get a document matching the given value for a specified field.
  *
  * Useful for fetching a document with a one-to-one relationship via backref.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting "string" is not assignable to parameter of type never?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param field The field on that table that should match the specified value.
@@ -124,14 +130,20 @@ export async function getOneFrom<
 ): Promise<DocumentByName<DataModel, TableName> | null> {
   return db
     .query(table)
-    .withIndex("by_" + field, (q) => q.eq(field, value as any))
+    .withIndex(field, (q) => q.eq(field, value as any))
     .unique();
 }
 
 /**
- * Get a list of documents matching a value with a field indexed `by_${field}`.
+ * Get a list of documents matching the given value for a specified field.
  *
  * Useful for fetching many documents related to a given value via backrefs.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting "string" is not assignable to parameter of type never?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param field The field on that table that should match the specified value.
@@ -150,7 +162,7 @@ export async function getManyFrom<
 ): Promise<DocumentByName<DataModel, TableName>[]> {
   return db
     .query(table)
-    .withIndex("by_" + field, (q) => q.eq(field, value as any))
+    .withIndex(field, (q) => q.eq(field, value as any))
     .collect();
 }
 

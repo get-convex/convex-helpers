@@ -60,9 +60,7 @@ const kitchenSinkValidator = {
 };
 
 // Example of how you'd define a table in schema.ts with zod validators
-defineTable(zodToConvexFields(kitchenSinkValidator)).index("by_email", [
-  "email",
-]);
+defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", ["email"]);
 
 export const kitchenSink = zQuery({
   args: kitchenSinkValidator,
