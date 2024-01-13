@@ -22,12 +22,11 @@ if [ -n "$version" ]; then
   sed -i '' "s/\"version\": \".*\"/\"version\": \"$version\"/g" package.json
 fi
 
-
 npm publish --dry-run
 echo "^^^ DRY RUN ^^^"
 read -p "Publish to npm? (y/n): " publish
 if [ "$publish" = "y" ]; then
-  git add package.json
+  git add package.json package-lock.json
   # If there's nothing to commit, continue
   git commit -m "npm $version" || true
   if (echo "$version" | grep alpha >/dev/null); then
