@@ -18,6 +18,10 @@ const zQuery = zCustomQuery(query, {
   },
 });
 
+export const fields = {
+  supplierId: zid("suppliers"),
+};
+
 export const getCounterId = query({
   args: {},
   handler: async (ctx) => {

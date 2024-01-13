@@ -724,7 +724,7 @@ interface ZidDef<TableName extends string> extends ZodTypeDef {
   tableName: TableName;
 }
 
-export class Zid<TableName extends string> extends z.ZodType<
+class Zid<TableName extends string> extends z.ZodType<
   GenericId<TableName>,
   ZidDef<TableName>
 > {
