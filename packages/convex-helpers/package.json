@@ -18,6 +18,8 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prebuild": "npm run test",
+    "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
     "watch": "chokidar 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run clean && npm run build' --initial"
   },
