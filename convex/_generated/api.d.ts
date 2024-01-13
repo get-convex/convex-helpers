@@ -19,7 +19,6 @@ import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as http from "../http.js";
 import type * as lib_honoWithConvex from "../lib/honoWithConvex.js";
 import type * as lib_migrations from "../lib/migrations.js";
-import type * as lib_relationships from "../lib/relationships.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
 import type * as lib_withSession from "../lib/withSession.js";
 import type * as lib_withUser from "../lib/withUser.js";
@@ -42,7 +41,6 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/honoWithConvex": typeof lib_honoWithConvex;
   "lib/migrations": typeof lib_migrations;
-  "lib/relationships": typeof lib_relationships;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
   "lib/withSession": typeof lib_withSession;
   "lib/withUser": typeof lib_withUser;

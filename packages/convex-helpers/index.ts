@@ -24,3 +24,17 @@ export async function asyncMap<FromType, ToType>(
 export function pruneNull<T>(list: (T | null)[]): T[] {
   return list.filter((i) => i !== null) as T[];
 }
+
+export class NullDocumentError extends Error {}
+
+/**
+ * Throws if there is a null element in the array.
+ * @param list List of elements that might have a null element.
+ * @returns Same list of elements with a refined type.
+ */
+export function nullThrows<T>(doc: T | null, message?: string): T {
+  if (doc === null) {
+    throw new NullDocumentError(message ?? "Unexpected null document.");
+  }
+  return doc;
+}

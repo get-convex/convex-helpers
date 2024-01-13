@@ -9,38 +9,38 @@ import {
   SystemTableNames,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { asyncMap, pruneNull } from "..";
+import { asyncMap, nullThrows } from "..";
 
 /**
- * getAll returns a list of Documents corresponding to the `Id`s passed in.
- * @param db A database object, usually passed from a mutation or query ctx.
+ * getAll returns a list of Documents for the `Id`s passed in.
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
  * @param ids An list (or other iterable) of Ids pointing to a table.
- * @returns The Documents referenced by the Ids, in order.
+ * @returns The Documents referenced by the Ids, in order. `null` if not found.
  */
 export async function getAll<
   DataModel extends GenericDataModel,
   TableName extends string = TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: GenericId<TableName>[]
+  ids: Iterable<GenericId<TableName>>
 ): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
-  return pruneNull(await asyncMap(ids, db.get));
+  return asyncMap(ids, db.get);
 }
 
 /**
- * getAllOrNone returns a list of Documents or null for the `Id`s passed in.
- * @param db A database object, usually passed from a mutation or query ctx.
+ * getAllOrThrow returns a list of Documents or null for the `Id`s passed in.
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
  * @param ids An list (or other iterable) of Ids pointing to a table.
  * @returns The Documents referenced by the Ids, in order. `null` if not found.
  */
-export async function getAllWithNulls<
+export async function getAllOrThrow<
   DataModel extends GenericDataModel,
   TableName extends string = TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: GenericId<TableName>[]
-): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
-  return asyncMap(ids, db.get);
+  ids: Iterable<GenericId<TableName>>
+): Promise<DocumentByName<DataModel, TableName>[]> {
+  return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
 }
 
 // `FieldPath`s that have a `"FieldPath"` index on [`FieldPath`, ...]
@@ -72,8 +72,6 @@ type TablesWithLookups<
     : TableName;
 }[TableNames];
 
-class MissingDocumentError extends Error {}
-
 /**
  * Get a document that references a value with a field indexed `by_${field}`
  *
@@ -84,7 +82,7 @@ class MissingDocumentError extends Error {}
  * @param value The value to look up the document by, usually an ID.
  * @returns The document matching the value. Throws if not found.
  */
-export async function getOneFrom<
+export async function getOneFromOrThrow<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
   Field extends LookupFieldPaths<DataModel, TableName>
@@ -98,12 +96,10 @@ export async function getOneFrom<
     .query(table)
     .withIndex("by_" + field, (q) => q.eq(field, value as any))
     .unique();
-  if (ret === null) {
-    throw new MissingDocumentError(
-      `Can't find a document in ${table} with field ${field} equal to ${value}`
-    );
-  }
-  return ret;
+  return nullThrows(
+    ret,
+    `Can't find a document in ${table} with field ${field} equal to ${value}`
+  );
 }
 
 /**
@@ -116,7 +112,7 @@ export async function getOneFrom<
  * @param value The value to look up the document by, usually an ID.
  * @returns The document matching the value, or null if none found.
  */
-export async function getOneOrNullFrom<
+export async function getOneFrom<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
   Field extends LookupFieldPaths<DataModel, TableName>
@@ -244,18 +240,76 @@ export async function getManyVia<
     DocumentByName<DataModel, JoinTableName>,
     FromField
   >
-): Promise<DocumentByName<DataModel, TargetTableName>[]> {
-  return pruneNull(
-    await asyncMap(
-      await getManyFrom(db, table, fromField, value),
-      async (link: DocumentByName<DataModel, JoinTableName>) => {
-        const id = link[toField] as GenericId<TargetTableName>;
-        try {
-          return await db.get(id);
-        } catch {
-          return await db.system.get(id as GenericId<SystemTableNames>);
-        }
+): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
+  return await asyncMap(
+    await getManyFrom(db, table, fromField, value),
+    async (link: DocumentByName<DataModel, JoinTableName>) => {
+      const id = link[toField] as GenericId<TargetTableName>;
+      try {
+        return await db.get(id);
+      } catch {
+        return await db.system.get(id as GenericId<SystemTableNames>);
       }
-    )
+    }
+  );
+}
+
+/**
+ * Get related documents by using a join table.
+ *
+ * It will find all join table entries matching a value, then look up all the
+ * documents pointed to by the join table entries. Useful for many-to-many
+ * relationships.
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param toField The ID field on the table pointing at target documents.
+ * @param fromField The field on the table to compare to the value.
+ * @param value The value to match the fromField on the table, usually an ID.
+ * @returns The documents targeted by matching documents in the table, if any.
+ */
+export async function getManyViaOrThrow<
+  DataModel extends GenericDataModel,
+  JoinTableName extends JoinTables<DataModel>,
+  ToField extends IdFilePaths<
+    DataModel,
+    JoinTableName,
+    TableNamesInDataModel<DataModel> | SystemTableNames
+  >,
+  FromField extends Exclude<
+    LookupFieldPaths<DataModel, JoinTableName>,
+    ToField
+  >,
+  TargetTableName extends FieldTypeFromFieldPath<
+    DocumentByName<DataModel, JoinTableName>,
+    ToField
+  > extends GenericId<infer TargetTableName>
+    ? TargetTableName
+    : never
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: JoinTableName,
+  toField: ToField,
+  fromField: FromField,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, JoinTableName>,
+    FromField
+  >
+): Promise<DocumentByName<DataModel, TargetTableName>[]> {
+  return await asyncMap(
+    await getManyFrom(db, table, fromField, value),
+    async (link: DocumentByName<DataModel, JoinTableName>) => {
+      const id = link[toField];
+      try {
+        return nullThrows(
+          await db.get(id as GenericId<TargetTableName>),
+          `Can't find document ${id} referenced in ${table}'s field ${toField} corresponding to ${fromField} equal to ${value}`
+        );
+      } catch {
+        return nullThrows(
+          await db.system.get(id as GenericId<SystemTableNames>),
+          `Can't find document ${id} referenced in ${table}'s field ${toField} corresponding to ${fromField} equal to ${value}`
+        );
+      }
+    }
   );
 }
