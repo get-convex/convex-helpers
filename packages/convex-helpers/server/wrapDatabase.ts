@@ -40,98 +40,81 @@ type ReadArgs<Ctx, Doc extends GenericDocument> = (args: {
   operation: "read";
   doc: Doc;
 }) => TransformedDoc<Doc>;
-type WriteArgs<Ctx, Doc extends GenericDocument> =
-  | ((args: {
+type ReadWriteArgs<Ctx, Doc extends GenericDocument> = {
+    (args: {
+      ctx: Ctx;
+      operation: "read";
+      doc: Doc;
+    }) : TransformedDoc<Doc>;
+
+   (args: {
       ctx: Ctx;
       operation: "create";
       doc: WithoutSystemFields<Doc>;
-    }) => void | Doc | Promise<void> | Promise<Doc>)
-  | ((args: {
+    }): Promise<Doc> | Doc;
+   (args: {
       ctx: Ctx;
       operation: "update";
       doc: Doc;
       update: Partial<Doc>;
-    }) => void | Promise<void>)
-  | ((args: {
+    }): TransformedDoc<Partial<Doc>>;
+   (args: {
       ctx: Ctx;
       operation: "delete";
       doc: Doc;
-    }) => void | Promise<void>);
+    }): TransformedDoc<Doc>;
+  }
 // type AllArgs<Ctx, Doc extends GenericDocument> = ReadArgs<Ctx, Doc> | WriteArgs<Ctx, Doc>;
 
 type TransformedDoc<Doc> = Promise<Doc | null> | Doc | null;
 
-type ReadCallbacks<Ctx, DataModel extends GenericDataModel> = {
-  [T in TableNamesInDataModel<DataModel>]?: ReadArgs<
-    Ctx,
-    DocumentByName<DataModel, T>
-  >;
+export type ReadCallbacks<Ctx, DataModel extends GenericDataModel> = {
+  [T in TableNamesInDataModel<DataModel>]?:
+    ReadArgs<Ctx, DocumentByName<DataModel, T>>
 };
 
-type WriteCallbacks<Ctx, DataModel extends GenericDataModel> = {
-  [T in TableNamesInDataModel<DataModel>]?: (
-    args:
-      | ReadArgs<Ctx, DocumentByName<DataModel, T>>
-      | WriteArgs<Ctx, DocumentByName<DataModel, T>>
-  ) => TransformedDoc<DocumentByName<DataModel, T>>;
+export type ReadWriteCallbacks<Ctx, DataModel extends GenericDataModel> = {
+  [T in TableNamesInDataModel<DataModel>]?:
+     ReadWriteArgs<Ctx, DocumentByName<DataModel, T>>
 };
 
-/**
- * Wraps the
- */
-
-export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
-  ctx: Ctx,
-  db: GenericDatabaseReader<DataModel>,
-  callbacks: ReadCallbacks<Ctx, DataModel>
-): GenericDatabaseReader<DataModel> {
-  return new WrapReader(ctx, db, callbacks);
-}
-
-export function wrapDatabaseWriter<Ctx, DataModel extends GenericDataModel>(
-  ctx: Ctx,
-  db: GenericDatabaseWriter<DataModel>,
-  callbacks: WriteCallbacks<Ctx, DataModel>
-): GenericDatabaseWriter<DataModel> {
-  return new WrapWriter(ctx, db, callbacks);
-}
 
 type Transform<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>
 ) => TransformedDoc<DocumentByInfo<T>>;
 
-async function asyncMapStripNulls<T>(
+async function asyncMapFilter<T>(
   arr: T[],
   predicate: (d: T) => TransformedDoc<T>
 ): Promise<T[]> {
   const results = await Promise.all(arr.map(predicate));
-  return results.filter((d) => d !== null) as T[];
+  return results.filter((d) => d) as T[];
 }
 
 class WrapQuery<T extends GenericTableInfo> implements Query<T> {
   q: Query<T>;
-  t: Transform<T>;
+  transform: Transform<T>;
   iterator?: AsyncIterator<any>;
-  constructor(q: Query<T> | OrderedQuery<T>, t: Transform<T>) {
+  constructor(q: Query<T> | OrderedQuery<T>, transform: Transform<T>) {
     this.q = q as Query<T>;
-    this.t = t;
+    this.transform = transform;
   }
   filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
-    return new WrapQuery(this.q.filter(predicate), this.t) as this;
+    return new WrapQuery(this.q.filter(predicate), this.transform) as this;
   }
   order(order: "asc" | "desc"): WrapQuery<T> {
-    return new WrapQuery(this.q.order(order), this.t);
+    return new WrapQuery(this.q.order(order), this.transform);
   }
   async paginate(
     paginationOpts: PaginationOptions
   ): Promise<PaginationResult<DocumentByInfo<T>>> {
     const result = await this.q.paginate(paginationOpts);
-    result.page = await asyncMapStripNulls(result.page, this.t);
+    result.page = await asyncMapFilter(result.page, this.transform);
     return result;
   }
   async collect(): Promise<DocumentByInfo<T>[]> {
     const results = await this.q.collect();
-    return await asyncMapStripNulls(results, this.t);
+    return await asyncMapFilter(results, this.transform);
   }
   async take(n: number): Promise<DocumentByInfo<T>[]> {
     const results: DocumentByInfo<T>[] = [];
@@ -167,7 +150,7 @@ class WrapQuery<T extends GenericTableInfo> implements Query<T> {
   async next(): Promise<IteratorResult<any>> {
     for (;;) {
       const { value, done } = await this.iterator!.next();
-      if (value && (await this.t(value))) {
+      if (value && (await this.transform(value))) {
         return { value, done };
       }
       if (done) {
@@ -183,13 +166,13 @@ class WrapQueryInitializer<T extends GenericTableInfo>
   implements QueryInitializer<T>
 {
   q: QueryInitializer<T>;
-  t: Transform<T>;
-  constructor(q: QueryInitializer<T>, t: Transform<T>) {
+  transform: Transform<T>;
+  constructor(q: QueryInitializer<T>, transform: Transform<T>) {
     this.q = q;
-    this.t = t;
+    this.transform = transform;
   }
   fullTableScan(): Query<T> {
-    return new WrapQuery(this.q.fullTableScan(), this.t);
+    return new WrapQuery(this.q.fullTableScan(), this.transform);
   }
   withIndex<IndexName extends keyof Indexes<T>>(
     indexName: IndexName,
@@ -199,7 +182,10 @@ class WrapQueryInitializer<T extends GenericTableInfo>
         ) => IndexRange)
       | undefined
   ): Query<T> {
-    return new WrapQuery(this.q.withIndex(indexName, indexRange), this.t);
+    return new WrapQuery(
+      this.q.withIndex(indexName, indexRange),
+      this.transform
+    );
   }
   withSearchIndex<IndexName extends keyof SearchIndexes<T>>(
     indexName: IndexName,
@@ -209,7 +195,7 @@ class WrapQueryInitializer<T extends GenericTableInfo>
   ): OrderedQuery<T> {
     return new WrapQuery(
       this.q.withSearchIndex(indexName, searchFilter),
-      this.t
+      this.transform
     );
   }
   filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
@@ -239,7 +225,7 @@ class WrapQueryInitializer<T extends GenericTableInfo>
     return this.fullTableScan()[Symbol.asyncIterator]();
   }
 }
-class WrapReader<Ctx, DataModel extends GenericDataModel>
+export class WrapReader<Ctx, DataModel extends GenericDataModel>
   implements GenericDatabaseReader<DataModel>
 {
   ctx: Ctx;
@@ -276,17 +262,6 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     return null;
   }
 
-  callback<T extends GenericTableInfo>(
-    tableName: string,
-    doc: DocumentByInfo<T>
-  ): TransformedDoc<DocumentByInfo<T>> {
-    const callback = this.callbacks[tableName];
-    if (!callback) {
-      return doc;
-    }
-    return callback({ ctx: this.ctx, operation: "read", doc });
-  }
-
   async get<TableName extends string>(
     id: GenericId<TableName>
   ): Promise<DocumentByName<DataModel, TableName> | null> {
@@ -294,7 +269,11 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     if (doc) {
       const tableName = this.tableName(id);
       if (tableName) {
-        return await this.callback(tableName, doc);
+        const callback = this.callbacks[tableName];
+        if (!callback) {
+          return doc;
+        }
+        return callback({ ctx: this.ctx, operation: "read", doc });
       }
       return doc;
     }
@@ -304,22 +283,25 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   query<TableName extends string>(
     tableName: TableName
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
-    return new WrapQueryInitializer(
-      this.db.query(tableName),
-      async (d) => await this.callback(tableName, d)
-    );
+    return new WrapQueryInitializer(this.db.query(tableName), async (doc) => {
+      const callback = this.callbacks[tableName];
+      if (!callback) {
+        return doc;
+      }
+      return callback({ ctx: this.ctx, operation: "read", doc });
+    });
   }
 }
-class InsertError extends Error {}
+class WriteError extends Error {}
 
-class WrapWriter<Ctx, DataModel extends GenericDataModel>
+export class WrapWriter<Ctx, DataModel extends GenericDataModel>
   implements GenericDatabaseWriter<DataModel>
 {
   ctx: Ctx;
   db: GenericDatabaseWriter<DataModel>;
   system: GenericDatabaseWriter<DataModel>["system"];
   reader: GenericDatabaseReader<DataModel>;
-  callbacks: WriteCallbacks<Ctx, DataModel>;
+  callbacks: ReadWriteCallbacks<Ctx, DataModel>;
 
   // callback<T extends GenericTableInfo>(
   //   tableName: string,
@@ -335,7 +317,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   constructor(
     ctx: Ctx,
     db: GenericDatabaseWriter<DataModel>,
-    callbacks: WriteCallbacks<Ctx, DataModel>
+    callbacks: ReadWriteCallbacks<Ctx, DataModel>
   ) {
     this.ctx = ctx;
     this.db = db;
@@ -358,7 +340,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
       ? await callback({ doc: value, operation: "create", ctx: this.ctx })
       : value;
     if (!doc) {
-      throw new InsertError(`Insert aborted by callback for ${table}`);
+      throw new WriteError(`Insert aborted by callback for ${table}`);
     }
     return await this.db.insert(table, doc);
   }
@@ -378,9 +360,17 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   ): Promise<void> {
     const tableName = this.tableName(id);
     const callback = tableName !== null && this.callbacks[tableName];
-    const patch = callback
+    if (callback) {
+      const doc = await this.db.get(id);
+      if (doc) {
+        const newDoc =
+
+      }
+
+    }
+    const patch = (callback && doc)
       ? await callback({
-          doc: value,
+          doc,
           operation: "update",
           update: value,
           ctx: this.ctx,

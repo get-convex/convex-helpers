@@ -40,10 +40,12 @@ import {
   query,
 } from "../_generated/server";
 import {
-  wrapDatabaseReader,
-  wrapDatabaseWriter,
+  ReadWriteRules,
+  rlsDatabaseReader,
+  rlsDatabaseWriter,
 } from "convex-helpers/server/rowLevelSecurity";
 import { DataModel } from "../_generated/dataModel";
+import { ReadWriteCallbacks } from "convex-helpers/server/wrapDatabase";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -53,6 +55,20 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
     modify?: Rule<Ctx, DocumentByName<DataModel, T>>;
     insert?: Rule<Ctx, WithoutSystemFields<DocumentByName<DataModel, T>>>;
   };
+};
+const myRules: ReadWriteRules<{ a: string }, DataModel> = {
+  counter_table: async ({ ctx, doc, operation, update }) => {
+    switch (operation) {
+      case "read":
+        return true;
+      case "create":
+        return doc.name === ctx.a;
+      case "update":
+        return !update.name || update.name === "a";
+      case "delete":
+        return false;
+    }
+  },
 };
 
 /**
@@ -64,17 +80,17 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
  * //TODO: Add example
  */
 export function BasicRowLevelSecurity(
-  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
+  rules: ReadWriteCallbacks<GenericQueryCtx<DataModel>, DataModel>
 ) {
   return {
     queryWithRLS: customQuery(
       query,
-      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
+      customCtx((ctx) => ({ db: rlsDatabaseReader(ctx, ctx.db, rules) }))
     ),
 
     mutationWithRLS: customMutation(
       mutation,
-      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
+      customCtx((ctx) => ({ db: rlsDatabaseWriter(ctx, ctx.db, rules) }))
     ),
 
     internalQueryWithRLS: customQuery(
@@ -84,7 +100,7 @@ export function BasicRowLevelSecurity(
 
     internalMutationWithRLS: customMutation(
       internalMutation,
-      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
+      customCtx((ctx) => ({ db: rlsDatabaseWriter(ctx, ctx.db, rules) }))
     ),
   };
 }
