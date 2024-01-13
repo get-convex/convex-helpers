@@ -19,7 +19,7 @@ import { asyncMap, nullThrows } from "..";
  */
 export async function getAll<
   DataModel extends GenericDataModel,
-  TableName extends string = TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>>
@@ -37,7 +37,7 @@ export async function getAll<
  */
 export async function getAllOrThrow<
   DataModel extends GenericDataModel,
-  TableName extends string = TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>>
