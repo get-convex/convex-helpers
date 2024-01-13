@@ -45,30 +45,41 @@ export async function getAllOrThrow<
   return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
 }
 
-// `FieldPath`s that have a `.index(FieldPath, [FieldPath, ...])` on the table.
-type LookupFieldPaths<
+type UserIndexes<
   DataModel extends GenericDataModel,
-  TableName extends string = TableNamesInDataModel<DataModel>
-> = {
-  [FieldPath in DataModel[TableName]["fieldPaths"]]: FieldPath extends keyof DataModel[TableName]["indexes"]
-    ? DataModel[TableName]["indexes"][FieldPath][0] extends FieldPath
-      ? FieldPath
-      : never
-    : never;
-}[DataModel[TableName]["fieldPaths"]];
+  TableName extends TableNamesInDataModel<DataModel>
+> = Exclude<keyof DataModel[TableName]["indexes"], "by_creation_time"> & string;
 
-// Tables that have a lookup field - a field with a self-titled index.
-type TablesWithLookups<
-  DataModel extends GenericDataModel,
-  TableNames extends string = TableNamesInDataModel<DataModel>
-> = {
-  [TableName in TableNames]: LookupFieldPaths<
+type TablesWithLookups<DataModel extends GenericDataModel> = {
+  [T in TableNamesInDataModel<DataModel>]: UserIndexes<
     DataModel,
-    TableName
+    T
   > extends never
     ? never
-    : TableName;
-}[TableNames];
+    : T;
+}[TableNamesInDataModel<DataModel>];
+
+// `FieldPath`s that have an index starting with them
+// e.g. `.index("...", [FieldPath, ...])` on the table.
+type LookupFieldPaths<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>
+> = {
+  [Index in UserIndexes<
+    DataModel,
+    TableName
+  >]: DataModel[TableName]["indexes"][Index][0];
+}[UserIndexes<DataModel, TableName>];
+
+// If the index is named after the first field, then the field name is optional.
+// To be used as a spread argument to optionally require the field name.
+type FieldIfDoesntMatchIndex<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
+> = DataModel[TableName]["indexes"][IndexName][0] extends IndexName
+  ? [DataModel[TableName]["indexes"][IndexName][0]?]
+  : [DataModel[TableName]["indexes"][IndexName][0]];
 
 /**
  * Get a document matching the given value for a specified field.
@@ -83,29 +94,31 @@ type TablesWithLookups<
  *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
+ * @param index The index on that table to look up the specified value by.
+ * @param value The value to look up the document by, often an ID.
  * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
+ *   Optional if the index is named after the field.
  * @returns The document matching the value, or null if none found.
  */
 export async function getOneFrom<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>,
-  Field extends IndexName extends keyof DataModel[TableName]["indexes"]
-    ? DataModel[TableName]["indexes"][IndexName][0]
-    : LookupFieldPaths<DataModel, TableName>,
-  IndexName extends
-    | undefined
-    | keyof DataModel[TableName]["indexes"] = undefined
+  TableName extends TablesWithLookups<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>,
-  indexName?: IndexName
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, TableName>,
+    DataModel[TableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName> | null> {
+  const field =
+    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
   return db
     .query(table)
-    .withIndex(indexName ?? field, (q) => q.eq(field, value as any))
+    .withIndex(index, (q) => q.eq(field, value))
     .unique();
 }
 
@@ -122,29 +135,31 @@ export async function getOneFrom<
  *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
+ * @param index The index on that table to look up the specified value by.
+ * @param value The value to look up the document by, often an ID.
  * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
+ *   Optional if the index is named after the field.
  * @returns The document matching the value. Throws if not found.
  */
 export async function getOneFromOrThrow<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>,
-  Field extends IndexName extends keyof DataModel[TableName]["indexes"]
-    ? DataModel[TableName]["indexes"][IndexName][0]
-    : LookupFieldPaths<DataModel, TableName>,
-  IndexName extends
-    | undefined
-    | keyof DataModel[TableName]["indexes"] = undefined
+  TableName extends TablesWithLookups<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>,
-  indexName?: IndexName
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, TableName>,
+    DataModel[TableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>> {
+  const field =
+    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
   const ret = await db
     .query(table)
-    .withIndex(indexName ?? field, (q) => q.eq(field, value as any))
+    .withIndex(index, (q) => q.eq(field, value))
     .unique();
   return nullThrows(
     ret,
@@ -164,29 +179,31 @@ export async function getOneFromOrThrow<
  *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
+ * @param index The index on that table to look up the specified value by.
+ * @param value The value to look up the document by, often an ID.
  * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
+ *   Optional if the index is named after the field.
  * @returns The documents matching the value, if any.
  */
 export async function getManyFrom<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>,
-  Field extends IndexName extends keyof DataModel[TableName]["indexes"]
-    ? DataModel[TableName]["indexes"][IndexName][0]
-    : LookupFieldPaths<DataModel, TableName>,
-  IndexName extends
-    | undefined
-    | keyof DataModel[TableName]["indexes"] = undefined
+  TableName extends TablesWithLookups<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>,
-  indexName?: IndexName
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, TableName>,
+    DataModel[TableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>[]> {
+  const field =
+    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
   return db
     .query(table)
-    .withIndex(indexName ?? field, (q) => q.eq(field, value as any))
+    .withIndex(index, (q) => q.eq(field, value))
     .collect();
 }
 
@@ -254,8 +271,10 @@ type JoinTables<DataModel extends GenericDataModel> = {
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param toField The ID field on the table pointing at target documents.
- * @param fromField The field on the table to compare to the value.
- * @param value The value to match the fromField on the table, usually an ID.
+ * @param index The index on the join table to look up the specified value by.
+ * @param value The value to look up the documents in join table by.
+ * @param field The field on the join table to match the specified value.
+ *   Optional if the index is named after the field.
  * @returns The documents targeted by matching documents in the table, if any.
  */
 export async function getManyVia<
@@ -266,10 +285,7 @@ export async function getManyVia<
     JoinTableName,
     TableNamesInDataModel<DataModel> | SystemTableNames
   >,
-  FromField extends Exclude<
-    LookupFieldPaths<DataModel, JoinTableName>,
-    ToField
-  >,
+  IndexName extends UserIndexes<DataModel, JoinTableName>,
   TargetTableName extends FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
     ToField
@@ -280,14 +296,15 @@ export async function getManyVia<
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,
   toField: ToField,
-  fromField: FromField,
+  index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
-    FromField
-  >
+    DataModel[JoinTableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
 ): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
   return await asyncMap(
-    await getManyFrom(db, table, fromField, value, fromField),
+    await getManyFrom(db, table, index, value, ...fieldArg),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
@@ -317,8 +334,10 @@ export async function getManyVia<
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param toField The ID field on the table pointing at target documents.
- * @param fromField The field on the table to compare to the value.
- * @param value The value to match the fromField on the table, usually an ID.
+ * @param index The index on the join table to look up the specified value by.
+ * @param value The value to look up the documents in join table by.
+ * @param field The field on the join table to match the specified value.
+ *   Optional if the index is named after the field.
  * @returns The documents targeted by matching documents in the table, if any.
  */
 export async function getManyViaOrThrow<
@@ -329,10 +348,7 @@ export async function getManyViaOrThrow<
     JoinTableName,
     TableNamesInDataModel<DataModel> | SystemTableNames
   >,
-  FromField extends Exclude<
-    LookupFieldPaths<DataModel, JoinTableName>,
-    ToField
-  >,
+  IndexName extends UserIndexes<DataModel, JoinTableName>,
   TargetTableName extends FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
     ToField
@@ -343,25 +359,30 @@ export async function getManyViaOrThrow<
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,
   toField: ToField,
-  fromField: FromField,
+  index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
-    FromField
-  >
+    DataModel[JoinTableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
 ): Promise<DocumentByName<DataModel, TargetTableName>[]> {
   return await asyncMap(
-    await getManyFrom(db, table, fromField, value, fromField),
+    await getManyFrom(db, table, index, value, ...fieldArg),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField];
       try {
         return nullThrows(
           await db.get(id as GenericId<TargetTableName>),
-          `Can't find document ${id} referenced in ${table}'s field ${toField} corresponding to ${fromField} equal to ${value}`
+          `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
+            fieldArg[0] ?? index
+          } equal to ${value}`
         );
       } catch {
         return nullThrows(
           await db.system.get(id as GenericId<SystemTableNames>),
-          `Can't find document ${id} referenced in ${table}'s field ${toField} corresponding to ${fromField} equal to ${value}`
+          `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
+            fieldArg[0] ?? index
+          } equal to ${value}`
         );
       }
     }
