@@ -1,5 +1,6 @@
 import { ZodFirstPartyTypeKind, ZodTypeDef, z } from "zod";
 import {
+  v,
   ConvexError,
   GenericId,
   ObjectType,
@@ -17,7 +18,6 @@ import {
   GenericMutationCtx,
   ActionBuilder,
 } from "convex/server";
-import { v } from "convex/values";
 import { Mod, NoOp, Registration, splitArgs } from "./customFunctions";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
@@ -724,7 +724,7 @@ interface ZidDef<TableName extends string> extends ZodTypeDef {
   tableName: TableName;
 }
 
-class Zid<TableName extends string> extends z.ZodType<
+export class Zid<TableName extends string> extends z.ZodType<
   GenericId<TableName>,
   ZidDef<TableName>
 > {
