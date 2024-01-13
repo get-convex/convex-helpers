@@ -73,43 +73,6 @@ type TablesWithLookups<
 /**
  * Get a document matching the given value for a specified field.
  *
- * Throws if not found.
- * Useful for fetching a document with a one-to-one relationship via backref.
- * Requires the table to have an index on the field named the same as the field.
- * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
- *
- * Getting 'string' is not assignable to parameter of type 'never'?
- * Make sure your index is named after your field.
- *
- * @param db DatabaseReader, passed in from the function ctx
- * @param table The table to fetch the target document from.
- * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
- * @returns The document matching the value. Throws if not found.
- */
-export async function getOneFromOrThrow<
-  DataModel extends GenericDataModel,
-  TableName extends TablesWithLookups<DataModel>,
-  Field extends LookupFieldPaths<DataModel, TableName>
->(
-  db: GenericDatabaseReader<DataModel>,
-  table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
-): Promise<DocumentByName<DataModel, TableName>> {
-  const ret = await db
-    .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
-    .unique();
-  return nullThrows(
-    ret,
-    `Can't find a document in ${table} with field ${field} equal to ${value}`
-  );
-}
-
-/**
- * Get a document matching the given value for a specified field.
- *
  * `null` if not found.
  * Useful for fetching a document with a one-to-one relationship via backref.
  * Requires the table to have an index on the field named the same as the field.
@@ -126,18 +89,67 @@ export async function getOneFromOrThrow<
  */
 export async function getOneFrom<
   DataModel extends GenericDataModel,
-  TableName extends TablesWithLookups<DataModel>,
-  Field extends LookupFieldPaths<DataModel, TableName>
+  TableName extends TableNamesInDataModel<DataModel>,
+  Field extends IndexName extends keyof DataModel[TableName]["indexes"]
+    ? DataModel[TableName]["indexes"][IndexName][0]
+    : LookupFieldPaths<DataModel, TableName>,
+  IndexName extends
+    | undefined
+    | keyof DataModel[TableName]["indexes"] = undefined
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>,
+  indexName?: IndexName
 ): Promise<DocumentByName<DataModel, TableName> | null> {
   return db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex(indexName ?? field, (q) => q.eq(field, value as any))
     .unique();
+}
+
+/**
+ * Get a document matching the given value for a specified field.
+ *
+ * Throws if not found.
+ * Useful for fetching a document with a one-to-one relationship via backref.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param field The field on that table that should match the specified value.
+ * @param value The value to look up the document by, usually an ID.
+ * @returns The document matching the value. Throws if not found.
+ */
+export async function getOneFromOrThrow<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  Field extends IndexName extends keyof DataModel[TableName]["indexes"]
+    ? DataModel[TableName]["indexes"][IndexName][0]
+    : LookupFieldPaths<DataModel, TableName>,
+  IndexName extends
+    | undefined
+    | keyof DataModel[TableName]["indexes"] = undefined
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: TableName,
+  field: Field,
+  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>,
+  indexName?: IndexName
+): Promise<DocumentByName<DataModel, TableName>> {
+  const ret = await db
+    .query(table)
+    .withIndex(indexName ?? field, (q) => q.eq(field, value as any))
+    .unique();
+  return nullThrows(
+    ret,
+    `Can't find a document in ${table} with field ${field} equal to ${value}`
+  );
 }
 
 /**
@@ -158,24 +170,30 @@ export async function getOneFrom<
  */
 export async function getManyFrom<
   DataModel extends GenericDataModel,
-  TableName extends TablesWithLookups<DataModel>,
-  Field extends LookupFieldPaths<DataModel, TableName>
+  TableName extends TableNamesInDataModel<DataModel>,
+  Field extends IndexName extends keyof DataModel[TableName]["indexes"]
+    ? DataModel[TableName]["indexes"][IndexName][0]
+    : LookupFieldPaths<DataModel, TableName>,
+  IndexName extends
+    | undefined
+    | keyof DataModel[TableName]["indexes"] = undefined
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>,
+  indexName?: IndexName
 ): Promise<DocumentByName<DataModel, TableName>[]> {
   return db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex(indexName ?? field, (q) => q.eq(field, value as any))
     .collect();
 }
 
 // File paths to fields that are IDs, excluding "_id".
 type IdFilePaths<
   DataModel extends GenericDataModel,
-  InTableName extends TablesWithLookups<DataModel>,
+  InTableName extends TableNamesInDataModel<DataModel>,
   TableName extends TableNamesInDataModel<DataModel> | SystemTableNames
 > = {
   [FieldName in DataModel[InTableName]["fieldPaths"]]: FieldTypeFromFieldPath<
@@ -269,7 +287,7 @@ export async function getManyVia<
   >
 ): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
   return await asyncMap(
-    await getManyFrom(db, table, fromField, value),
+    await getManyFrom(db, table, fromField, value, fromField),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
@@ -332,7 +350,7 @@ export async function getManyViaOrThrow<
   >
 ): Promise<DocumentByName<DataModel, TargetTableName>[]> {
   return await asyncMap(
-    await getManyFrom(db, table, fromField, value),
+    await getManyFrom(db, table, fromField, value, fromField),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField];
       try {
