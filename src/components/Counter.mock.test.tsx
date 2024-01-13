@@ -19,7 +19,7 @@ const incrementCounter = ({
   increment: number;
 }) => {
   if (counters[counterName]) {
-    counters[counterName] = counters[counterName] + increment;
+    counters[counterName] = counters[counterName]! + increment;
   } else {
     counters[counterName] = increment;
   }
@@ -59,7 +59,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 
   // Reset the dom after every test
-  document.getElementsByTagName("html")[0].innerHTML = "";
+  document.getElementsByTagName("html")[0]!.innerHTML = "";
 });
 
 describe("Counter", () => {
