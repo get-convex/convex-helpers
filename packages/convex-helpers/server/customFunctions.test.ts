@@ -186,10 +186,9 @@ type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
   ? true
   : false;
 
-function assert<T extends true>() {
+function assert<_ extends true>() {
   // no need to do anything! we're just asserting at compile time that the type
   // parameter is true.
-  return true as T;
 }
 
 function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
