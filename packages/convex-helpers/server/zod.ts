@@ -732,3 +732,20 @@ export class Zid<TableName extends string> extends z.ZodType<
     return z.string()._parse(input) as z.ParseReturnType<GenericId<TableName>>;
   }
 }
+
+/**
+ * Zod helper for adding Convex system fields to a record to return.
+ *
+ * @param tableName - The table where records are from, i.e. Doc<tableName>
+ * @param zObject - Validators for the user-defined fields on the document.
+ * @returns - Zod shape for use with `z.object(shape)` that includes system fields.
+ */
+export const withSystemFields = <
+  Table extends string,
+  T extends { [key: string]: z.ZodTypeAny }
+>(
+  tableName: Table,
+  zObject: T
+) => {
+  return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
+};
