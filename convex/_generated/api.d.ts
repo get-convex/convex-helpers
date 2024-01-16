@@ -24,6 +24,7 @@ import type * as lib_withSession from "../lib/withSession.js";
 import type * as lib_withUser from "../lib/withUser.js";
 import type * as lib_withZod from "../lib/withZod.js";
 import type * as presence from "../presence.js";
+import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as sessions from "../sessions.js";
 import type * as zodExample from "../zodExample.js";
 
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   "lib/withUser": typeof lib_withUser;
   "lib/withZod": typeof lib_withZod;
   presence: typeof presence;
+  relationshipsExample: typeof relationshipsExample;
   sessions: typeof sessions;
   zodExample: typeof zodExample;
 }>;
