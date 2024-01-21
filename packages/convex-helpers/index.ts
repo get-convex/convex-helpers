@@ -13,6 +13,7 @@ export async function asyncMap<FromType, ToType>(
   let index = 0;
   for (const item of list) {
     promises.push(asyncTransform(item, index));
+    index += 1;
   }
   return Promise.all(promises);
 }
