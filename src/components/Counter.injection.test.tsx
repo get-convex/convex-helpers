@@ -10,7 +10,7 @@ let counters: Record<string, number> = {};
 
 // A function very similar to the implementation of `getCounter`
 const getCounter = ({ counterName }: { counterName: string }) =>
-  counters[counterName];
+  counters[counterName]!;
 
 // A function very similar to the implementation of `incrementCounter` in `convex/counter.ts`
 const incrementCounter = ({
@@ -21,7 +21,7 @@ const incrementCounter = ({
   increment: number;
 }) => {
   if (counters[counterName]) {
-    counters[counterName] = counters[counterName] + increment;
+    counters[counterName] = counters[counterName]! + increment;
   } else {
     counters[counterName] = increment;
   }
@@ -54,7 +54,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 
   // Reset the dom after every test
-  document.getElementsByTagName("html")[0].innerHTML = "";
+  document.getElementsByTagName("html")[0]!.innerHTML = "";
 });
 
 describe("Counter", () => {

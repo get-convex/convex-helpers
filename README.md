@@ -33,13 +33,6 @@ You'll need to add an entry in your schema similar to [convex/schema.ts](./conve
 
 See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
 
-To import from `convex-helpers`, you need to use `makeSessionWrappers` in some
-file in `convex/`, `makeUseSessionHooks` in some file on the client,
-and mount the `SessionProvider` in your React tree. Examples are
-[here](./convex/lib/fromPackage.ts) and [here](./src/hooks/fromPackage.ts).
-
-To copy code:
-
 Use the [RowLevelSecurity](./convex/lib/rowLevelSecurity.ts) helper to define
 `withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
 server-side function. Any access to `db` inside functions wrapped with these

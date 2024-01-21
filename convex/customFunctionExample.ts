@@ -38,6 +38,7 @@ const authenticatedQueryBuilder = customQuery(
   })
 );
 
+// Example query that doesn't specify argument validation (no `args` param).
 export const unvalidatedQuery = authenticatedQueryBuilder((ctx) => {
   return { user: ctx.user };
 });

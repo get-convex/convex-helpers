@@ -1,5 +1,6 @@
 import { ZodFirstPartyTypeKind, ZodTypeDef, z } from "zod";
 import {
+  v,
   ConvexError,
   GenericId,
   ObjectType,
@@ -13,12 +14,16 @@ import {
   GenericQueryCtx,
   MutationBuilder,
   QueryBuilder,
-  UnvalidatedFunction,
   GenericMutationCtx,
   ActionBuilder,
 } from "convex/server";
-import { v } from "convex/values";
-import { Mod, NoOp, Registration, splitArgs } from "./customFunctions";
+import {
+  Mod,
+  NoOp,
+  Registration,
+  UnvalidatedBuilder,
+  splitArgs,
+} from "./customFunctions";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
@@ -438,34 +443,6 @@ type ValidatedBuilder<
 >;
 
 /**
- * A builder that customizes a Convex function which doesn't validate arguments.
- * e.g. `query(async (ctx, args) => {})`
- * or `query({ handler: async (ctx, args) => {} })`
- */
-type UnvalidatedBuilder<
-  FuncType extends "query" | "mutation" | "action",
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
-  InputCtx,
-  Visibility extends FunctionVisibility
-> = <Output, ExistingArgs extends DefaultFunctionArgs = DefaultFunctionArgs>(
-  fn: UnvalidatedFunction<
-    InputCtx & ModCtx,
-    [ExistingArgs & ModMadeArgs],
-    Output
-  >
-) => Registration<
-  FuncType,
-  Visibility,
-  // Unvalidated functions are only allowed when there are no mod args.
-  // So we don't include the mod args in the output type.
-  // This allows us to use a customFunction (that doesn't modify ctx/args)
-  // as a parameter to other customFunctions, e.g. with RLS.
-  ExistingArgs,
-  Output
->;
-
-/**
  * A builder that customizes a Convex function, whether or not it validates
  * arguments. If the customization requires arguments, however, the resulting
  * builder will require argument validation too.
@@ -498,7 +475,6 @@ type CustomBuilder<
 
 // Copied from convex/server since they weren't exported
 type EmptyObject = Record<string, never>;
-type DefaultFunctionArgs = Record<string, unknown>;
 
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
@@ -724,7 +700,7 @@ interface ZidDef<TableName extends string> extends ZodTypeDef {
   tableName: TableName;
 }
 
-class Zid<TableName extends string> extends z.ZodType<
+export class Zid<TableName extends string> extends z.ZodType<
   GenericId<TableName>,
   ZidDef<TableName>
 > {
@@ -732,3 +708,20 @@ class Zid<TableName extends string> extends z.ZodType<
     return z.string()._parse(input) as z.ParseReturnType<GenericId<TableName>>;
   }
 }
+
+/**
+ * Zod helper for adding Convex system fields to a record to return.
+ *
+ * @param tableName - The table where records are from, i.e. Doc<tableName>
+ * @param zObject - Validators for the user-defined fields on the document.
+ * @returns - Zod shape for use with `z.object(shape)` that includes system fields.
+ */
+export const withSystemFields = <
+  Table extends string,
+  T extends { [key: string]: z.ZodTypeAny }
+>(
+  tableName: Table,
+  zObject: T
+) => {
+  return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
+};

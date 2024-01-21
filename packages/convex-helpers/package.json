@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.10",
+  "version": "0.1.12",
   "description": "A collection of useful code to complement the official convex package.",
   "exports": {
     ".": "./dist/index.js",
@@ -24,6 +24,8 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prebuild": "npm run test",
+    "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
     "watch": "chokidar 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run clean && npm run build' --initial"
   },

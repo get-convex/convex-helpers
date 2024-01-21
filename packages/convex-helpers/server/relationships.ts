@@ -1,7 +1,5 @@
 import {
   FieldTypeFromFieldPath,
-  Indexes,
-  NamedTableInfo,
   TableNamesInDataModel,
   GenericDataModel,
   GenericDatabaseReader,
@@ -9,159 +7,210 @@ import {
   SystemTableNames,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { asyncMap, pruneNull } from "..";
+import { asyncMap, nullThrows } from "..";
 
 /**
- * getAll returns a list of Documents corresponding to the `Id`s passed in.
- * @param db A database object, usually passed from a mutation or query ctx.
- * @param ids An list (or other iterable) of Ids pointing to a table.
- * @returns The Documents referenced by the Ids, in order.
- */
-export async function getAll<
-  DataModel extends GenericDataModel,
-  TableName extends string = TableNamesInDataModel<DataModel>
->(
-  db: GenericDatabaseReader<DataModel>,
-  ids: GenericId<TableName>[]
-): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
-  return pruneNull(await asyncMap(ids, db.get));
-}
-
-/**
- * getAllOrNone returns a list of Documents or null for the `Id`s passed in.
- * @param db A database object, usually passed from a mutation or query ctx.
+ * getAll returns a list of Documents (or null) for the `Id`s passed in.
+ *
+ * Nulls are returned for documents not found.
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
  * @param ids An list (or other iterable) of Ids pointing to a table.
  * @returns The Documents referenced by the Ids, in order. `null` if not found.
  */
-export async function getAllWithNulls<
+export async function getAll<
   DataModel extends GenericDataModel,
-  TableName extends string = TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: GenericId<TableName>[]
+  ids: Iterable<GenericId<TableName>>
 ): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
   return asyncMap(ids, db.get);
 }
 
-// `FieldPath`s that have a `"FieldPath"` index on [`FieldPath`, ...]
-// type LookupFieldPaths<TableName extends TableNames> =   {[FieldPath in DataModel[TableName]["fieldPaths"]]: FieldPath extends keyof DataModel[TableName]["indexes"]? Indexes<NamedTableInfo<DataModel, TableName>>[FieldPath][0] extends FieldPath ? FieldPath : never: never}[DataModel[TableName]["fieldPaths"]]
-
-// `FieldPath`s that have a `"by_${FieldPath}""` index on [`FieldPath`, ...]
-type LookupFieldPaths<
+/**
+ * getAllOrThrow returns a list of Documents for the `Id`s passed in.
+ *
+ * It throws if any documents are not found (null).
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param ids An list (or other iterable) of Ids pointing to a table.
+ * @returns The Documents referenced by the Ids, in order. `null` if not found.
+ */
+export async function getAllOrThrow<
   DataModel extends GenericDataModel,
-  TableName extends string = TableNamesInDataModel<DataModel>
-> = {
-  [FieldPath in DataModel[TableName]["fieldPaths"]]: `by_${FieldPath}` extends keyof DataModel[TableName]["indexes"]
-    ? Indexes<
-        NamedTableInfo<DataModel, TableName>
-      >[`by_${FieldPath}`][0] extends FieldPath
-      ? FieldPath
-      : never
-    : never;
-}[DataModel[TableName]["fieldPaths"]];
+  TableName extends TableNamesInDataModel<DataModel>
+>(
+  db: GenericDatabaseReader<DataModel>,
+  ids: Iterable<GenericId<TableName>>
+): Promise<DocumentByName<DataModel, TableName>[]> {
+  return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
+}
 
-type TablesWithLookups<
+type UserIndexes<
   DataModel extends GenericDataModel,
-  TableNames extends string = TableNamesInDataModel<DataModel>
-> = {
-  [TableName in TableNames]: LookupFieldPaths<
+  TableName extends TableNamesInDataModel<DataModel>
+> = Exclude<keyof DataModel[TableName]["indexes"], "by_creation_time"> & string;
+
+type TablesWithLookups<DataModel extends GenericDataModel> = {
+  [T in TableNamesInDataModel<DataModel>]: UserIndexes<
     DataModel,
-    TableName
+    T
   > extends never
     ? never
-    : TableName;
-}[TableNames];
+    : T;
+}[TableNamesInDataModel<DataModel>];
 
-class MissingDocumentError extends Error {}
+// `FieldPath`s that have an index starting with them
+// e.g. `.index("...", [FieldPath, ...])` on the table.
+type LookupFieldPaths<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>
+> = {
+  [Index in UserIndexes<
+    DataModel,
+    TableName
+  >]: DataModel[TableName]["indexes"][Index][0];
+}[UserIndexes<DataModel, TableName>];
+
+// If the index is named after the first field, then the field name is optional.
+// To be used as a spread argument to optionally require the field name.
+type FieldIfDoesntMatchIndex<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
+> = DataModel[TableName]["indexes"][IndexName][0] extends IndexName
+  ? [DataModel[TableName]["indexes"][IndexName][0]?]
+  : [DataModel[TableName]["indexes"][IndexName][0]];
 
 /**
- * Get a document that references a value with a field indexed `by_${field}`
+ * Get a document matching the given value for a specified field.
  *
+ * `null` if not found.
  * Useful for fetching a document with a one-to-one relationship via backref.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
+ * @param index The index on that table to look up the specified value by.
+ * @param value The value to look up the document by, often an ID.
  * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
- * @returns The document matching the value. Throws if not found.
+ *   Optional if the index is named after the field.
+ * @returns The document matching the value, or null if none found.
  */
 export async function getOneFrom<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
-  Field extends LookupFieldPaths<DataModel, TableName>
+  IndexName extends UserIndexes<DataModel, TableName>
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
-): Promise<DocumentByName<DataModel, TableName>> {
-  const ret = await db
-    .query(table)
-    .withIndex("by_" + field, (q) => q.eq(field, value as any))
-    .unique();
-  if (ret === null) {
-    throw new MissingDocumentError(
-      `Can't find a document in ${table} with field ${field} equal to ${value}`
-    );
-  }
-  return ret;
-}
-
-/**
- * Get a document that references a value with a field indexed `by_${field}`
- *
- * Useful for fetching a document with a one-to-one relationship via backref.
- * @param db DatabaseReader, passed in from the function ctx
- * @param table The table to fetch the target document from.
- * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
- * @returns The document matching the value, or null if none found.
- */
-export async function getOneOrNullFrom<
-  DataModel extends GenericDataModel,
-  TableName extends TablesWithLookups<DataModel>,
-  Field extends LookupFieldPaths<DataModel, TableName>
->(
-  db: GenericDatabaseReader<DataModel>,
-  table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, TableName>,
+    DataModel[TableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName> | null> {
+  const field =
+    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
   return db
     .query(table)
-    .withIndex("by_" + field, (q) => q.eq(field, value as any))
+    .withIndex(index, (q) => q.eq(field, value))
     .unique();
 }
 
 /**
- * Get a list of documents matching a value with a field indexed `by_${field}`.
+ * Get a document matching the given value for a specified field.
  *
- * Useful for fetching many documents related to a given value via backrefs.
+ * Throws if not found.
+ * Useful for fetching a document with a one-to-one relationship via backref.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
+ * @param index The index on that table to look up the specified value by.
+ * @param value The value to look up the document by, often an ID.
  * @param field The field on that table that should match the specified value.
- * @param value The value to look up the document by, usually an ID.
+ *   Optional if the index is named after the field.
+ * @returns The document matching the value. Throws if not found.
+ */
+export async function getOneFromOrThrow<
+  DataModel extends GenericDataModel,
+  TableName extends TablesWithLookups<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: TableName,
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, TableName>,
+    DataModel[TableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
+): Promise<DocumentByName<DataModel, TableName>> {
+  const field =
+    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
+  const ret = await db
+    .query(table)
+    .withIndex(index, (q) => q.eq(field, value))
+    .unique();
+  return nullThrows(
+    ret,
+    `Can't find a document in ${table} with field ${field} equal to ${value}`
+  );
+}
+
+/**
+ * Get a list of documents matching the given value for a specified field.
+ *
+ * Useful for fetching many documents related to a given value via backrefs.
+ * Requires the table to have an index on the field named the same as the field.
+ * e.g. `defineTable({ fieldA: v.string() }).index("fieldA", ["fieldA"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param index The index on that table to look up the specified value by.
+ * @param value The value to look up the document by, often an ID.
+ * @param field The field on that table that should match the specified value.
+ *   Optional if the index is named after the field.
  * @returns The documents matching the value, if any.
  */
 export async function getManyFrom<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
-  Field extends LookupFieldPaths<DataModel, TableName>
+  IndexName extends UserIndexes<DataModel, TableName>
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, TableName>,
+    DataModel[TableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>[]> {
+  const field =
+    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
   return db
     .query(table)
-    .withIndex("by_" + field, (q) => q.eq(field, value as any))
+    .withIndex(index, (q) => q.eq(field, value))
     .collect();
 }
 
 // File paths to fields that are IDs, excluding "_id".
 type IdFilePaths<
   DataModel extends GenericDataModel,
-  InTableName extends TablesWithLookups<DataModel>,
+  InTableName extends TableNamesInDataModel<DataModel>,
   TableName extends TableNamesInDataModel<DataModel> | SystemTableNames
 > = {
   [FieldName in DataModel[InTableName]["fieldPaths"]]: FieldTypeFromFieldPath<
@@ -207,14 +256,25 @@ type JoinTables<DataModel extends GenericDataModel> = {
 /**
  * Get related documents by using a join table.
  *
+ * Any missing documents referenced by the join table will be null.
  * It will find all join table entries matching a value, then look up all the
  * documents pointed to by the join table entries. Useful for many-to-many
  * relationships.
+ *
+ * Requires your join table to have an index on the fromField named the same as
+ * the fromField, and another field that is an Id type.
+ * e.g. `defineTable({ a: v.string(), b: v.id("users") }).index("a", ["a"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
  * @param db DatabaseReader, passed in from the function ctx
  * @param table The table to fetch the target document from.
  * @param toField The ID field on the table pointing at target documents.
- * @param fromField The field on the table to compare to the value.
- * @param value The value to match the fromField on the table, usually an ID.
+ * @param index The index on the join table to look up the specified value by.
+ * @param value The value to look up the documents in join table by.
+ * @param field The field on the join table to match the specified value.
+ *   Optional if the index is named after the field.
  * @returns The documents targeted by matching documents in the table, if any.
  */
 export async function getManyVia<
@@ -225,10 +285,7 @@ export async function getManyVia<
     JoinTableName,
     TableNamesInDataModel<DataModel> | SystemTableNames
   >,
-  FromField extends Exclude<
-    LookupFieldPaths<DataModel, JoinTableName>,
-    ToField
-  >,
+  IndexName extends UserIndexes<DataModel, JoinTableName>,
   TargetTableName extends FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
     ToField
@@ -239,23 +296,95 @@ export async function getManyVia<
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,
   toField: ToField,
-  fromField: FromField,
+  index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
-    FromField
-  >
-): Promise<DocumentByName<DataModel, TargetTableName>[]> {
-  return pruneNull(
-    await asyncMap(
-      await getManyFrom(db, table, fromField, value),
-      async (link: DocumentByName<DataModel, JoinTableName>) => {
-        const id = link[toField] as GenericId<TargetTableName>;
-        try {
-          return await db.get(id);
-        } catch {
-          return await db.system.get(id as GenericId<SystemTableNames>);
-        }
+    DataModel[JoinTableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
+): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
+  return await asyncMap(
+    await getManyFrom(db, table, index, value, ...fieldArg),
+    async (link: DocumentByName<DataModel, JoinTableName>) => {
+      const id = link[toField] as GenericId<TargetTableName>;
+      try {
+        return await db.get(id);
+      } catch {
+        return await db.system.get(id as GenericId<SystemTableNames>);
       }
-    )
+    }
+  );
+}
+
+/**
+ * Get related documents by using a join table.
+ *
+ * Throws an error if any documents referenced by the join table are missing.
+ * It will find all join table entries matching a value, then look up all the
+ * documents pointed to by the join table entries. Useful for many-to-many
+ * relationships.
+ *
+ * Requires your join table to have an index on the fromField named the same as
+ * the fromField, and another field that is an Id type.
+ * e.g. `defineTable({ a: v.string(), b: v.id("users") }).index("a", ["a"])`
+ *
+ * Getting 'string' is not assignable to parameter of type 'never'?
+ * Make sure your index is named after your field.
+ *
+ * @param db DatabaseReader, passed in from the function ctx
+ * @param table The table to fetch the target document from.
+ * @param toField The ID field on the table pointing at target documents.
+ * @param index The index on the join table to look up the specified value by.
+ * @param value The value to look up the documents in join table by.
+ * @param field The field on the join table to match the specified value.
+ *   Optional if the index is named after the field.
+ * @returns The documents targeted by matching documents in the table, if any.
+ */
+export async function getManyViaOrThrow<
+  DataModel extends GenericDataModel,
+  JoinTableName extends JoinTables<DataModel>,
+  ToField extends IdFilePaths<
+    DataModel,
+    JoinTableName,
+    TableNamesInDataModel<DataModel> | SystemTableNames
+  >,
+  IndexName extends UserIndexes<DataModel, JoinTableName>,
+  TargetTableName extends FieldTypeFromFieldPath<
+    DocumentByName<DataModel, JoinTableName>,
+    ToField
+  > extends GenericId<infer TargetTableName>
+    ? TargetTableName
+    : never
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: JoinTableName,
+  toField: ToField,
+  index: IndexName,
+  value: FieldTypeFromFieldPath<
+    DocumentByName<DataModel, JoinTableName>,
+    DataModel[JoinTableName]["indexes"][IndexName][0]
+  >,
+  ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
+): Promise<DocumentByName<DataModel, TargetTableName>[]> {
+  return await asyncMap(
+    await getManyFrom(db, table, index, value, ...fieldArg),
+    async (link: DocumentByName<DataModel, JoinTableName>) => {
+      const id = link[toField];
+      try {
+        return nullThrows(
+          await db.get(id as GenericId<TargetTableName>),
+          `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
+            fieldArg[0] ?? index
+          } equal to ${value}`
+        );
+      } catch {
+        return nullThrows(
+          await db.system.get(id as GenericId<SystemTableNames>),
+          `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
+            fieldArg[0] ?? index
+          } equal to ${value}`
+        );
+      }
+    }
   );
 }

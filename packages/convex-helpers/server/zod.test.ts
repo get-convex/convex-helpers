@@ -243,7 +243,7 @@ assert(
   )
 );
 
-function sameType<T, U>(t: T, u: U): Equals<T, U> {
+function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
 }
 
@@ -253,14 +253,13 @@ function sameType<T, U>(t: T, u: U): Equals<T, U> {
  * (Apache Version 2.0, January 2004)
  */
 
-export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
-  T
->() => T extends Y ? 1 : 2
+type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
+  ? 1
+  : 2
   ? true
   : false;
 
-export function assert<T extends true>(a?: T) {
+function assert<T extends true>(_?: T) {
   // no need to do anything! we're just asserting at compile time that the type
   // parameter is true.
-  return true as T;
 }

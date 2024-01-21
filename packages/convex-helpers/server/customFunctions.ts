@@ -484,7 +484,7 @@ type ValidatedBuilder<
  * e.g. `query(async (ctx, args) => {})`
  * or `query({ handler: async (ctx, args) => {} })`
  */
-type UnvalidatedBuilder<
+export type UnvalidatedBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
@@ -493,7 +493,13 @@ type UnvalidatedBuilder<
 > = <Output, ExistingArgs extends DefaultFunctionArgs = DefaultFunctionArgs>(
   fn: UnvalidatedFunction<
     Overwrite<InputCtx, ModCtx>,
-    [Overwrite<ExistingArgs, ModMadeArgs>],
+    // We don't need to overwrite the existing args with the mod ones.
+    // Technically you could try to pass one argument and have it overwritten
+    // But since you can't consume the arg in the unvalidated custom function,
+    // it would just get dropped. So force them to exclude the mod-made args
+    // from their regular parameters.
+    // This is done to let TypeScript infer what ExistingArgs is more easily.
+    [ExistingArgs & ModMadeArgs],
     Output
   >
 ) => Registration<
@@ -537,6 +543,17 @@ type CustomBuilder<
       InputCtx,
       Visibility
     >;
+
+export type CustomCtx<Builder> = Builder extends ValidatedBuilder<
+  any,
+  any,
+  infer ModCtx,
+  any,
+  infer InputCtx,
+  any
+>
+  ? Overwrite<InputCtx, ModCtx>
+  : never;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
 // Copied from convex/server since they weren't exported
