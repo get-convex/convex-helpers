@@ -55,7 +55,7 @@ export const relationshipTest = mutation({
     const edges = await getManyFrom(
       ctx.db,
       "join_table_example",
-      "userId",
+      "by_userId",
       userId
     );
     assertLength(edges, 2);
@@ -63,7 +63,7 @@ export const relationshipTest = mutation({
       ctx.db,
       "join_table_example",
       "sessionId",
-      "userId",
+      "by_userId",
       userId
     );
     assertLength(sessions, 2);
@@ -71,7 +71,7 @@ export const relationshipTest = mutation({
       ctx.db,
       "join_table_example",
       "sessionId",
-      "userId",
+      "by_userId",
       user2._id
     );
     assertLength(sessions2, 1);
@@ -95,7 +95,7 @@ export const relationshipTest = mutation({
         ctx.db,
         "join_table_example",
         "sessionId",
-        "userId",
+        "by_userId",
         userId
       )
     );
@@ -104,7 +104,7 @@ export const relationshipTest = mutation({
         ctx.db,
         "join_table_example",
         "sessionId",
-        "userId",
+        "by_userId",
         userId
       );
     } catch {
@@ -112,7 +112,7 @@ export const relationshipTest = mutation({
     }
     await asyncMap(edges, (edge) => ctx.db.delete(edge._id));
     await asyncMap(
-      await getManyFrom(ctx.db, "join_table_example", "userId", user2._id),
+      await getManyFrom(ctx.db, "join_table_example", "by_userId", user2._id),
       (edge) => ctx.db.delete(edge._id)
     );
     await ctx.db.delete(sessionId);
@@ -177,7 +177,7 @@ export const joinTableExample = query({
       ctx.db,
       "join_table_example",
       "sessionId",
-      "userId",
+      "by_userId",
       args.userId
     );
     const files = await getManyVia(

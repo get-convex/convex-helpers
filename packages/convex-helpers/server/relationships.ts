@@ -5,6 +5,10 @@ import {
   GenericDatabaseReader,
   DocumentByName,
   SystemTableNames,
+  NamedIndex,
+  NamedTableInfo,
+  IndexNames,
+  FieldPaths,
 } from "convex/server";
 import { GenericId } from "convex/values";
 import { asyncMap, nullThrows } from "..";
@@ -48,7 +52,11 @@ export async function getAllOrThrow<
 type UserIndexes<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>
-> = Exclude<keyof DataModel[TableName]["indexes"], "by_creation_time"> & string;
+> = Exclude<
+  IndexNames<NamedTableInfo<DataModel, TableName>>,
+  "by_creation_time"
+> &
+  string;
 
 type TablesWithLookups<DataModel extends GenericDataModel> = {
   [T in TableNamesInDataModel<DataModel>]: UserIndexes<
@@ -59,27 +67,54 @@ type TablesWithLookups<DataModel extends GenericDataModel> = {
     : T;
 }[TableNamesInDataModel<DataModel>];
 
+type FirstIndexField<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
+> = NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0];
+
 // `FieldPath`s that have an index starting with them
 // e.g. `.index("...", [FieldPath, ...])` on the table.
 type LookupFieldPaths<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>
 > = {
-  [Index in UserIndexes<
+  [IndexName in UserIndexes<DataModel, TableName>]: FirstIndexField<
     DataModel,
-    TableName
-  >]: DataModel[TableName]["indexes"][Index][0];
+    TableName,
+    IndexName
+  >;
 }[UserIndexes<DataModel, TableName>];
 
 // If the index is named after the first field, then the field name is optional.
 // To be used as a spread argument to optionally require the field name.
+// It also allows a field to have an index `by_${field}`, though this means
+// it doesn't allow fields that start with a `by_` prefix.
 type FieldIfDoesntMatchIndex<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
   IndexName extends UserIndexes<DataModel, TableName>
-> = DataModel[TableName]["indexes"][IndexName][0] extends IndexName
-  ? [DataModel[TableName]["indexes"][IndexName][0]?]
-  : [DataModel[TableName]["indexes"][IndexName][0]];
+> = FirstIndexField<DataModel, TableName, IndexName> extends IndexName
+  ? // Enforce the variable itself doesn't start with "by_"
+    IndexName extends `by_${infer _}`
+    ? never
+    : [FirstIndexField<DataModel, TableName, IndexName>?]
+  : `by_${FirstIndexField<DataModel, TableName, IndexName>}` extends IndexName
+  ? [FirstIndexField<DataModel, TableName, IndexName>?]
+  : [FirstIndexField<DataModel, TableName, IndexName>];
+
+function firstIndexField<
+  DataModel extends GenericDataModel,
+  TableName extends TablesWithLookups<DataModel>,
+  IndexName extends UserIndexes<DataModel, TableName>
+>(
+  index: IndexName,
+  field?: FirstIndexField<DataModel, TableName, IndexName>
+): FirstIndexField<DataModel, TableName, IndexName> {
+  if (field) return field;
+  if (index.startsWith("by_")) return index.slice(3);
+  return index;
+}
 
 /**
  * Get a document matching the given value for a specified field.
@@ -110,12 +145,11 @@ export async function getOneFrom<
   index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, TableName>,
-    DataModel[TableName]["indexes"][IndexName][0]
+    FirstIndexField<DataModel, TableName, IndexName>
   >,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName> | null> {
-  const field =
-    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
+  const field = firstIndexField(index, fieldArg[0]);
   return db
     .query(table)
     .withIndex(index, (q) => q.eq(field, value))
@@ -151,12 +185,11 @@ export async function getOneFromOrThrow<
   index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, TableName>,
-    DataModel[TableName]["indexes"][IndexName][0]
+    FirstIndexField<DataModel, TableName, IndexName>
   >,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>> {
-  const field =
-    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
+  const field = firstIndexField(index, fieldArg[0]);
   const ret = await db
     .query(table)
     .withIndex(index, (q) => q.eq(field, value))
@@ -195,12 +228,11 @@ export async function getManyFrom<
   index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, TableName>,
-    DataModel[TableName]["indexes"][IndexName][0]
+    FirstIndexField<DataModel, TableName, IndexName>
   >,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>[]> {
-  const field =
-    fieldArg[0] ?? (index as DataModel[TableName]["indexes"][IndexName][0]);
+  const field = firstIndexField(index, fieldArg[0]);
   return db
     .query(table)
     .withIndex(index, (q) => q.eq(field, value))
@@ -213,7 +245,9 @@ type IdFilePaths<
   InTableName extends TableNamesInDataModel<DataModel>,
   TableName extends TableNamesInDataModel<DataModel> | SystemTableNames
 > = {
-  [FieldName in DataModel[InTableName]["fieldPaths"]]: FieldTypeFromFieldPath<
+  [FieldName in FieldPaths<
+    NamedTableInfo<DataModel, InTableName>
+  >]: FieldTypeFromFieldPath<
     DocumentByName<DataModel, InTableName>,
     FieldName
   > extends GenericId<TableName>
@@ -221,7 +255,7 @@ type IdFilePaths<
       ? never
       : FieldName
     : never;
-}[DataModel[InTableName]["fieldPaths"]];
+}[FieldPaths<NamedTableInfo<DataModel, InTableName>>];
 
 // Whether a table has an ID field that isn't its sole lookup field.
 // These can operate as join tables, going from one table to another.
@@ -299,7 +333,7 @@ export async function getManyVia<
   index: IndexName,
   value: FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
-    DataModel[JoinTableName]["indexes"][IndexName][0]
+    FirstIndexField<DataModel, JoinTableName, IndexName>
   >,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
 ): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {

@@ -12,7 +12,7 @@ const s = defineSchema({
   join_table_example: defineTable({
     userId: v.id("users"),
     sessionId: v.id("sessions"),
-  }).index("userId", ["userId"]),
+  }).index("by_userId", ["userId"]),
   join_storage_example: defineTable({
     userId: v.id("users"),
     storageId: v.id("_storage"),
