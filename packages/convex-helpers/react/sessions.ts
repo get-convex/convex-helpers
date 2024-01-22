@@ -4,7 +4,7 @@
  * !Important!: To use these functions, you must wrap your code with
  * ```tsx
  *  <ConvexProvider client={convex}>
- *    <SessionProvider storageLocation={"sessionStorage"}>
+ *    <SessionProvider>
  *      <App />
  *    </SessionProvider>
  *  </ConvexProvider>
@@ -12,8 +12,8 @@
  *
  * With the `SessionProvider` inside the `ConvexProvider` but outside your app.
  *
- * Note: If you are rendering your app in StrictMode, you may generate
- * two sessionIds on the first load.
+ * See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies)
+ * for more information.
  */
 import React, {
   Dispatch,

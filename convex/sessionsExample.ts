@@ -1,13 +1,9 @@
 /**
  * Allows you to persist state server-side, associated with a sessionId stored
- * on the client (in localStorage, e.g.). You wrap your mutation / query with
- * withSession or withOptionalSession and it passes in "session" in the "ctx"
- * (first parameter) argument to your function.
+ * on the client (in localStorage, e.g.).
  *
- * There are three wrappers:
- * - withSession
- * - withOptionalSession -- allows the sessionId to be null or a non-existent document and passes `session: null` if so
- * - withSessionBackwardsCompatible -- supports session IDs created with the ID class (Convex 0.16 and earlier)
+ * See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies)
+ * for more information.
  */
 import { action, mutation, query } from "./_generated/server";
 import {
@@ -20,28 +16,7 @@ import {
   runSessionFunctions,
   vSessionId,
 } from "convex-helpers/server/sessions";
-
-/**
- * This is an example of where you could capture / invalidate a session ID.
- * You could transfer associated data from the old session to the new session.
- * You should refresh a session ID when the user logs in & out.
- * On logout you likely don't want to carry any data over, whereas for logging
- * in, you might want to transfer ownership of data from an anonymous session.
- */
-export const onSessionRefresh = mutation({
-  args: {
-    old: vSessionId,
-    new: vSessionId,
-  },
-  handler: async (ctx, args) => {
-    console.log("deleting presence data on refresh", args.old);
-    const presenceDocs = await ctx.db
-      .query("presence")
-      .withIndex("user_room", (q) => q.eq("user", args.old))
-      .collect();
-    await Promise.all(presenceDocs.map((doc) => ctx.db.delete(doc._id)));
-  },
-});
+import { v } from "convex/values";
 
 /** -----------------------------------------------------------------
  * Function wrappers
@@ -131,5 +106,76 @@ export const actionWithSession = customAction(action, {
       },
       args: {},
     };
+  },
+});
+
+/**
+ * EXAMPLES
+ */
+
+/**
+ * This is an example of where you could capture / invalidate a session ID.
+ * You could transfer associated data from the old session to the new session.
+ * You should refresh a session ID when the user logs in & out.
+ * On logout you likely don't want to carry any data over, whereas for logging
+ * in, you might want to transfer ownership of data from an anonymous session.
+ */
+export const logIn = mutationWithSession({
+  args: { new: vSessionId },
+  handler: async (ctx, args) => {
+    console.log("copying presence data on login", ctx.sessionId);
+    console.log("new session ID", args.new);
+    const presenceDocs = await ctx.db
+      .query("presence")
+      .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
+      .collect();
+    await Promise.all(
+      presenceDocs.map((doc) => ctx.db.patch(doc._id, { user: args.new }))
+    );
+  },
+});
+
+export const logOut = mutationWithSession({
+  args: {},
+  handler: async (ctx, args) => {
+    console.log("deleting presence data on logout", ctx.sessionId);
+    const presenceDocs = await ctx.db
+      .query("presence")
+      .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
+      .collect();
+    await Promise.all(presenceDocs.map((doc) => ctx.db.delete(doc._id)));
+  },
+});
+
+export const myPresence = queryWithSession({
+  args: {},
+  handler: async (ctx) => {
+    const presenceDocs = await ctx.db
+      .query("presence")
+      .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
+      .collect();
+    return presenceDocs.map((p) => p.room);
+  },
+});
+
+export const joinRoom = mutationWithSession({
+  args: { room: v.string() },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("presence")
+      .withIndex("user_room", (q) =>
+        q.eq("user", ctx.sessionId).eq("room", args.room)
+      )
+      .first();
+    if (existing) {
+      await ctx.db.patch(existing._id, { updated: Date.now() });
+    } else {
+      await ctx.db.insert("presence", {
+        user: ctx.sessionId,
+        room: args.room,
+        data: {},
+        updated: Date.now(),
+      });
+    }
   },
 });

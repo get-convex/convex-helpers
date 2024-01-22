@@ -15,17 +15,18 @@ define custom behavior, allowing you to:
   as taking in an authentication parameter like an API key or session ID.
   These arguments must be sent up by the client along with each request.
 
+See the associated [Stack Post](https://stack.convex.dev/custom-functions)
+
 For example:
 ```js
 import { customQuery } from "convex-helpers/server/customFunctions.js
 
 const myQueryBuilder = customQuery(query, {
-  args: { sessionId: v.id("sessions") },
+  args: { apiToken: v.id("api_tokens") },
   input: async (ctx, args) => {
-    const user = await getUserOrNull(ctx);
-    const session = await db.get(sessionId);
-    const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
-    return { ctx: { db, user, session }, args: {} };
+    const apiUser = await getApiUser(args.apiToken);
+    const db = wrapDatabaseReader({ apiUser }, ctx.db, rlsRules);
+    return { ctx: { db, apiUser }, args: {} };
   },
 });
 
@@ -33,7 +34,7 @@ const myQueryBuilder = customQuery(query, {
 export const getSomeData = myQueryBuilder({
   args: { someArg: v.string() },
   handler: async (ctx, args) => {
-    const { db, user, session, scheduler } = ctx;
+    const { db, apiUser, scheduler } = ctx;
     const { someArg } = args;
     // ...
   }
@@ -71,6 +72,16 @@ const posts = await asyncMap(
   }
 );
 ```
+
+## Session tracking via client-side sessionID storage
+
+Store a session ID on the client and pass it up with requests to keep track of
+a user, even if they aren't logged in.
+
+Use the client-side helpers in [react/sessions](./react/sessions.ts) and
+server-side helpers in [server/sessions](./server/sessions.ts).
+
+See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies) for more information.
 
 ## Row-level security
 

@@ -48,6 +48,9 @@
  *   })
  * });
  * ```
+ *
+ * See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies)
+ * for more information.
  */
 import {
   FunctionArgs,
