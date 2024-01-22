@@ -69,17 +69,15 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
   : false;
 
 /**
- * A utility for both compile-time type assertions and runtime assertions.
+ * A utility for compile-time type assertions.
  *
  * @example
  * ```ts
  * // Compile-time assertion
  * assert<Equals<1, 1>>();
  * ```
- * @param arg A value to assert the truthiness of.
  */
-export function assert<T extends true>(arg?: T) {
+export function assert<_ extends true>() {
   // no need to do anything! we're just asserting at compile time that the type
   // parameter is true.
-  if (!arg) throw new Error(`Assertion failed: ${arg}`);
 }
