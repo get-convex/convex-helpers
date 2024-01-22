@@ -81,5 +81,5 @@ export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
 export function assert<T extends true>(arg?: T) {
   // no need to do anything! we're just asserting at compile time that the type
   // parameter is true.
-  if (!arg) throw new Error(`Assertion failed: ${arg}`);
+  if (arg !== undefined && !arg) throw new Error(`Assertion failed: ${arg}`);
 }
