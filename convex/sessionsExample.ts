@@ -9,12 +9,17 @@
  * - withOptionalSession -- allows the sessionId to be null or a non-existent document and passes `session: null` if so
  * - withSessionBackwardsCompatible -- supports session IDs created with the ID class (Convex 0.16 and earlier)
  */
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import {
+  customAction,
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
-import { SessionIdArg, vSessionId } from "convex-helpers/server/sessions";
+import {
+  SessionIdArg,
+  runSessionFunctions,
+  vSessionId,
+} from "convex-helpers/server/sessions";
 
 /**
  * This is an example of where you could capture / invalidate a session ID.
@@ -43,7 +48,32 @@ export const onSessionRefresh = mutation({
  * ----------------------------------------------------------------- */
 
 /**
- * Wrapper for a Convex mutation function that provides a sessionId in ctx.
+ * Wrapper for a Convex query function that takes a session.
+ *
+ * Requires an `sessionId: {@link SessionId}` parameter. This is provided by
+ * default by using {@link useSessionQuery}. It validates and strips this
+ * parameter for you.
+ * E.g.:
+ * ```ts
+ * export default queryWithSession({
+ *   args: { arg1: v.any() },
+ *   handler: async ({ db, auth, sessionId }, { arg1 }) => {
+ *     // ...use the session here as usual
+ *   }
+ * });
+ * ```
+ * @param func - Your function that now has a "sessionId" in the ctx param.
+ * @returns A Convex serverless function that requires a "sessionid" argument.
+ */
+export const queryWithSession = customQuery(query, {
+  args: SessionIdArg,
+  input: async (ctx, { sessionId }) => {
+    return { ctx: { ...ctx, sessionId }, args: {} };
+  },
+});
+
+/**
+ * Wrapper for a Convex mutation function that takes a sessionId.
  *
  * Requires an `sessionId: {@link SessionId}` parameter. This is provided by
  * default by using {@link useSessionMutation}. It validates and strips this
@@ -66,26 +96,40 @@ export const mutationWithSession = customMutation(mutation, {
 });
 
 /**
- * Wrapper for a Convex query function that provides a session in ctx.
+ * Wrapper for a Convex action function that takes a sessionId.
  *
  * Requires an `sessionId: {@link SessionId}` parameter. This is provided by
- * default by using {@link useSessionQuery}. It validates and strips this
+ * default by using {@link useSessionAction}. It validates and strips this
  * parameter for you.
  * E.g.:
  * ```ts
- * export default queryWithSession({
+ * export default actionWithSession({
  *   args: { arg1: v.any() },
- *   handler: async ({ db, auth, sessionId }, { arg1 }) => {
- *     // ...use the session here as usual
- *   }
+ *   handler: async ({ db, auth, sessionId }, { arg1 }) => {...}
  * });
  * ```
- * @param func - Your function that now has a "sessionId" in the ctx param.
- * @returns A Convex serverless function that requires a "sessionid" argument.
+
+ * It also provides runSessionQuery, runSessionMutation, and runSessionAction
+ * functions in the ctx param. These functions are wrappers around the
+ * corresponding functions without "Session" but inject the sessionId argument.
+ *
+ * @param func - Your function that takes in a `sessionId` in the ctx param.
+ * @returns A Convex serverless function that takes sessionId as an argument.
  */
-export const queryWithSession = customQuery(query, {
+export const actionWithSession = customAction(action, {
   args: SessionIdArg,
   input: async (ctx, { sessionId }) => {
-    return { ctx: { ...ctx, sessionId }, args: {} };
+    const { runSessionQuery, runSessionMutation, runSessionAction } =
+      runSessionFunctions(ctx, sessionId);
+    return {
+      ctx: {
+        ...ctx,
+        runSessionQuery,
+        runSessionMutation,
+        runSessionAction,
+        sessionId,
+      },
+      args: {},
+    };
   },
 });
