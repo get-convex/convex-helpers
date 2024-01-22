@@ -15,221 +15,252 @@
  * Note: If you are rendering your app in StrictMode, you may generate
  * two sessionIds on the first load.
  */
-import React, { useCallback, useContext, useEffect, useState } from "react";
+import React, {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
   OptionalRestArgs,
 } from "convex/server";
-import { useQuery, useMutation } from "convex/react";
-import { GenericId } from "convex/values";
+import { useQuery, useMutation, useAction } from "convex/react";
+import type { SessionId } from "../server/sessions";
 
-export function makeUseSessionHooks<SessionId extends GenericId<any>>(
-  createOrValidateSession: FunctionReference<
-    "mutation",
-    "public",
-    {
-      sessionId: string | null;
+export type UseStorage<T> = (
+  key: string,
+  initialValue: T
+) => readonly [T, Dispatch<SetStateAction<T>>];
+
+export type RefreshSessionFn = (
+  beforeUpdate?: (newSessionId: SessionId) => any | Promise<any>
+) => Promise<SessionId>;
+
+const SessionContext = React.createContext<{
+  sessionId: SessionId;
+  refreshSessionId: RefreshSessionFn;
+} | null>(null);
+
+type SessionFunction<
+  T extends "query" | "mutation" | "action",
+  Args extends any
+> = FunctionReference<T, "public", { sessionId: SessionId } & Args, any>;
+
+type SessionQueryArgsArray<Fn extends SessionFunction<"query", any>> =
+  keyof FunctionArgs<Fn> extends "sessionId"
+    ? [args?: EmptyObject | "skip"]
+    : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
+
+type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action", any>> =
+  keyof FunctionArgs<Fn> extends "sessionId"
+    ? [args?: EmptyObject]
+    : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
+
+/**
+ * Context for a Convex session, creating a server session and providing the id.
+ *
+ * @param props - Where you want your session ID to be persisted. Roughly:
+ *  - sessionStorage is saved per-tab
+ *  - localStorage is shared between tabs, but not browser profiles.
+ * @returns A provider to wrap your React nodes which provides the session ID.
+ * To be used with useSessionQuery and useSessionMutation.
+ */
+export const SessionProvider: React.FC<{
+  useStorage?: UseStorage<SessionId>;
+  storageKey?: string;
+  children?: React.ReactNode;
+}> = ({ useStorage, storageKey, children }) => {
+  const storeKey = storageKey ?? "convex-session-id";
+  const initialId = useMemo(() => crypto.randomUUID() as SessionId, []);
+  // Get or set the ID from our desired storage location.
+  const useStorageOrDefault = useStorage ?? useSessionStorage;
+  const [sessionId, setSessionId] = useStorageOrDefault(storeKey, initialId);
+
+  const refreshSessionId = useCallback<RefreshSessionFn>(
+    async (beforeUpdate) => {
+      const newSessionId = crypto.randomUUID() as SessionId;
+      if (beforeUpdate) {
+        await beforeUpdate(newSessionId);
+      }
+      setSessionId(newSessionId);
+      return newSessionId;
     },
-    SessionId
-  >,
-  storageKey?: string,
-  storageLocation?: "localStorage" | "sessionStorage"
-) {
-  const SessionContext = React.createContext<SessionId | null>(null);
+    [setSessionId]
+  );
 
-  type SessionFunction<Args extends any> = FunctionReference<
-    "query" | "mutation",
-    "public",
-    { sessionId: SessionId | null } & Args,
-    any
-  >;
-  type SessionQueryArgsArray<Fn extends SessionFunction<any>> =
-    keyof FunctionArgs<Fn> extends "sessionId"
-      ? [args?: EmptyObject | "skip"]
-      : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
+  return React.createElement(
+    SessionContext.Provider,
+    { value: { sessionId, refreshSessionId } },
+    children
+  );
+};
 
-  type SessionMutationArgsArray<Fn extends SessionFunction<any>> =
-    keyof FunctionArgs<Fn> extends "sessionId"
-      ? []
-      : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
-  /**
-   * Context for a Convex session, creating a server session and providing the id.
-   *
-   * @param props - Where you want your session ID to be persisted. Roughly:
-   *  - sessionStorage is saved per-tab
-   *  - localStorage is shared between tabs, but not browser profiles.
-   * @returns A provider to wrap your React nodes which provides the session ID.
-   * To be used with useSessionQuery and useSessionMutation.
-   */
-  const SessionProvider: React.FC<{
-    waitForSessionId?: boolean;
-    children?: React.ReactNode;
-  }> = ({ waitForSessionId, children }) => {
-    const store =
-      // If it's rendering in SSR or such.
-      typeof window === "undefined"
-        ? null
-        : window[storageLocation ?? "sessionStorage"];
-    const storeKey = storageKey ?? "convex-session-id";
-    const [sessionId, setSession] = useState<SessionId | null>(null);
-    const createOrValidate = useMutation(createOrValidateSession);
+// Like useQuery, but for a Query that takes a session ID.
+export function useSessionQuery<Query extends SessionFunction<"query", any>>(
+  query: Query,
+  ...args: SessionQueryArgsArray<Query>
+): FunctionReturnType<Query> | undefined {
+  const skip = args[0] === "skip";
+  const [sessionId] = useSessionId();
+  const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
 
-    // Get or set the ID from our desired storage location.
-    useEffect(() => {
-      const stored = store?.getItem(storeKey) ?? null;
-      createOrValidate({ sessionId: stored }).then((sessionId) => {
-        setSession(sessionId);
-        if (sessionId !== stored) {
-          store?.setItem(storeKey, sessionId);
-        }
-      });
-    }, [createOrValidate, store]);
+  const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
 
-    return React.createElement(
-      SessionContext.Provider,
-      { value: sessionId },
-      waitForSessionId && !sessionId ? null : children
-    );
-  };
-
-  // Like useQuery, but for a Query that takes a session ID.
-  function useSessionQuery<
-    Query extends FunctionReference<
-      "query",
-      "public",
-      { sessionId: SessionId | null },
-      any
-    >
-  >(
-    query: Query,
-    ...args: SessionQueryArgsArray<Query>
-  ): FunctionReturnType<Query> | undefined {
-    const skip = args[0] === "skip";
-    const sessionId = useContext(SessionContext);
-    const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
-
-    const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
-
-    return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
-  }
-
-  // Like useMutation, but for a Mutation that takes a session ID.
-  function useSessionMutation<
-    Mutation extends FunctionReference<
-      "mutation",
-      "public",
-      { sessionId: SessionId },
-      any
-    >
-  >(name: Mutation) {
-    const sessionId = useContext(SessionContext);
-    const originalMutation = useMutation(name);
-
-    return useCallback(
-      (
-        ...args: SessionMutationArgsArray<Mutation>
-      ): Promise<FunctionReturnType<Mutation>> => {
-        const newArgs = {
-          ...(args[0] ?? {}),
-          sessionId,
-        } as FunctionArgs<Mutation>;
-
-        return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
-      },
-      [sessionId, originalMutation]
-    );
-  }
-
-  function useSessionId() {
-    return useContext(SessionContext);
-  }
-
-  return { SessionProvider, useSessionId, useSessionQuery, useSessionMutation };
-
-  // Type utils:
-  type EmptyObject = Record<string, never>;
-
-  /**
-   * An `Omit<>` type that:
-   * 1. Applies to each element of a union.
-   * 2. Preserves the index signature of the underlying type.
-   */
-  type BetterOmit<T, K extends keyof T> = {
-    [Property in keyof T as Property extends K ? never : Property]: T[Property];
-  };
-
-  /**
-   * TESTS
-   */
-  /**
-   * Tests if two types are exactly the same.
-   * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
-   * (Apache Version 2.0, January 2004)
-   */
-  type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
-    T
-  >() => T extends Y ? 1 : 2
-    ? true
-    : false;
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  function assert<_ extends true>() {
-    // no need to do anything! we're just asserting at compile time that the type
-    // parameter is true.
-  }
-
-  assert<
-    Equals<
-      SessionQueryArgsArray<
-        FunctionReference<
-          "query",
-          "public",
-          { arg: string; sessionId: SessionId | null },
-          any
-        >
-      >,
-      [{ arg: string } | "skip"]
-    >
-  >();
-  assert<
-    Equals<
-      SessionQueryArgsArray<
-        FunctionReference<
-          "query",
-          "public",
-          { sessionId: SessionId | null },
-          any
-        >
-      >,
-      [args?: EmptyObject | "skip" | undefined]
-    >
-  >();
-  assert<
-    Equals<
-      SessionMutationArgsArray<
-        FunctionReference<
-          "mutation",
-          "public",
-          { arg: string; sessionId: SessionId | null },
-          any
-        >
-      >,
-      [{ arg: string }]
-    >
-  >();
-  assert<
-    Equals<
-      SessionMutationArgsArray<
-        FunctionReference<
-          "query",
-          "public",
-          { sessionId: SessionId | null },
-          any
-        >
-      >,
-      []
-    >
-  >();
+  return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
 }
+
+// Like useMutation, but for a Mutation that takes a session ID.
+export function useSessionMutation<
+  Mutation extends SessionFunction<"mutation", any>
+>(name: Mutation) {
+  const [sessionId] = useSessionId();
+  const originalMutation = useMutation(name);
+
+  return useCallback(
+    (
+      ...args: SessionArgsArray<Mutation>
+    ): Promise<FunctionReturnType<Mutation>> => {
+      const newArgs = {
+        ...(args[0] ?? {}),
+        sessionId,
+      } as FunctionArgs<Mutation>;
+
+      return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
+    },
+    [sessionId, originalMutation]
+  );
+}
+
+// Like useAction, but for a Action that takes a session ID.
+export function useSessionAction<Action extends SessionFunction<"action", any>>(
+  name: Action
+) {
+  const [sessionId] = useSessionId();
+  const originalAction = useAction(name);
+
+  return useCallback(
+    (
+      ...args: SessionArgsArray<Action>
+    ): Promise<FunctionReturnType<Action>> => {
+      const newArgs = {
+        ...(args[0] ?? {}),
+        sessionId,
+      } as FunctionArgs<Action>;
+
+      return originalAction(...([newArgs] as OptionalRestArgs<Action>));
+    },
+    [sessionId, originalAction]
+  );
+}
+
+export function useSessionId() {
+  const ctx = useContext(SessionContext);
+  if (ctx === null) {
+    throw new Error("Missing a <SessionProvider> wrapping this code.");
+  }
+  return [ctx.sessionId, ctx.refreshSessionId] as const;
+}
+
+function useSessionStorage(key: string, initialValue: SessionId) {
+  const [value, setValueInternal] = useState(() => {
+    if (typeof sessionStorage !== "undefined") {
+      const existing = sessionStorage.getItem(key);
+      if (existing) {
+        try {
+          return existing as SessionId;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      sessionStorage.setItem(key, initialValue);
+    }
+    return initialValue;
+  });
+  const setValue = useCallback(
+    (value: SessionId) => {
+      sessionStorage.setItem(key, value);
+      setValueInternal(value);
+    },
+    [key]
+  );
+  return [value, setValue] as const;
+}
+
+// Type utils:
+type EmptyObject = Record<string, never>;
+
+/**
+ * An `Omit<>` type that:
+ * 1. Applies to each element of a union.
+ * 2. Preserves the index signature of the underlying type.
+ */
+type BetterOmit<T, K extends keyof T> = {
+  [Property in keyof T as Property extends K ? never : Property]: T[Property];
+};
+
+/**
+ * TESTS
+ */
+/**
+ * Tests if two types are exactly the same.
+ * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
+ * (Apache Version 2.0, January 2004)
+ */
+type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
+  ? 1
+  : 2
+  ? true
+  : false;
+
+function assert<_ extends true>() {
+  // no need to do anything! we're just asserting at compile time that the type
+  // parameter is true.
+}
+
+assert<
+  Equals<
+    SessionQueryArgsArray<
+      FunctionReference<
+        "query",
+        "public",
+        { arg: string; sessionId: SessionId | null },
+        any
+      >
+    >,
+    [{ arg: string } | "skip"]
+  >
+>();
+assert<
+  Equals<
+    SessionQueryArgsArray<
+      FunctionReference<"query", "public", { sessionId: SessionId | null }, any>
+    >,
+    [args?: EmptyObject | "skip" | undefined]
+  >
+>();
+assert<
+  Equals<
+    SessionArgsArray<
+      FunctionReference<
+        "mutation",
+        "public",
+        { arg: string; sessionId: SessionId },
+        any
+      >
+    >,
+    [{ arg: string }]
+  >
+>();
+assert<
+  Equals<
+    SessionArgsArray<
+      FunctionReference<"mutation", "public", { sessionId: SessionId }, any>
+    >,
+    [args?: EmptyObject | undefined]
+  >
+>();

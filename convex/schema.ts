@@ -7,11 +7,11 @@ const Users = Table("users", {
   tokenIdentifier: v.string(),
 });
 
-const s = defineSchema({
+export default defineSchema({
   users: Users.table.index("tokenIdentifier", ["tokenIdentifier"]),
   join_table_example: defineTable({
     userId: v.id("users"),
-    sessionId: v.id("sessions"),
+    presenceId: v.id("presence"),
   }).index("userId", ["userId"]),
   join_storage_example: defineTable({
     userId: v.id("users"),
@@ -30,7 +30,4 @@ const s = defineSchema({
     // Index for updating presence data
     .index("user_room", ["user", "room"]),
   counter_table: defineTable({ name: v.string(), counter: v.number() }),
-  sessions: defineTable(v.any()), // Make as specific as you want
 });
-
-export default s;

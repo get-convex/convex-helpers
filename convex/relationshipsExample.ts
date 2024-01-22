@@ -27,13 +27,13 @@ export const relationshipTest = mutation({
     );
     const userIds = [userId, user2._id];
 
-    const sessionId = await ctx.db.insert("sessions", {
+    const presenceId = await ctx.db.insert("presence", {
       user: userId,
       room: "test",
       updated: 0,
       data: {},
     });
-    const sessionId2 = await ctx.db.insert("sessions", {
+    const presenceId2 = await ctx.db.insert("presence", {
       user: userId,
       room: "test",
       updated: 0,
@@ -42,15 +42,15 @@ export const relationshipTest = mutation({
 
     await ctx.db.insert("join_table_example", {
       userId,
-      sessionId: sessionId2,
+      presenceId: presenceId2,
     });
     await ctx.db.insert("join_table_example", {
       userId,
-      sessionId,
+      presenceId,
     });
     await ctx.db.insert("join_table_example", {
       userId: user2._id,
-      sessionId,
+      presenceId,
     });
     const edges = await getManyFrom(
       ctx.db,
@@ -62,7 +62,7 @@ export const relationshipTest = mutation({
     const sessions = await getManyVia(
       ctx.db,
       "join_table_example",
-      "sessionId",
+      "presenceId",
       "userId",
       userId
     );
@@ -70,7 +70,7 @@ export const relationshipTest = mutation({
     const sessions2 = await getManyViaOrThrow(
       ctx.db,
       "join_table_example",
-      "sessionId",
+      "presenceId",
       "userId",
       user2._id
     );
@@ -89,12 +89,12 @@ export const relationshipTest = mutation({
       console.log("Successfully caught missing userId");
     }
 
-    await ctx.db.delete(sessionId2);
+    await ctx.db.delete(presenceId2);
     assertHasNull(
       await getManyVia(
         ctx.db,
         "join_table_example",
-        "sessionId",
+        "presenceId",
         "userId",
         userId
       )
@@ -103,27 +103,20 @@ export const relationshipTest = mutation({
       await getManyViaOrThrow(
         ctx.db,
         "join_table_example",
-        "sessionId",
+        "presenceId",
         "userId",
         userId
       );
     } catch {
-      console.log("Successfully caught missing sessionId");
+      console.log("Successfully caught missing presenceId");
     }
     await asyncMap(edges, (edge) => ctx.db.delete(edge._id));
     await asyncMap(
       await getManyFrom(ctx.db, "join_table_example", "userId", user2._id),
       (edge) => ctx.db.delete(edge._id)
     );
-    await ctx.db.delete(sessionId);
 
     // Testing custom index names
-    const presenceId = await ctx.db.insert("presence", {
-      user: userId,
-      room: "",
-      updated: 0,
-      data: {},
-    });
     assertNotNull(
       (await getOneFromOrThrow(ctx.db, "presence", "user_room", userId, "user"))
         .user
@@ -176,7 +169,7 @@ export const joinTableExample = query({
     const sessions = await getManyVia(
       ctx.db,
       "join_table_example",
-      "sessionId",
+      "presenceId",
       "userId",
       args.userId
     );

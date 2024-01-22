@@ -12,6 +12,7 @@ import {
 import { getUserByTokenIdentifier } from "./lib/withUser";
 import { Rules } from "convex-helpers/server/rowLevelSecurity";
 import { DataModel, Doc } from "./_generated/dataModel";
+import { SessionIdArg, vSessionId } from "convex-helpers/server/sessions";
 
 const rules: Rules<{ user: Doc<"users"> }, DataModel> = {
   presence: {
@@ -72,8 +73,8 @@ export const fnCalledFromMyBackend = apiMutationBuilder({
 });
 
 export const myMutationBuilder = customMutation(mutation, {
-  args: { sessionId: v.string() },
-  input: async (ctx, args) => {
+  args: { sessionId: vSessionId },
+  input: async (ctx, { sessionId }) => {
     const user = await getUserByTokenIdentifier(ctx);
     const db = wrapDatabaseWriter({ user }, ctx.db, {
       presence: {
@@ -82,11 +83,7 @@ export const myMutationBuilder = customMutation(mutation, {
         },
       },
     });
-    const sessionId = ctx.db.normalizeId("sessions", args.sessionId);
-    if (!sessionId) throw new Error("Invalid session ID");
-    const session = await db.get(sessionId);
-    if (!session) throw new Error("Session not found");
-    return { ctx: { user, session, db }, args: {} };
+    return { ctx: { user, sessionId, db }, args: {} };
   },
 });
 
@@ -96,7 +93,7 @@ export const someMutation = myMutationBuilder({
     //...
     args.someArg;
     ctx.db;
-    ctx.session;
+    ctx.sessionId;
     ctx.user;
     return { success: true };
   },
