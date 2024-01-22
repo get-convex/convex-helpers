@@ -1,16 +1,17 @@
 /**
  * asyncMap returns the results of applying an async function over an list.
  *
+ * The list can even be a promise, or an iterable like a Set.
  * @param list - Iterable object of items, e.g. an Array, Set, Object.keys
  * @param asyncTransform
  * @returns
  */
 export async function asyncMap<FromType, ToType>(
-  list: Iterable<FromType>,
+  list: Iterable<FromType> | Promise<Iterable<FromType>>,
   asyncTransform: (item: FromType) => Promise<ToType>
 ): Promise<ToType[]> {
   const promises: Promise<ToType>[] = [];
-  for (const item of list) {
+  for (const item of await list) {
     promises.push(asyncTransform(item));
   }
   return Promise.all(promises);

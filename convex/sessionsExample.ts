@@ -10,13 +10,11 @@
  * - withSessionBackwardsCompatible -- supports session IDs created with the ID class (Convex 0.16 and earlier)
  */
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
 import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
 import { SessionIdArg, vSessionId } from "convex-helpers/server/sessions";
-import { asyncMap } from "convex-helpers";
 
 /**
  * This is an example of where you could capture / invalidate a session ID.
