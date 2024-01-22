@@ -20,12 +20,11 @@ import type * as http from "../http.js";
 import type * as lib_honoWithConvex from "../lib/honoWithConvex.js";
 import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
-import type * as lib_withSession from "../lib/withSession.js";
 import type * as lib_withUser from "../lib/withUser.js";
 import type * as lib_withZod from "../lib/withZod.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
-import type * as sessions from "../sessions.js";
+import type * as sessionsExample from "../sessionsExample.js";
 import type * as zodExample from "../zodExample.js";
 
 /**
@@ -43,12 +42,11 @@ declare const fullApi: ApiFromModules<{
   "lib/honoWithConvex": typeof lib_honoWithConvex;
   "lib/migrations": typeof lib_migrations;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
-  "lib/withSession": typeof lib_withSession;
   "lib/withUser": typeof lib_withUser;
   "lib/withZod": typeof lib_withZod;
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
-  sessions: typeof sessions;
+  sessionsExample: typeof sessionsExample;
   zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<

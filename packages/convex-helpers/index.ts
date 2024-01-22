@@ -1,17 +1,18 @@
 /**
  * asyncMap returns the results of applying an async function over an list.
  *
+ * The list can even be a promise, or an iterable like a Set.
  * @param list - Iterable object of items, e.g. an Array, Set, Object.keys
  * @param asyncTransform
  * @returns
  */
 export async function asyncMap<FromType, ToType>(
-  list: Iterable<FromType>,
+  list: Iterable<FromType> | Promise<Iterable<FromType>>,
   asyncTransform: (item: FromType, index: number) => Promise<ToType>
 ): Promise<ToType[]> {
   const promises: Promise<ToType>[] = [];
   let index = 0;
-  for (const item of list) {
+  for (const item of await list) {
     promises.push(asyncTransform(item, index));
     index += 1;
   }
@@ -39,4 +40,46 @@ export function nullThrows<T>(doc: T | null, message?: string): T {
     throw new NullDocumentError(message ?? "Unexpected null document.");
   }
   return doc;
+}
+
+// Type utils:
+
+// Copied from convex/server since it wasn't exported
+export type EmptyObject = Record<string, never>;
+/**
+ * An `Omit<>` type that:
+ * 1. Applies to each element of a union.
+ * 2. Preserves the index signature of the underlying type.
+ */
+export type BetterOmit<T, K extends keyof T> = {
+  [Property in keyof T as Property extends K ? never : Property]: T[Property];
+};
+/**
+ * TESTS
+ */
+/**
+ * Tests if two types are exactly the same.
+ * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
+ * (Apache Version 2.0, January 2004)
+ */
+export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
+  T
+>() => T extends Y ? 1 : 2
+  ? true
+  : false;
+
+/**
+ * A utility for both compile-time type assertions and runtime assertions.
+ *
+ * @example
+ * ```ts
+ * // Compile-time assertion
+ * assert<Equals<1, 1>>();
+ * ```
+ * @param arg A value to assert the truthiness of.
+ */
+export function assert<T extends true>(arg?: T) {
+  // no need to do anything! we're just asserting at compile time that the type
+  // parameter is true.
+  if (!arg) throw new Error(`Assertion failed: ${arg}`);
 }

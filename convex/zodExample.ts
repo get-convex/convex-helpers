@@ -9,12 +9,13 @@ import { v } from "convex/values";
 import { z } from "zod";
 
 const zQuery = zCustomQuery(query, {
-  args: { sessionId: v.union(v.null(), v.string()) },
+  // You could require arguments for all queries here.
+  args: {},
   input: async (ctx, args) => {
-    const sessionId =
-      args.sessionId && ctx.db.normalizeId("sessions", args.sessionId);
-    const session = sessionId && (await ctx.db.get(sessionId));
-    return { ctx: { ...ctx, session }, args: {} };
+    // Here you could use the args you declared and return patches for the
+    // function's ctx and args. e.g. looking up a user and passing it in ctx.
+    // Or just asserting that the user is logged in.
+    return { ctx: {}, args: {} };
   },
 });
 
@@ -65,10 +66,8 @@ defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", ["email"]);
 export const kitchenSink = zQuery({
   args: kitchenSinkValidator,
   handler: async (ctx, args) => {
-    ctx.session;
     ctx.db;
     return {
-      session: ctx.session,
       ...args,
       counter: await ctx.db.get(args.counterId),
     };

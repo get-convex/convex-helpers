@@ -10,7 +10,6 @@ const ZodExample = () => {
     api.zodExample.kitchenSink,
     counterId
       ? {
-          sessionId: null,
           email: "email@example.com",
           counterId,
           num: 1,
@@ -39,9 +38,8 @@ const ZodExample = () => {
   );
   const dateRoundTrip = useQuery(api.zodExample.dateRoundTrip, {
     date,
-    sessionId: null,
   });
-  console.log({ zodResult, dateRoundTrip });
+  // console.log({ zodResult, dateRoundTrip });
 
   return (
     <div>

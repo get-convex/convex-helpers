@@ -26,7 +26,7 @@ export async function getAll<
   TableName extends TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: Iterable<GenericId<TableName>>
+  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>
 ): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
   return asyncMap(ids, db.get);
 }
@@ -44,7 +44,7 @@ export async function getAllOrThrow<
   TableName extends TableNamesInDataModel<DataModel>
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: Iterable<GenericId<TableName>>
+  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>
 ): Promise<DocumentByName<DataModel, TableName>[]> {
   return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
 }

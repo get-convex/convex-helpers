@@ -3,6 +3,7 @@ import { z } from "zod";
 import { v } from "convex/values";
 import { useQuery } from "convex/react";
 import { ApiFromModules, queryGeneric as query } from "convex/server";
+import { Equals, assert } from "..";
 
 /**
  * Adding ctx
@@ -245,21 +246,4 @@ assert(
 
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
-}
-
-/**
- * Tests if two types are exactly the same.
- * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
- * (Apache Version 2.0, January 2004)
- */
-
-type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
-  ? 1
-  : 2
-  ? true
-  : false;
-
-function assert<T extends true>(_?: T) {
-  // no need to do anything! we're just asserting at compile time that the type
-  // parameter is true.
 }
