@@ -192,11 +192,6 @@ export const joinTableExample = query({
   },
 });
 
-function assert(value: boolean) {
-  if (!value) {
-    throw new Error("Assertion failed");
-  }
-}
 function assertLength(list: any[], length: number) {
   if (list.length !== length) {
     throw new Error(`Expected length ${length}, got ${list.length}`);

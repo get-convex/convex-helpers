@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { queryGeneric as query } from "convex/server";
 import { customCtx, customQuery } from "./customFunctions";
+import { Equals, assert } from "..";
 
 /**
  * Adding ctx
@@ -174,23 +175,6 @@ queryMatches(badRedefine, { b: 3, a: never }, { argsA: "" }); // !!!
 /**
  * Test helpers
  */
-
-/**
- * Tests if two types are exactly the same.
- * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
- * (Apache Version 2.0, January 2004)
- */
-type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
-  ? 1
-  : 2
-  ? true
-  : false;
-
-function assert<_ extends true>() {
-  // no need to do anything! we're just asserting at compile time that the type
-  // parameter is true.
-}
-
 function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
   _f: T,
   _a: A,

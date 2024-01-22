@@ -24,6 +24,7 @@ import {
   UnvalidatedBuilder,
   splitArgs,
 } from "./customFunctions";
+import { EmptyObject } from "..";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
@@ -472,9 +473,6 @@ type CustomBuilder<
       InputCtx,
       Visibility
     >;
-
-// Copied from convex/server since they weren't exported
-type EmptyObject = Record<string, never>;
 
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation

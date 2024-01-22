@@ -31,6 +31,7 @@ import type {
 } from "convex/server";
 import { useQuery, useMutation, useAction } from "convex/react";
 import type { SessionId } from "../server/sessions";
+import { EmptyObject, BetterOmit, assert, Equals } from "..";
 
 export type UseStorage<T> = (
   key: string,
@@ -189,37 +190,6 @@ function useSessionStorage(key: string, initialValue: SessionId) {
     [key]
   );
   return [value, setValue] as const;
-}
-
-// Type utils:
-type EmptyObject = Record<string, never>;
-
-/**
- * An `Omit<>` type that:
- * 1. Applies to each element of a union.
- * 2. Preserves the index signature of the underlying type.
- */
-type BetterOmit<T, K extends keyof T> = {
-  [Property in keyof T as Property extends K ? never : Property]: T[Property];
-};
-
-/**
- * TESTS
- */
-/**
- * Tests if two types are exactly the same.
- * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
- * (Apache Version 2.0, January 2004)
- */
-type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y
-  ? 1
-  : 2
-  ? true
-  : false;
-
-function assert<_ extends true>() {
-  // no need to do anything! we're just asserting at compile time that the type
-  // parameter is true.
 }
 
 assert<
