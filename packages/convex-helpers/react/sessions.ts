@@ -49,15 +49,15 @@ const SessionContext = React.createContext<{
 
 type SessionFunction<
   T extends "query" | "mutation" | "action",
-  Args extends any
+  Args extends any = any
 > = FunctionReference<T, "public", { sessionId: SessionId } & Args, any>;
 
-type SessionQueryArgsArray<Fn extends SessionFunction<"query", any>> =
+type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
   keyof FunctionArgs<Fn> extends "sessionId"
     ? [args?: EmptyObject | "skip"]
     : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
 
-type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action", any>> =
+type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action">> =
   keyof FunctionArgs<Fn> extends "sessionId"
     ? [args?: EmptyObject]
     : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
@@ -102,7 +102,7 @@ export const SessionProvider: React.FC<{
 };
 
 // Like useQuery, but for a Query that takes a session ID.
-export function useSessionQuery<Query extends SessionFunction<"query", any>>(
+export function useSessionQuery<Query extends SessionFunction<"query">>(
   query: Query,
   ...args: SessionQueryArgsArray<Query>
 ): FunctionReturnType<Query> | undefined {
@@ -117,7 +117,7 @@ export function useSessionQuery<Query extends SessionFunction<"query", any>>(
 
 // Like useMutation, but for a Mutation that takes a session ID.
 export function useSessionMutation<
-  Mutation extends SessionFunction<"mutation", any>
+  Mutation extends SessionFunction<"mutation">
 >(name: Mutation) {
   const [sessionId] = useSessionId();
   const originalMutation = useMutation(name);
@@ -138,7 +138,7 @@ export function useSessionMutation<
 }
 
 // Like useAction, but for a Action that takes a session ID.
-export function useSessionAction<Action extends SessionFunction<"action", any>>(
+export function useSessionAction<Action extends SessionFunction<"action">>(
   name: Action
 ) {
   const [sessionId] = useSessionId();
