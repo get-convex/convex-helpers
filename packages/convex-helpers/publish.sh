@@ -21,12 +21,14 @@ read -r -p "Enter the new version number: " version
 
 if [ -n "$version" ]; then
   sed -i '' "s/\"version\": \".*\"/\"version\": \"$version\"/g" package.json
+else
+  version=$(grep '"version":' package.json | sed 's/.*"\(.*\)",.*/\1/')
 fi
 
 npm publish --dry-run
 echo "^^^ DRY RUN ^^^"
 # shellcheck disable=SC3045
-read -r -p "Publish to npm? (y/n): " publish
+read -r -p "Publish $version to npm? (y/n): " publish
 if [ "$publish" = "y" ]; then
   git add package.json package-lock.json
   # If there's nothing to commit, continue
