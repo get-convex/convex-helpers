@@ -73,6 +73,17 @@ type FirstIndexField<
   IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
 > = NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0];
 
+type TypeOfFirstIndexField<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
+> = IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
+  ? FieldTypeFromFieldPath<
+      DocumentByName<DataModel, TableName>,
+      NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0]
+    >
+  : never;
+
 // `FieldPath`s that have an index starting with them
 // e.g. `.index("...", [FieldPath, ...])` on the table.
 type LookupFieldPaths<
@@ -143,10 +154,7 @@ export async function getOneFrom<
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   index: IndexName,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, TableName>,
-    FirstIndexField<DataModel, TableName, IndexName>
-  >,
+  value: TypeOfFirstIndexField<DataModel, TableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName> | null> {
   const field = firstIndexField(index, fieldArg[0]);
@@ -183,10 +191,7 @@ export async function getOneFromOrThrow<
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   index: IndexName,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, TableName>,
-    FirstIndexField<DataModel, TableName, IndexName>
-  >,
+  value: TypeOfFirstIndexField<DataModel, TableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>> {
   const field = firstIndexField(index, fieldArg[0]);
@@ -226,10 +231,7 @@ export async function getManyFrom<
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   index: IndexName,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, TableName>,
-    FirstIndexField<DataModel, TableName, IndexName>
-  >,
+  value: TypeOfFirstIndexField<DataModel, TableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, TableName, IndexName>
 ): Promise<DocumentByName<DataModel, TableName>[]> {
   const field = firstIndexField(index, fieldArg[0]);
@@ -331,10 +333,7 @@ export async function getManyVia<
   table: JoinTableName,
   toField: ToField,
   index: IndexName,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, JoinTableName>,
-    FirstIndexField<DataModel, JoinTableName, IndexName>
-  >,
+  value: TypeOfFirstIndexField<DataModel, JoinTableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
 ): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
   return await asyncMap(
@@ -394,10 +393,7 @@ export async function getManyViaOrThrow<
   table: JoinTableName,
   toField: ToField,
   index: IndexName,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, JoinTableName>,
-    DataModel[JoinTableName]["indexes"][IndexName][0]
-  >,
+  value: TypeOfFirstIndexField<DataModel, JoinTableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
 ): Promise<DocumentByName<DataModel, TargetTableName>[]> {
   return await asyncMap(
