@@ -7,7 +7,6 @@ import {
   SystemTableNames,
   NamedTableInfo,
   NamedIndex,
-  FieldPaths,
   IndexNames,
 } from "convex/server";
 import { GenericId } from "convex/values";
@@ -74,10 +73,12 @@ type TypeOfFirstIndexField<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
   IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
-> = FieldTypeFromFieldPath<
-  DocumentByName<DataModel, TableName>,
-  NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0]
->;
+> = IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
+  ? FieldTypeFromFieldPath<
+      DocumentByName<DataModel, TableName>,
+      NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0]
+    >
+  : never;
 
 /**
  * Get a document matching the given value for a specified field.
