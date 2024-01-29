@@ -5,6 +5,10 @@ import {
   GenericDatabaseReader,
   DocumentByName,
   SystemTableNames,
+  NamedTableInfo,
+  NamedIndex,
+  FieldPaths,
+  IndexNames,
 } from "convex/server";
 import { GenericId } from "convex/values";
 import { asyncMap, nullThrows } from "..";
@@ -66,6 +70,15 @@ type TablesWithLookups<
     : TableName;
 }[TableNames];
 
+type TypeOfFirstIndexField<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
+> = FieldTypeFromFieldPath<
+  DocumentByName<DataModel, TableName>,
+  NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0]
+>;
+
 /**
  * Get a document matching the given value for a specified field.
  *
@@ -90,11 +103,11 @@ export async function getOneFromOrThrow<
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  value: TypeOfFirstIndexField<DataModel, TableName, Field>
 ): Promise<DocumentByName<DataModel, TableName>> {
   const ret = await db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex(field, (q) => q.eq(field, value))
     .unique();
   return nullThrows(
     ret,
@@ -126,11 +139,11 @@ export async function getOneFrom<
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  value: TypeOfFirstIndexField<DataModel, TableName, Field>
 ): Promise<DocumentByName<DataModel, TableName> | null> {
   return db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex(field, (q) => q.eq(field, value))
     .unique();
 }
 
@@ -158,11 +171,11 @@ export async function getManyFrom<
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
   field: Field,
-  value: FieldTypeFromFieldPath<DocumentByName<DataModel, TableName>, Field>
+  value: TypeOfFirstIndexField<DataModel, TableName, Field>
 ): Promise<DocumentByName<DataModel, TableName>[]> {
   return db
     .query(table)
-    .withIndex(field, (q) => q.eq(field, value as any))
+    .withIndex(field, (q) => q.eq(field, value))
     .collect();
 }
 
@@ -248,10 +261,7 @@ export async function getManyVia<
   table: JoinTableName,
   toField: ToField,
   fromField: FromField,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, JoinTableName>,
-    FromField
-  >
+  value: TypeOfFirstIndexField<DataModel, JoinTableName, FromField>
 ): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
   return await asyncMap(
     await getManyFrom(db, table, fromField, value),
@@ -302,10 +312,7 @@ export async function getManyViaOrThrow<
   table: JoinTableName,
   toField: ToField,
   fromField: FromField,
-  value: FieldTypeFromFieldPath<
-    DocumentByName<DataModel, JoinTableName>,
-    FromField
-  >
+  value: TypeOfFirstIndexField<DataModel, JoinTableName, FromField>
 ): Promise<DocumentByName<DataModel, TargetTableName>[]> {
   return await asyncMap(
     await getManyFrom(db, table, fromField, value),
