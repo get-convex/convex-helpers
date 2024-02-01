@@ -15,14 +15,7 @@
  * See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies)
  * for more information.
  */
-import React, {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import type {
   FunctionArgs,
   FunctionReference,
@@ -36,7 +29,7 @@ import { EmptyObject, BetterOmit, assert, Equals } from "..";
 export type UseStorage<T> = (
   key: string,
   initialValue: T
-) => readonly [T, Dispatch<SetStateAction<T>>];
+) => readonly [T, (value: T) => void];
 
 export type RefreshSessionFn = (
   beforeUpdate?: (newSessionId: SessionId) => any | Promise<any>
@@ -167,16 +160,12 @@ export function useSessionId() {
   return [ctx.sessionId, ctx.refreshSessionId] as const;
 }
 
-function useSessionStorage(key: string, initialValue: SessionId) {
+export function useSessionStorage(key: string, initialValue: SessionId) {
   const [value, setValueInternal] = useState(() => {
     if (typeof sessionStorage !== "undefined") {
       const existing = sessionStorage.getItem(key);
       if (existing) {
-        try {
-          return existing as SessionId;
-        } catch (e) {
-          console.error(e);
-        }
+        return existing as SessionId;
       }
       sessionStorage.setItem(key, initialValue);
     }
