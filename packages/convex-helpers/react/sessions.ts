@@ -1,3 +1,4 @@
+"use client";
 /**
  * React helpers for adding session data to Convex functions.
  *
