@@ -46,7 +46,7 @@ export function missingEnvVariableUrl(envVarName: string, whereToGet: string) {
   return (
     `\n  Missing ${envVarName} in environment variables.\n\n` +
     `  Get it from ${whereToGet} .\n  Paste it on the Convex dashboard:\n` +
-    `  https://dashboard.convex.dev/d/${deployment}/settings?var=${envVarName}`
+    `  https://dashboard.convex.dev/d/${deployment}/settings/environment-variables?var=${envVarName}`
   );
 }
 
