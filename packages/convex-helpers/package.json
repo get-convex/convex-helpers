@@ -14,20 +14,22 @@
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
     "./server/relationships": "./dist/server/relationships.js",
     "./server/sessions": "./dist/server/sessions.js",
-    "./server/zod": "./dist/server/zod.js"
+    "./server/zod": "./dist/server/zod.js",
+    "./values": "./dist/values.js"
   },
   "files": [
     "dist",
     "index.ts",
     "react",
-    "server"
+    "server",
+    "values.ts"
   ],
   "scripts": {
     "build": "tsc",
     "prebuild": "npm run test",
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
-    "watch": "chokidar 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run clean && npm run build' --initial"
+    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run clean && npm run build' --initial"
   },
   "repository": {
     "type": "git",

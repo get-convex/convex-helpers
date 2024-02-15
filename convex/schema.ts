@@ -1,11 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Table } from "convex-helpers/server";
-
-const Users = Table("users", {
-  name: v.string(),
-  tokenIdentifier: v.string(),
-});
+import { Users } from "./valuesExample";
 
 export default defineSchema({
   users: Users.table.index("tokenIdentifier", ["tokenIdentifier"]),

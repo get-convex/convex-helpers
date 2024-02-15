@@ -21,16 +21,23 @@ export function Table<
   TableName extends string
 >(name: TableName, fields: T) {
   const table = defineTable(fields);
+  const id = v.id(name) as Validator<string & { __tableName: TableName }>;
+  const systemFields = {
+    _id: id,
+    _creationTime: v.number(),
+  };
+
   const withSystemFields = {
     ...fields,
-    _id: v.id(name) as Validator<string & { __tableName: TableName }>,
-    _creationTime: v.number(),
+    ...systemFields,
   };
   return {
     table,
     doc: v.object(withSystemFields),
     withoutSystemFields: fields,
     withSystemFields,
+    systemFields,
+    id,
   };
 }
 

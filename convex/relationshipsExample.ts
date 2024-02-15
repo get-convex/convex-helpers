@@ -10,15 +10,19 @@ import {
   getManyViaOrThrow,
 } from "convex-helpers/server/relationships";
 import { asyncMap } from "convex-helpers";
+import { testUser } from "./valuesExample";
 
 export const relationshipTest = mutation({
   args: {},
   handler: async (ctx, args) => {
-    const userId = await ctx.db.insert("users", {
-      name: "test",
-      tokenIdentifier: "test123",
-    });
-    await ctx.db.insert("users", { name: "test2", tokenIdentifier: "test456" });
+    const userId = await ctx.db.insert(
+      "users",
+      testUser({ name: "test", tokenIdentifier: "test123" })
+    );
+    await ctx.db.insert(
+      "users",
+      testUser({ name: "test2", tokenIdentifier: "test456" })
+    );
     const user2 = await getOneFromOrThrow(
       ctx.db,
       "users",
@@ -213,3 +217,5 @@ function assertNotNull(value: any) {
     throw new Error(`Expected not null, got ${value}`);
   }
 }
+
+export default relationshipTest;
