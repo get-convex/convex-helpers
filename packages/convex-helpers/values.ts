@@ -23,31 +23,6 @@ export const literals = <
 };
 
 /**
- * oneof helps you define a union of object validators more concisely.
- *
- * e.g. `oneof({a: v.string()}, {b: v.number()})` is equivalent to
- * `v.union(v.object({a: v.string()}), v.object({b: v.number()}))`
- *
- * @param args Field validators to use in a union. NOT yet wrapped in v.object.
- * @returns A validator for the union of the object validators.
- */
-// TODO: This isn't setting fieldPaths yet. Those types are hard to expose.
-// export const oneof = <
-//   V1 extends PropertyValidators,
-//   V2 extends PropertyValidators,
-//   V3 extends PropertyValidators[],
-//   T extends [V1, V2, ...V3]
-// >(
-//   ...args: T
-// ) => {
-//   return v.union(
-//     v.object(args[0]),
-//     v.object(args[1]),
-//     ...args.slice(2).map(v.object)
-//   ) as Validator<ObjectType<T[number]>, false>;
-// };
-
-/**
  * nullable define a validator that can be the value or null more consisely.
  *
  * @param x The validator to make nullable. As in, it can be the value or null.
