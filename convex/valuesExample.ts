@@ -9,7 +9,7 @@ import {
   null_,
   nullable,
   number,
-  obj,
+  object,
   optional,
   partial,
   string,
@@ -41,8 +41,13 @@ export const Users = Table("users", {
   status: literals("active", "inactive"),
   rawJSON: optional(any),
   loginType: or(
-    obj({ type: l("email"), email: string, phone: null_, verified: boolean }),
-    obj({ type: l("phone"), phone: string, email: null_, verified: boolean })
+    object({
+      type: l("email"),
+      email: string,
+      phone: null_,
+      verified: boolean,
+    }),
+    object({ type: l("phone"), phone: string, email: null_, verified: boolean })
   ),
   logs: or(string, array(string)),
 
@@ -99,14 +104,16 @@ export const tryValidatorUtils = internalQuery({
   args: {
     userId: Users.id,
     wholeUser: Users.doc,
-    insertable: obj(Users.withoutSystemFields),
-    patchable: obj(partial(Users.withoutSystemFields)),
-    replaceable: obj({
+    insertable: object(Users.withoutSystemFields),
+    patchable: object(partial(Users.withoutSystemFields)),
+    replaceable: object({
       ...Users.withoutSystemFields,
       ...partial(Users.systemFields),
     }),
-    picked: obj(pick(Users.withSystemFields, ["name", "nickname"])),
-    ommitted: obj(omit(Users.withSystemFields, ["tokenIdentifier", "balance"])),
+    picked: object(pick(Users.withSystemFields, ["name", "nickname"])),
+    ommitted: object(
+      omit(Users.withSystemFields, ["tokenIdentifier", "balance"])
+    ),
   },
   handler: async (ctx, args) => {
     return args;
@@ -153,7 +160,7 @@ export const insert = exampleMutation({
 });
 
 export const patch = exampleMutation({
-  args: { id: id("users"), patch: obj(partial(Users.withoutSystemFields)) },
+  args: { id: id("users"), patch: object(partial(Users.withoutSystemFields)) },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, args.patch);
   },
@@ -162,7 +169,7 @@ export const patch = exampleMutation({
 export const replace = exampleMutation({
   args: {
     id: id("users"),
-    replace: obj({
+    replace: object({
       // You can provide the document with or without system fields.
       ...Users.withoutSystemFields,
       ...partial(Users.systemFields),

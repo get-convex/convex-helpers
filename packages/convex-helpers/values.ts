@@ -67,8 +67,8 @@ export const any = v.any();
 export const null_ = v.null();
 /** References another table's _id field. */
 export const id = v.id;
-/** Object validator. `obj({ a: v.any() })` is `v.object({ a: v.any() })` */
-export const obj = v.object;
+/** Object validator. `object({ a: v.any() })` is `v.object({ a: v.any() })` */
+export const object = v.object;
 /** Array validator. `array(v.any())` is `v.array(v.any())` */
 export const array = v.array;
 /** Literal value: a specific string, number, bigint or boolean value */
