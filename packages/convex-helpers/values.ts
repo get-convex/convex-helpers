@@ -57,10 +57,14 @@ export const partial = <T extends PropertyValidators>(obj: T) => {
 export const string = v.string();
 /** JavaScript number, represented as a float64 in the database. */
 export const number = v.float64();
+/** JavaScript number, represented as a float64 in the database. */
+export const float64 = v.float64();
 /** boolean value. For typing it only as true, use `l(true)` */
 export const boolean = v.boolean();
 /** bigint, though stored as an int64 in the database. */
 export const bigint = v.int64();
+/** bigint, though stored as an int64 in the database. */
+export const int64 = v.int64();
 /** Any Convex value */
 export const any = v.any();
 /** Null value. Underscore is so it doesn't shadow the null builtin */
@@ -71,8 +75,14 @@ export const id = v.id;
 export const object = v.object;
 /** Array validator. `array(v.any())` is `v.array(v.any())` */
 export const array = v.array;
-/** Literal value: a specific string, number, bigint or boolean value */
+/** ArrayBuffer validator. */
+export const arrayBuffer = v.bytes;
+/** ArrayBuffer validator. */
+export const bytes = v.bytes;
+/** Literal value (specific const value). `l(123)` is `v.literal(123)` */
 export const l = v.literal;
+/** Literal value (specific const value). `literal(123)` is `v.literal(123)` */
+export const literal = v.literal;
 /** The value can be undefined / not specified */
 export const optional = v.optional;
 /** Union of values */
