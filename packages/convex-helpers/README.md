@@ -135,3 +135,88 @@ export const myComplexQuery = zodQuery({
   }
 })
 ```
+
+## Validator utilities
+
+When using validators for defining database schema or function arguments,
+these validators help:
+
+1. Add a `Table` utility that defines a table and keeps references to the fields
+to avoid re-defining validators. To learn more about sharing validators, read
+[this article](https://stack.convex.dev/argument-validation-without-repetition),
+an extension of [this article](https://stack.convex.dev/types-cookbook).
+2. Make the validators look more like TypeScript types, even though they're
+runtime values.
+3. Add utilties for partial, pick and omit to match the TypeScript type
+utilities.
+4. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
+field, and `brandedString`. To learn more about branded strings see
+[this article](https://stack.convex.dev/using-branded-types-in-validators).
+
+Example:
+```js
+import { Table } from "convex-helpers/server";
+// Note some redefinitions in the import for even more terse definitions.
+import { literals, any, bigint, boolean, literal as is,
+  id, null_, nullable, number, optional, partial, string, union as or,
+  deprecated, array, object, brandedString,
+} from "convex-helpers/validators";
+import { assert, omit, pick } from "convex-helpers";
+import { Infer } from "convex/values";
+
+// Define a validator that requires an Email string type.
+export const emailValidator = brandedString("email");
+// Define the Email type based on the branded string.
+export type Email = Infer<typeof emailValidator>;
+
+export const Users = Table("users", {
+  name: string,
+  age: number,
+  nickname: optional(string),
+  tokenIdentifier: string,
+  preferences: optional(id("userPreferences")),
+  balance: nullable(bigint),
+  ephemeral: boolean,
+  status: literals("active", "inactive"),
+  rawJSON: optional(any),
+  loginType: or(
+    object({
+      type: is("email"),
+      email: emailValidator,
+      phone: null_,
+      verified: boolean,
+    }),
+    object({
+      type: is("phone"),
+      phone: string,
+      email: null_,
+      verified: boolean,
+    })
+  ),
+  logs: or(string, array(string)),
+
+  oldField: deprecated,
+});
+
+// convex/schema.ts
+export default defineSchema({
+  users: Users.table.index("tokenIdentifier", ["tokenIdentifier"]),
+  //...
+});
+
+// some module
+export const replaceUser = internalMutation({
+  args: {
+    id: id("users"),
+    replace: object({
+      // You can provide the document with or without system fields.
+      ...Users.withoutSystemFields,
+      ...partial(Users.systemFields),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.replace(args.id, args.replace);
+  },
+});
+
+```

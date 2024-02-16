@@ -15,14 +15,14 @@
     "./server/relationships": "./dist/server/relationships.js",
     "./server/sessions": "./dist/server/sessions.js",
     "./server/zod": "./dist/server/zod.js",
-    "./values": "./dist/values.js"
+    "./validators": "./dist/validators.js"
   },
   "files": [
     "dist",
     "index.ts",
     "react",
     "server",
-    "values.ts"
+    "validators.ts"
   ],
   "scripts": {
     "build": "tsc",

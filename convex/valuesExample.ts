@@ -17,7 +17,7 @@ import {
   array,
   object,
   brandedString,
-} from "convex-helpers/values";
+} from "convex-helpers/validators";
 import { assert, omit, pick } from "convex-helpers";
 import {
   internalAction,
