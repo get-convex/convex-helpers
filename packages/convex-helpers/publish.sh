@@ -23,6 +23,7 @@ if [ -n "$version" ]; then
 else
   version=$(grep '"version":' package.json | sed 's/.*"\(.*\)",.*/\1/')
 fi
+npm i
 
 npm publish --dry-run
 echo "^^^ DRY RUN ^^^"

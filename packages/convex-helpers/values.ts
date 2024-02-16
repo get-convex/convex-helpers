@@ -69,24 +69,10 @@ export const int64 = v.int64();
 export const any = v.any();
 /** Null value. Underscore is so it doesn't shadow the null builtin */
 export const null_ = v.null();
-/** References another table's _id field. */
-export const id = v.id;
-/** Object validator. `object({ a: v.any() })` is `v.object({ a: v.any() })` */
-export const object = v.object;
-/** Array validator. `array(v.any())` is `v.array(v.any())` */
-export const array = v.array;
+/** Re-export values from v without having to do v.* */
+export const { id, object, array, bytes, literal, optional, union } = v;
 /** ArrayBuffer validator. */
-export const arrayBuffer = v.bytes;
-/** ArrayBuffer validator. */
-export const bytes = v.bytes;
-/** Literal value (specific const value). `l(123)` is `v.literal(123)` */
-export const l = v.literal;
-/** Literal value (specific const value). `literal(123)` is `v.literal(123)` */
-export const literal = v.literal;
-/** The value can be undefined / not specified */
-export const optional = v.optional;
-/** Union of values */
-export const or = v.union;
+export const arrayBuffer = bytes;
 
 /**
  * A string validator that is a branded string type.

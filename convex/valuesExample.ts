@@ -4,18 +4,19 @@ import {
   any,
   bigint,
   boolean,
-  l,
+  literal as is,
   id,
   null_,
   nullable,
   number,
-  object,
   optional,
   partial,
   string,
-  or,
+  union as or,
   deprecated,
   array,
+  object,
+  brandedString,
 } from "convex-helpers/values";
 import { assert, omit, pick } from "convex-helpers";
 import {
@@ -24,11 +25,14 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { ObjectType } from "convex/values";
+import { Infer, ObjectType } from "convex/values";
 
 // Define a table with system fields _id and _creationTime. This also returns
 // helpers for working with the table in validators. See:
 // https://stack.convex.dev/argument-validation-without-repetition#table-helper-for-schema-definition--validation
+
+export const emailValidator = brandedString("email");
+export type Email = Infer<typeof emailValidator>;
 
 export const Users = Table("users", {
   name: string,
@@ -42,12 +46,17 @@ export const Users = Table("users", {
   rawJSON: optional(any),
   loginType: or(
     object({
-      type: l("email"),
-      email: string,
+      type: is("email"),
+      email: emailValidator,
       phone: null_,
       verified: boolean,
     }),
-    object({ type: l("phone"), phone: string, email: null_, verified: boolean })
+    object({
+      type: is("phone"),
+      phone: string,
+      email: null_,
+      verified: boolean,
+    })
   ),
   logs: or(string, array(string)),
 
@@ -65,7 +74,7 @@ export const testUser = (
   status: "active",
   loginType: {
     type: "email",
-    email: "test@example.com",
+    email: "test@example.com" as Email,
     phone: null,
     verified: false,
   },
@@ -115,7 +124,7 @@ export const tryValidatorUtils = internalQuery({
       omit(Users.withSystemFields, ["tokenIdentifier", "balance"])
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return args;
   },
 });
