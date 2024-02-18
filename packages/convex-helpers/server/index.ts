@@ -1,5 +1,6 @@
 import { defineTable } from "convex/server";
 import { Validator, v } from "convex/values";
+import { Expand } from "..";
 
 /**
  * Define a table with system fields _id and _creationTime. This also returns
@@ -30,7 +31,7 @@ export function Table<
   const withSystemFields = {
     ...fields,
     ...systemFields,
-  };
+  } as Expand<T & typeof systemFields>;
   return {
     table,
     doc: v.object(withSystemFields),
