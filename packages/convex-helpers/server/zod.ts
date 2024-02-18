@@ -6,6 +6,7 @@ import {
   ObjectType,
   PropertyValidators,
   Validator,
+  Value,
 } from "convex/values";
 import {
   FunctionVisibility,
@@ -123,7 +124,7 @@ export function zCustomQuery<
             throw new ConvexError({
               ZodError: JSON.parse(
                 JSON.stringify(parsed.error.errors, null, 2)
-              ),
+              ) as Value[],
             });
           }
           const result = await fn.handler(
@@ -247,7 +248,7 @@ export function zCustomMutation<
             throw new ConvexError({
               ZodError: JSON.parse(
                 JSON.stringify(parsed.error.errors, null, 2)
-              ),
+              ) as Value[],
             });
           }
           const result = await fn.handler(
@@ -371,7 +372,7 @@ export function zCustomAction<
             throw new ConvexError({
               ZodError: JSON.parse(
                 JSON.stringify(parsed.error.errors, null, 2)
-              ),
+              ) as Value[],
             });
           }
           const result = await fn.handler(
