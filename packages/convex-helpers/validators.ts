@@ -1,4 +1,5 @@
 import { PropertyValidators, Validator, v } from "convex/values";
+import { Expand } from ".";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -73,6 +74,27 @@ export const null_ = v.null();
 export const { id, object, array, bytes, literal, optional, union } = v;
 /** ArrayBuffer validator. */
 export const arrayBuffer = bytes;
+
+export const systemFields = <TableName extends string>(
+  tableName: TableName
+) => ({
+  _id: v.id(tableName),
+  _creationTime: v.number(),
+});
+
+export const withSystemFields = <
+  TableName extends string,
+  T extends Record<string, Validator<any, any, any>>
+>(
+  tableName: TableName,
+  fields: T
+) => {
+  const system = systemFields(tableName);
+  return {
+    ...fields,
+    ...system,
+  } as Expand<T & typeof system>;
+};
 
 /**
  * A string validator that is a branded string type.
