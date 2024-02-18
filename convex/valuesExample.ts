@@ -111,7 +111,7 @@ const exampleMutation = internalMutationGeneric as MutationBuilder<
 
 export const tryValidatorUtils = internalQuery({
   args: {
-    userId: Users.id,
+    userId: Users._id,
     wholeUser: Users.doc,
     insertable: object(Users.withoutSystemFields),
     patchable: object(partial(Users.withoutSystemFields)),
@@ -130,7 +130,7 @@ export const tryValidatorUtils = internalQuery({
 });
 
 export const test = internalAction({
-  args: { userId: Users.id },
+  args: { userId: Users._id },
   handler: async (ctx, args) => {
     const user = await ctx.runQuery(internal.valuesExample.get, {
       id: args.userId,
@@ -153,7 +153,7 @@ export const test = internalAction({
 });
 
 export const get = internalQuery({
-  args: { id: Users.id },
+  args: { id: Users._id },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },

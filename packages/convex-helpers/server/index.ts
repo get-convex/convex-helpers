@@ -21,9 +21,9 @@ export function Table<
   TableName extends string
 >(name: TableName, fields: T) {
   const table = defineTable(fields);
-  const id = v.id(name) as Validator<string & { __tableName: TableName }>;
+  const _id = v.id(name);
   const systemFields = {
-    _id: id,
+    _id,
     _creationTime: v.number(),
   };
 
@@ -37,7 +37,7 @@ export function Table<
     withoutSystemFields: fields,
     withSystemFields,
     systemFields,
-    id,
+    _id,
   };
 }
 
