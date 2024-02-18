@@ -25,7 +25,7 @@ import type * as lib_withZod from "../lib/withZod.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
-import type * as valuesExample from "../valuesExample.js";
+import type * as validatorsExample from "../validatorsExample.js";
 import type * as zodExample from "../zodExample.js";
 
 /**
@@ -48,7 +48,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
   sessionsExample: typeof sessionsExample;
-  valuesExample: typeof valuesExample;
+  validatorsExample: typeof validatorsExample;
   zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<

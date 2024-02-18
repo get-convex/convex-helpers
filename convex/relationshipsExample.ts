@@ -10,7 +10,7 @@ import {
   getManyViaOrThrow,
 } from "convex-helpers/server/relationships";
 import { asyncMap } from "convex-helpers";
-import { testUser } from "./valuesExample";
+import { testUser } from "./validatorsExample";
 
 export const relationshipTest = mutation({
   args: {},

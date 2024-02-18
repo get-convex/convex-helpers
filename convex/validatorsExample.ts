@@ -132,12 +132,12 @@ export const tryValidatorUtils = internalQuery({
 export const test = internalAction({
   args: { userId: Users._id },
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(internal.valuesExample.get, {
+    const user = await ctx.runQuery(internal.validatorsExample.get, {
       id: args.userId,
     });
     if (!user) throw new Error("User not found");
     const result = await ctx.runQuery(
-      internal.valuesExample.tryValidatorUtils,
+      internal.validatorsExample.tryValidatorUtils,
       {
         userId: args.userId,
         wholeUser: user,
