@@ -1,9 +1,11 @@
 import { Hono } from "hono";
-import { HonoWithConvex, HttpRouterWithHono } from "./lib/honoWithConvex";
+import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
+import { ActionCtx } from "./_generated/server";
 
-const app: HonoWithConvex = new Hono();
+const app: HonoWithConvex<ActionCtx> = new Hono();
 
-// See the [Stack post on using Hono](https://stack.convex.dev)
+// See the [guide on Stack](https://stack.convex.dev/hono-with-convex)
+// for tips on using Hono for HTTP endpoints.
 app.get("/", async (c) => {
   return c.json("Hello world!");
 });
