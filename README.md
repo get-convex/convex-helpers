@@ -18,8 +18,8 @@ See the [guide on Stack](https://stack.convex.dev/sessions-wrappers-as-middlewar
 
 To use sessions, check out the files:
 
-- [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you function wrappers like `mutationWithSession(...)`.
-- [react/session.ts](./packages/convex-helpers/server/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
+- [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
+- [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
 - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
 
 ## Authentication: withUser
