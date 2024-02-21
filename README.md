@@ -58,7 +58,6 @@ and the [relationship schema structures post](https://stack.convex.dev/relations
 **To use `convex-helpers`, import from "convex-helpers/server/relationships"**
 
 To copy code:
-
 Use the helpers in [relationships.ts](./packages/convex-helpers/server/relationships.ts) to traverse database relationships in queries more cleanly.
 
 ## HTTP Endpoints: Using Hono for advanced functionality
