@@ -1,5 +1,15 @@
-import { defineTable } from "convex/server";
-import { Validator, v } from "convex/values";
+import {
+  defineTable,
+  QueryBuilder,
+  MutationBuilder,
+  GenericDataModel,
+  WithoutSystemFields,
+  DocumentByName,
+  RegisteredMutation,
+  RegisteredQuery,
+  FunctionVisibility,
+} from "convex/server";
+import { GenericId, ObjectType, Validator, v } from "convex/values";
 import { Expand } from "..";
 
 /**
@@ -33,6 +43,7 @@ export function Table<
     ...systemFields,
   } as Expand<T & typeof systemFields>;
   return {
+    name,
     table,
     doc: v.object(withSystemFields),
     withoutSystemFields: fields,
@@ -67,4 +78,106 @@ export function deploymentName() {
   if (!url) return undefined;
   const regex = new RegExp("https://(.+).convex.cloud");
   return regex.exec(url)?.[1];
+}
+
+import { partial } from "../validators";
+
+/**
+ * Create CRUD operations for a table.
+ * You can expose these operations in your API. For example, in convex/users.ts:
+ *
+ * ```ts
+ * // in convex/users.ts
+ * import { crud } from "convex-helpers/server";
+ * import { query, mutation } from "./convex/_generated/server";
+ * const Users = Table("users", {
+ *  name: v.string(),
+ *  ///...
+ * });
+ * export const { Create, Read, Update, Delete } = crud(Users, query, mutation);
+ * ```
+ *
+ * Then from a client, you can access `api.users.create`.
+ *
+ * @param table The table to create CRUD operations for.
+ * Of type returned from Table() in "convex-helpers/server".
+ * @param query The query to use - use internalQuery or query from
+ * "./convex/_generated/server" or a customQuery.
+ * @param mutation The mutation to use - use internalMutation or mutation from
+ * "./convex/_generated/server" or a customMutation.
+ * @returns An object with create, read, update, and delete functions.
+ */
+export function crud<
+  Fields extends Record<string, Validator<any, any, any>>,
+  TableName extends string,
+  DataModel extends GenericDataModel,
+  QueryVisibility extends FunctionVisibility,
+  MutationVisibility extends FunctionVisibility
+>(
+  table: {
+    name: TableName;
+    _id: Validator<GenericId<TableName>>;
+    withoutSystemFields: Fields;
+  },
+  query: QueryBuilder<DataModel, QueryVisibility>,
+  mutation: MutationBuilder<DataModel, MutationVisibility>
+) {
+  return {
+    Create: mutation({
+      args: table.withoutSystemFields,
+      handler: async (ctx, args) => {
+        return await ctx.db.insert(
+          table.name,
+          args as unknown as WithoutSystemFields<
+            DocumentByName<DataModel, TableName>
+          >
+        );
+      },
+    }) as RegisteredMutation<
+      MutationVisibility,
+      ObjectType<Fields>,
+      Promise<GenericId<TableName>>
+    >,
+    Read: query({
+      args: { id: table._id },
+      handler: async (ctx, args) => {
+        return await ctx.db.get(args.id);
+      },
+    }) as RegisteredQuery<
+      QueryVisibility,
+      { id: GenericId<TableName> },
+      Promise<DocumentByName<DataModel, TableName> | null>
+    >,
+    Update: mutation({
+      args: {
+        id: v.id(table.name),
+        patch: v.object(partial(table.withoutSystemFields)),
+      },
+      handler: async (ctx, args) => {
+        await ctx.db.patch(
+          args.id,
+          args.patch as Partial<DocumentByName<DataModel, TableName>>
+        );
+      },
+    }) as RegisteredMutation<
+      MutationVisibility,
+      {
+        id: GenericId<TableName>;
+        patch: Partial<
+          WithoutSystemFields<DocumentByName<DataModel, TableName>>
+        >;
+      },
+      Promise<void>
+    >,
+    Delete: mutation({
+      args: { id: table._id },
+      handler: async (ctx, args) => {
+        await ctx.db.delete(args.id);
+      },
+    }) as RegisteredMutation<
+      MutationVisibility,
+      { id: GenericId<TableName> },
+      Promise<void>
+    >,
+  };
 }

@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as counter from "../counter.js";
+import type * as crudExample from "../crudExample.js";
 import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as http from "../http.js";
 import type * as lib_migrations from "../lib/migrations.js";
@@ -37,6 +38,7 @@ import type * as zodExample from "../zodExample.js";
  */
 declare const fullApi: ApiFromModules<{
   counter: typeof counter;
+  crudExample: typeof crudExample;
   customFunctionExample: typeof customFunctionExample;
   http: typeof http;
   "lib/migrations": typeof lib_migrations;
