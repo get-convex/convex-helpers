@@ -77,6 +77,14 @@ There are two approaches to sessions data:
     - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
     - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
 
+## Retrying actions
+
+Use helper functions to retry a Convex action until it succeeds.
+
+See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
+and the [convex-helpers package README](./packages/convex-helpers/README.md)
+for examples and usage.
+
 ## Authentication: withUser
 
 See the [Stack post on withUser](https://stack.convex.dev/wrappers-as-middleware-authentication)
