@@ -14,7 +14,6 @@ import { makeActionRetrier } from "convex-helpers/server/retries";
 
 // Export the helpers, with the name of the retry function.
 export const { runWithRetries, retry } = makeActionRetrier(
-  internalMutation,
   "retriesExample:retry"
 );
 

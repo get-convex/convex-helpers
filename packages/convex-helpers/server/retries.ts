@@ -16,8 +16,6 @@
  * ```
  */
 import {
-  GenericDataModel,
-  MutationBuilder,
   FunctionReference,
   FunctionVisibility,
   Scheduler,
@@ -26,6 +24,7 @@ import {
   getFunctionName,
   makeFunctionReference,
   DefaultFunctionArgs,
+  internalMutationGeneric,
 } from "convex/server";
 import { v, ObjectType } from "convex/values";
 
@@ -62,10 +61,7 @@ const retryArguments = {
  * e.g. internal.mymodule.retry
  * @returns An object with runWithRetries and retry functions.
  */
-export function makeActionRetrier<
-  DataModel extends GenericDataModel,
-  InternalMutation extends MutationBuilder<DataModel, "internal">
->(internalMutation: InternalMutation, retryFnName: string) {
+export function makeActionRetrier(retryFnName: string) {
   const retryRef = makeFunctionReference<
     "action",
     ObjectType<typeof retryArguments>
@@ -116,7 +112,7 @@ export function makeActionRetrier<
     });
   }
 
-  const retry = internalMutation({
+  const retry = internalMutationGeneric({
     args: retryArguments,
     handler: async (ctx, args) => {
       const { job } = args;
