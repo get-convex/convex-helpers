@@ -105,6 +105,21 @@ See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on 
 **To use `convex-helpers`, import from "convex-helpers/server/hono"**
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
+
+## CRUD utilities
+
+To generate a basic CRUD api for your tables, you can use this helper to define
+these functions for a given table:
+
+- `create`
+- `read`
+- `update`
+- `delete`
+- `paginate`
+
+**To use `convex-helpers`, import { crud } from "convex-helpers/server"**
+See more [in the convex-helpers README](./packages/convex-helpers/README.md).
+
 ## Throttling client-side requests by Single-Flighting
 
 See the [Stack post on single-flighting](https://stack.convex.dev/throttling-requests-by-single-flighting) for info on a technique to limit client requests.

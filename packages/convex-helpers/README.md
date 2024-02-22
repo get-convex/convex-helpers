@@ -164,6 +164,39 @@ app.get("/", async (c) => {
 export default new HttpRouterWithHono(app);
 ```
 
+## CRUD utilities
+
+To generate a basic CRUD api for your tables, you can use this helper to define
+these functions for a given table:
+
+- `create`
+- `read`
+- `update`
+- `delete`
+- `paginate`
+
+**Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions)**
+
+Example:
+```ts
+
+// in convex/users.ts
+import { crud } from "convex-helpers/server";
+import { internalMutation, internalQuery } from "../convex/_generated/server";
+
+const Users = Table("users", {...});
+
+export const { Create, Read, Update, Delete } = crud(Users, internalQuery, internalMutation);
+
+// in convex/schema.ts
+import { Users } from "./users";
+export default defineSchema({users: Users.table});
+
+// in some file, in an action:
+const user = await ctx.runQuery(internal.users.Read, { id: userId });
+
+await ctx.runMutation(internal.users.Update, { status: "inactive" });
+```
 
 ## Validator utilities
 
