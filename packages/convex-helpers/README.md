@@ -91,9 +91,8 @@ Example:
 ```ts
  // in convex/utils.ts
  import { makeActionRetrier } from "convex-helpers/server/retries";
- import { internalMutation } from "./convex/_generated/server";
 
- export const { runWithRetries, retry } = makeActionRetrier(internalMutation, internal.utils.retry);
+ export const { runWithRetries, retry } = makeActionRetrier("utils:retry");
 
  // in a mutation or action
  export const myMutation = mutation({

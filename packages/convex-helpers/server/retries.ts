@@ -2,18 +2,6 @@
  * This file defines helper functions that can be used to retry a
  * Convex action until it succeeds. An action should only be retried if it is
  * safe to do so, i.e., if it's idempotent or doesn't have any unsafe side effects.
- *
- * Used like:
- * ```ts
- * // in convex/utils.ts
- * import { makeActionRetrier } from "convex-helpers/server/retries";
- * import { internalMutation } from "./convex/_generated/server";
- *
- * export const { runWithRetries, retry } = makeActionRetrier(internalMutation, internal.utils.retry);
- *
- * // in a mutation or action
- * await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
- * ```
  */
 import {
   FunctionReference,
@@ -39,9 +27,8 @@ const DEFAULT_MAX_FAILURES = 16;
  * ```ts
  * // in convex/utils.ts
  * import { makeActionRetrier } from "convex-helpers/server/retries";
- * import { internalMutation } from "./convex/_generated/server";
  *
- * export const { runWithRetries, retry } = makeActionRetrier(internalMutation, internal.utils.retry);
+ * export const { runWithRetries, retry } = makeActionRetrier("utils:retry");
  *
  * // in a mutation or action
  * await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
