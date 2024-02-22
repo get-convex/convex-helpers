@@ -136,6 +136,35 @@ export const myComplexQuery = zodQuery({
 })
 ```
 
+## Hono for advanced HTTP endpoint definitions
+
+[Hono](https://hono.dev/) is an optimized web framework you can use to define
+HTTP api endpoints easily
+([`httpAction` in Convex](https://docs.convex.dev/functions/http-actions)).
+
+See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
+
+To use it, put this in your `convex/http.ts` file:
+```ts
+import {
+  Hono,
+  HonoWithConvex,
+  HttpRouterWithHono,
+} from "convex-helpers/server/hono";
+import { ActionCtx } from "./_generated/server";
+
+const app: HonoWithConvex<ActionCtx> = new Hono();
+
+// See the [guide on Stack](https://stack.convex.dev/hono-with-convex)
+// for tips on using Hono for HTTP endpoints.
+app.get("/", async (c) => {
+  return c.json("Hello world!");
+});
+
+export default new HttpRouterWithHono(app);
+```
+
+
 ## Validator utilities
 
 When using validators for defining database schema or function arguments,
@@ -145,18 +174,17 @@ these validators help:
 to avoid re-defining validators. To learn more about sharing validators, read
 [this article](https://stack.convex.dev/argument-validation-without-repetition),
 an extension of [this article](https://stack.convex.dev/types-cookbook).
-2. Make the validators look more like TypeScript types, even though they're
-runtime values.
-3. Add utilties for partial, pick and omit to match the TypeScript type
+2. Add utilties for partial, pick and omit to match the TypeScript type
 utilities.
-4. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
+3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
 field, and `brandedString`. To learn more about branded strings see
 [this article](https://stack.convex.dev/using-branded-types-in-validators).
+4. Make the validators look more like TypeScript types, even though they're
+runtime values. (This is controvercial and not required to use the above).
 
 Example:
 ```js
 import { Table } from "convex-helpers/server";
-// Note some redefinitions in the import for even more terse definitions.
 import {
   literals, partial, deprecated, brandedString,
 } from "convex-helpers/validators";

@@ -5,22 +5,55 @@ A collection of useful code to complement the official packages.
 ## `convex-helpers` npm package
 
 In the [packages](./packages/) directory there's the [convex-helpers](./packages/convex-helpers/)
-directory, so you can `npm install convex-helpers@latest`.
+directory. To use it:
+
+```sh
+ npm install convex-helpers@latest
+ ```
 
 It doesn't have all of the below features, but the ones it has can be used directly,
 rather than copying the code from this repo.
 
 See the [README](./packages/convex-helpers/README.md) for more details.
 
+## Custom Functions
+
+Build your own customized versions of `query`, `mutation`, and `action` that
+define custom behavior, allowing you to:
+
+- Run authentication logic before the request starts.
+- Look up commonly used data and add it to the ctx argument.
+- Replace a ctx or argument field with a different value, such as a version
+  of `db` that runs custom functions on data access.
+- Consume arguments from the client that are not passed to the action, such
+  as taking in an authentication parameter like an API key or session ID.
+  These arguments must be sent up by the client along with each request.
+
+See more [in the convex-helpers README](./packages/convex-helpers/README.md).
+
+## Zod Validation
+
+To validate your arguments with zod instead of the
+[built-in argument validation](https://stack.convex.dev/track-sessions-without-cookies),
+you can import from `convex-helpers` from `"convex-helpers/server/zod"`.
+Read more in the [Stack post](https://stack.convex.dev/typescript-zod-function-validation).
+
 ## Server-Persisted Session Data
 
-See the [guide on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware) for tips on how to set up and use Sessions.
+There are two approaches to sessions data:
 
-To use sessions, check out the files:
+1. Creating a session ID client-side and passing it up to the server on every
+ request. This is the [recommended approach](https://stack.convex.dev/track-sessions-without-cookies)
+ and is available by **importing from `"convex-helpers/server/hono"`**.
+ See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
-- [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
-- [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
-- You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
+2. Create a new session document in a `sessions` table for every new client,
+ where you can store associated data.
+ See [this article on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware)
+ for tips on how to set up and use Sessions. To use theses sessions, copy the files:
+    - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
+    - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
+    - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
 
 ## Authentication: withUser
 
@@ -56,15 +89,20 @@ See the [Stack post on relationship helpers](https://stack.convex.dev/functional
 and the [relationship schema structures post](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas).
 
 **To use `convex-helpers`, import from "convex-helpers/server/relationships"**
+See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
-To copy code:
-Use the helpers in [relationships.ts](./packages/convex-helpers/server/relationships.ts) to traverse database relationships in queries more cleanly.
+To copy code: Use [relationships.ts](./packages/convex-helpers/server/relationships.ts)
+to traverse database relationships in queries more cleanly.
 
 ## HTTP Endpoints: Using Hono for advanced functionality
 
+[Hono](https://hono.dev/) is an optimized web framework you can use to define
+HTTP api endpoints easily
+([`httpAction` in Convex](https://docs.convex.dev/functions/http-actions)).
+
 See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
 
-To use Hono, you'll need the file [honoWithConvex.ts](./convex/lib/honoWithConvex.ts).
+See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 ## Throttling client-side requests by Single-Flighting
 
@@ -89,10 +127,21 @@ Related files:
 - (optional)[useTypingIndicator.ts](./src/hooks/useTypingIndicator.ts) for specifically doing typing indicator presence.
 - (optional)[Facepile.tsx](./src/components/Facepile.tsx) for showing a facepile based on presence data. Intended to be used as an example to extend.
 
-## Zod Validation
+## Validator utilities
 
-Update: now Convex has argument validation. If you are just checking types, it
-should suffice: https://docs.convex.dev/functions/args-validation
-See the [Stack post on Zod validation](https://stack.convex.dev/wrappers-as-middleware-zod-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
+When using validators for defining database schema or function arguments,
+these validators help:
 
-You'll need the [withZod.ts](./convex/lib/withZod.ts) file.
+1. Add a `Table` utility that defines a table and keeps references to the fields
+to avoid re-defining validators. To learn more about sharing validators, read
+[this article](https://stack.convex.dev/argument-validation-without-repetition),
+an extension of [this article](https://stack.convex.dev/types-cookbook).
+2. Add utilties for partial, pick and omit to match the TypeScript type
+utilities.
+3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
+field, and `brandedString`. To learn more about branded strings see
+[this article](https://stack.convex.dev/using-branded-types-in-validators).
+4. Make the validators look more like TypeScript types, even though they're
+runtime values. (This is controvercial and not required to use the above).
+
+See more [in the convex-helpers README](./packages/convex-helpers/README.md).
