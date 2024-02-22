@@ -157,11 +157,10 @@ Example:
 ```js
 import { Table } from "convex-helpers/server";
 // Note some redefinitions in the import for even more terse definitions.
-import { literals, any, bigint, boolean, literal as is,
-  id, null_, nullable, number, optional, partial, string, union as or,
-  deprecated, array, object, brandedString,
+import {
+  literals, partial, deprecated, brandedString,
 } from "convex-helpers/validators";
-import { assert, omit, pick } from "convex-helpers";
+import { omit, pick } from "convex-helpers";
 import { Infer } from "convex/values";
 
 // Define a validator that requires an Email string type.
@@ -169,49 +168,28 @@ export const emailValidator = brandedString("email");
 // Define the Email type based on the branded string.
 export type Email = Infer<typeof emailValidator>;
 
-export const Users = Table("users", {
-  name: string,
-  age: number,
-  nickname: optional(string),
-  tokenIdentifier: string,
-  preferences: optional(id("userPreferences")),
-  balance: nullable(bigint),
-  ephemeral: boolean,
+export const Account = Table("accounts", {
+  balance: nullable(v.bigint()),
   status: literals("active", "inactive"),
-  rawJSON: optional(any),
-  loginType: or(
-    object({
-      type: is("email"),
-      email: emailValidator,
-      phone: null_,
-      verified: boolean,
-    }),
-    object({
-      type: is("phone"),
-      phone: string,
-      email: null_,
-      verified: boolean,
-    })
-  ),
-  logs: or(string, array(string)),
+  email: emailValidator,
 
   oldField: deprecated,
 });
 
 // convex/schema.ts
 export default defineSchema({
-  users: Users.table.index("tokenIdentifier", ["tokenIdentifier"]),
+  accounts: Account.table.index("status", ["status"]),
   //...
 });
 
 // some module
 export const replaceUser = internalMutation({
   args: {
-    id: id("users"),
+    id: Account._id,
     replace: object({
       // You can provide the document with or without system fields.
-      ...Users.withoutSystemFields,
-      ...partial(Users.systemFields),
+      ...Account.withoutSystemFields,
+      ...partial(Account.systemFields),
     }),
   },
   handler: async (ctx, args) => {
@@ -219,4 +197,9 @@ export const replaceUser = internalMutation({
   },
 });
 
+// A validator just for balance & email: { balance: v.union(...), email: ..}
+const balanceAndEmail = pick(Account.withoutSystemFields, ["balance", "email"]);
+
+// A validator for all the fields except balance.
+const accountWithoutBalance = omit(Account.withSystemFields, ["balance"]);
 ```
