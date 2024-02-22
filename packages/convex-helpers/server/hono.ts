@@ -6,8 +6,11 @@
  *
  * To use this helper, create a new Hono app in convex/http.ts like so:
  * ```ts
- * import { Hono } from "hono";
- * import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
+ * import {
+ *   Hono,
+ *   HonoWithConvex,
+ *   HttpRouterWithHono,
+ * } from "convex-helpers/server/hono";
  * import { ActionCtx } from "./_generated/server";
  *
  * const app: HonoWithConvex<ActionCtx> = new Hono();
@@ -28,6 +31,7 @@ import {
   GenericActionCtx,
 } from "convex/server";
 import { Hono } from "hono";
+export { Hono };
 
 /**
  * Hono uses the `FetchEvent` type internally, which has to do with service workers

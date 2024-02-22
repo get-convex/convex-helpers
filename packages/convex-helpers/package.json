@@ -50,10 +50,14 @@
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
     "convex": "^1.9.1",
+    "hono": "^4.0.5",
     "react": "^17.0.2 || ^18.0.0",
     "zod": "^3.22.4"
   },
   "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    },
     "react": {
       "optional": true
     },
