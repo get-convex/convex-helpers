@@ -15,6 +15,7 @@
     "./server/middlewareUtils": "./dist/server/middlewareUtils.js",
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
     "./server/relationships": "./dist/server/relationships.js",
+    "./server/retries": "./dist/server/retries.js",
     "./server/sessions": "./dist/server/sessions.js",
     "./server/zod": "./dist/server/zod.js",
     "./testing": "./dist/testing.js",
