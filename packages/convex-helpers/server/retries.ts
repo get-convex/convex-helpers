@@ -32,15 +32,6 @@ const DEFAULT_WAIT_BACKOFF = 10;
 const DEFAULT_RETRY_BACKOFF = 10;
 const DEFAULT_BASE = 2;
 const DEFAULT_MAX_FAILURES = 16;
-const retryArguments = {
-  job: v.id("_scheduled_functions"),
-  action: v.string(),
-  actionArgs: v.any(),
-  waitBackoff: v.number(),
-  retryBackoff: v.number(),
-  base: v.number(),
-  maxFailures: v.number(),
-};
 
 /**
  * Create a function that retries an action with exponential backoff.
@@ -112,6 +103,15 @@ export function makeActionRetrier(retryFnName: string) {
     });
   }
 
+  const retryArguments = {
+    job: v.id("_scheduled_functions"),
+    action: v.string(),
+    actionArgs: v.any(),
+    waitBackoff: v.number(),
+    retryBackoff: v.number(),
+    base: v.number(),
+    maxFailures: v.number(),
+  };
   const retry = internalMutationGeneric({
     args: retryArguments,
     handler: async (ctx, args) => {
