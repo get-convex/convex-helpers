@@ -30,7 +30,7 @@ const DEFAULT_MAX_FAILURES = 16;
  *
  * export const { runWithRetries, retry } = makeActionRetrier("utils:retry");
  *
- * // in a mutation or action
+ * // in a mutation
  * await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
  * ```
  *
@@ -46,6 +46,12 @@ export function makeActionRetrier(retryFnName: string) {
   >(retryFnName);
   /**
    * Run and retry action until it succeeds or fails too many times.
+   *
+   * If this is called from a mutation, it will be run and retried up to
+   * options.maxFailures times (default 16).
+   * If it's called from an action, there is a chance that the action will
+   * be called once but not retried. To ensure that the action is retried,
+   * it should be wrapped in an internal mutation if called from an action.
    *
    * @param action - Name of the action to run, e.g., `usercode:maybeAction`.
    * @param actionArgs - Arguments to pass to the action, e.g., `{"failureRate": 0.75}`.
