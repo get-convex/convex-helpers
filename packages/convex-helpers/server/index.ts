@@ -94,7 +94,7 @@ import { partial } from "../validators";
  *  name: v.string(),
  *  ///...
  * });
- * export const { create, read, update, delete_ } = crud(Users, query, mutation);
+ * export const { create, read, update, del } = crud(Users, query, mutation);
  * ```
  *
  * Then from a client, you can access `api.users.create`.
@@ -169,7 +169,7 @@ export function crud<
       },
       Promise<void>
     >,
-    delete_: mutation({
+    del: mutation({
       args: { id: table._id },
       handler: async (ctx, args) => {
         await ctx.db.delete(args.id);
