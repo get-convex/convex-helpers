@@ -10,7 +10,7 @@ export default () => {
   const user = useQuery(api.crudExample.read, id ? { id } : "skip");
   const update = useMutation(api.crudExample.update);
 
-  const del = useMutation(api.crudExample.del);
+  const destroy = useMutation(api.crudExample.destroy);
   return (
     <>
       <h2>CRUD Example</h2>
@@ -30,7 +30,7 @@ export default () => {
       </p>
       <p>
         <button
-          onClick={() => id && del({ id }).then(() => setId(null))}
+          onClick={() => id && destroy({ id }).then(() => setId(null))}
           disabled={!id}
         >
           Delete
