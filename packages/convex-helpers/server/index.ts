@@ -94,7 +94,7 @@ import { partial } from "../validators";
  *  name: v.string(),
  *  ///...
  * });
- * export const { Create, Read, Update, Delete } = crud(Users, query, mutation);
+ * export const { create, read, update, delete_ } = crud(Users, query, mutation);
  * ```
  *
  * Then from a client, you can access `api.users.create`.
@@ -123,7 +123,7 @@ export function crud<
   mutation: MutationBuilder<DataModel, MutationVisibility>
 ) {
   return {
-    Create: mutation({
+    create: mutation({
       args: table.withoutSystemFields,
       handler: async (ctx, args) => {
         return await ctx.db.insert(
@@ -138,7 +138,7 @@ export function crud<
       ObjectType<Fields>,
       Promise<GenericId<TableName>>
     >,
-    Read: query({
+    read: query({
       args: { id: table._id },
       handler: async (ctx, args) => {
         return await ctx.db.get(args.id);
@@ -148,7 +148,7 @@ export function crud<
       { id: GenericId<TableName> },
       Promise<DocumentByName<DataModel, TableName> | null>
     >,
-    Update: mutation({
+    update: mutation({
       args: {
         id: v.id(table.name),
         patch: v.object(partial(table.withoutSystemFields)),
@@ -169,7 +169,7 @@ export function crud<
       },
       Promise<void>
     >,
-    Delete: mutation({
+    delete_: mutation({
       args: { id: table._id },
       handler: async (ctx, args) => {
         await ctx.db.delete(args.id);

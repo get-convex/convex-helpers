@@ -6,11 +6,11 @@ import { testUser } from "../../convex/validatorsExample";
 
 export default () => {
   const [id, setId] = useState<Id<"users"> | null>(null);
-  const create = useMutation(api.crudExample.Create);
-  const user = useQuery(api.crudExample.Read, id ? { id } : "skip");
-  const update = useMutation(api.crudExample.Update);
+  const create = useMutation(api.crudExample.create);
+  const user = useQuery(api.crudExample.read, id ? { id } : "skip");
+  const update = useMutation(api.crudExample.update);
 
-  const delete_ = useMutation(api.crudExample.Delete);
+  const delete_ = useMutation(api.crudExample.delete_);
   return (
     <>
       <h2>CRUD Example</h2>
