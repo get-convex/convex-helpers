@@ -50,11 +50,11 @@ export function makeActionRetrier(retryFnName: string) {
    * If this is called from a mutation, it will be run and retried up to
    * options.maxFailures times (default 16).
    * If it's called from an action, there is a chance that the action will
-   * be called once but not retried. To ensure that the action is retried,
-   * it should be wrapped in an internal mutation if called from an action.
+   * be called once but not retried. To ensure that the action is retried when
+   * calling from an action, * it should be wrapped in an internal mutation.
    *
-   * @param action - Name of the action to run, e.g., `usercode:maybeAction`.
-   * @param actionArgs - Arguments to pass to the action, e.g., `{"failureRate": 0.75}`.
+   * @param action - Name of the action to run, e.g., `"usercode:maybeAction"`.
+   * @param actionArgs - Arguments for the action, e.g., `{ failureRate: 0.75}`.
    * @param options
    * @param options.waitBackoff=DEFAULT_WAIT_BACKOFF (10) - Initial delay before checking action status, in milliseconds.
    * @param options.retryBackoff=DEFAULT_RETRY_BACKOFF (10) - Initial delay before retrying, in milliseconds.
