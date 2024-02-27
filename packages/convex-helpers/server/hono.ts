@@ -1,12 +1,37 @@
-// Taken from https://github.com/get-convex/convex-helpers/blob/main/convex/lib/honoWithConvex.ts
+/**
+ * This file contains a helper class for integrating Convex with Hono.
+ *
+ * See the [guide on Stack](https://stack.convex.dev/hono-with-convex)
+ * for tips on using Hono for HTTP endpoints.
+ *
+ * To use this helper, create a new Hono app in convex/http.ts like so:
+ * ```ts
+ * import {
+ *   Hono,
+ *   HonoWithConvex,
+ *   HttpRouterWithHono,
+ * } from "convex-helpers/server/hono";
+ * import { ActionCtx } from "./_generated/server";
+ *
+ * const app: HonoWithConvex<ActionCtx> = new Hono();
+ *
+ * app.get("/", async (c) => {
+ *   return c.json("Hello world!");
+ * });
+ *
+ * export default new HttpRouterWithHono(app);
+ * ```
+ */
 import {
+  httpActionGeneric,
   HttpRouter,
   PublicHttpAction,
   RoutableMethod,
   ROUTABLE_HTTP_METHODS,
+  GenericActionCtx,
 } from "convex/server";
 import { Hono } from "hono";
-import { httpAction, ActionCtx } from "../_generated/server";
+export { Hono };
 
 /**
  * Hono uses the `FetchEvent` type internally, which has to do with service workers
@@ -22,7 +47,7 @@ declare global {
  * A type representing a Hono app with `c.env` containing Convex's
  * `HttpEndpointCtx` (e.g. `c.env.runQuery` is valid).
  */
-export type HonoWithConvex = Hono<{
+export type HonoWithConvex<ActionCtx extends GenericActionCtx<any>> = Hono<{
   Bindings: {
     [Name in keyof ActionCtx]: ActionCtx[Name];
   };
@@ -56,17 +81,19 @@ export type HonoWithConvex = Hono<{
  * export default new HttpRouterWithHono(app);
  * ```
  */
-export class HttpRouterWithHono extends HttpRouter {
-  private _app: HonoWithConvex;
+export class HttpRouterWithHono<
+  ActionCtx extends GenericActionCtx<any>
+> extends HttpRouter {
+  private _app: HonoWithConvex<ActionCtx>;
   private _handler: PublicHttpAction;
   private _handlerInfoCache: Map<any, { method: RoutableMethod; path: string }>;
 
-  constructor(app: HonoWithConvex) {
+  constructor(app: HonoWithConvex<ActionCtx>) {
     super();
     this._app = app;
     // Single Convex httpEndpoint handler that just forwards the request to the
     // Hono framework
-    this._handler = httpAction(async (ctx, request: Request) => {
+    this._handler = httpActionGeneric(async (ctx, request: Request) => {
       return await app.fetch(request, ctx);
     });
     this._handlerInfoCache = new Map();

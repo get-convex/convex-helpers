@@ -17,7 +17,6 @@ import type {
 import type * as counter from "../counter.js";
 import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as http from "../http.js";
-import type * as lib_honoWithConvex from "../lib/honoWithConvex.js";
 import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
 import type * as lib_withUser from "../lib/withUser.js";
@@ -40,7 +39,6 @@ declare const fullApi: ApiFromModules<{
   counter: typeof counter;
   customFunctionExample: typeof customFunctionExample;
   http: typeof http;
-  "lib/honoWithConvex": typeof lib_honoWithConvex;
   "lib/migrations": typeof lib_migrations;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
   "lib/withUser": typeof lib_withUser;
