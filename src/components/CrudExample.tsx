@@ -25,18 +25,16 @@ export default () => {
       <p>
         Read: {id} User Name: {user?.name}
       </p>
-      <p>
-        Paginate:
-        <ul>
-          {users.isLoading
-            ? "..."
-            : users.results.map((u) => (
-                <li>
-                  {u._id} created: {new Date(u._creationTime).toLocaleString()}
-                </li>
-              ))}
-        </ul>
-      </p>
+      <p>Paginate:</p>
+      <ul>
+        {users.isLoading
+          ? "..."
+          : users.results.map((u) => (
+              <li key={u._id}>
+                {u._id} created: {new Date(u._creationTime).toLocaleString()}
+              </li>
+            ))}
+      </ul>
       <p>
         <button
           onClick={() => id && update({ id, patch: { name: "Updated" } })}
