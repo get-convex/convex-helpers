@@ -45,5 +45,5 @@ if [ "$publish" = "y" ]; then
     npm publish
   fi
   git tag "npm/$version"
-  git push --tags
+  git push "npm/$version"
 fi
