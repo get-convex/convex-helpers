@@ -44,7 +44,7 @@ There are two approaches to sessions data:
 
 1. Creating a session ID client-side and passing it up to the server on every
  request. This is the [recommended approach](https://stack.convex.dev/track-sessions-without-cookies)
- and is available by **importing from `"convex-helpers/server/hono"`**.
+ and is available by **importing from `"convex-helpers/server/sessions"`**.
  See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 2. Create a new session document in a `sessions` table for every new client,
@@ -97,11 +97,12 @@ to traverse database relationships in queries more cleanly.
 ## HTTP Endpoints: Using Hono for advanced functionality
 
 [Hono](https://hono.dev/) is an optimized web framework you can use to define
-HTTP api endpoints easily
+HTTP API endpoints easily
 ([`httpAction` in Convex](https://docs.convex.dev/functions/http-actions)).
 
 See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
 
+**To use `convex-helpers`, import from "convex-helpers/server/hono"**
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 ## Throttling client-side requests by Single-Flighting
