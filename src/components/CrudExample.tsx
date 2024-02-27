@@ -1,12 +1,17 @@
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useState } from "react";
 import { testUser } from "../../convex/validatorsExample";
 
 export default () => {
-  const [id, setId] = useState<Id<"users"> | null>(null);
   const create = useMutation(api.crudExample.create);
+  const users = usePaginatedQuery(
+    api.crudExample.paginate,
+    {},
+    { initialNumItems: 10 }
+  );
+  const id = users.results.at(-1)?._id;
   const user = useQuery(api.crudExample.read, id ? { id } : "skip");
   const update = useMutation(api.crudExample.update);
 
@@ -15,10 +20,22 @@ export default () => {
     <>
       <h2>CRUD Example</h2>
       <p>
-        <button onClick={() => create(testUser({})).then(setId)}>Create</button>
+        <button onClick={() => create(testUser({}))}>Create</button>
       </p>
       <p>
         Read: {id} User Name: {user?.name}
+      </p>
+      <p>
+        Paginate:
+        <ul>
+          {users.isLoading
+            ? "..."
+            : users.results.map((u) => (
+                <li>
+                  {u._id} created: {new Date(u._creationTime).toLocaleString()}
+                </li>
+              ))}
+        </ul>
       </p>
       <p>
         <button
@@ -29,10 +46,7 @@ export default () => {
         </button>
       </p>
       <p>
-        <button
-          onClick={() => id && destroy({ id }).then(() => setId(null))}
-          disabled={!id}
-        >
+        <button onClick={() => id && destroy({ id })} disabled={!id}>
           Delete
         </button>
       </p>

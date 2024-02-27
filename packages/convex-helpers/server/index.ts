@@ -8,8 +8,10 @@ import {
   RegisteredMutation,
   RegisteredQuery,
   FunctionVisibility,
+  paginationOptsValidator,
+  PaginationResult,
 } from "convex/server";
-import { GenericId, ObjectType, Validator, v } from "convex/values";
+import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
 import { Expand } from "..";
 
 /**
@@ -126,17 +128,18 @@ export function crud<
     create: mutation({
       args: table.withoutSystemFields,
       handler: async (ctx, args) => {
-        return await ctx.db.insert(
+        const id = await ctx.db.insert(
           table.name,
           args as unknown as WithoutSystemFields<
             DocumentByName<DataModel, TableName>
           >
         );
+        return (await ctx.db.get(id))!;
       },
     }) as RegisteredMutation<
       MutationVisibility,
       ObjectType<Fields>,
-      Promise<GenericId<TableName>>
+      Promise<DocumentByName<DataModel, TableName>>
     >,
     read: query({
       args: { id: table._id },
@@ -147,6 +150,18 @@ export function crud<
       QueryVisibility,
       { id: GenericId<TableName> },
       Promise<DocumentByName<DataModel, TableName> | null>
+    >,
+    paginate: query({
+      args: {
+        paginationOpts: paginationOptsValidator,
+      },
+      handler: async (ctx, args) => {
+        return ctx.db.query(table.name).paginate(args.paginationOpts);
+      },
+    }) as RegisteredQuery<
+      QueryVisibility,
+      { paginationOpts: Infer<typeof paginationOptsValidator> },
+      Promise<PaginationResult<DocumentByName<DataModel, TableName>>>
     >,
     update: mutation({
       args: {
@@ -172,12 +187,16 @@ export function crud<
     destroy: mutation({
       args: { id: table._id },
       handler: async (ctx, args) => {
-        await ctx.db.delete(args.id);
+        const old = await ctx.db.get(args.id);
+        if (old) {
+          await ctx.db.delete(args.id);
+        }
+        return old;
       },
     }) as RegisteredMutation<
       MutationVisibility,
       { id: GenericId<TableName> },
-      Promise<void>
+      Promise<null | DocumentByName<DataModel, TableName>>
     >,
   };
 }
