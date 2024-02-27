@@ -186,16 +186,16 @@ import { internalMutation, internalQuery } from "../convex/_generated/server";
 
 const Users = Table("users", {...});
 
-export const { Create, Read, Update, Delete } = crud(Users, internalQuery, internalMutation);
+export const { read, update } = crud(Users, internalQuery, internalMutation);
 
 // in convex/schema.ts
 import { Users } from "./users";
 export default defineSchema({users: Users.table});
 
 // in some file, in an action:
-const user = await ctx.runQuery(internal.users.Read, { id: userId });
+const user = await ctx.runQuery(internal.users.read, { id: userId });
 
-await ctx.runMutation(internal.users.Update, { status: "inactive" });
+await ctx.runMutation(internal.users.update, { status: "inactive" });
 ```
 
 ## Validator utilities

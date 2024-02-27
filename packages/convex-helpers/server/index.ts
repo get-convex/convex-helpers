@@ -92,11 +92,14 @@ import { partial } from "../validators";
  * // in convex/users.ts
  * import { crud } from "convex-helpers/server";
  * import { query, mutation } from "./convex/_generated/server";
+ *
  * const Users = Table("users", {
  *  name: v.string(),
  *  ///...
  * });
- * export const { create, read, update, destroy } = crud(Users, query, mutation);
+ *
+ * export const { create, read, paginate, update, destroy } =
+ *   crud(Users, query, mutation);
  * ```
  *
  * Then from a client, you can access `api.users.create`.
