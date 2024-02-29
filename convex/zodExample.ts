@@ -61,7 +61,14 @@ const kitchenSinkValidator = {
 };
 
 // Example of how you'd define a table in schema.ts with zod validators
-defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", ["email"]);
+// Note the "output" which tells the validator to use the output type for
+// validators like "pipeline" above, which takes in a number but makes a string.
+// The table will have a string, and the client input will be a number.
+// In general args should be "input" and table fields should be "output", unless
+// you're validating data you read from the database.
+defineTable(zodToConvexFields(kitchenSinkValidator, "output")).index("email", [
+  "email",
+]);
 
 export const kitchenSink = zQuery({
   args: kitchenSinkValidator,
