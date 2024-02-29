@@ -634,7 +634,7 @@ export function zodToConvex<
     case "ZodUnknown":
       return v.any() as ConvexValidatorFromZod<Z, D>;
     case "ZodArray":
-      const inner = zodToConvex(zod._def.type, d);
+      const inner = zodToConvex(zod._def.type, d) as Validator<any, false, any>;
       if (inner.isOptional) {
         throw new Error("Arrays of optional values are not supported");
       }
@@ -673,7 +673,11 @@ export function zodToConvex<
         zodToConvex((zod as any).unwrap(), d) as any
       ) as ConvexValidatorFromZod<Z, D>;
     case "ZodNullable":
-      const nullable = zodToConvex((zod as any).unwrap(), d);
+      const nullable = zodToConvex((zod as any).unwrap(), d) as Validator<
+        any,
+        any,
+        any
+      >;
       if (nullable.isOptional) {
         // Swap nullable(optional(Z)) for optional(nullable(Z))
         // Casting to any to ignore the mismatch of optional
@@ -691,7 +695,11 @@ export function zodToConvex<
         D
       >;
     case "ZodDefault":
-      const withDefault = zodToConvex(zod._def.innerType, d);
+      const withDefault = zodToConvex(zod._def.innerType, d) as Validator<
+        any,
+        any,
+        any
+      >;
       if (withDefault.isOptional) {
         return withDefault as ConvexValidatorFromZod<Z, D>;
       }
