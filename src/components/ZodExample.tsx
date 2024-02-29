@@ -1,3 +1,4 @@
+import { omit } from "convex-helpers";
 import { api } from "../../convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
 import { convexToJson } from "convex/values";
@@ -36,6 +37,10 @@ const ZodExample = () => {
         }
       : "skip"
   );
+  const zodOutputRoundTrip = useQuery(
+    api.zodExample.outputRoundTrip,
+    zodResult ? omit(zodResult, ["counter"]) : "skip"
+  );
   const dateRoundTrip = useQuery(api.zodExample.dateRoundTrip, {
     date,
   });
@@ -56,6 +61,15 @@ const ZodExample = () => {
               JSON.stringify(convexToJson(zodResult as any), undefined, 2)}
           </code>
         </pre>
+        <p>
+          Matches:{" "}
+          {zodOutputRoundTrip
+            ? JSON.stringify(convexToJson(omit(zodResult, ["counter"]))) ===
+              JSON.stringify(convexToJson(zodOutputRoundTrip))
+              ? "true"
+              : "false"
+            : "..."}
+        </p>
       </details>
     </div>
   );

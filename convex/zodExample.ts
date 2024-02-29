@@ -87,6 +87,17 @@ export const kitchenSink = zQuery({
   //   .strict(),
 });
 
+// Test that the output of kitchenSinkValidator matches the convex validator
+// for the output.
+// This is also an example of using a vanilla query with zod - you get the
+// convex types, but don't validate the specific zod types.
+export const outputRoundTrip = query({
+  args: zodToConvexFields(kitchenSinkValidator, "output"),
+  handler: async (ctx, args) => {
+    return args;
+  },
+});
+
 export const dateRoundTrip = zQuery({
   args: { date: z.string().transform((s) => new Date(Date.parse(s))) },
   handler: async (ctx, args) => {
