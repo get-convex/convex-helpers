@@ -568,11 +568,13 @@ type ConvexValidatorFromZod<
     : Z extends z.ZodBranded<infer Inner, any>
     ? ConvexValidatorFromZod<Inner, D>
     : Z extends z.ZodDefault<infer Inner> // Treat like optional
-    ? ConvexValidatorFromZod<Inner, D> extends Validator<
-        infer InnerConvex,
-        false,
-        infer InnerFieldPaths
-      >
+    ? D extends "output"
+      ? ConvexValidatorFromZod<Inner, "output">
+      : ConvexValidatorFromZod<Inner, "input"> extends Validator<
+          infer InnerConvex,
+          false,
+          infer InnerFieldPaths
+        >
       ? Validator<InnerConvex | undefined, true, InnerFieldPaths>
       : never
     : Z extends z.ZodReadonly<infer Inner>
@@ -693,7 +695,9 @@ export function zodToConvex<
       if (withDefault.isOptional) {
         return withDefault as ConvexValidatorFromZod<Z, D>;
       }
-      return v.optional(withDefault) as ConvexValidatorFromZod<Z, D>;
+      return (
+        d === "output" ? withDefault : v.optional(withDefault)
+      ) as ConvexValidatorFromZod<Z, D>;
     case "ZodReadonly":
       return zodToConvex(zod._def.innerType, d) as ConvexValidatorFromZod<Z, D>;
     case "ZodPipeline":

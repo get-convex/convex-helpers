@@ -188,6 +188,20 @@ assert(
     }
   )
 );
+// default
+assert(
+  sameType(
+    zodToConvexFields(
+      {
+        default: z.number().default(0),
+      },
+      "output"
+    ),
+    {
+      default: v.number(),
+    }
+  )
+);
 assert(
   sameType(
     zodToConvexFields({
