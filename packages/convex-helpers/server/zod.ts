@@ -1,4 +1,10 @@
-import { ZodFirstPartyTypeKind, ZodTypeDef, z } from "zod";
+import {
+  ZodFirstPartyTypeKind,
+  ZodTypeDef,
+  baseObjectInputType,
+  input,
+  z,
+} from "zod";
 import {
   v,
   ConvexError,
@@ -17,6 +23,11 @@ import {
   QueryBuilder,
   GenericMutationCtx,
   ActionBuilder,
+  DocumentByName,
+  RegisteredMutation,
+  WithoutSystemFields,
+  PaginationResult,
+  RegisteredQuery,
 } from "convex/server";
 import {
   Mod,
@@ -40,6 +51,15 @@ export type ZodValidator = Record<string, z.ZodTypeAny>;
  */
 export const zid = <TableName extends string>(tableName: TableName) =>
   new Zid({ typeName: "ConvexId", tableName });
+
+export const paginationOptsValidator = z.object({
+  numItems: z.number(),
+  cursor: z.string().nullable(),
+  endCursor: z.string().nullable().optional(),
+  id: z.number().optional(),
+  maximumRowsRead: z.number().optional(),
+  maximumBytesRead: z.number().optional(),
+});
 
 /**
  * zCustomQuery is like customQuery, but allows validation via zod.
@@ -724,3 +744,130 @@ export const withSystemFields = <
 ) => {
   return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
 };
+
+/**
+ * Create CRUD operations for a table.
+ * You can expose these operations in your API. For example, in convex/users.ts:
+ *
+ * ```ts
+ * // in convex/users.ts
+ * import { crud } from "convex-helpers/server";
+ * import { query, mutation } from "./convex/_generated/server";
+ *
+ * const Users = Table("users", {
+ *  name: v.string(),
+ *  ///...
+ * });
+ *
+ * export const { create, read, paginate, update, destroy } =
+ *   crud(Users, query, mutation);
+ * ```
+ *
+ * Then from a client, you can access `api.users.create`.
+ *
+ * @param table The table to create CRUD operations for.
+ * Of type returned from Table() in "convex-helpers/server".
+ * @param query The query to use - use internalQuery or query from
+ * "./convex/_generated/server" or a customQuery.
+ * @param mutation The mutation to use - use internalMutation or mutation from
+ * "./convex/_generated/server" or a customMutation.
+ * @returns An object with create, read, update, and delete functions.
+ */
+export function crud<
+  Fields extends ZodValidator,
+  TableName extends string,
+  DataModel extends GenericDataModel,
+  QueryVisibility extends FunctionVisibility,
+  MutationVisibility extends FunctionVisibility
+>(
+  name: TableName,
+  fields: Fields,
+  query: CustomBuilder<
+    "query",
+    any,
+    any,
+    any,
+    GenericQueryCtx<DataModel>,
+    QueryVisibility
+  >,
+  mutation: CustomBuilder<
+    "mutation",
+    EmptyObject,
+    EmptyObject,
+    EmptyObject,
+    GenericMutationCtx<DataModel>,
+    MutationVisibility
+  >
+) {
+  const id = zid(name);
+  return {
+    create: mutation({
+      args: fields,
+      handler: async (ctx, args) => {
+        const id = await ctx.db.insert(
+          name,
+          args as unknown as WithoutSystemFields<
+            DocumentByName<DataModel, TableName>
+          >
+        );
+        return (await ctx.db.get(id))!;
+      },
+    }) as RegisteredMutation<
+      MutationVisibility,
+      baseObjectInputType<Fields>,
+      Promise<DocumentByName<DataModel, TableName>>
+    >,
+    read: query({
+      args: { id },
+      handler: async (ctx, args) => {
+        return await ctx.db.get(args.id);
+      },
+    }) as RegisteredQuery<
+      QueryVisibility,
+      { id: GenericId<TableName> },
+      Promise<DocumentByName<DataModel, TableName> | null>
+    >,
+    paginate: query({
+      args: { paginationOpts: paginationOptsValidator },
+      handler: async (ctx, args) => {
+        return ctx.db.query(name).paginate(args.paginationOpts);
+      },
+    }) as RegisteredQuery<
+      QueryVisibility,
+      { paginationOpts: input<typeof paginationOptsValidator> },
+      Promise<PaginationResult<DocumentByName<DataModel, TableName>>>
+    >,
+    update: mutation({
+      args: { id, patch: z.object(fields).partial() },
+      handler: async (ctx, args) => {
+        await ctx.db.patch(
+          args.id,
+          args.patch as Partial<DocumentByName<DataModel, TableName>>
+        );
+      },
+    }) as RegisteredMutation<
+      MutationVisibility,
+      {
+        id: GenericId<TableName>;
+        patch: Partial<
+          WithoutSystemFields<DocumentByName<DataModel, TableName>>
+        >;
+      },
+      Promise<void>
+    >,
+    destroy: mutation({
+      args: { id },
+      handler: async (ctx, args) => {
+        const old = await ctx.db.get(args.id);
+        if (old) {
+          await ctx.db.delete(args.id);
+        }
+        return old;
+      },
+    }) as RegisteredMutation<
+      MutationVisibility,
+      { id: GenericId<TableName> },
+      Promise<null | DocumentByName<DataModel, TableName>>
+    >,
+  };
+}
