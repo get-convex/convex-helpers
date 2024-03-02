@@ -577,10 +577,10 @@ type ConvexValidatorFromZod<
       : never
     : Z extends z.ZodReadonly<infer Inner>
     ? ConvexValidatorFromZod<Inner, D>
-    : Z extends z.ZodPipeline<infer InnerIn, infer _InnerOut>
-    ? /*D extends "output" // Validate input or output type depending
+    : Z extends z.ZodPipeline<infer InnerIn, infer InnerOut>
+    ? D extends "output" // Validate input or output type depending
       ? ConvexValidatorFromZod<InnerOut, D>
-      :*/ ConvexValidatorFromZod<InnerIn, D>
+      : ConvexValidatorFromZod<InnerIn, D>
     : // Some that are a bit unknown
       // : Z extends z.ZodDate ? Validator<number>
       // : Z extends z.ZodSymbol ? Validator<symbol>
@@ -697,9 +697,11 @@ export function zodToConvex<
     case "ZodReadonly":
       return zodToConvex(zod._def.innerType, d) as ConvexValidatorFromZod<Z, D>;
     case "ZodPipeline":
-      return /*d === "output"
+      return (
+        d === "output"
           ? zodToConvex(zod._def.out, d)
-          :*/ zodToConvex(zod._def.in, d) as ConvexValidatorFromZod<Z, D>;
+          : zodToConvex(zod._def.in, d)
+      ) as ConvexValidatorFromZod<Z, D>;
     default:
       throw new Error(`Unknown zod type: ${typeName}`);
     // N/A or not supported
