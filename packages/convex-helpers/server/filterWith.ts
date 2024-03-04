@@ -66,8 +66,7 @@ export class QueryWithFilter<T extends GenericTableInfo> implements Query<T> {
     paginationOpts: PaginationOptions
   ): Promise<PaginationResult<DocumentByInfo<T>>> {
     const result = await this.q.paginate(paginationOpts);
-    result.page = await asyncFilter(result.page, this.p);
-    return result;
+    return {...result, page: await asyncFilter(result.page, this.p)};
   }
   async collect(): Promise<DocumentByInfo<T>[]> {
     const results = await this.q.collect();
