@@ -3,31 +3,18 @@ import {
   GenericDatabaseWriter,
   DocumentByInfo,
   DocumentByName,
-  Expression,
-  FilterBuilder,
   FunctionArgs,
   GenericDataModel,
   GenericTableInfo,
-  IndexRange,
-  IndexRangeBuilder,
-  Indexes,
   GenericMutationCtx,
-  NamedIndex,
-  NamedSearchIndex,
   NamedTableInfo,
-  OrderedQuery,
-  PaginationOptions,
-  PaginationResult,
-  Query,
   GenericQueryCtx,
   QueryInitializer,
-  SearchFilter,
-  SearchFilterBuilder,
-  SearchIndexes,
   TableNamesInDataModel,
   WithoutSystemFields,
 } from "convex/server";
 import { GenericId } from "convex/values";
+import { QueryInitializerWithFilter, ReaderWithFilter } from "./filterWith";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -184,156 +171,10 @@ type Handler<Ctx, Args extends ArgsArray, Output> = (
   ...args: Args
 ) => Output;
 
-type AuthPredicate<T extends GenericTableInfo> = (
-  doc: DocumentByInfo<T>
-) => Promise<boolean>;
-
-async function asyncFilter<T>(
-  arr: T[],
-  predicate: (d: T) => Promise<boolean>
-): Promise<T[]> {
-  const results = await Promise.all(arr.map(predicate));
-  return arr.filter((_v, index) => results[index]);
-}
-
-class WrapQuery<T extends GenericTableInfo> implements Query<T> {
-  q: Query<T>;
-  p: AuthPredicate<T>;
-  iterator?: AsyncIterator<any>;
-  constructor(q: Query<T> | OrderedQuery<T>, p: AuthPredicate<T>) {
-    this.q = q as Query<T>;
-    this.p = p;
-  }
-  filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
-    return new WrapQuery(this.q.filter(predicate), this.p) as this;
-  }
-  order(order: "asc" | "desc"): WrapQuery<T> {
-    return new WrapQuery(this.q.order(order), this.p);
-  }
-  async paginate(
-    paginationOpts: PaginationOptions
-  ): Promise<PaginationResult<DocumentByInfo<T>>> {
-    const result = await this.q.paginate(paginationOpts);
-    result.page = await asyncFilter(result.page, this.p);
-    return result;
-  }
-  async collect(): Promise<DocumentByInfo<T>[]> {
-    const results = await this.q.collect();
-    return await asyncFilter(results, this.p);
-  }
-  async take(n: number): Promise<DocumentByInfo<T>[]> {
-    const results: DocumentByInfo<T>[] = [];
-    for await (const result of this) {
-      results.push(result);
-      if (results.length >= n) {
-        break;
-      }
-    }
-    return results;
-  }
-  async first(): Promise<DocumentByInfo<T> | null> {
-    for await (const result of this) {
-      return result;
-    }
-    return null;
-  }
-  async unique(): Promise<DocumentByInfo<T> | null> {
-    let uniqueResult: DocumentByInfo<T> | null = null;
-    for await (const result of this) {
-      if (uniqueResult === null) {
-        uniqueResult = result;
-      } else {
-        throw new Error("not unique");
-      }
-    }
-    return uniqueResult;
-  }
-  [Symbol.asyncIterator](): AsyncIterator<DocumentByInfo<T>, any, undefined> {
-    this.iterator = this.q[Symbol.asyncIterator]();
-    return this;
-  }
-  async next(): Promise<IteratorResult<any>> {
-    for (;;) {
-      const { value, done } = await this.iterator!.next();
-      if (value && (await this.p(value))) {
-        return { value, done };
-      }
-      if (done) {
-        return { value: null, done: true };
-      }
-    }
-  }
-  return() {
-    return this.iterator!.return!();
-  }
-}
-
-class WrapQueryInitializer<T extends GenericTableInfo>
-  implements QueryInitializer<T>
-{
-  q: QueryInitializer<T>;
-  p: AuthPredicate<T>;
-  constructor(q: QueryInitializer<T>, p: AuthPredicate<T>) {
-    this.q = q;
-    this.p = p;
-  }
-  fullTableScan(): Query<T> {
-    return new WrapQuery(this.q.fullTableScan(), this.p);
-  }
-  withIndex<IndexName extends keyof Indexes<T>>(
-    indexName: IndexName,
-    indexRange?:
-      | ((
-          q: IndexRangeBuilder<DocumentByInfo<T>, NamedIndex<T, IndexName>, 0>
-        ) => IndexRange)
-      | undefined
-  ): Query<T> {
-    return new WrapQuery(this.q.withIndex(indexName, indexRange), this.p);
-  }
-  withSearchIndex<IndexName extends keyof SearchIndexes<T>>(
-    indexName: IndexName,
-    searchFilter: (
-      q: SearchFilterBuilder<DocumentByInfo<T>, NamedSearchIndex<T, IndexName>>
-    ) => SearchFilter
-  ): OrderedQuery<T> {
-    return new WrapQuery(
-      this.q.withSearchIndex(indexName, searchFilter),
-      this.p
-    );
-  }
-  filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
-    return this.fullTableScan().filter(predicate) as this;
-  }
-  order(order: "asc" | "desc"): OrderedQuery<T> {
-    return this.fullTableScan().order(order);
-  }
-  async paginate(
-    paginationOpts: PaginationOptions
-  ): Promise<PaginationResult<DocumentByInfo<T>>> {
-    return this.fullTableScan().paginate(paginationOpts);
-  }
-  collect(): Promise<DocumentByInfo<T>[]> {
-    return this.fullTableScan().collect();
-  }
-  take(n: number): Promise<DocumentByInfo<T>[]> {
-    return this.fullTableScan().take(n);
-  }
-  first(): Promise<DocumentByInfo<T> | null> {
-    return this.fullTableScan().first();
-  }
-  unique(): Promise<DocumentByInfo<T> | null> {
-    return this.fullTableScan().unique();
-  }
-  [Symbol.asyncIterator](): AsyncIterator<DocumentByInfo<T>, any, undefined> {
-    return this.fullTableScan()[Symbol.asyncIterator]();
-  }
-}
-
 class WrapReader<Ctx, DataModel extends GenericDataModel>
-  implements GenericDatabaseReader<DataModel>
+  extends ReaderWithFilter<DataModel>
 {
   ctx: Ctx;
-  db: GenericDatabaseReader<DataModel>;
   system: GenericDatabaseReader<DataModel>["system"];
   rules: Rules<Ctx, DataModel>;
 
@@ -342,17 +183,10 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     db: GenericDatabaseReader<DataModel>,
     rules: Rules<Ctx, DataModel>
   ) {
+    super(db);
     this.ctx = ctx;
-    this.db = db;
     this.system = db.system;
     this.rules = rules;
-  }
-
-  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
-    tableName: TableName,
-    id: string
-  ): GenericId<TableName> | null {
-    return this.db.normalizeId(tableName, id);
   }
 
   tableName<TableName extends string>(
@@ -379,7 +213,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   async get<TableName extends string>(
     id: GenericId<TableName>
   ): Promise<DocumentByName<DataModel, TableName> | null> {
-    const doc = await this.db.get(id);
+    const doc = await super.get(id);
     if (doc) {
       const tableName = this.tableName(id);
       if (tableName && !(await this.predicate(tableName, doc))) {
@@ -392,11 +226,8 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 
   query<TableName extends string>(
     tableName: TableName
-  ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
-    return new WrapQueryInitializer(
-      this.db.query(tableName),
-      async (d) => await this.predicate(tableName, d)
-    );
+  ): QueryInitializerWithFilter<NamedTableInfo<DataModel, TableName>> {
+    return new QueryInitializerWithFilter(this.db.query(tableName), (d) => this.predicate(tableName, d));
   }
 }
 
