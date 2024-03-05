@@ -13,6 +13,7 @@ import { getUserByTokenIdentifier } from "./lib/withUser";
 import { Rules } from "convex-helpers/server/rowLevelSecurity";
 import { DataModel, Doc } from "./_generated/dataModel";
 import { SessionIdArg, vSessionId } from "convex-helpers/server/sessions";
+import { ReaderWithFilter } from "convex-helpers/server/filterWith.js";
 
 const rules: Rules<{ user: Doc<"users"> }, DataModel> = {
   presence: {
@@ -96,5 +97,26 @@ export const someMutation = myMutationBuilder({
     ctx.sessionId;
     ctx.user;
     return { success: true };
+  },
+});
+
+const queryWithFilter = customQuery(
+  query,
+  customCtx(async (ctx) => {
+    return {
+      db: new ReaderWithFilter(ctx.db),
+    };
+  })
+);
+
+export const queryFiltered = queryWithFilter({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("presence")
+      .filterWith(async (presence) => {
+        return presence.updated > 10;
+      })
+      .first();
   },
 });
