@@ -43,7 +43,7 @@
     "react"
   ],
   "author": "Ian Macartney <ian@convex.dev>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/get-convex/convex-helpers/issues"
   },
