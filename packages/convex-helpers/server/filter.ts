@@ -2,6 +2,36 @@
  * Defines a function `filter` that wraps a query, attaching a
  * JavaScript/TypeScript function that filters results just like
  * `db.query(...).filter(...)` but with more generality.
+ *
+ * Examples:
+ * // Full table scan, filtered to short messages.
+ * return await filter(
+ *  ctx.db.query("messages"),
+ *  async (message) => message.body.length < 10,
+ * ).collect();
+ *
+ * // Short messages by author, paginated.
+ * return await filter(
+ *  ctx.db.query("messages").withIndex("by_author, q=>q.eq("author", args.author)),
+ *  async (message) => message.body.length < 10,
+ * ).paginate(args.paginationOpts);
+ *
+ * // Same behavior as above: Short messages by author, paginated.
+ * // Note the filter can wrap any part of the query pipeline, and it is applied
+ * // at the end. This is how RowLevelSecurity works.
+ * const shortMessages = await filter(
+ *  ctx.db.query("messages"),
+ *  async (message) => message.body.length < 10,
+ * );
+ * return await shortMessages
+ *  .withIndex("by_author, q=>q.eq("author", args.author))
+ *  .paginate(args.paginationOpts);
+ *
+ * // Also works with `order()`, `take()`, `unique()`, and `first()`.
+ * return await filter(
+ *  ctx.db.query("messages").order("desc"),
+ *  async (message) => message.body.length < 10,
+ * ).first();
  */
 
 import {
@@ -32,7 +62,9 @@ async function asyncFilter<T>(
   return arr.filter((_v, index) => results[index]);
 }
 
-class QueryWithFilter<T extends GenericTableInfo> implements QueryInitializer<T> {
+class QueryWithFilter<T extends GenericTableInfo>
+  implements QueryInitializer<T>
+{
   // q actually is only guaranteed to implement OrderedQuery<T>,
   // but we forward all QueryInitializer methods to it and if they fail they fail.
   q: QueryInitializer<T>;
@@ -53,7 +85,7 @@ class QueryWithFilter<T extends GenericTableInfo> implements QueryInitializer<T>
     paginationOpts: PaginationOptions
   ): Promise<PaginationResult<DocumentByInfo<T>>> {
     const result = await this.q.paginate(paginationOpts);
-    return {...result, page: await asyncFilter(result.page, this.p)};
+    return { ...result, page: await asyncFilter(result.page, this.p) };
   }
   async collect(): Promise<DocumentByInfo<T>[]> {
     const results = await this.q.collect();
@@ -138,9 +170,15 @@ export type Predicate<T extends GenericTableInfo> = (
 
 type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
 
+/**
+ *
+ * @param query The query
+ * @param predicate
+ * @returns
+ */
 export function filter<Q extends Query<GenericTableInfo>>(
   query: Q,
-  predicate: Predicate<QueryTableInfo<Q>>,
+  predicate: Predicate<QueryTableInfo<Q>>
 ): Q {
   return new QueryWithFilter(query, predicate) as any as Q;
 }
