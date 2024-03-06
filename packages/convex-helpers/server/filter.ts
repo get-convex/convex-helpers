@@ -32,10 +32,6 @@ async function asyncFilter<T>(
   return arr.filter((_v, index) => results[index]);
 }
 
-type Predicate<T extends GenericTableInfo> = (
-  doc: DocumentByInfo<T>
-) => Promise<boolean>;
-
 class QueryWithFilter<T extends GenericTableInfo> implements QueryInitializer<T> {
   // q actually is only guaranteed to implement OrderedQuery<T>,
   // but we forward all QueryInitializer methods to it and if they fail they fail.
@@ -135,6 +131,10 @@ class QueryWithFilter<T extends GenericTableInfo> implements QueryInitializer<T>
     );
   }
 }
+
+export type Predicate<T extends GenericTableInfo> = (
+  doc: DocumentByInfo<T>
+) => Promise<boolean>;
 
 type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
 
