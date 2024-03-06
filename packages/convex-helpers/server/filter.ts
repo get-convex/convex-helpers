@@ -1,13 +1,11 @@
 /**
- * new ReaderWithFilter(db)
- * extends a DatabaseReader `db` to add a method `filterWith` method, which
- * behaves the same as `filter` but allows arbitrary javascript filters.
+ * Defines a function `filter` that wraps a query, attaching a
+ * JavaScript/TypeScript function that filters results just like
+ * `db.query(...).filter(...)` but with more generality.
  */
 
 import {
   DocumentByInfo,
-  GenericDataModel,
-  GenericDatabaseReader,
   GenericTableInfo,
   PaginationOptions,
   QueryInitializer,
@@ -24,11 +22,7 @@ import {
   SearchFilter,
   SearchFilterBuilder,
   SearchIndexes,
-  TableNamesInDataModel,
-  DocumentByName,
-  NamedTableInfo,
 } from "convex/server";
-import { GenericId } from "convex/values";
 
 async function asyncFilter<T>(
   arr: T[],
@@ -42,22 +36,19 @@ type Predicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>
 ) => Promise<boolean>;
 
-export class QueryWithFilter<T extends GenericTableInfo> implements Query<T> {
-  q: Query<T>;
+class QueryWithFilter<T extends GenericTableInfo> implements QueryInitializer<T> {
+  // q actually is only guaranteed to implement OrderedQuery<T>,
+  // but we forward all QueryInitializer methods to it and if they fail they fail.
+  q: QueryInitializer<T>;
   p: Predicate<T>;
   iterator?: AsyncIterator<any>;
 
-  constructor(q: Query<T> | OrderedQuery<T>, p: Predicate<T>) {
-    this.q = q as Query<T>;
+  constructor(q: OrderedQuery<T>, p: Predicate<T>) {
+    this.q = q as QueryInitializer<T>;
     this.p = p;
   }
   filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
     return new QueryWithFilter(this.q.filter(predicate), this.p) as this;
-  }
-  filterWith(predicate: Predicate<T>): this {
-    return new QueryWithFilter(this.q, async (d) => {
-      return (await this.p(d)) && (await predicate(d));
-    }) as this;
   }
   order(order: "asc" | "desc"): QueryWithFilter<T> {
     return new QueryWithFilter(this.q.order(order), this.p);
@@ -117,18 +108,8 @@ export class QueryWithFilter<T extends GenericTableInfo> implements Query<T> {
   return() {
     return this.iterator!.return!();
   }
-}
 
-export class QueryInitializerWithFilter<T extends GenericTableInfo>
-  implements QueryInitializer<T>
-{
-  q: QueryInitializer<T>;
-  p: Predicate<T>;
-
-  constructor(q: QueryInitializer<T>, p: Predicate<T> | null = null) {
-    this.q = q;
-    this.p = p ?? (async (_) => true);
-  }
+  // Implement the remainder of QueryInitializer.
   fullTableScan(): QueryWithFilter<T> {
     return new QueryWithFilter(this.q.fullTableScan(), this.p);
   }
@@ -153,64 +134,13 @@ export class QueryInitializerWithFilter<T extends GenericTableInfo>
       this.p
     );
   }
-  filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): any {
-    return this.fullTableScan().filter(predicate);
-  }
-  filterWith(predicate: Predicate<T>): any {
-    return this.fullTableScan().filterWith(predicate);
-  }
-  order(order: "asc" | "desc"): OrderedQuery<T> {
-    return this.fullTableScan().order(order);
-  }
-  async paginate(
-    paginationOpts: PaginationOptions
-  ): Promise<PaginationResult<DocumentByInfo<T>>> {
-    return this.fullTableScan().paginate(paginationOpts);
-  }
-  collect(): Promise<DocumentByInfo<T>[]> {
-    return this.fullTableScan().collect();
-  }
-  take(n: number): Promise<DocumentByInfo<T>[]> {
-    return this.fullTableScan().take(n);
-  }
-  first(): Promise<DocumentByInfo<T> | null> {
-    return this.fullTableScan().first();
-  }
-  unique(): Promise<DocumentByInfo<T> | null> {
-    return this.fullTableScan().unique();
-  }
-  [Symbol.asyncIterator](): AsyncIterator<DocumentByInfo<T>, any, undefined> {
-    return this.fullTableScan()[Symbol.asyncIterator]();
-  }
 }
 
-export class ReaderWithFilter<DataModel extends GenericDataModel>
-  implements GenericDatabaseReader<DataModel>
-{
-  db: GenericDatabaseReader<DataModel>;
-  system: GenericDatabaseReader<DataModel>["system"];
+type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
 
-  constructor(db: GenericDatabaseReader<DataModel>) {
-    this.db = db;
-    this.system = db.system;
-  }
-
-  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
-    tableName: TableName,
-    id: string
-  ): GenericId<TableName> | null {
-    return this.db.normalizeId(tableName, id);
-  }
-
-  async get<TableName extends string>(
-    id: GenericId<TableName>
-  ): Promise<DocumentByName<DataModel, TableName> | null> {
-    return this.db.get(id);
-  }
-
-  query<TableName extends string>(
-    tableName: TableName
-  ): QueryInitializerWithFilter<NamedTableInfo<DataModel, TableName>> {
-    return new QueryInitializerWithFilter(this.db.query(tableName));
-  }
+export function filter<Q extends Query<GenericTableInfo>>(
+  query: Q,
+  predicate: Predicate<QueryTableInfo<Q>>,
+): Q {
+  return new QueryWithFilter(query, predicate) as any as Q;
 }

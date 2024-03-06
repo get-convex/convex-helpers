@@ -10,6 +10,7 @@
     "./server": "./dist/server/index.js",
     "./server*": "./dist/server*",
     "./server/customFunctions": "./dist/server/customFunctions.js",
+    "./server/filter": "./dist/server/filter.js",
     "./server/hono": "./dist/server/hono.js",
     "./server/middlewareUtils": "./dist/server/middlewareUtils.js",
     "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",

@@ -14,7 +14,7 @@ import {
   WithoutSystemFields,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { QueryInitializerWithFilter, ReaderWithFilter } from "./filterWith";
+import { filter } from "./filter";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -172,9 +172,10 @@ type Handler<Ctx, Args extends ArgsArray, Output> = (
 ) => Output;
 
 class WrapReader<Ctx, DataModel extends GenericDataModel>
-  extends ReaderWithFilter<DataModel>
+  implements GenericDatabaseReader<DataModel>
 {
   ctx: Ctx;
+  db: GenericDatabaseReader<DataModel>;
   system: GenericDatabaseReader<DataModel>["system"];
   rules: Rules<Ctx, DataModel>;
 
@@ -183,10 +184,17 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     db: GenericDatabaseReader<DataModel>,
     rules: Rules<Ctx, DataModel>
   ) {
-    super(db);
     this.ctx = ctx;
+    this.db = db;
     this.system = db.system;
     this.rules = rules;
+  }
+
+  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+    id: string
+  ): GenericId<TableName> | null {
+    return this.db.normalizeId(tableName, id);
   }
 
   tableName<TableName extends string>(
@@ -213,7 +221,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   async get<TableName extends string>(
     id: GenericId<TableName>
   ): Promise<DocumentByName<DataModel, TableName> | null> {
-    const doc = await super.get(id);
+    const doc = await this.db.get(id);
     if (doc) {
       const tableName = this.tableName(id);
       if (tableName && !(await this.predicate(tableName, doc))) {
@@ -226,8 +234,8 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 
   query<TableName extends string>(
     tableName: TableName
-  ): QueryInitializerWithFilter<NamedTableInfo<DataModel, TableName>> {
-    return new QueryInitializerWithFilter(this.db.query(tableName), (d) => this.predicate(tableName, d));
+  ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
+    return filter(this.db.query(tableName), (d) => this.predicate(tableName, d));
   }
 }
 
