@@ -4,12 +4,12 @@
   "description": "Home to [packages](./packages/) to complement the official convex package.",
   "scripts": {
     "dev": "npm-run-all --parallel dev:helpers dev:backend dev:frontend",
-    "build": "cd packages/convex-helpers && npm run build && cd .. && tsc && vite build",
-    "link": "cd packages/convex-helpers && npm link && cd ../.. && npm link convex-helpers",
+    "build": "tsc && vite build",
+    "link": "cd packages/convex-helpers && npm run build && npm link && cd ../.. && npm link convex-helpers",
     "dev:backend": "convex dev",
     "dev:frontend": "vite",
     "dev:helpers": "cd packages/convex-helpers && npm run watch",
-    "predev": "convex dev --until-success",
+    "predev": "npm run link && convex dev --until-success",
     "test": "vitest"
   },
   "dependencies": {
