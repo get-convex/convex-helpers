@@ -27,7 +27,7 @@ import {
 
 async function asyncFilter<T>(
   arr: T[],
-  predicate: (d: T) => Promise<boolean>
+  predicate: (d: T) => Promise<boolean> | boolean
 ): Promise<T[]> {
   const results = await Promise.all(arr.map(predicate));
   return arr.filter((_v, index) => results[index]);
@@ -137,7 +137,7 @@ class QueryWithFilter<T extends GenericTableInfo>
 
 export type Predicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>
-) => Promise<boolean>;
+) => Promise<boolean> | boolean;
 
 type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
 
