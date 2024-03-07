@@ -1,6 +1,8 @@
 # convex-helpers
 
 A collection of useful code to complement the official packages.
+This directory has a project with examples of using convex-helpers. You can
+find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 ## `convex-helpers` npm package
 
@@ -15,6 +17,12 @@ It doesn't have all of the below features, but the ones it has can be used direc
 rather than copying the code from this repo.
 
 See the [README](./packages/convex-helpers/README.md) for more details.
+
+## Running these examples:
+
+To run these locally, run: `npm i && npm run dev`.
+This will symlink the packages/convex-helpers directory so you can edit the
+convex helpers source while using it in this example project.
 
 ## Custom Functions
 
