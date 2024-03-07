@@ -83,6 +83,51 @@ server-side helpers in [server/sessions](./server/sessions.ts).
 
 See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies) for more information.
 
+Example for a query (action & mutation are similar):
+
+In your React's root, add the `SessionProvider`:
+```js
+import { SessionProvider } from "convex-helpers/react/sessions";
+//...
+<ConvexProvider client={convex}>
+	<SessionProvider>
+		<App />
+	</SessionProvider>
+</ConvexProvider>
+```
+
+Pass the session ID from the client automatically to a server query:
+```js
+import {  useSessionQuery } from "convex-helpers/react/sessions";
+
+const results = useSessionQuery(api.myModule.mySessionQuery, { arg1: 1 });
+```
+
+Define a server query function in `convex/myModule.ts`:
+```js
+export const mySessionQuery = queryWithSession({
+	args: { arg1: v.number() },
+	handler: async (ctx, args) => {
+		// ctx.anonymousUser
+	}
+})
+```
+
+Using `customQuery` to make `queryWithSession`:
+```js
+import { customQuery } from "convex-helpers/server/customFunctions";
+import { SessionIdArg } from "convex-helpers/server/sessions";
+
+export const queryWithSession = customQuery(query, {
+	args: SessionIdArg,
+	input: async (ctx, { sessionId }) => {
+		const anonymousUser = await getAnonUser(ctx, sessionId);
+		return { ctx: { ...ctx, anonymousUser }, args: {} };
+	},
+});
+```
+**Note:** `getAnonUser` is some function you write to look up a user by session.
+
 ## Row-level security
 
 See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
