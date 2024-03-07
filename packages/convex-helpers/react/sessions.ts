@@ -59,26 +59,30 @@ type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action">> =
 /**
  * Context for a Convex session, creating a server session and providing the id.
  *
- * @param props - Where you want your session ID to be persisted. Roughly:
+ * @param useStorage - Where you want your session ID to be persisted. Roughly:
  *  - sessionStorage is saved per-tab
  *  - localStorage is shared between tabs, but not browser profiles.
+ * @param storageKey - Key under which to store the session ID in the store
+ * @param idGenerator - Function to return a new, unique session ID string. Defaults to crypto.randomUUID
  * @returns A provider to wrap your React nodes which provides the session ID.
  * To be used with useSessionQuery and useSessionMutation.
  */
 export const SessionProvider: React.FC<{
   useStorage?: UseStorage<SessionId>;
   storageKey?: string;
+  idGenerator?: () => string;
   children?: React.ReactNode;
-}> = ({ useStorage, storageKey, children }) => {
+}> = ({ useStorage, storageKey, idGenerator, children }) => {
   const storeKey = storageKey ?? "convex-session-id";
-  const initialId = useMemo(() => crypto.randomUUID() as SessionId, []);
+  const idGen = idGenerator ?? crypto.randomUUID.bind(crypto);
+  const initialId = useMemo(() => idGen() as SessionId, []);
   // Get or set the ID from our desired storage location.
   const useStorageOrDefault = useStorage ?? useSessionStorage;
   const [sessionId, setSessionId] = useStorageOrDefault(storeKey, initialId);
 
   const refreshSessionId = useCallback<RefreshSessionFn>(
     async (beforeUpdate) => {
-      const newSessionId = crypto.randomUUID() as SessionId;
+      const newSessionId = idGen() as SessionId;
       if (beforeUpdate) {
         await beforeUpdate(newSessionId);
       }
