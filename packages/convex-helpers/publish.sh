@@ -31,11 +31,10 @@ read -r -p "Publish $version to npm? (y/n): " publish
 if [ "$publish" = "y" ]; then
   git add package.json package-lock.json
 
-  # We have it listed as a link depenency in package-lock so this isn't as necessary
-  # pushd "../.." >/dev/null
-  # npm i ./packages/convex-helpers
-  # git add package.json package-lock.json
-  # popd >/dev/null
+  pushd "../.." >/dev/null
+  npm i ./packages/convex-helpers
+  git add package.json package-lock.json
+  popd >/dev/null
 
   # If there's nothing to commit, continue
   git commit -m "npm $version" || true
