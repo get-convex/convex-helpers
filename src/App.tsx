@@ -5,6 +5,7 @@ import SessionsExample from "./components/SessionsExample";
 import ZodExample from "./components/ZodExample";
 import { HonoExample } from "./components/HonoExample";
 import FilterExample from "./components/FilterExample";
+import RowLevelSecurityExample from "./components/RowLevelSecurityExample";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <SessionsExample />
       <HonoExample />
       <FilterExample />
+      <RowLevelSecurityExample />
     </main>
   );
 }
