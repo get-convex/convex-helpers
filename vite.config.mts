@@ -6,5 +6,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    // These contain `.test.ts` files that are not actual
+    // vitest tests
+    exclude: ["packages\/convex-helpers\/server\/**", "**\/node_modules\/**"],
+    passWithNoTests: true
   },
 });
