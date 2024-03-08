@@ -18,6 +18,7 @@ define custom behavior, allowing you to:
 See the associated [Stack Post](https://stack.convex.dev/custom-functions)
 
 For example:
+
 ```js
 import { customQuery } from "convex-helpers/server/customFunctions.js
 
@@ -49,6 +50,7 @@ See the [Stack post on relationship helpers](https://stack.convex.dev/functional
 and the [relationship schema structures post](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas).
 
 Example:
+
 ```js
 import {
   getOneFromOrThrow,
@@ -66,7 +68,11 @@ const posts = await asyncMap(
     const comments = await getManyFrom(db, "comments", "postId", post._id);
     // many-to-many via join table
     const categories = await getManyViaOrThrow(
-      db, "postCategories", "categoryId", "postId", post._id
+      db,
+      "postCategories",
+      "categoryId",
+      "postId",
+      post._id
     );
     return { ...post, comments, categories };
   }
@@ -86,46 +92,51 @@ See the associated [Stack post](https://stack.convex.dev/track-sessions-without-
 Example for a query (action & mutation are similar):
 
 In your React's root, add the `SessionProvider`:
+
 ```js
 import { SessionProvider } from "convex-helpers/react/sessions";
 //...
 <ConvexProvider client={convex}>
-	<SessionProvider>
-		<App />
-	</SessionProvider>
-</ConvexProvider>
+  <SessionProvider>
+    <App />
+  </SessionProvider>
+</ConvexProvider>;
 ```
 
 Pass the session ID from the client automatically to a server query:
+
 ```js
-import {  useSessionQuery } from "convex-helpers/react/sessions";
+import { useSessionQuery } from "convex-helpers/react/sessions";
 
 const results = useSessionQuery(api.myModule.mySessionQuery, { arg1: 1 });
 ```
 
 Define a server query function in `convex/myModule.ts`:
+
 ```js
 export const mySessionQuery = queryWithSession({
-	args: { arg1: v.number() },
-	handler: async (ctx, args) => {
-		// ctx.anonymousUser
-	}
-})
+  args: { arg1: v.number() },
+  handler: async (ctx, args) => {
+    // ctx.anonymousUser
+  },
+});
 ```
 
 Using `customQuery` to make `queryWithSession`:
+
 ```js
 import { customQuery } from "convex-helpers/server/customFunctions";
 import { SessionIdArg } from "convex-helpers/server/sessions";
 
 export const queryWithSession = customQuery(query, {
-	args: SessionIdArg,
-	input: async (ctx, { sessionId }) => {
-		const anonymousUser = await getAnonUser(ctx, sessionId);
-		return { ctx: { ...ctx, anonymousUser }, args: {} };
-	},
+  args: SessionIdArg,
+  input: async (ctx, { sessionId }) => {
+    const anonymousUser = await getAnonUser(ctx, sessionId);
+    return { ctx: { ...ctx, anonymousUser }, args: {} };
+  },
 });
 ```
+
 **Note:** `getAnonUser` is some function you write to look up a user by session.
 
 ## Row-level security
@@ -145,6 +156,7 @@ features for validating arguments, this is for you!
 See the [Stack post on Zod validation](https://stack.convex.dev/wrappers-as-middleware-zod-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
 
 Example:
+
 ```js
 import { z } from "zod";
 import { zCustomQuery, zid } from "convex-helpers/server/zod";
@@ -177,8 +189,8 @@ export const myComplexQuery = zodQuery({
     //... args at this point has been validated and has the types of what
     // zod parses the values into.
     // e.g. boolWithDefault is `bool` but has an input type `bool | undefined`.
-  }
-})
+  },
+});
 ```
 
 ## Hono for advanced HTTP endpoint definitions
@@ -190,6 +202,7 @@ HTTP api endpoints easily
 See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
 
 To use it, put this in your `convex/http.ts` file:
+
 ```ts
 import {
   Hono,
@@ -223,6 +236,7 @@ these functions for a given table:
 **Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions)**
 
 Example:
+
 ```ts
 
 // in convex/users.ts
@@ -249,22 +263,26 @@ When using validators for defining database schema or function arguments,
 these validators help:
 
 1. Add a `Table` utility that defines a table and keeps references to the fields
-to avoid re-defining validators. To learn more about sharing validators, read
-[this article](https://stack.convex.dev/argument-validation-without-repetition),
-an extension of [this article](https://stack.convex.dev/types-cookbook).
+   to avoid re-defining validators. To learn more about sharing validators, read
+   [this article](https://stack.convex.dev/argument-validation-without-repetition),
+   an extension of [this article](https://stack.convex.dev/types-cookbook).
 2. Add utilties for partial, pick and omit to match the TypeScript type
-utilities.
+   utilities.
 3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
-field, and `brandedString`. To learn more about branded strings see
-[this article](https://stack.convex.dev/using-branded-types-in-validators).
+   field, and `brandedString`. To learn more about branded strings see
+   [this article](https://stack.convex.dev/using-branded-types-in-validators).
 4. Make the validators look more like TypeScript types, even though they're
-runtime values. (This is controvercial and not required to use the above).
+   runtime values. (This is controvercial and not required to use the above).
 
 Example:
+
 ```js
 import { Table } from "convex-helpers/server";
 import {
-  literals, partial, deprecated, brandedString,
+  literals,
+  partial,
+  deprecated,
+  brandedString,
 } from "convex-helpers/validators";
 import { omit, pick } from "convex-helpers";
 import { Infer } from "convex/values";
@@ -308,4 +326,40 @@ const balanceAndEmail = pick(Account.withoutSystemFields, ["balance", "email"]);
 
 // A validator for all the fields except balance.
 const accountWithoutBalance = omit(Account.withSystemFields, ["balance"]);
+```
+
+## Filter
+
+See the [guide on Stack](https://stack.convex.dev/complex-filters-in-convex)
+for an analysis of complex filters on Convex.
+
+The `filter` helper composes with `ctx.db.query` to apply arbitrary TypeScript
+or JavaScript filters to a database query.
+
+Examples:
+
+```js
+import { filter } from "convex-helpers/server/filter";
+
+export const evens = query({
+  args: {},
+  handler: async (ctx) => {
+    return await filter(
+      ctx.db.query("counter_table"),
+      (c) => c.counter % 2 === 0
+    ).collect();
+  },
+});
+
+export const lastCountLongerThanName = query({
+  args: {},
+  handler: async (ctx) => {
+    return await filter(
+      ctx.db.query("counter_table"),
+      (c) => c.counter > c.name.length
+    )
+      .order("desc")
+      .first();
+  },
+});
 ```
