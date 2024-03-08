@@ -340,6 +340,7 @@ Examples:
 
 ```js
 import { filter } from "convex-helpers/server/filter";
+
 export const evens = query({
   args: {},
   handler: async (ctx) => {
