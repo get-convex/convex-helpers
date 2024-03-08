@@ -338,7 +338,8 @@ or JavaScript filters to a database query.
 
 Examples:
 
-```javascript
+```js
+import { filter } from "convex-helpers/server/filter";
 export const evens = query({
   args: {},
   handler: async (ctx) => {
