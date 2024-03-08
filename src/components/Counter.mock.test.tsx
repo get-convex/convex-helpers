@@ -2,6 +2,7 @@ import Counter from "./Counter";
 import { render } from "@testing-library/react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import * as convexReact from "convex/react";
+import { FunctionReference, getFunctionName } from "convex/server";
 
 // Keep track of counter values
 let counters: Record<string, number> = {};
@@ -34,14 +35,14 @@ vi.mock("convex/react", async () => {
 
   return {
     ...actual,
-    useQuery: (queryName: string, args: Record<string, any>) => {
-      if (queryName !== "counter:getCounter") {
+    useQuery: (queryName: FunctionReference<"query", "public">, args: Record<string, any>) => {
+      if (getFunctionName(queryName) !== "counter:getCounter") {
         throw new Error("Unexpected query call!");
       }
       return getCounter(args as any);
     },
-    useMutation: (mutationName: string) => {
-      if (mutationName !== "counter:incrementCounter") {
+    useMutation: (mutationName: FunctionReference<"mutation", "public">) => {
+      if (getFunctionName(mutationName)  !== "counter:incrementCounter") {
         throw new Error("Unexpected mutation call!");
       }
       return incrementCounterMock;

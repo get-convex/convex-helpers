@@ -23,7 +23,8 @@ export class ConvexReactClientFake {
     throw new Error("Auth is not implemented");
   }
 
-  watchQuery(name, args) {
+  watchQuery(functionReference, args) {
+    const name = getFunctionName(functionReference);
     return {
       localQueryResult: () => {
         const query = this.queries && this.queries[name];
@@ -43,26 +44,22 @@ export class ConvexReactClientFake {
     };
   }
 
-  mutation(name) {
+  mutation(functionReference, args) {
+    const name = getFunctionName(functionReference);
     const mutation = this.mutations && this.mutations[name];
     if (mutation) {
-      const mut = (args) => mutation(args);
-
-      const withOptimisticUpdate = mutation.withOptimisticUpdate
-        ? mutation.withOptimisticUpdate
-        : () => mut;
-      mut.withOptimisticUpdate = withOptimisticUpdate;
-      return mut;
+      return mutation(args)
     }
     throw new Error(
       `Unexpected mutation: ${name}. Try providing a function for this mutation in the mock client constructor.`
     );
   }
 
-  action(name) {
+  action(functionReference, args) {
+    const name = getFunctionName(functionReference);
     const action = this.actions && this.actions[name];
     if (action) {
-      return action;
+      return action(args);
     }
     throw new Error(
       `Unexpected action: ${name}. Try providing a function for this actionin the mock client constructor.`
