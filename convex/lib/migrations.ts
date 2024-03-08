@@ -108,10 +108,10 @@ type RunMigrationParams = {
  * Use this to run a migration function in batches.
  * Specify a custom batch size to override the default.
  * The name is the name of a function made with the above `migration` wrapper.
- * The name is like `myMigrationModule:myMigrationFunction`.
+ * The name is like `path/to/myMigrationModule:myMigrationFunction`.
  *
  * You run it like this:
- * npx convex run lib.migrations:runMigration '{ "name": "myMigrations.foo" }
+ * npx convex run lib/migrations:runMigration '{ "name": "myMigrations:foo" }
  */
 export const runMigration = internalAction({
   handler: async (ctx, { name, cursor, batchSize }: RunMigrationParams) => {
