@@ -11,11 +11,12 @@
     "dev:helpers": "cd packages/convex-helpers && npm run watch",
     "predev": "npm run link && convex dev --until-success",
     "test": "vitest",
-    "test-functions": "node packages/convex-helpers/testing/checkLocalBackend.js && just convex deploy && just convex env set IS_TEST true && vitest convex/testingExample.test.ts"
+    "_test-functions": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/testingExample.test.ts",
+    "test-functions": "node packages/convex-helpers/testing/backendHarness.js 'npm run _test-functions'"
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.9.1",
+    "convex": "^1.10.0",
     "convex-helpers": "file:packages/convex-helpers",
     "hono": "^4.0.10",
     "react": "^18.0.0",

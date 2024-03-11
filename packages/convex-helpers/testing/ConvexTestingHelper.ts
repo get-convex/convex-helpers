@@ -34,7 +34,7 @@ export class ConvexTestingHelper {
     this._adminKey =
       options.adminKey ??
       // default admin key for local backends
-      "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd"
+      process.env.LOCAL_BACKEND_ADMIN_KEY!
   }
 
   newIdentity(
@@ -82,7 +82,7 @@ export class ConvexTestingHelper {
     return this.client.mutation(mutation, args);
   }
 
-  async query<Query extends FunctionReference<"query">>(
+  async query<Query extends FunctionReference<"query", "public">>(
     query: Query,
     args: FunctionArgs<Query>
   ): Promise<Awaited<FunctionReturnType<Query>>> {

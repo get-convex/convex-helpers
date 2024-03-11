@@ -169,3 +169,20 @@ field, and `brandedString`. To learn more about branded strings see
 runtime values. (This is controvercial and not required to use the above).
 
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
+
+## Testing with Local Backend
+[`convex/testingExample.test.ts`](./convex/testingExample.test.ts) demonstrates testing Convex functions by running them against a local Convex backend.
+
+To set these up for yourself:
+- Clone the Convex open source backend repo and follow setup instructions
+- Create a `clearAll` function to reset data between tests (see [`convex/testingFunctions.ts`](./convex/testingFunctions.ts) for an example)
+- Start writing tests using (`ConvexTestingHelper.ts`)[./packages/convex-helpers/testing/ConvexTestingHelper.ts]
+- Make sure to call `clearAll` between tests and configure your testing framework to run one test at
+a time to ensure test isolation
+- Add a command to set up a local backend and run tests against it. This command should do the following:
+  - Set up a fresh a local backend is running (see [backendHarness.js](./packages/convex-helpers/backendHarness.js))
+  - Deploy code to the backend
+  - Set the `IS_TEST` environment variable to enable calling test only functions
+  - Run the tests
+  - Tear down the backend
+
