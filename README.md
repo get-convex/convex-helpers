@@ -173,6 +173,8 @@ See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 ## Testing with a local backend
 [`convex/example.test.ts`](./convex/example.test.ts) demonstrates testing Convex functions by running them against a local backend.
 
+See [this Stack article](https://stack.convex.dev/testing-with-local-oss-backend) for more information.
+
 To set these up for yourself:
 - Clone the [Convex open source backend repo](https://github.com/get-convex/convex-backend) and follow setup instructions
 - Create a `clearAll` function to reset data between tests (see [`convex/testingFunctions.ts`](./convex/testingFunctions.ts) for an example)

@@ -27,6 +27,8 @@ run-local-backend *ARGS:
 
 # Taken from https://github.com/get-convex/convex-backend/blob/main/Justfile
 # (*) Run convex CLI commands like `convex dev` against local backend from `just run-local-backend`.
+# This uses the default admin key for local backends, which is safe as long as the backend is
+# running locally.
 convex *ARGS:
   npx convex "$@" --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd --url "http://127.0.0.1:8000"
 
