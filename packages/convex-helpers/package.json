@@ -17,6 +17,7 @@
     "./server/relationships": "./dist/server/relationships.js",
     "./server/sessions": "./dist/server/sessions.js",
     "./server/zod": "./dist/server/zod.js",
+    "./testing": "./dist/testing.js",
     "./validators": "./dist/validators.js"
   },
   "files": [
@@ -24,6 +25,7 @@
     "index.ts",
     "react",
     "server",
+    "testing.ts",
     "validators.ts"
   ],
   "scripts": {
