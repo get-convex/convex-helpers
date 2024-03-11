@@ -3,8 +3,8 @@ const { spawn, exec, execSync } = require("child_process");
 
 // Run a command against a fresh local backend, handling setting up and tearing down the backend.
 
-// Checks for a local backend running on port 8000.
-const parsedUrl = new URL("http://127.0.0.1:8000");
+// Checks for a local backend running on port 3210.
+const parsedUrl = new URL("http://127.0.0.1:3210");
 
 async function isBackendRunning(backendUrl) {
   return new Promise ((resolve) => {

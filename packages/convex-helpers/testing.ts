@@ -29,7 +29,7 @@ export class ConvexTestingHelper {
 
   constructor(options: { adminKey?: string; backendUrl?: string } = {}) {
     this.client = new ConvexClient(
-      options.backendUrl ?? "http://127.0.0.1:8000"
+      options.backendUrl ?? "http://127.0.0.1:3210"
     );
     this._adminKey =
       options.adminKey ??
