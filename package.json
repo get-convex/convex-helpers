@@ -10,7 +10,9 @@
     "dev:frontend": "vite",
     "dev:helpers": "cd packages/convex-helpers && npm run watch",
     "predev": "npm run link && convex dev --until-success",
-    "test": "vitest"
+    "test": "vitest",
+    "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
+    "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'"
   },
   "dependencies": {
     "classnames": "^2.3.2",
@@ -24,6 +26,7 @@
   "devDependencies": {
     "@testing-library/react": "^14.1.2",
     "@types/babel__core": "^7.20.0",
+    "@types/jest": "^29.5.12",
     "@types/node": "^20.11.4",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
