@@ -203,3 +203,39 @@ export function crud<
     >,
   };
 }
+
+export type JSONValue =
+  | null
+  | boolean
+  | undefined
+  | number
+  | string
+  | JSONValue[]
+  | { [key: string]: JSONValue };
+
+/**
+ * Returns a Response object with the data as JSON and
+ * correct Content-Type header, for use with httpAction.
+ *
+ * Used like:
+ * ```ts
+ * http.route({
+ *   path: "/templates",
+ *   method: "GET",
+ *   handler: httpAction(async (ctx) => {
+ *     // ...
+ *     return json({ message: "Hello, world!" });
+ *   }),
+ * });
+ * ```
+ *
+ * @param data The data you want to return as JSON.
+ * @returns A Response object with the data as JSON.
+ */
+export function json(data: JSONValue) {
+  return new Response(JSON.stringify(data), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+}
