@@ -108,3 +108,75 @@ export const brandedString = <T extends string>(_brand: T) =>
 
 /** Mark fields as deprecated with this permissive validator typed as null */
 export const deprecated = v.optional(v.any()) as Validator<null, true>;
+
+/** A maximally permissive validator that type checks as a given validator.
+ *
+ * If you want to have types that match some validator but you have invalid data
+ * and you want to temporarily not validate schema for this field,
+ * you can use this function to cast the permissive validator.
+ *
+ * Example in a schema:
+ * ```ts
+ * export default defineSchema({
+ *   myTable: defineTable({
+ *    myString: pretend(v.array(v.string())),
+ *   }),
+ * });
+ * //...in some mutation
+ * ctx.db.insert("myTable", { myString: 123 as any }); // no runtime error
+ * ```
+ * Example in function argument validation:
+ * ```ts
+ * const myQuery = defineQuery({
+ *   args: { myNumber: pretend(v.number()) },
+ *   handler: async (ctx, args) => {
+ *     // args.myNumber is typed as number, but it's not validated.
+ *     const num = typeof args.myNumber === "number" ?
+ *       args.myNumber : Number(args.myNumber);
+ *   },
+ * });
+ */
+export const pretend = <T extends Validator<any, any, any>>(
+  _typeToImmitate: T
+): T => v.optional(v.any()) as T;
+
+/** A validator that validates as optional but type checks as required.
+ *
+ * If you want to assume a field is set for type checking, but your data may not
+ * actually have it set for all documents (e.g. when adding a new field),
+ * you can use this function to allow the field to be unset at runtime.
+ * This is unsafe, but can be convenient in these situations:
+ *
+ * 1. You are developing locally and want to add a required field and write
+ *   code assuming it is set. Once you push the code & schema, you can update
+ *   the data to match before running your code.
+ * 2. You are going to run a migration right after pushing code, and are ok with
+ *   and you don't want to edit your code to handle the field being unset,
+ *   your app being in an inconsistent state until the migration completes.
+ *
+ * This differs from {@link pretend} in that it type checks the inner validator,
+ * if the value is provided.
+ *
+ * Example in a schema:
+ * ```ts
+ * export default defineSchema({
+ *   myTable: defineTable({
+ *    myString: pretendRequired(v.array(v.string())),
+ *   }),
+ * });
+ * //...in some mutation
+ * ctx.db.insert("myTable", { myString: undefined }); // no runtime error
+ * ```
+ * Example in function argument validation:
+ * ```ts
+ * const myQuery = defineQuery({
+ *   args: { myNumber: pretendRequired(v.number()) },
+ *   handler: async (ctx, args) => {
+ *     // args.myNumber is typed as number, but it might be undefined
+ *     const num = args.myNumber || 0;
+ *   },
+ * });
+ */
+export const pretendRequired = <T extends Validator<any, false, any>>(
+  optionalType: T
+): T => v.optional(optionalType) as unknown as T;
