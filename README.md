@@ -4,7 +4,21 @@ A collection of useful code to complement the official packages.
 This directory has a project with examples of using convex-helpers. You can
 find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
-## `convex-helpers` npm package
+## Index
+
+| In the [`convex-helpers`](./packages/convex-helpers/) [npm package](https://www.npmjs.com/package/convex-helpers) for importing: | In this directory for copy-pasting: |
+|-|-|
+| [Custom Functions](./packages/convex-helpers/README.md#custom-functions) | [Migrations](#migrations-data-mutations)    |
+| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)  | [Sessions: via a server table](#server-persisted-session-data) |
+| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [The withUser utility](#authentication-withuser) |
+| [Row-level security](./packages/convex-helpers/README.md#row-level-security) | [Testing with a local backend](#testing-with-a-local-backend) |
+| [Zod validation](./packages/convex-helpers/README.md#zod-validation) | [Presence](#presence) |
+| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions) | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
+| [CRUD](./packages/convex-helpers/README.md#crud-utilities) | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery) |
+| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities) |
+| [Filter db queries with JS](./packages/convex-helpers/README.md#filter) |
+
+## `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers)
 
 In the [packages](./packages/) directory there's the [convex-helpers](./packages/convex-helpers/)
 directory. To use it:
@@ -187,4 +201,3 @@ a time to ensure test isolation
   - Deploys code to the backend
   - Runs the tests
   - Tears down the backend
-
