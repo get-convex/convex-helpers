@@ -17,6 +17,8 @@ import {
   array,
   object,
   brandedString,
+  pretendRequired,
+  pretend,
 } from "convex-helpers/validators";
 import { assert, omit, pick } from "convex-helpers";
 import {
@@ -44,6 +46,8 @@ export const Users = Table("users", {
   ephemeral: boolean,
   status: literals("active", "inactive"),
   rawJSON: optional(any),
+  maybeNotSetYet: pretendRequired(string),
+  couldBeAnything: pretend(boolean),
   loginType: or(
     object({
       type: is("email"),
@@ -72,6 +76,8 @@ export const testUser = (
   balance: null,
   ephemeral: false,
   status: "active",
+  maybeNotSetYet: undefined as unknown as string,
+  couldBeAnything: 123 as any,
   loginType: {
     type: "email",
     email: "test@example.com" as Email,
