@@ -76,7 +76,7 @@ export const testUser = (
   balance: null,
   ephemeral: false,
   status: "active",
-  maybeNotSetYet: undefined as any,
+  maybeNotSetYet: undefined as unknown as string,
   couldBeAnything: 123 as any,
   loginType: {
     type: "email",
