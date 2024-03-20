@@ -17,6 +17,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [CRUD](./packages/convex-helpers/README.md#crud-utilities) | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery) |
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities) |
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter) |
+| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries) |
 
 ## `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers)
 
