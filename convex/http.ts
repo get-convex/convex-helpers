@@ -1,8 +1,5 @@
-import {
-  Hono,
-  HonoWithConvex,
-  HttpRouterWithHono,
-} from "convex-helpers/server/hono";
+import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
+import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { ActionCtx, query } from "./_generated/server";
 
