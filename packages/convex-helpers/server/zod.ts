@@ -475,6 +475,31 @@ type CustomBuilder<
       Visibility
     >;
 
+/**
+ * START Include some types from convex that aren't exported currently.
+ */
+type JoinFieldPaths<
+  Start extends string,
+  End extends string
+> = `${Start}.${End}`;
+type ObjectValidator<Validators extends PropertyValidators> = Validator<
+  // Compute the TypeScript type this validator refers to.
+  ObjectType<Validators>,
+  false,
+  // Compute the field paths for this validator. For every property in the object,
+  // add on a field path for that property and extend all the field paths in the
+  // validator.
+  {
+    [Property in keyof Validators]:
+      | JoinFieldPaths<Property & string, Validators[Property]["fieldPaths"]>
+      | Property;
+  }[keyof Validators] &
+    string
+>;
+/**
+ * END types copied from Convex. Delete when Convex exports these types.
+ */
+
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
   Z extends Zid<infer TableName>
@@ -498,11 +523,9 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
     : Z extends z.ZodArray<infer Inner>
     ? Validator<ConvexValidatorFromZod<Inner>["type"][]>
     : Z extends z.ZodObject<infer ZodShape>
-    ? ReturnType<
-        typeof v.object<{
-          [key in keyof ZodShape]: ConvexValidatorFromZod<ZodShape[key]>;
-        }>
-      >
+    ? ObjectValidator<{
+        [key in keyof ZodShape]: ConvexValidatorFromZod<ZodShape[key]>;
+      }>
     : Z extends z.ZodUnion<infer T>
     ? Validator<
         ConvexValidatorFromZod<T[number]>["type"],
