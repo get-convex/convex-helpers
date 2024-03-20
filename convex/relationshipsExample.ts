@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalAction, mutation, query } from "./_generated/server";
 import {
   getAll,
   getAllOrThrow,
@@ -11,6 +11,7 @@ import {
 } from "convex-helpers/server/relationships";
 import { asyncMap } from "convex-helpers";
 import { testUser } from "./validatorsExample";
+import { internal } from "./_generated/api";
 
 export const relationshipTest = mutation({
   args: {},
@@ -134,7 +135,14 @@ export const relationshipTest = mutation({
     await ctx.db.delete(presenceId);
 
     const file = await ctx.db.system.query("_storage").first();
-    if (!file) throw new Error("No storage id found - upload something");
+    if (!file) {
+      console.log("No file found, adding one. Try again");
+      await ctx.scheduler.runAfter(
+        0,
+        internal.relationshipsExample.addRandomFile
+      );
+      return false;
+    }
     const edgeId = await ctx.db.insert("join_storage_example", {
       userId,
       storageId: file._id,
@@ -164,6 +172,13 @@ export const relationshipTest = mutation({
     await ctx.db.delete(edgeId);
 
     return true;
+  },
+});
+
+export const addRandomFile = internalAction({
+  args: {},
+  handler: async (ctx, args) => {
+    await ctx.storage.store(new Blob(["test"]));
   },
 });
 

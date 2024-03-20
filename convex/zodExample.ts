@@ -23,7 +23,7 @@ export const getCounterId = query({
   args: {},
   handler: async (ctx) => {
     const counter = await ctx.db.query("counter_table").first();
-    if (!counter) throw new Error("Counter not found");
+    if (!counter) return null;
     return counter._id;
   },
 });
