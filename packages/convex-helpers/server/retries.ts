@@ -15,10 +15,12 @@ import {
 } from "convex/server";
 import { v, ObjectType } from "convex/values";
 
-const DEFAULT_WAIT_BACKOFF = 100;
-const DEFAULT_RETRY_BACKOFF = 100;
-const DEFAULT_BASE = 2;
-const DEFAULT_MAX_FAILURES = 16;
+const DEFAULTS = {
+  waitBackoff: 100,
+  retryBackoff: 100,
+  base: 2,
+  maxFailures: 16,
+};
 
 /**
  * Create a function that retries an action with exponential backoff.
@@ -37,11 +39,20 @@ const DEFAULT_MAX_FAILURES = 16;
  * e.g. "myFolder/myUtilModule:retry"
  * @returns An object with runWithRetries and retry functions.
  */
-export function makeActionRetrier(retryFnName: string) {
+export function makeActionRetrier(
+  retryFnName: string,
+  defaultOptions?: {
+    waitBackoff?: number;
+    retryBackoff?: number;
+    base?: number;
+    maxFailures?: number;
+  }
+) {
   const retryRef = makeFunctionReference<
     "action",
     ObjectType<typeof retryArguments>
   >(retryFnName);
+  const defaults = { ...DEFAULTS, ...defaultOptions };
   /**
    * Run and retry action until it succeeds or fails too many times.
    *
@@ -51,13 +62,18 @@ export function makeActionRetrier(retryFnName: string) {
    * be called once but not retried. To ensure that the action is retried when
    * calling from an action, it should be wrapped in an internal mutation.
    *
-   * @param action - Name of the action to run, e.g., `"usercode:maybeAction"`.
-   * @param actionArgs - Arguments for the action, e.g., `{ failureRate: 0.75}`.
-   * @param options
-   * @param options.waitBackoff=DEFAULT_WAIT_BACKOFF (10) - Initial delay before checking action status, in milliseconds.
-   * @param options.retryBackoff=DEFAULT_RETRY_BACKOFF (10) - Initial delay before retrying, in milliseconds.
-   * @param options.base=DEFAULT_BASE (2) - Base of the exponential backoff.
-   * @param options.maxFailures=DEFAULT_MAX_FAILURES (16) - The maximum number of times to retry the action.
+   * @param ctx - The context object from your mutation or action.
+   * @param action - The action to run, e.g., `internal.module.myAction`.
+   * @param actionArgs - Arguments for the action, e.g., `{ someArg: 123 }`.
+   * @param options - Options for the retry behavior. Defaults to:
+   *  { waitBackoff: 100, retryBackoff: 100, base: 2, maxFailures: 16 }
+   * @param options.waitBackoff - Initial delay before checking action
+   *   status, in milliseconds. Defaults to 100.
+   * @param options.retryBackoff - Initial delay before retrying
+   *   a failure, in milliseconds. Defaults to 100.
+   * @param options.base - Base of the exponential backoff. Defaults to 2.
+   * @param options.maxFailures - The maximum number of times to retry failures.
+   *   Defaults to 16.
    */
   async function runWithRetries<
     Action extends FunctionReference<
@@ -81,10 +97,8 @@ export function makeActionRetrier(retryFnName: string) {
     await ctx.scheduler.runAfter(0, retryRef, {
       action: getFunctionName(action),
       actionArgs,
-      waitBackoff: options?.waitBackoff ?? DEFAULT_WAIT_BACKOFF,
-      retryBackoff: options?.retryBackoff ?? DEFAULT_RETRY_BACKOFF,
-      base: options?.base ?? DEFAULT_BASE,
-      maxFailures: options?.maxFailures ?? DEFAULT_MAX_FAILURES,
+      ...defaults,
+      ...options,
     });
   }
 
@@ -110,14 +124,15 @@ export function makeActionRetrier(retryFnName: string) {
         ));
       const status = await ctx.db.system.get(job);
       if (!status) {
-        throw new Error(`Job ${job} not found`);
+        throw new Error(`Job ${args.action}(${job}) not found`);
       }
 
       switch (status.state.kind) {
         case "pending":
         case "inProgress":
-          console.log(
-            `Job ${job} not yet complete, checking again in ${args.waitBackoff} ms.`
+          console.debug(
+            `Job ${args.action}(${job}) not yet complete, ` +
+              `checking again in ${args.waitBackoff} ms.`
           );
           await ctx.scheduler.runAfter(args.waitBackoff, retryRef, {
             ...args,
@@ -128,16 +143,19 @@ export function makeActionRetrier(retryFnName: string) {
 
         case "failed":
           if (args.maxFailures <= 0) {
-            console.log(`Job ${job} failed too many times, not retrying.`);
+            console.debug(
+              `Job ${args.action}(${job}) failed too many times, not retrying.`
+            );
             break;
           }
-          console.log(
-            `Job ${job} failed, retrying in ${args.retryBackoff} ms.`
-          );
           const newJob = await ctx.scheduler.runAfter(
             args.retryBackoff,
             makeFunctionReference<"action">(args.action),
             args.actionArgs
+          );
+          console.debug(
+            `Job ${args.action}(${job}) failed, ` +
+              `retrying in ${args.retryBackoff} ms as ${newJob}.`
           );
           await ctx.scheduler.runAfter(args.retryBackoff, retryRef, {
             ...args,
@@ -148,10 +166,12 @@ export function makeActionRetrier(retryFnName: string) {
           break;
 
         case "success":
-          console.log(`Job ${job} succeeded.`);
+          console.debug(`Job ${args.action}(${job}) succeeded.`);
           break;
         case "canceled":
-          console.log(`Job ${job} was canceled. Not retrying.`);
+          console.debug(
+            `Job ${args.action}(${job}) was canceled. Not retrying.`
+          );
           break;
       }
     },
