@@ -29,9 +29,9 @@ export const literals = <
  * @param x The validator to make nullable. As in, it can be the value or null.
  * @returns A new validator that can be the value or null.
  */
-
 export const nullable = <V extends Validator<any, false, any>>(x: V) =>
   v.union(v.null(), x);
+
 /**
  * partial helps you define an object of optional validators more concisely.
  *
@@ -41,7 +41,6 @@ export const nullable = <V extends Validator<any, false, any>>(x: V) =>
  * @param obj The object of validators to make optional. e.g. {a: v.string()}
  * @returns A new object of validators that can be the value or undefined.
  */
-
 export const partial = <T extends PropertyValidators>(obj: T) => {
   return Object.fromEntries(
     Object.entries(obj).map(([k, vv]) => [k, v.optional(vv)])
@@ -75,6 +74,14 @@ export const { id, object, array, bytes, literal, optional, union } = v;
 /** ArrayBuffer validator. */
 export const arrayBuffer = bytes;
 
+/**
+ * Utility to get the validators for fields associated with a table.
+ * e.g. for systemFields("users") it would return:
+ * { _id: v.id("users"), _creationTime: v.number() }
+ *
+ * @param tableName The table name in the schema.
+ * @returns Validators for the system fields: _id and _creationTime
+ */
 export const systemFields = <TableName extends string>(
   tableName: TableName
 ) => ({
@@ -82,6 +89,15 @@ export const systemFields = <TableName extends string>(
   _creationTime: v.number(),
 });
 
+/**
+ * Utility to add system fields to an object with fields mapping to validators.
+ * e.g. withSystemFields("users", { name: v.string() }) would return:
+ * { name: v.string(), _id: v.id("users"), _creationTime: v.number() }
+ *
+ * @param tableName Table name in the schema.
+ * @param fields The fields of the table mapped to their validators.
+ * @returns The fields plus system fields _id and _creationTime.
+ */
 export const withSystemFields = <
   TableName extends string,
   T extends Record<string, Validator<any, any, any>>
