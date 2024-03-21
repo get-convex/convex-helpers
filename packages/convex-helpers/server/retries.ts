@@ -8,7 +8,6 @@ import {
   FunctionVisibility,
   Scheduler,
   FunctionArgs,
-  OptionalRestArgs,
   getFunctionName,
   makeFunctionReference,
   DefaultFunctionArgs,
@@ -79,13 +78,7 @@ export function makeActionRetrier(retryFnName: string) {
       maxFailures?: number;
     }
   ) {
-    const job = await ctx.scheduler.runAfter(
-      0,
-      action,
-      ...([actionArgs] as OptionalRestArgs<Action>)
-    );
     await ctx.scheduler.runAfter(0, retryRef, {
-      job,
       action: getFunctionName(action),
       actionArgs,
       waitBackoff: options?.waitBackoff ?? DEFAULT_WAIT_BACKOFF,
@@ -96,7 +89,7 @@ export function makeActionRetrier(retryFnName: string) {
   }
 
   const retryArguments = {
-    job: v.id("_scheduled_functions"),
+    job: v.optional(v.id("_scheduled_functions")),
     action: v.string(),
     actionArgs: v.any(),
     waitBackoff: v.number(),
@@ -104,10 +97,17 @@ export function makeActionRetrier(retryFnName: string) {
     base: v.number(),
     maxFailures: v.number(),
   };
+
   const retry = internalMutationGeneric({
     args: retryArguments,
     handler: async (ctx, args) => {
-      const { job } = args;
+      const job =
+        args.job ??
+        (await ctx.scheduler.runAfter(
+          0,
+          makeFunctionReference<"action">(args.action),
+          args.actionArgs
+        ));
       const status = await ctx.db.system.get(job);
       if (!status) {
         throw new Error(`Job ${job} not found`);
@@ -121,6 +121,7 @@ export function makeActionRetrier(retryFnName: string) {
           );
           await ctx.scheduler.runAfter(args.waitBackoff, retryRef, {
             ...args,
+            job,
             waitBackoff: args.waitBackoff * args.base,
           });
           break;
