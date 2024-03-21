@@ -7,7 +7,7 @@ import { makeActionRetrier } from "convex-helpers/server/retries";
 // Export the helpers, with the name of the retry function.
 export const { runWithRetries, retry } = makeActionRetrier(
   "retriesExample:retry",
-  { retryBackoff: 1000 } // set to 1 second for demo purposes.
+  { retryBackoff: 1000, log: console.warn } // options for demo purposes.
 );
 
 // This is a sample action will fail randomly based on the `failureRate`

@@ -13,6 +13,7 @@ import {
   internalMutationGeneric,
 } from "convex/server";
 import { v, ObjectType } from "convex/values";
+import { omit } from "..";
 
 const DEFAULTS = {
   waitBackoff: 100,
@@ -62,7 +63,7 @@ export function makeActionRetrier(
     "action",
     ObjectType<typeof retryArguments>
   >(retryFnName);
-  const defaults = { ...DEFAULTS, ...options };
+  const defaults = { ...DEFAULTS, ...omit(options ?? {}, ["log"]) };
   const log = options?.log ?? (() => {});
   /**
    * Run and retry action until it succeeds or fails too many times.
