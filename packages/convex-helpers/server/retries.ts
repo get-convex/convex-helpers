@@ -143,7 +143,7 @@ export function makeActionRetrier(
             `Job ${args.action}(${job}) not yet complete, ` +
               `checking again in ${args.waitBackoff} ms.`
           );
-          await ctx.scheduler.runAfter(args.waitBackoff, retryRef, {
+          await ctx.scheduler.runAfter(withJitter(args.waitBackoff), retryRef, {
             ...args,
             job,
             waitBackoff: args.waitBackoff * args.base,
@@ -158,7 +158,7 @@ export function makeActionRetrier(
             break;
           }
           const newJob = await ctx.scheduler.runAfter(
-            args.retryBackoff,
+            withJitter(args.retryBackoff),
             makeFunctionReference<"action">(args.action),
             args.actionArgs
           );
@@ -167,7 +167,7 @@ export function makeActionRetrier(
               `retrying in ${args.retryBackoff} ms as ${newJob}.`
           );
           await ctx.scheduler.runAfter(
-            args.retryBackoff + args.waitBackoff,
+            withJitter(args.retryBackoff + args.waitBackoff),
             retryRef,
             {
               ...args,
@@ -194,4 +194,8 @@ export function makeActionRetrier(
     runWithRetries,
     retry,
   };
+}
+
+export function withJitter(delay: number) {
+  return delay * (0.5 + Math.random());
 }
