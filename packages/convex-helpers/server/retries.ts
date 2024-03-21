@@ -36,31 +36,34 @@ const DEFAULTS = {
  *
  * @param retryFnName The function name of the retry function exported.
  * e.g. "myFolder/myUtilModule:retry"
- * @param defaultOptions - Options for the retry behavior. Defaults to:
+ * @param options - Options for the retry behavior. Defaults to:
  *  { waitBackoff: 100, retryBackoff: 100, base: 2, maxFailures: 16 }
- * @param defaultOptions.waitBackoff - Initial delay before checking action
+ * @param options.waitBackoff - Initial delay before checking action
  *   status, in milliseconds. Defaults to 100.
- * @param defaultOptions.retryBackoff - Initial delay before retrying
+ * @param options.retryBackoff - Initial delay before retrying
  *   a failure, in milliseconds. Defaults to 100.
- * @param defaultOptions.base - Base of the exponential backoff. Defaults to 2.
- * @param defaultOptions.maxFailures - The maximum number of times to retry failures.
+ * @param options.base - Base of the exponential backoff. Defaults to 2.
+ * @param options.maxFailures - The maximum number of times to retry failures.
  *   Defaults to 16.
+ * @param options.log - A function to log status, such as `console.log`.
  * @returns An object with runWithRetries and retry functions to export.
  */
 export function makeActionRetrier(
   retryFnName: string,
-  defaultOptions?: {
+  options?: {
     waitBackoff?: number;
     retryBackoff?: number;
     base?: number;
     maxFailures?: number;
+    log?: (msg: string) => void;
   }
 ) {
   const retryRef = makeFunctionReference<
     "action",
     ObjectType<typeof retryArguments>
   >(retryFnName);
-  const defaults = { ...DEFAULTS, ...defaultOptions };
+  const defaults = { ...DEFAULTS, ...options };
+  const log = options?.log ?? (() => {});
   /**
    * Run and retry action until it succeeds or fails too many times.
    *
@@ -124,6 +127,7 @@ export function makeActionRetrier(
   const retry = internalMutationGeneric({
     args: retryArguments,
     handler: async (ctx, args) => {
+      // If job is not provided (first call), schedule the action.
       const job =
         args.job ??
         (await ctx.scheduler.runAfter(
@@ -133,13 +137,17 @@ export function makeActionRetrier(
         ));
       const status = await ctx.db.system.get(job);
       if (!status) {
+        // There is a chance a job will be deleted - after 7 days.
+        // For now, we give up. In the future you could store information about
+        // the job's status in a table to know whether to keep retrying.
+        // Or pessimistically just try it again.
         throw new Error(`Job ${args.action}(${job}) not found`);
       }
 
       switch (status.state.kind) {
         case "pending":
         case "inProgress":
-          console.debug(
+          log(
             `Job ${args.action}(${job}) not yet complete, ` +
               `checking again in ${args.waitBackoff} ms.`
           );
@@ -152,7 +160,7 @@ export function makeActionRetrier(
 
         case "failed":
           if (args.maxFailures <= 0) {
-            console.debug(
+            log(
               `Job ${args.action}(${job}) failed too many times, not retrying.`
             );
             break;
@@ -162,7 +170,7 @@ export function makeActionRetrier(
             makeFunctionReference<"action">(args.action),
             args.actionArgs
           );
-          console.debug(
+          log(
             `Job ${args.action}(${job}) failed, ` +
               `retrying in ${args.retryBackoff} ms as ${newJob}.`
           );
@@ -179,12 +187,10 @@ export function makeActionRetrier(
           break;
 
         case "success":
-          console.debug(`Job ${args.action}(${job}) succeeded.`);
+          log(`Job ${args.action}(${job}) succeeded.`);
           break;
         case "canceled":
-          console.debug(
-            `Job ${args.action}(${job}) was canceled. Not retrying.`
-          );
+          log(`Job ${args.action}(${job}) was canceled. Not retrying.`);
           break;
       }
     },
