@@ -166,12 +166,16 @@ export function makeActionRetrier(
             `Job ${args.action}(${job}) failed, ` +
               `retrying in ${args.retryBackoff} ms as ${newJob}.`
           );
-          await ctx.scheduler.runAfter(args.retryBackoff, retryRef, {
-            ...args,
-            job: newJob,
-            retryBackoff: args.retryBackoff * args.base,
-            maxFailures: args.maxFailures - 1,
-          });
+          await ctx.scheduler.runAfter(
+            args.retryBackoff + args.waitBackoff,
+            retryRef,
+            {
+              ...args,
+              job: newJob,
+              retryBackoff: args.retryBackoff * args.base,
+              maxFailures: args.maxFailures - 1,
+            }
+          );
           break;
 
         case "success":
