@@ -17,6 +17,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [CRUD](./packages/convex-helpers/README.md#crud-utilities) | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery) |
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities) |
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter) |
+| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries) |
 
 ## `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers)
 
@@ -76,6 +77,14 @@ There are two approaches to sessions data:
     - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
     - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
     - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
+
+## Retrying actions
+
+Use helper functions to retry a Convex action until it succeeds.
+
+See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
+and the [convex-helpers package README](./packages/convex-helpers/README.md)
+for examples and usage.
 
 ## Authentication: withUser
 

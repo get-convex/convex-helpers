@@ -79,6 +79,32 @@ const posts = await asyncMap(
 );
 ```
 
+## Action retries
+
+Use helper functions to retry a Convex action until it succeeds.
+An action should only be retried if it is safe to do so, i.e., if it's
+idempotent or doesn't have any unsafe side effects.
+
+See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
+
+Example:
+```ts
+ // in convex/utils.ts
+ import { makeActionRetrier } from "convex-helpers/server/retries";
+
+ export const { runWithRetries, retry } = makeActionRetrier("utils:retry");
+
+ // in a mutation or action
+ export const myMutation = mutation({
+   args: {...},
+   handler: async (ctx, args) => {
+     //...
+     await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
+   }
+ });
+
+```
+
 ## Session tracking via client-side sessionID storage
 
 Store a session ID on the client and pass it up with requests to keep track of
