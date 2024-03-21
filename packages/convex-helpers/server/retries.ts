@@ -7,7 +7,6 @@ import {
   FunctionReference,
   FunctionVisibility,
   Scheduler,
-  FunctionArgs,
   getFunctionName,
   makeFunctionReference,
   DefaultFunctionArgs,
@@ -79,14 +78,15 @@ export function makeActionRetrier(
     Action extends FunctionReference<
       "action",
       Visibility,
-      DefaultFunctionArgs,
+      Args,
       null | Promise<null> | void | Promise<void>
     >,
+    Args extends DefaultFunctionArgs,
     Visibility extends FunctionVisibility = "internal"
   >(
     ctx: { scheduler: Scheduler },
     action: Action,
-    actionArgs: FunctionArgs<Action>,
+    actionArgs: Args,
     options?: {
       waitBackoff?: number;
       retryBackoff?: number;
