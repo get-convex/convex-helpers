@@ -204,11 +204,8 @@ See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on 
 To use it, put this in your `convex/http.ts` file:
 
 ```ts
-import {
-  Hono,
-  HonoWithConvex,
-  HttpRouterWithHono,
-} from "convex-helpers/server/hono";
+import { Hono } from "hono";
+import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
 import { ActionCtx } from "./_generated/server";
 
 const app: HonoWithConvex<ActionCtx> = new Hono();
