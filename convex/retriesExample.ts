@@ -12,9 +12,7 @@ export const { runWithRetries, retry } = makeActionRetrier(
 // This is a sample action will fail randomly based on the `failureRate`
 // argument. It's safe to retry since it doesn't have any side effects.
 export const unreliableAction = internalAction({
-  args: {
-    failureRate: v.number(), // 0.0 - 1.0
-  },
+  args: { failureRate: v.number() }, // 0.0 - 1.0
   handler: async (_ctx, { failureRate }) => {
     console.log("Running an action with failure rate " + failureRate);
     if (Math.random() < failureRate) {

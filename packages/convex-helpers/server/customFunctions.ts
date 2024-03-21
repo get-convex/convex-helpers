@@ -13,6 +13,7 @@
 import { ObjectType, PropertyValidators } from "convex/values";
 import {
   ActionBuilder,
+  DefaultFunctionArgs,
   FunctionVisibility,
   GenericActionCtx,
   GenericDataModel,
@@ -557,4 +558,3 @@ export type CustomCtx<Builder> = Builder extends ValidatedBuilder<
   : never;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
-type DefaultFunctionArgs = Record<string, unknown>;

@@ -16,8 +16,8 @@ import {
 } from "convex/server";
 import { v, ObjectType } from "convex/values";
 
-const DEFAULT_WAIT_BACKOFF = 10;
-const DEFAULT_RETRY_BACKOFF = 10;
+const DEFAULT_WAIT_BACKOFF = 100;
+const DEFAULT_RETRY_BACKOFF = 100;
 const DEFAULT_BASE = 2;
 const DEFAULT_MAX_FAILURES = 16;
 
@@ -34,9 +34,8 @@ const DEFAULT_MAX_FAILURES = 16;
  * await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
  * ```
  *
- * @param internalMutation From "./convex/_generated/server" or customMutation.
- * @param retryRef The function reference to the retryRef function exported.
- * e.g. internal.mymodule.retry
+ * @param retryFnName The function name of the retry function exported.
+ * e.g. "myFolder/myUtilModule:retry"
  * @returns An object with runWithRetries and retry functions.
  */
 export function makeActionRetrier(retryFnName: string) {
@@ -51,7 +50,7 @@ export function makeActionRetrier(retryFnName: string) {
    * options.maxFailures times (default 16).
    * If it's called from an action, there is a chance that the action will
    * be called once but not retried. To ensure that the action is retried when
-   * calling from an action, * it should be wrapped in an internal mutation.
+   * calling from an action, it should be wrapped in an internal mutation.
    *
    * @param action - Name of the action to run, e.g., `"usercode:maybeAction"`.
    * @param actionArgs - Arguments for the action, e.g., `{ failureRate: 0.75}`.
