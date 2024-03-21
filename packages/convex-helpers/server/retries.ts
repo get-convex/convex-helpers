@@ -30,13 +30,22 @@ const DEFAULTS = {
  *
  * export const { runWithRetries, retry } = makeActionRetrier("utils:retry");
  *
- * // in a mutation
+ * // in a mutation or action
  * await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
  * ```
  *
  * @param retryFnName The function name of the retry function exported.
  * e.g. "myFolder/myUtilModule:retry"
- * @returns An object with runWithRetries and retry functions.
+ * @param defaultOptions - Options for the retry behavior. Defaults to:
+ *  { waitBackoff: 100, retryBackoff: 100, base: 2, maxFailures: 16 }
+ * @param defaultOptions.waitBackoff - Initial delay before checking action
+ *   status, in milliseconds. Defaults to 100.
+ * @param defaultOptions.retryBackoff - Initial delay before retrying
+ *   a failure, in milliseconds. Defaults to 100.
+ * @param defaultOptions.base - Base of the exponential backoff. Defaults to 2.
+ * @param defaultOptions.maxFailures - The maximum number of times to retry failures.
+ *   Defaults to 16.
+ * @returns An object with runWithRetries and retry functions to export.
  */
 export function makeActionRetrier(
   retryFnName: string,
