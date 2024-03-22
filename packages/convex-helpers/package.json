@@ -3,20 +3,123 @@
   "version": "0.1.27",
   "description": "A collection of useful code to complement the official convex package.",
   "exports": {
-    ".": "./dist/index.js",
-    "./react/sessions": "./dist/react/sessions.js",
-    "./server": "./dist/server/index.js",
-    "./server/customFunctions": "./dist/server/customFunctions.js",
-    "./server/filter": "./dist/server/filter.js",
-    "./server/hono": "./dist/server/hono.js",
-    "./server/middlewareUtils": "./dist/server/middlewareUtils.js",
-    "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
-    "./server/relationships": "./dist/server/relationships.js",
-    "./server/retries": "./dist/server/retries.js",
-    "./server/sessions": "./dist/server/sessions.js",
-    "./server/zod": "./dist/server/zod.js",
-    "./testing": "./dist/testing.js",
-    "./validators": "./dist/validators.js"
+    ".": {
+      "types": {
+        "module": "./dist/esm-types/index.d.ts",
+        "default": "./dist/cjs-types/index.d.ts"
+      },
+      "development": "./index.ts",
+      "module": "./dist/esm/index.js",
+      "default": "./dist/cjs/index.js"
+    },
+    "./testing": {
+      "types": {
+        "module": "./dist/esm-types/testing.d.ts",
+        "default": "./dist/cjs-types/testing.d.ts"
+      },
+      "development": "./testing.ts",
+      "module": "./dist/esm/testing.js",
+      "default": "./dist/cjs/testing.js"
+    },
+    "./validators": {
+      "types": {
+        "module": "./dist/esm-types/validators.d.ts",
+        "default": "./dist/cjs-types/validators.d.ts"
+      },
+      "development": "./validators.ts",
+      "module": "./dist/esm/validators.js",
+      "default": "./dist/cjs/validators.js"
+    },
+    "./react/sessions": {
+      "types": {
+        "module": "./dist/esm-types/react/sessions.d.ts",
+        "default": "./dist/cjs-types/react/sessions.d.ts"
+      },
+      "development": "./react/sessions.ts",
+      "module": "./dist/esm/react/sessions.js",
+      "default": "./dist/cjs/react/sessions.js"
+    },
+    "./server/customFunctions": {
+      "types": {
+        "module": "./dist/esm-types/server/customFunctions.d.ts",
+        "default": "./dist/cjs-types/server/customFunctions.d.ts"
+      },
+      "development": "./server/customFunctions.ts",
+      "module": "./dist/esm/server/customFunctions.js",
+      "default": "./dist/cjs/server/customFunctions.js"
+    },
+    "./server/filter": {
+      "types": {
+        "module": "./dist/esm-types/server/filter.d.ts",
+        "default": "./dist/cjs-types/server/filter.d.ts"
+      },
+      "development": "./server/filter.ts",
+      "module": "./dist/esm/server/filter.js",
+      "default": "./dist/cjs/server/filter.js"
+    },
+    "./server/hono": {
+      "types": {
+        "module": "./dist/esm-types/server/hono.d.ts",
+        "default": "./dist/cjs-types/server/hono.d.ts"
+      },
+      "development": "./server/hono.ts",
+      "module": "./dist/esm/server/hono.js",
+      "default": "./dist/cjs/server/hono.js"
+    },
+    "./server": {
+      "types": {
+        "module": "./dist/esm-types/server/index.d.ts",
+        "default": "./dist/cjs-types/server/index.d.ts"
+      },
+      "development": "./server/index.ts",
+      "module": "./dist/esm/server/index.js",
+      "default": "./dist/cjs/server/index.js"
+    },
+    "./server/relationships": {
+      "types": {
+        "module": "./dist/esm-types/server/relationships.d.ts",
+        "default": "./dist/cjs-types/server/relationships.d.ts"
+      },
+      "development": "./server/relationships.ts",
+      "module": "./dist/esm/server/relationships.js",
+      "default": "./dist/cjs/server/relationships.js"
+    },
+    "./server/retries": {
+      "types": {
+        "module": "./dist/esm-types/server/retries.d.ts",
+        "default": "./dist/cjs-types/server/retries.d.ts"
+      },
+      "development": "./server/retries.ts",
+      "module": "./dist/esm/server/retries.js",
+      "default": "./dist/cjs/server/retries.js"
+    },
+    "./server/rowLevelSecurity": {
+      "types": {
+        "module": "./dist/esm-types/server/rowLevelSecurity.d.ts",
+        "default": "./dist/cjs-types/server/rowLevelSecurity.d.ts"
+      },
+      "development": "./server/rowLevelSecurity.ts",
+      "module": "./dist/esm/server/rowLevelSecurity.js",
+      "default": "./dist/cjs/server/rowLevelSecurity.js"
+    },
+    "./server/sessions": {
+      "types": {
+        "module": "./dist/esm-types/server/sessions.d.ts",
+        "default": "./dist/cjs-types/server/sessions.d.ts"
+      },
+      "development": "./server/sessions.ts",
+      "module": "./dist/esm/server/sessions.js",
+      "default": "./dist/cjs/server/sessions.js"
+    },
+    "./server/zod": {
+      "types": {
+        "module": "./dist/esm-types/server/zod.d.ts",
+        "default": "./dist/cjs-types/server/zod.d.ts"
+      },
+      "development": "./server/zod.ts",
+      "module": "./dist/esm/server/zod.js",
+      "default": "./dist/cjs/server/zod.js"
+    }
   },
   "files": [
     "dist",
@@ -27,11 +130,11 @@
     "validators.ts"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node generate-exports.mjs && tsc -b ./tsconfig.cjs.json ./tsconfig.esm.json ./tsconfig.types.esm.json ./tsconfig.types.cjs.json; echo '{\"type\": \"module\"}' > ./dist/esm/package.json; echo '{\"type\": \"module\"}' > ./dist/esm-types/package.json",
     "prebuild": "npm run test",
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
-    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run build' --initial",
+    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
     "arethetypeswrong": "npx attw $(npm pack)"
   },
   "repository": {
