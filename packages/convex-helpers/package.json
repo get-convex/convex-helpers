@@ -31,7 +31,8 @@
     "prebuild": "npm run test",
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
-    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run build' --initial"
+    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run build' --initial",
+    "arethetypeswrong": "npx attw $(npm pack)"
   },
   "repository": {
     "type": "git",
@@ -69,5 +70,8 @@
   "devDependencies": {
     "chokidar-cli": "^3.0.0",
     "typescript": "^5.3"
+  },
+  "dependencies": {
+    "@arethetypeswrong/cli": "^0.15.2"
   }
 }
