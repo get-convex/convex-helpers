@@ -12,7 +12,7 @@ import {
   PaginationResult,
 } from "convex/server";
 import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
-import { Expand } from "..";
+import { Expand } from "../index.js";
 
 /**
  * Define a table with system fields _id and _creationTime. This also returns
@@ -82,7 +82,7 @@ export function deploymentName() {
   return regex.exec(url)?.[1];
 }
 
-import { partial } from "../validators";
+import { partial } from "../validators.js";
 
 /**
  * Create CRUD operations for a table.

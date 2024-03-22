@@ -1,9 +1,9 @@
-import { zCustomQuery, zodToConvexFields } from "./zod";
+import { zCustomQuery, zodToConvexFields } from "./zod.js";
 import { z } from "zod";
 import { v } from "convex/values";
 import { useQuery } from "convex/react";
 import { ApiFromModules, queryGeneric as query } from "convex/server";
-import { Equals, assert } from "..";
+import { Equals, assert } from "../index.js";
 
 /**
  * Adding ctx
