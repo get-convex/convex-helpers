@@ -4,11 +4,8 @@
   "description": "A collection of useful code to complement the official convex package.",
   "exports": {
     ".": "./dist/index.js",
-    "./react": "./dist/react/index.js",
-    "./react*": "./dist/react*",
     "./react/sessions": "./dist/react/sessions.js",
     "./server": "./dist/server/index.js",
-    "./server*": "./dist/server*",
     "./server/customFunctions": "./dist/server/customFunctions.js",
     "./server/filter": "./dist/server/filter.js",
     "./server/hono": "./dist/server/hono.js",
