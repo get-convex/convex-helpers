@@ -11,7 +11,7 @@ import {
   FieldPaths,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { asyncMap, nullThrows } from "..";
+import { asyncMap, nullThrows } from "../index.js";
 
 /**
  * getAll returns a list of Documents (or null) for the `Id`s passed in.

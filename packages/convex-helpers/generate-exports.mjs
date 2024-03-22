@@ -51,13 +51,9 @@ function generateExport(source) {
   );
 
   return {
-    types: {
-      module: `./dist/esm-types/${extensionless}.d.ts`,
-      default: `./dist/cjs-types/${extensionless}.d.ts`,
-    },
+    types: `./dist/${extensionless}.d.ts`,
     development: `./${extensionless}.ts`,
-    module: `./dist/esm/${extensionless}.js`,
-    default: `./dist/cjs/${extensionless}.js`,
+    default: `./dist/${extensionless}.js`,
   };
 }
 
