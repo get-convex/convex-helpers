@@ -2,6 +2,18 @@
 
 A collection of useful code to complement the official packages.
 
+Table of contents:
+- [Custom Functions](#custom-functions)
+- [Relationship helpers](#relationship-helpers)
+- [Action retry wrapper](#action-retries)
+- [Sessions](#session-tracking-via-client-side-sessionid-storage)
+- [Row-level security](#row-level-security)
+- [Zod validation](#zod-validation)
+- [Hono for HTTP endpoints](#hono-for-advanced-http-endpoint-definitions)
+- [CRUD](#crud-utilities)
+- [Validator utilities](#validator-utilities)
+- [Filter db queries with JS](#filter)
+
 ## Custom Functions
 
 Build your own customized versions of `query`, `mutation`, and `action` that
