@@ -120,10 +120,8 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.15.2",
     "chokidar-cli": "^3.0.0",
     "typescript": "^5.3"
-  },
-  "dependencies": {
-    "@arethetypeswrong/cli": "^0.15.2"
   }
 }
