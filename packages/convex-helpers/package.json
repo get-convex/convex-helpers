@@ -2,24 +2,73 @@
   "name": "convex-helpers",
   "version": "0.1.27",
   "description": "A collection of useful code to complement the official convex package.",
+  "type": "module",
   "exports": {
-    ".": "./dist/index.js",
-    "./react": "./dist/react/index.js",
-    "./react*": "./dist/react*",
-    "./react/sessions": "./dist/react/sessions.js",
-    "./server": "./dist/server/index.js",
-    "./server*": "./dist/server*",
-    "./server/customFunctions": "./dist/server/customFunctions.js",
-    "./server/filter": "./dist/server/filter.js",
-    "./server/hono": "./dist/server/hono.js",
-    "./server/middlewareUtils": "./dist/server/middlewareUtils.js",
-    "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
-    "./server/relationships": "./dist/server/relationships.js",
-    "./server/retries": "./dist/server/retries.js",
-    "./server/sessions": "./dist/server/sessions.js",
-    "./server/zod": "./dist/server/zod.js",
-    "./testing": "./dist/testing.js",
-    "./validators": "./dist/validators.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./index.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "development": "./testing.ts",
+      "default": "./dist/testing.js"
+    },
+    "./validators": {
+      "types": "./dist/validators.d.ts",
+      "development": "./validators.ts",
+      "default": "./dist/validators.js"
+    },
+    "./react/sessions": {
+      "types": "./dist/react/sessions.d.ts",
+      "development": "./react/sessions.ts",
+      "default": "./dist/react/sessions.js"
+    },
+    "./server/customFunctions": {
+      "types": "./dist/server/customFunctions.d.ts",
+      "development": "./server/customFunctions.ts",
+      "default": "./dist/server/customFunctions.js"
+    },
+    "./server/filter": {
+      "types": "./dist/server/filter.d.ts",
+      "development": "./server/filter.ts",
+      "default": "./dist/server/filter.js"
+    },
+    "./server/hono": {
+      "types": "./dist/server/hono.d.ts",
+      "development": "./server/hono.ts",
+      "default": "./dist/server/hono.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "development": "./server/index.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./server/relationships": {
+      "types": "./dist/server/relationships.d.ts",
+      "development": "./server/relationships.ts",
+      "default": "./dist/server/relationships.js"
+    },
+    "./server/retries": {
+      "types": "./dist/server/retries.d.ts",
+      "development": "./server/retries.ts",
+      "default": "./dist/server/retries.js"
+    },
+    "./server/rowLevelSecurity": {
+      "types": "./dist/server/rowLevelSecurity.d.ts",
+      "development": "./server/rowLevelSecurity.ts",
+      "default": "./dist/server/rowLevelSecurity.js"
+    },
+    "./server/sessions": {
+      "types": "./dist/server/sessions.d.ts",
+      "development": "./server/sessions.ts",
+      "default": "./dist/server/sessions.js"
+    },
+    "./server/zod": {
+      "types": "./dist/server/zod.d.ts",
+      "development": "./server/zod.ts",
+      "default": "./dist/server/zod.js"
+    }
   },
   "files": [
     "dist",
@@ -30,11 +79,12 @@
     "validators.ts"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node generate-exports.mjs && tsc",
     "prebuild": "npm run test",
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
-    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run build' --initial"
+    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
+    "arethetypeswrong": "npx attw $(npm pack)"
   },
   "repository": {
     "type": "git",
@@ -70,6 +120,7 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.15.2",
     "chokidar-cli": "^3.0.0",
     "typescript": "^5.3"
   }

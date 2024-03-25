@@ -14,7 +14,7 @@ import {
   WithoutSystemFields,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { filter } from "./filter";
+import { filter } from "./filter.js";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
@@ -235,7 +235,9 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   query<TableName extends string>(
     tableName: TableName
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
-    return filter(this.db.query(tableName), (d) => this.predicate(tableName, d));
+    return filter(this.db.query(tableName), (d) =>
+      this.predicate(tableName, d)
+    );
   }
 }
 

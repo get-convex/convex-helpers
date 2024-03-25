@@ -1,5 +1,5 @@
 import { PropertyValidators, Validator, v } from "convex/values";
-import { Expand } from ".";
+import { Expand } from "./index.js";
 
 /**
  * Helper for defining a union of literals more concisely.
