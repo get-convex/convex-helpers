@@ -20,7 +20,7 @@ See the associated [Stack Post](https://stack.convex.dev/custom-functions)
 For example:
 
 ```js
-import { customQuery } from "convex-helpers/server/customFunctions.js
+import { customQuery } from "convex-helpers/server/customFunctions.js";
 
 const myQueryBuilder = customQuery(query, {
   args: { apiToken: v.id("api_tokens") },
