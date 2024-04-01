@@ -19,6 +19,7 @@ import {
   brandedString,
   pretendRequired,
   pretend,
+  typedIdValidator,
 } from "convex-helpers/validators";
 import { assert, omit, pick } from "convex-helpers";
 import {
@@ -28,6 +29,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Infer, ObjectType } from "convex/values";
+import schema from "./schema";
 
 // Define a table with system fields _id and _creationTime. This also returns
 // helpers for working with the table in validators. See:
@@ -158,8 +160,10 @@ export const test = internalAction({
   },
 });
 
+const typeSafeId = typedIdValidator(schema);
+
 export const get = internalQuery({
-  args: { id: Users._id },
+  args: { id: typeSafeId("users") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
@@ -175,7 +179,10 @@ export const insert = exampleMutation({
 });
 
 export const patch = exampleMutation({
-  args: { id: id("users"), patch: object(partial(Users.withoutSystemFields)) },
+  args: {
+    id: typeSafeId("users"),
+    patch: object(partial(Users.withoutSystemFields)),
+  },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, args.patch);
   },
@@ -183,7 +190,7 @@ export const patch = exampleMutation({
 
 export const replace = exampleMutation({
   args: {
-    id: id("users"),
+    id: typeSafeId("users"),
     replace: object({
       // You can provide the document with or without system fields.
       ...Users.withoutSystemFields,

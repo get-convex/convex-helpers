@@ -1,5 +1,10 @@
 import { PropertyValidators, Validator, v } from "convex/values";
 import { Expand } from ".";
+import type {
+  DataModelFromSchemaDefinition,
+  SchemaDefinition,
+  TableNamesInDataModel,
+} from "convex/server";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -124,6 +129,43 @@ export const brandedString = <T extends string>(_brand: T) =>
 
 /** Mark fields as deprecated with this permissive validator typed as null */
 export const deprecated = v.optional(v.any()) as Validator<null, true>;
+
+/**
+ * A validator for an id that is typed to the table names for your schema.
+ *
+ * Used like:
+ * ```ts
+ * import schema from "./schema";
+ *
+ * const id = typedIdValidator(schema);
+ *
+ * export const myQuery = query({
+ *  args: {
+ *   myId: id("myTable"), // Type error if "myTable" is not in the schema.
+ *  },
+ *  handler: async (ctx, args) => {
+ *   // args.myId is typed as an id for "myTable"
+ *  },
+ * });
+ * ```
+ *
+ * **Note**: You can't use this in the schema definition itself or you'll get
+ * a circular reference error. Instead, use it in your mutations, actions, etc.
+ * for argument validation.
+ * @param _schema result of defineSchema, e.g. `import schema from "./schema";`
+ * @returns a v.id equivalent that is typed to the table names.
+ */
+export function typedIdValidator<Schema extends SchemaDefinition<any, any>>(
+  _schema: Schema
+) {
+  return <
+    TableName extends TableNamesInDataModel<
+      DataModelFromSchemaDefinition<Schema>
+    >
+  >(
+    table: TableName
+  ) => v.id(table);
+}
 
 /** A maximally permissive validator that type checks as a given validator.
  *
