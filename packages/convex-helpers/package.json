@@ -84,7 +84,7 @@
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
     "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
-    "arethetypeswrong": "npx attw $(npm pack)"
+    "arethetypeswrong": "attw $(npm pack)"
   },
   "repository": {
     "type": "git",
