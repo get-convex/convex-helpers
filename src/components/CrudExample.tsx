@@ -31,13 +31,16 @@ export default () => {
           ? "..."
           : users.results.map((u) => (
               <li key={u._id}>
-                {u._id} created: {new Date(u._creationTime).toLocaleString()}
+                {u.name} {u._id} created:{" "}
+                {new Date(u._creationTime).toLocaleString()}
               </li>
             ))}
       </ul>
       <p>
         <button
-          onClick={() => id && update({ id, patch: { name: "Updated" } })}
+          onClick={() =>
+            id && update({ id, patch: { name: "Updated " + user?.name } })
+          }
           disabled={!id}
         >
           Update
