@@ -8,7 +8,8 @@
     "dev:backend": "convex dev",
     "dev:frontend": "vite",
     "dev:helpers": "cd packages/convex-helpers && npm run watch",
-    "predev": "convex dev --until-success",
+    "predev:helpers": "cd packages/convex-helpers && npm run build",
+    "predev": "npm run predev:helpers && convex dev --until-success",
     "test": "vitest",
     "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
     "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'"
