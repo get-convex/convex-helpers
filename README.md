@@ -6,18 +6,18 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 ## Index
 
-| In the [`convex-helpers`](./packages/convex-helpers/) [npm package](https://www.npmjs.com/package/convex-helpers) for importing: | In this directory for copy-pasting: |
-|-|-|
-| [Custom Functions](./packages/convex-helpers/README.md#custom-functions) | [Migrations](#migrations-data-mutations)    |
-| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)  | [Sessions: via a server table](#server-persisted-session-data) |
-| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [The withUser utility](#authentication-withuser) |
-| [Row-level security](./packages/convex-helpers/README.md#row-level-security) | [Testing with a local backend](#testing-with-a-local-backend) |
-| [Zod validation](./packages/convex-helpers/README.md#zod-validation) | [Presence](#presence) |
-| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions) | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
-| [CRUD](./packages/convex-helpers/README.md#crud-utilities) | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery) |
-| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities) |
-| [Filter db queries with JS](./packages/convex-helpers/README.md#filter) |
-| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries) |
+| In the [`convex-helpers`](./packages/convex-helpers/) [npm package](https://www.npmjs.com/package/convex-helpers):    | In this directory for copy-pasting:                                                     |
+| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)                                              | [Migrations](#migrations-data-mutations)                                                |
+| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)                                      | [Sessions: via a server table](#server-persisted-session-data)                          |
+| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [The withUser utility](#authentication-withuser)                                        |
+| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                          | [Testing with a local backend](#testing-with-a-local-backend)                           |
+| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                  | [Presence](#presence)                                                                   |
+| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)            | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
+| [CRUD](./packages/convex-helpers/README.md#crud-utilities)                                                            | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
+| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)                                        |
+| [Filter db queries with JS](./packages/convex-helpers/README.md#filter)                                               |
+| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)                                            |
 
 ## `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers)
 
@@ -68,17 +68,17 @@ Read more in the [Stack post](https://stack.convex.dev/typescript-zod-function-v
 There are two approaches to sessions data:
 
 1. Creating a session ID client-side and passing it up to the server on every
- request. This is the [recommended approach](https://stack.convex.dev/track-sessions-without-cookies)
- and is available by **importing from `"convex-helpers/server/sessions"`**.
- See more [in the convex-helpers README](./packages/convex-helpers/README.md).
+   request. This is the [recommended approach](https://stack.convex.dev/track-sessions-without-cookies)
+   and is available by **importing from `"convex-helpers/server/sessions"`**.
+   See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 2. Create a new session document in a `sessions` table for every new client,
- where you can store associated data.
- See [this article on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware)
- for tips on how to set up and use Sessions. To use theses sessions, copy the files:
-    - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
-    - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
-    - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
+   where you can store associated data.
+   See [this article on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware)
+   for tips on how to set up and use Sessions. To use theses sessions, copy the files:
+   - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
+   - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
+   - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
 
 ## Retrying actions
 
@@ -138,7 +138,6 @@ See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on 
 **To use `convex-helpers`, import from "convex-helpers/server/hono"**
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
-
 ## CRUD utilities
 
 To generate a basic CRUD api for your tables, you can use this helper to define
@@ -182,30 +181,32 @@ When using validators for defining database schema or function arguments,
 these validators help:
 
 1. Add a `Table` utility that defines a table and keeps references to the fields
-to avoid re-defining validators. To learn more about sharing validators, read
-[this article](https://stack.convex.dev/argument-validation-without-repetition),
-an extension of [this article](https://stack.convex.dev/types-cookbook).
+   to avoid re-defining validators. To learn more about sharing validators, read
+   [this article](https://stack.convex.dev/argument-validation-without-repetition),
+   an extension of [this article](https://stack.convex.dev/types-cookbook).
 2. Add utilties for partial, pick and omit to match the TypeScript type
-utilities.
+   utilities.
 3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
-field, and `brandedString`. To learn more about branded strings see
-[this article](https://stack.convex.dev/using-branded-types-in-validators).
+   field, and `brandedString`. To learn more about branded strings see
+   [this article](https://stack.convex.dev/using-branded-types-in-validators).
 4. Make the validators look more like TypeScript types, even though they're
-runtime values. (This is controvercial and not required to use the above).
+   runtime values. (This is controvercial and not required to use the above).
 
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 ## Testing with a local backend
+
 [`convex/example.test.ts`](./convex/example.test.ts) demonstrates testing Convex functions by running them against a local backend.
 
 See [this Stack article](https://stack.convex.dev/testing-with-local-oss-backend) for more information.
 
 To set these up for yourself:
+
 - Clone the [Convex open source backend repo](https://github.com/get-convex/convex-backend) and follow setup instructions
 - Create a `clearAll` function to reset data between tests (see [`convex/testingFunctions.ts`](./convex/testingFunctions.ts) for an example)
 - Start writing tests using (`ConvexTestingHelper.ts`)[./packages/convex-helpers/testing.ts]
 - Make sure to call `clearAll` between tests and configure your testing framework to run one test at
-a time to ensure test isolation
+  a time to ensure test isolation
 - `npm run testFunctions` can be used to run these tests. This command does the following:
   - Sets up a fresh a local backend (see [backendHarness.js](./convex-helpers/backendHarness.js))
   - Sets the `IS_TEST` environment variable to enable calling test only functions
