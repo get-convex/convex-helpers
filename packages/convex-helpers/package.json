@@ -6,67 +6,54 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "development": "./index.ts",
       "default": "./dist/index.js"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",
-      "development": "./testing.ts",
       "default": "./dist/testing.js"
     },
     "./validators": {
       "types": "./dist/validators.d.ts",
-      "development": "./validators.ts",
       "default": "./dist/validators.js"
     },
     "./react/sessions": {
       "types": "./dist/react/sessions.d.ts",
-      "development": "./react/sessions.ts",
       "default": "./dist/react/sessions.js"
     },
     "./server/customFunctions": {
       "types": "./dist/server/customFunctions.d.ts",
-      "development": "./server/customFunctions.ts",
       "default": "./dist/server/customFunctions.js"
     },
     "./server/filter": {
       "types": "./dist/server/filter.d.ts",
-      "development": "./server/filter.ts",
       "default": "./dist/server/filter.js"
     },
     "./server/hono": {
       "types": "./dist/server/hono.d.ts",
-      "development": "./server/hono.ts",
       "default": "./dist/server/hono.js"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "development": "./server/index.ts",
       "default": "./dist/server/index.js"
     },
     "./server/relationships": {
       "types": "./dist/server/relationships.d.ts",
-      "development": "./server/relationships.ts",
       "default": "./dist/server/relationships.js"
     },
     "./server/retries": {
       "types": "./dist/server/retries.d.ts",
-      "development": "./server/retries.ts",
       "default": "./dist/server/retries.js"
     },
     "./server/rowLevelSecurity": {
       "types": "./dist/server/rowLevelSecurity.d.ts",
-      "development": "./server/rowLevelSecurity.ts",
       "default": "./dist/server/rowLevelSecurity.js"
     },
     "./server/sessions": {
       "types": "./dist/server/sessions.d.ts",
-      "development": "./server/sessions.ts",
       "default": "./dist/server/sessions.js"
     },
     "./server/zod": {
       "types": "./dist/server/zod.d.ts",
-      "development": "./server/zod.ts",
       "default": "./dist/server/zod.js"
     }
   },

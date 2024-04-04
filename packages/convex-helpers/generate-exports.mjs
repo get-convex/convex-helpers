@@ -52,7 +52,6 @@ function generateExport(source) {
 
   return {
     types: `./dist/${extensionless}.d.ts`,
-    development: `./${extensionless}.ts`,
     default: `./dist/${extensionless}.js`,
   };
 }
