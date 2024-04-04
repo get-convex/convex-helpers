@@ -112,8 +112,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts",
-    "*.test.ts",
-    "zod/*.test.ts"
+    "**/*.test.ts"
   ]
 }
