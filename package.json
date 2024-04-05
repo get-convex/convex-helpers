@@ -5,18 +5,18 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:helpers dev:backend dev:frontend",
     "build": "tsc && vite build",
-    "link": "cd packages/convex-helpers && npm run build && npm link && cd ../.. && npm link convex-helpers",
     "dev:backend": "convex dev",
     "dev:frontend": "vite",
     "dev:helpers": "cd packages/convex-helpers && npm run watch",
-    "predev": "npm run link && convex dev --until-success",
+    "predev:helpers": "cd packages/convex-helpers && npm run build",
+    "predev": "npm run predev:helpers && convex dev --until-success",
     "test": "vitest",
     "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
     "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'"
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.10.0",
+    "convex": "^1.11.0",
     "convex-helpers": "file:packages/convex-helpers",
     "hono": "^4.0.10",
     "react": "^18.0.0",

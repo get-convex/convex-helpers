@@ -24,8 +24,8 @@ import {
   Registration,
   UnvalidatedBuilder,
   splitArgs,
-} from "./customFunctions";
-import { EmptyObject } from "..";
+} from "./customFunctions.js";
+import { EmptyObject } from "../index.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 

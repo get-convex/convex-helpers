@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { queryGeneric as query } from "convex/server";
-import { customCtx, customQuery } from "./customFunctions";
-import { Equals, assert } from "..";
+import { customCtx, customQuery } from "./customFunctions.js";
+import { Equals, assert } from "../index.js";
 
 /**
  * Adding ctx

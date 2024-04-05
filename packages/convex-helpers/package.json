@@ -1,25 +1,61 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.27",
+  "version": "0.1.28-alpha.1",
   "description": "A collection of useful code to complement the official convex package.",
+  "type": "module",
   "exports": {
-    ".": "./dist/index.js",
-    "./react": "./dist/react/index.js",
-    "./react*": "./dist/react*",
-    "./react/sessions": "./dist/react/sessions.js",
-    "./server": "./dist/server/index.js",
-    "./server*": "./dist/server*",
-    "./server/customFunctions": "./dist/server/customFunctions.js",
-    "./server/filter": "./dist/server/filter.js",
-    "./server/hono": "./dist/server/hono.js",
-    "./server/middlewareUtils": "./dist/server/middlewareUtils.js",
-    "./server/rowLevelSecurity": "./dist/server/rowLevelSecurity.js",
-    "./server/relationships": "./dist/server/relationships.js",
-    "./server/retries": "./dist/server/retries.js",
-    "./server/sessions": "./dist/server/sessions.js",
-    "./server/zod": "./dist/server/zod.js",
-    "./testing": "./dist/testing.js",
-    "./validators": "./dist/validators.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
+    },
+    "./validators": {
+      "types": "./dist/validators.d.ts",
+      "default": "./dist/validators.js"
+    },
+    "./react/sessions": {
+      "types": "./dist/react/sessions.d.ts",
+      "default": "./dist/react/sessions.js"
+    },
+    "./server/customFunctions": {
+      "types": "./dist/server/customFunctions.d.ts",
+      "default": "./dist/server/customFunctions.js"
+    },
+    "./server/filter": {
+      "types": "./dist/server/filter.d.ts",
+      "default": "./dist/server/filter.js"
+    },
+    "./server/hono": {
+      "types": "./dist/server/hono.d.ts",
+      "default": "./dist/server/hono.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
+    },
+    "./server/relationships": {
+      "types": "./dist/server/relationships.d.ts",
+      "default": "./dist/server/relationships.js"
+    },
+    "./server/retries": {
+      "types": "./dist/server/retries.d.ts",
+      "default": "./dist/server/retries.js"
+    },
+    "./server/rowLevelSecurity": {
+      "types": "./dist/server/rowLevelSecurity.d.ts",
+      "default": "./dist/server/rowLevelSecurity.js"
+    },
+    "./server/sessions": {
+      "types": "./dist/server/sessions.d.ts",
+      "default": "./dist/server/sessions.js"
+    },
+    "./server/zod": {
+      "types": "./dist/server/zod.d.ts",
+      "default": "./dist/server/zod.js"
+    }
   },
   "files": [
     "dist",
@@ -30,11 +66,12 @@
     "validators.ts"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node generate-exports.mjs && tsc",
     "prebuild": "npm run test",
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
-    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig.json' 'package.json' -c 'npm run build' --initial"
+    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
+    "arethetypeswrong": "attw $(npm pack)"
   },
   "repository": {
     "type": "git",
@@ -53,7 +90,7 @@
   },
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
-    "convex": "^1.10.0",
+    "convex": "^1.11.0",
     "hono": "^4.0.5",
     "react": "^17.0.2 || ^18.0.0",
     "zod": "^3.22.4"
@@ -70,6 +107,7 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.15.2",
     "chokidar-cli": "^3.0.0",
     "typescript": "^5.3"
   }

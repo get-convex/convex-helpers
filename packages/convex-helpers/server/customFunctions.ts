@@ -26,7 +26,7 @@ import {
   RegisteredQuery,
   UnvalidatedFunction,
 } from "convex/server";
-import { EmptyObject } from "..";
+import { EmptyObject } from "../index.js";
 
 /**
  * A modifier for a query, mutation, or action.

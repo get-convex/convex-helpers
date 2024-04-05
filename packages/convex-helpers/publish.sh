@@ -2,8 +2,13 @@
 
 set -e
 
+npm i
 npm run clean
 npm run build
+git diff --exit-code || {
+  echo "Uncommitted changes found. Commit or stash them before publishing."
+  exit 1
+}
 
 cat <<EOF
 Test it:
@@ -20,10 +25,10 @@ read -r -p "Enter the new version number: " version
 
 if [ -n "$version" ]; then
   sed -i '' "s/\"version\": \".*\"/\"version\": \"$version\"/g" package.json
+  npm i
 else
   version=$(grep '"version":' package.json | sed 's/.*"\(.*\)",.*/\1/')
 fi
-npm i
 
 npm publish --dry-run
 echo "^^^ DRY RUN ^^^"
@@ -32,7 +37,7 @@ if [ "$publish" = "y" ]; then
   git add package.json package-lock.json
 
   pushd "../.." >/dev/null
-  npm i ./packages/convex-helpers
+  npm i
   git add package.json package-lock.json
   popd >/dev/null
 

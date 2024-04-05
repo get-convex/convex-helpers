@@ -12,7 +12,8 @@ import {
   PaginationResult,
 } from "convex/server";
 import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
-import { Expand } from "..";
+import { Expand } from "../index.js";
+import { partial } from "../validators.js";
 
 /**
  * Define a table with system fields _id and _creationTime. This also returns
@@ -31,7 +32,7 @@ import { Expand } from "..";
  */
 export function Table<
   T extends Record<string, Validator<any, any, any>>,
-  TableName extends string
+  TableName extends string,
 >(name: TableName, fields: T) {
   const table = defineTable(fields);
   const _id = v.id(name);
@@ -82,8 +83,6 @@ export function deploymentName() {
   return regex.exec(url)?.[1];
 }
 
-import { partial } from "../validators";
-
 /**
  * Create CRUD operations for a table.
  * You can expose these operations in your API. For example, in convex/users.ts:
@@ -117,7 +116,7 @@ export function crud<
   TableName extends string,
   DataModel extends GenericDataModel,
   QueryVisibility extends FunctionVisibility,
-  MutationVisibility extends FunctionVisibility
+  MutationVisibility extends FunctionVisibility,
 >(
   table: {
     name: TableName;

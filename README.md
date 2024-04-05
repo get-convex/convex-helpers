@@ -26,7 +26,7 @@ directory. To use it:
 
 ```sh
  npm install convex-helpers@latest
- ```
+```
 
 It doesn't have all of the below features, but the ones it has can be used directly,
 rather than copying the code from this repo.
@@ -38,6 +38,8 @@ See the [README](./packages/convex-helpers/README.md) for more details.
 To run these locally, run: `npm i && npm run dev`.
 This will symlink the packages/convex-helpers directory so you can edit the
 convex helpers source while using it in this example project.
+It will also run `chokidar` to re-compile convex-helpers on file changes.
+See the [watch script](./packages/convex-helpers/package.json) for details.
 
 ## Custom Functions
 
