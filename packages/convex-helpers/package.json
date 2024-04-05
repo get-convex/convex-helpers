@@ -36,6 +36,10 @@
       "types": "./dist/server/index.d.ts",
       "default": "./dist/server/index.js"
     },
+    "./server/migrations": {
+      "types": "./dist/server/migrations.d.ts",
+      "default": "./dist/server/migrations.js"
+    },
     "./server/relationships": {
       "types": "./dist/server/relationships.d.ts",
       "default": "./dist/server/relationships.js"
