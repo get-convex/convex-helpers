@@ -24,7 +24,7 @@
     "zod": "^3.20.2"
   },
   "devDependencies": {
-    "@testing-library/react": "^14.1.2",
+    "@testing-library/react": "^15.0.0",
     "@types/babel__core": "^7.20.0",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.4",
