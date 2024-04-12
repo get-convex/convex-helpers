@@ -16,6 +16,10 @@
       "types": "./dist/validators.d.ts",
       "default": "./dist/validators.js"
     },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
     "./react/sessions": {
       "types": "./dist/react/sessions.d.ts",
       "default": "./dist/react/sessions.js"
