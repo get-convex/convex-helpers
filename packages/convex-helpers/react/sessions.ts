@@ -30,7 +30,9 @@ import { EmptyObject, BetterOmit, assert, Equals } from "../index.js";
 export type UseStorage<T> = (
   key: string,
   initialValue: T
-) => readonly [T, (value: T) => void] | [T, (value: T) => void, () => void];
+) =>
+  | readonly [T, (value: T) => void]
+  | readonly [T, (value: T) => void, () => void];
 
 export type RefreshSessionFn = (
   beforeUpdate?: (newSessionId: SessionId) => any | Promise<any>
