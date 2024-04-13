@@ -53,7 +53,6 @@ import {
 } from "convex/server";
 import { ConvexError, GenericId, ObjectType, v } from "convex/values";
 
-export const DEFAULT_MIGRATIONS_TABLE = "migrations";
 export const DEFAULT_BATCH_SIZE = 100;
 const MIGRATION_QUERY_LIMIT = 1000;
 
@@ -82,17 +81,22 @@ const migrationArgs = {
   batchSize: v.optional(v.number()),
   next: v.optional(v.array(v.string())),
   dryRun: v.optional(v.boolean()),
+  migrationId: v.optional(v.string()),
   // TODO: date range
 };
 type MigrationArgs = ObjectType<typeof migrationArgs>;
 /**
  * Makes the migration wrapper, with types for your
  * own tables, storing metadata in the specified
- * table, or defaulting to "migrations"
+ * table, if you specify one. If you don't specify a table,
+ * it will not store state or check for active migrations.
+ * @param internalMutation - The internal mutation to use for the migration.
+ *   Under the hood it's an internal mutation.
+ * @param opts - if migrationTable is set, it will store state in that table.
  */
 export function makeMigration<
   DataModel extends GenericDataModel,
-  MigrationTable extends string = typeof DEFAULT_MIGRATIONS_TABLE,
+  MigrationTable extends string,
 >(
   internalMutation: MutationBuilder<DataModel, "internal">,
   opts?: {
@@ -100,8 +104,7 @@ export function makeMigration<
     defaultBatchSize?: number;
   }
 ) {
-  const migrationTable =
-    opts?.migrationTable ?? (DEFAULT_MIGRATIONS_TABLE as MigrationTable);
+  const migrationTable = opts?.migrationTable;
   type MigrationDoc = ObjectType<typeof migrationsFields> & {
     _id: GenericId<MigrationTable>;
     _creationTime: number;
@@ -183,11 +186,70 @@ export function makeMigration<
     return internalMutation({
       args: {
         ...migrationArgs,
-        migrationId: v.optional(v.id(migrationTable)),
+        ...(migrationTable ? {} : {}),
       },
       handler: async (ctx, args) => {
+        // How we actually run the migration.
+        async function doMigration(cursor: string | null, batchSize: number) {
+          // Actually do the migration
+          const { continueCursor, page, isDone } = await ctx.db
+            .query(table)
+            .paginate({ cursor, numItems: batchSize });
+          for (const doc of page) {
+            const next = await migrateOne(ctx, doc);
+            if (next) {
+              await ctx.db.patch(doc._id as GenericId<TableName>, next);
+            }
+          }
+          return { continueCursor, page, isDone };
+        }
+
+        // If we aren't keeping track of state, run the migration and
+        // schedule recursively for the next batch.
+        if (!migrationTable) {
+          const { continueCursor, page, isDone } = await doMigration(
+            args.cursor ?? null,
+            args.batchSize ?? defaultBatchSize
+          );
+          if (isDone) {
+            await scheduleNext(ctx, { next: args.next });
+          } else {
+            await ctx.scheduler.runAfter(0, migrationRef(args.fnName), {
+              fnName: args.fnName,
+              batchSize: args.batchSize,
+              cursor: continueCursor,
+              next: args.next,
+            });
+          }
+          const status = {
+            name: args.fnName,
+            table,
+            cursor: continueCursor,
+            batchSize: args.batchSize ?? defaultBatchSize,
+            isDone,
+            processed: page.length,
+            next: args.next,
+          };
+          if (args.dryRun) {
+            // throwing an error rolls back the transaction
+            // so none of this commits
+            throw new ConvexError({
+              kind: "DRY RUN",
+              before: page[0],
+              after: page[0] && (await ctx.db.get(page[0]!._id as any)),
+              ...status,
+            });
+          }
+          console.debug(status);
+          return status;
+        }
+
+        // The rest is for tracking state in the migration table.
         const db = ctx.db as unknown as GenericDatabaseWriter<GenericDataModel>;
-        let migrationId = args.migrationId;
+        let migrationId =
+          args.migrationId === undefined
+            ? null
+            : ctx.db.normalizeId(migrationTable, args.migrationId);
         // The migrationId should only be passed for recursive calls.
         if (!migrationId) {
           // look up self and next[]
@@ -288,19 +350,13 @@ export function makeMigration<
           throw new Error(`${args.fnName}: ${args.migrationId} not found`);
         }
 
-        const cursor = args.cursor ?? status.cursor;
         const batchSize = args.batchSize ?? status.batchSize;
-
         // Actually do the migration
-        const { continueCursor, page, isDone } = await ctx.db
-          .query(table)
-          .paginate({ cursor, numItems: batchSize });
-        for (const doc of page) {
-          const next = await migrateOne(ctx, doc);
-          if (next) {
-            await ctx.db.patch(doc._id as GenericId<TableName>, next);
-          }
-        }
+        const { continueCursor, page, isDone } = await doMigration(
+          args.cursor ?? status.cursor,
+          batchSize
+        );
+
         // Recursive call
         const workerId = isDone
           ? undefined
@@ -345,7 +401,7 @@ export function makeMigration<
     // Schedules the next migration, if there is one.
     async function scheduleNext(
       ctx: GenericMutationCtx<DataModel>,
-      status: MigrationDoc
+      status: { next?: string[]; _id?: GenericId<MigrationTable> }
     ) {
       if (!status.next) return;
       const [first, ...rest] = status.next;
@@ -353,13 +409,15 @@ export function makeMigration<
         fnName: first,
         next: rest.length ? rest : undefined,
       });
-      console.debug({ name: status.name, next: status.next });
+      console.debug({ next: status.next });
       // Clear next, so next invocation won't start it again.
       // Not overriding it in the value passed in, so
       // the caller can see what it scheduled.
-      await ctx.db.patch(status._id, {
-        next: undefined,
-      } as Partial<MigrationMetadata>);
+      if (status._id) {
+        await ctx.db.patch(status._id, {
+          next: undefined,
+        } as Partial<MigrationMetadata>);
+      }
     }
 
     // Skip the next migrations that are already done.
@@ -470,15 +528,15 @@ export async function startMigrationsSerially(
 /**
  *
  * @param ctx Context from a mutation or query. Only needs the db.
- * @param migrations The migrations to get the status of. Defaults to all.
  * @param migrationTable Where the migration state is stored.
  *   Should match the argument to {@link makeMigration}, if set.
+ * @param migrations The migrations to get the status of. Defaults to all.
  * @returns The status of the migrations, in the order of the input.
  */
 export async function getStatus<DataModel extends GenericDataModel>(
   ctx: { db: GenericDatabaseReader<DataModel> },
-  migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[],
-  migrationTable: TableNamesInDataModel<DataModel> = DEFAULT_MIGRATIONS_TABLE
+  migrationTable: TableNamesInDataModel<DataModel>,
+  migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[]
 ) {
   let docs = (await ctx.db
     .query(migrationTable)
@@ -516,8 +574,7 @@ export async function getStatus<DataModel extends GenericDataModel>(
  */
 export async function cancelMigration<
   DataModel extends GenericDataModel,
-  TableName extends
-    TableNamesInDataModel<DataModel> = typeof DEFAULT_MIGRATIONS_TABLE,
+  TableName extends TableNamesInDataModel<DataModel>,
 >(
   ctx: { db: GenericDatabaseReader<DataModel>; scheduler: Scheduler },
   migrationId: GenericId<TableName>
