@@ -106,6 +106,7 @@ export function makeMigration<
     _id: GenericId<MigrationTable>;
     _creationTime: number;
   };
+  const migrationRef = makeFunctionReference<"mutation", MigrationArgs>;
   /**
    * Use this to wrap a mutation that will be run over all documents in a table.
    * Your mutation only needs to handle changing one document at a time,
@@ -267,7 +268,7 @@ export function makeMigration<
           }
           const workerId = await ctx.scheduler.runAfter(
             0,
-            makeFunctionReference<"mutation">(args.fnName),
+            migrationRef(args.fnName),
             // also pass in the mutationId so it knows to run for real
             { fnName: args.fnName, migrationId }
           );
@@ -302,7 +303,7 @@ export function makeMigration<
           ? undefined
           : await ctx.scheduler.runAfter(
               0,
-              makeFunctionReference<"mutation">(args.fnName),
+              migrationRef(args.fnName),
               // Only name is needed, all other state is saved in the table.
               { fnName: args.fnName, migrationId }
             );
@@ -345,11 +346,10 @@ export function makeMigration<
     ) {
       if (!status.next) return;
       const [first, ...rest] = status.next;
-      await ctx.scheduler.runAfter(
-        0,
-        makeFunctionReference<"mutation">(first),
-        { fnName: first, next: rest.length ? rest : undefined }
-      );
+      await ctx.scheduler.runAfter(0, migrationRef(first), {
+        fnName: first,
+        next: rest.length ? rest : undefined,
+      });
       console.debug({ name: status.name, next: status.next });
       // Clear next, so next invocation won't start it again.
       // Not overriding it in the value passed in, so
