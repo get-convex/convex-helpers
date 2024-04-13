@@ -30,7 +30,7 @@ import { EmptyObject, BetterOmit, assert, Equals } from "../index.js";
 export type UseStorage<T> = (
   key: string,
   initialValue: T
-) => readonly [T, (value: T) => void];
+) => readonly [T, (value: T) => void] | [T, (value: T) => void, () => void];
 
 export type RefreshSessionFn = (
   beforeUpdate?: (newSessionId: SessionId) => any | Promise<any>
@@ -43,7 +43,7 @@ const SessionContext = React.createContext<{
 
 type SessionFunction<
   T extends "query" | "mutation" | "action",
-  Args extends any = any
+  Args extends any = any,
 > = FunctionReference<T, "public", { sessionId: SessionId } & Args, any>;
 
 type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
@@ -115,7 +115,7 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
 
 // Like useMutation, but for a Mutation that takes a session ID.
 export function useSessionMutation<
-  Mutation extends SessionFunction<"mutation">
+  Mutation extends SessionFunction<"mutation">,
 >(name: Mutation) {
   const [sessionId] = useSessionId();
   const originalMutation = useMutation(name);
