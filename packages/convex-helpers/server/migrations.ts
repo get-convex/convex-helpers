@@ -44,17 +44,19 @@ import {
   GenericDatabaseWriter,
   GenericDataModel,
   GenericMutationCtx,
+  GenericTableInfo,
   getFunctionName,
   makeFunctionReference,
   MutationBuilder,
+  QueryInitializer,
   RegisteredMutation,
   Scheduler,
   TableNamesInDataModel,
 } from "convex/server";
 import { ConvexError, GenericId, ObjectType, v } from "convex/values";
+import { asyncMap } from "../index.js";
 
 export const DEFAULT_BATCH_SIZE = 100;
-const MIGRATION_QUERY_LIMIT = 1000;
 
 // To be imported if you want to declare it in your schema (optional).
 const migrationsFields = {
@@ -72,7 +74,9 @@ const migrationsFields = {
   latestEnd: v.optional(v.number()),
 };
 type MigrationMetadata = ObjectType<typeof migrationsFields>;
-export const migrationsTable = defineTable(migrationsFields);
+export const migrationsTable = defineTable(migrationsFields).index("name", [
+  "name",
+]);
 
 const migrationArgs = {
   fnName: v.string(),
@@ -253,16 +257,15 @@ export function makeMigration<
         // The migrationId should only be passed for recursive calls.
         if (!migrationId) {
           // look up self and next[]
-          const migrations = (await db
+          const existing = (await db
             .query(migrationTable)
-            .order("desc")
-            .take(MIGRATION_QUERY_LIMIT)) as MigrationDoc[];
-          const existing = migrations.find((m) => m.name === args.fnName);
+            .withIndex("name", (q) => q.eq("name", args.fnName))
+            .unique()) as MigrationDoc | null;
 
           if (existing) {
             migrationId = existing._id;
-            const next = filterNextMigrations(
-              migrations,
+            const next = await filterNextMigrations(
+              db.query(migrationTable),
               args.next ?? existing.next ?? []
             );
             if (existing.isDone && !args.cursor) {
@@ -421,22 +424,18 @@ export function makeMigration<
     }
 
     // Skip the next migrations that are already done.
-    function filterNextMigrations(migrations: MigrationDoc[], next?: string[]) {
+    async function filterNextMigrations(
+      query: QueryInitializer<GenericTableInfo>,
+      next?: string[]
+    ) {
       if (!next?.length) return undefined;
-      const nextMigrations = migrations.reduce(
-        (acc, m) => {
-          const index = next!.findIndex((n) => n === m.name);
-          if (index === -1) acc[index] = m;
-          return acc;
-        },
-        [] as Array<MigrationDoc | undefined>
-      );
-
-      const nextIdx = nextMigrations.findIndex((m) => !m || !m.isDone);
-      if (nextIdx !== -1) {
-        // Override the next migrations that we'll return
-        // even though we're patching it to delete next.
-        return next!.slice(nextIdx);
+      for (let i = 0; i < next.length; i++) {
+        const doc = (await query
+          .withIndex("name", (q) => q.eq("name", next[i]))
+          .unique()) as MigrationDoc | null;
+        if (!doc || !doc.isDone) {
+          return next.slice(i);
+        }
       }
       return [];
     }
@@ -538,20 +537,25 @@ export async function getStatus<DataModel extends GenericDataModel>(
   migrationTable: TableNamesInDataModel<DataModel>,
   migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[]
 ) {
-  let docs = (await ctx.db
-    .query(migrationTable)
-    .order("desc")
-    .take(MIGRATION_QUERY_LIMIT)) as MigrationMetadata[];
-  if (migrations) {
-    const names = migrations.map(getFunctionName);
-    docs = docs.reduce((acc, m) => {
-      const nameIdx = names.indexOf(m.name);
-      if (nameIdx !== -1) {
-        acc[nameIdx] = m;
-      }
-      return acc;
-    }, [] as MigrationMetadata[]);
-  }
+  const docs = migrations
+    ? await asyncMap(
+        migrations,
+        async (m) =>
+          ((await ctx.db
+            .query(migrationTable)
+            .withIndex("name", (q) => q.eq("name", getFunctionName(m) as any))
+            .unique()) as MigrationMetadata | null) ?? {
+            name: getFunctionName(m),
+            status: "not found",
+            workerId: undefined,
+            isDone: false,
+          }
+      )
+    : ((await ctx.db
+        .query(migrationTable)
+        .order("desc")
+        .take(100)) as MigrationMetadata[]);
+
   return Promise.all(
     docs.map(async (migration) => {
       const { workerId, isDone } = migration;
