@@ -229,6 +229,7 @@ export function makeMigration<
             if (args.cursor !== undefined) {
               patch.cursor = args.cursor;
               patch.latestStart = Date.now();
+              patch.isDone = false;
             }
             if (Object.keys(patch).length) {
               // If it's active, this will conflict with the active batch,
@@ -266,6 +267,8 @@ export function makeMigration<
               latestStart: Date.now(),
             } as MigrationMetadata);
           }
+          // This invocation is just setting up metadata for the migration.
+          // Actually start doing the work in the next call.
           const workerId = await ctx.scheduler.runAfter(
             0,
             migrationRef(args.fnName),
