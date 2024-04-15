@@ -19,7 +19,6 @@ import type * as crudExample from "../crudExample.js";
 import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as filterExample from "../filterExample.js";
 import type * as http from "../http.js";
-import type * as lib_migrations from "../lib/migrations.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
 import type * as lib_withUser from "../lib/withUser.js";
 import type * as lib_withZod from "../lib/withZod.js";
@@ -47,7 +46,6 @@ declare const fullApi: ApiFromModules<{
   customFunctionExample: typeof customFunctionExample;
   filterExample: typeof filterExample;
   http: typeof http;
-  "lib/migrations": typeof lib_migrations;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
   "lib/withUser": typeof lib_withUser;
   "lib/withZod": typeof lib_withZod;
