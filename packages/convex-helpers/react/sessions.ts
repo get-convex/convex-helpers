@@ -16,7 +16,13 @@
  * See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies)
  * for more information.
  */
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type {
   FunctionArgs,
   FunctionReference,
@@ -58,6 +64,8 @@ type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action">> =
     ? [args?: EmptyObject]
     : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
 
+export const SSR_DEFAULT = "SSR default session ID" as SessionId;
+
 /**
  * Context for a Convex session, creating a server session and providing the id.
  *
@@ -73,18 +81,34 @@ export const SessionProvider: React.FC<{
   useStorage?: UseStorage<SessionId>;
   storageKey?: string;
   idGenerator?: () => string;
+  ssrFriendly?: boolean;
   children?: React.ReactNode;
-}> = ({ useStorage, storageKey, idGenerator, children }) => {
+}> = ({ useStorage, storageKey, idGenerator, ssrFriendly, children }) => {
   const storeKey = storageKey ?? "convex-session-id";
-  const idGen = idGenerator ?? crypto.randomUUID.bind(crypto);
-  const initialId = useMemo(() => idGen() as SessionId, []);
+  function idGen() {
+    // On the server, crypto may not be defined.
+    return (idGenerator ?? crypto.randomUUID.bind(crypto))() as SessionId;
+  }
   // Get or set the ID from our desired storage location.
   const useStorageOrDefault = useStorage ?? useSessionStorage;
-  const [sessionId, setSessionId] = useStorageOrDefault(storeKey, initialId);
+  const [sessionId, setSessionId] = useStorageOrDefault(
+    storeKey,
+    ssrFriendly ? SSR_DEFAULT : idGen()
+  );
+
+  const [initial, setInitial] = useState(true);
+  if (ssrFriendly) {
+    // Generate a new session ID on first load.
+    // This is to get around SSR issues with localStorage.
+    useEffect(() => {
+      if (sessionId === SSR_DEFAULT) setSessionId(idGen());
+      if (initial) setInitial(false);
+    }, [setSessionId, sessionId, setInitial, initial]);
+  }
 
   const refreshSessionId = useCallback<RefreshSessionFn>(
     async (beforeUpdate) => {
-      const newSessionId = idGen() as SessionId;
+      const newSessionId = idGen();
       if (beforeUpdate) {
         await beforeUpdate(newSessionId);
       }
@@ -93,12 +117,15 @@ export const SessionProvider: React.FC<{
     },
     [setSessionId]
   );
-
-  return React.createElement(
-    SessionContext.Provider,
-    { value: { sessionId, refreshSessionId } },
-    children
+  const value = useMemo(
+    () => ({
+      sessionId: initial && ssrFriendly ? SSR_DEFAULT : sessionId,
+      refreshSessionId,
+    }),
+    [initial, ssrFriendly, sessionId, refreshSessionId]
   );
+
+  return React.createElement(SessionContext.Provider, { value }, children);
 };
 
 // Like useQuery, but for a Query that takes a session ID.
@@ -106,8 +133,8 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
   query: Query,
   ...args: SessionQueryArgsArray<Query>
 ): FunctionReturnType<Query> | undefined {
-  const skip = args[0] === "skip";
   const [sessionId] = useSessionId();
+  const skip = args[0] === "skip" || sessionId === SSR_DEFAULT;
   const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
 
   const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
