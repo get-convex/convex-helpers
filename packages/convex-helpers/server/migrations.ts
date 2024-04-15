@@ -34,7 +34,7 @@ import {
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
-import { ConvexError, GenericId, ObjectType, v } from "convex/values";
+import { GenericId, ObjectType, v } from "convex/values";
 import { asyncMap, TypeError } from "../index.js";
 
 export const DEFAULT_BATCH_SIZE = 100;
@@ -266,11 +266,12 @@ export function makeMigration<
           }
           if (args.dryRun) {
             // Throwing an error rolls back the transaction
-            throw new ConvexError({
+            console.debug({
               before: page[0],
               after: page[0] && (await ctx.db.get(page[0]!._id as any)),
-              ...state,
+              state,
             });
+            throw new Error("Dry run");
           }
         } else {
           // This happens if:
@@ -306,11 +307,13 @@ export function makeMigration<
             migrationRef(args.fn),
             { ...args, cursor: state.cursor }
           );
+          if (!state._id) console.debug(`Next cursor: ${state.cursor}`);
         } else {
           // Schedule the next migration in the series.
           const next = args.next ?? [];
           // Find the next migration that hasn't been done.
-          for (let i = 0; i < next.length; i++) {
+          let i = 0;
+          for (; i < next.length; i++) {
             const doc =
               migrationTableName &&
               (await db
@@ -324,23 +327,30 @@ export function makeMigration<
                   fn: nextFn,
                   next: rest,
                 });
-                console.debug({ scheduling: nextFn, remaining: rest });
               }
               break;
             }
+          }
+          if (args.cursor === undefined) {
+            if (i === next.length) {
+              console.debug(`Migration${i > 0 ? "s" : ""} already done.`);
+            }
+          } else {
+            console.debug(
+              `Migration ${args.fn} is done.` +
+                (i < next.length ? ` Next: ${next[i]}` : "")
+            );
           }
         }
 
         // Step 4: Update the state
         if (state._id) {
           await db.patch(state._id, state);
-        } else {
-          const { cursor, isDone } = state;
-          console.debug(isDone ? "Migration done" : `Next cursor: ${cursor}`);
         }
         if (args.dryRun) {
           // By throwing an error, the transaction will be rolled back.
-          throw new ConvexError({ args, ...state });
+          console.debug({ args, state });
+          throw new Error("Dry run");
         }
         return state;
       },
