@@ -57,7 +57,7 @@ export const migrationsTable = defineTable(migrationsFields).index("name", [
 ]);
 
 const migrationArgs = {
-  fnName: v.string(),
+  fn: v.string(),
   cursor: v.optional(v.union(v.string(), v.null())),
   batchSize: v.optional(v.number()),
   next: v.optional(v.array(v.string())),
@@ -141,20 +141,20 @@ export function makeMigration<
    * You can run this manually from the CLI or dashboard:
    * ```sh
    * # Start or resume a migration. No-ops if it's already done:
-   * npx convex run migrations:myMigration '{fnName: "migrations:myMigration"}'
+   * npx convex run migrations:myMigration '{fn: "migrations:myMigration"}'
    *
    * # Restart a migration from a cursor (null is from the beginning):
-   * '{fnName: "migrations:foo", cursor: null }'
+   * '{fn: "migrations:foo", cursor: null }'
    *
    * # Dry run - runs one batch but doesn't schedule or commit changes.
    * # so you can see what it would do without committing the transaction.
-   * '{fnName: "migrations:foo", dryRun: true }'
+   * '{fn: "migrations:foo", dryRun: true }'
    *
    * # Run many migrations serially:
-   * '{fnName: "migrations:foo", next: ["migrations:bar", "migrations:baz"] }'
+   * '{fn: "migrations:foo", next: ["migrations:bar", "migrations:baz"] }'
    * ```
    *
-   * The fnName is the string form of the function reference. See:
+   * The fn is the string form of the function reference. See:
    * https://docs.convex.dev/functions/query-functions#query-names
    *
    * To call it directly within a function:
@@ -218,7 +218,7 @@ export function makeMigration<
         >;
         // Step 1: Get or create the state.
         let state: MigrationMetadata & { _id?: GenericId<MigrationTable> } = {
-          name: args.fnName,
+          name: args.fn,
           table,
           cursor: args.cursor ?? null,
           isDone: false,
@@ -228,7 +228,7 @@ export function makeMigration<
         if (migrationTableName) {
           const existing = await db
             .query(migrationTableName)
-            .withIndex("name", (q) => q.eq("name", args.fnName))
+            .withIndex("name", (q) => q.eq("name", args.fn))
             .unique();
           if (existing) {
             state = existing as MigrationDoc;
@@ -303,7 +303,7 @@ export function makeMigration<
           // Recursively schedule the next batch.
           state.workerId = await ctx.scheduler.runAfter(
             0,
-            migrationRef(args.fnName),
+            migrationRef(args.fn),
             { ...args, cursor: state.cursor }
           );
         } else {
@@ -321,7 +321,7 @@ export function makeMigration<
               const [nextFn, ...rest] = next.slice(i);
               if (nextFn) {
                 await ctx.scheduler.runAfter(0, migrationRef(nextFn), {
-                  fnName: nextFn,
+                  fn: nextFn,
                   next: rest,
                 });
                 console.debug({ scheduling: nextFn, remaining: rest });
@@ -382,7 +382,7 @@ export async function startMigration(
 ) {
   // Future: Call it so that it can return the id: ctx.runMutation?
   await ctx.scheduler.runAfter(0, fnRef, {
-    fnName: getFunctionName(fnRef),
+    fn: getFunctionName(fnRef),
     batchSize: opts?.batchSize,
     cursor: opts?.startCursor,
     dryRun: opts?.dryRun ?? false,
@@ -420,7 +420,7 @@ export async function startMigrationsSerially(
   if (fnRefs.length === 0) return;
   const [fnRef, ...rest] = fnRefs;
   await ctx.scheduler.runAfter(0, fnRef, {
-    fnName: getFunctionName(fnRef),
+    fn: getFunctionName(fnRef),
     next: rest.map(getFunctionName),
   });
 }
