@@ -74,6 +74,11 @@ export const SSR_DEFAULT = "SSR default session ID" as SessionId;
  *  - localStorage is shared between tabs, but not browser profiles.
  * @param storageKey - Key under which to store the session ID in the store
  * @param idGenerator - Function to return a new, unique session ID string. Defaults to crypto.randomUUID
+ * @param ssrFriendly - Returns SSR_DEFAULT on the first pass, so hydration
+ *   doesn't mismatch and an ID isn't generated server-side.
+ *   useSessionQuery will skip queries until there is a real value.
+ *   However, if you're using useSessionId, consider checking for SSR_DEFAULT.
+ *   Defaults to false, where it will always return a valid id.
  * @returns A provider to wrap your React nodes which provides the session ID.
  * To be used with useSessionQuery and useSessionMutation.
  */
