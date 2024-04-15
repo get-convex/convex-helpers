@@ -247,9 +247,14 @@ export function makeMigration<
             .query(table)
             .paginate({ cursor, numItems });
           for (const doc of page) {
-            const next = await migrateOne(ctx, doc);
-            if (next) {
-              await ctx.db.patch(doc._id as GenericId<TableName>, next);
+            try {
+              const next = await migrateOne(ctx, doc);
+              if (next) {
+                await ctx.db.patch(doc._id as GenericId<TableName>, next);
+              }
+            } catch (error) {
+              console.error(`Document failed: ${doc._id}`);
+              throw error;
             }
           }
           state.cursor = continueCursor;
@@ -329,6 +334,9 @@ export function makeMigration<
         // Step 4: Update the state
         if (state._id) {
           await db.patch(state._id, state);
+        } else {
+          const { cursor, isDone } = state;
+          console.debug(isDone ? "Migration done" : `Next cursor: ${cursor}`);
         }
         if (args.dryRun) {
           // By throwing an error, the transaction will be rolled back.
