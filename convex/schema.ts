@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { Users } from "./validatorsExample";
+import { migrationsTable } from "convex-helpers/server/migrations";
 
 export default defineSchema({
   users: Users.table.index("tokenIdentifier", ["tokenIdentifier"]),
@@ -26,4 +27,5 @@ export default defineSchema({
     .index("user_room", ["user", "room"]),
   counter_table: defineTable({ name: v.string(), counter: v.number() }),
   notes: defineTable({ session: v.string(), note: v.string() }),
+  migrations: migrationsTable,
 });
