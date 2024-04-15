@@ -35,7 +35,7 @@ import {
   TableNamesInDataModel,
 } from "convex/server";
 import { ConvexError, GenericId, ObjectType, v } from "convex/values";
-import { asyncMap, Error } from "../index.js";
+import { asyncMap, TypeError } from "../index.js";
 
 export const DEFAULT_BATCH_SIZE = 100;
 
@@ -71,7 +71,7 @@ type MigrationTableNames<DataModel extends GenericDataModel> = {
     NamedTableInfo<DataModel, K>
   > extends MigrationMetadata
     ? K
-    : Error<"Add migrationsTable to your schema">;
+    : TypeError<"Add migrationsTable to your schema">;
 }[TableNamesInDataModel<DataModel>];
 
 /**
