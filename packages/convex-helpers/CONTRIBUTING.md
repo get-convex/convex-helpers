@@ -51,6 +51,8 @@ tag the commit with the version, and push the current branch & that tag.
 
 ### Alpha releases
 
-For alpha releases, you can run this beforehand to bump the version:
-`npm version prerelease --preid alpha && git add package*`. Only use alpha, otherwise npm won't tag
-it correctly and it might suggest it as `convex-helpers@latest`.
+For alpha releases, you can run `./publish.sh alpha`.
+Or run this beforehand to bump the version:
+`npm version prerelease --preid alpha && git add package*`.
+Only use alpha, otherwise npm won't tag it correctly and it might suggest it as
+`convex-helpers@latest` instead of just as `convex-helpers@alpha`.
