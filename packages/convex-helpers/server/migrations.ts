@@ -129,7 +129,7 @@ export function makeMigration<
    * passed into migrateOne.
    * Optionally specify a custom batch size to override the default.
    *
-   * e.g.
+   * In convex/migrations.ts for example:
    * ```ts
    * // in convex/migrations.ts for example
    * export const myMigration = migration({
