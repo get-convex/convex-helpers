@@ -492,9 +492,10 @@ export async function getStatus<DataModel extends GenericDataModel>(
 export async function cancelMigration<DataModel extends GenericDataModel>(
   ctx: { db: GenericDatabaseReader<DataModel>; scheduler: Scheduler },
   migrationTable: MigrationTableNames<DataModel>,
-  migration: FunctionReference<"mutation", "internal", MigrationArgs>
+  migration: FunctionReference<"mutation", "internal", MigrationArgs> | string
 ) {
-  const name = getFunctionName(migration);
+  const name =
+    typeof migration === "string" ? migration : getFunctionName(migration);
   const state = (await ctx.db
     .query(migrationTable)
     .withIndex("name", (q) => q.eq("name", name as any))

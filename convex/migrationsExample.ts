@@ -1,11 +1,15 @@
 import {
+  cancelMigration,
+  getStatus,
   makeMigration,
   startMigration,
   startMigrationsSerially,
 } from "convex-helpers/server/migrations";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { asyncMap } from "convex-helpers";
+import { v } from "convex/values";
+import { makeFunctionReference } from "convex/server";
 
 const migration = makeMigration(internalMutation, {
   migrationTable: "migrations",
@@ -45,6 +49,17 @@ const standardMigrations = [
   internal.migrationsExample.increment,
   internal.migrationsExample.cleanUpBrokenRefs,
 ];
+
+export const status = internalQuery(async (ctx) => {
+  return await getStatus(ctx, "migrations");
+});
+
+export const cancel = internalMutation({
+  args: { fn: v.string() },
+  handler: async (ctx, { fn }) => {
+    return await cancelMigration(ctx, "migrations", fn);
+  },
+});
 
 // Incorporate into some general setup script
 // Call from CLI: `npx convex run migrationsExample`
