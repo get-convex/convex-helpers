@@ -3,9 +3,11 @@
 A collection of useful code to complement the official packages.
 
 Table of contents:
+
 - [Custom Functions](#custom-functions)
 - [Relationship helpers](#relationship-helpers)
 - [Action retry wrapper](#action-retries)
+- [Stateful migrations](#stateful-migrations)
 - [Sessions](#session-tracking-via-client-side-sessionid-storage)
 - [Row-level security](#row-level-security)
 - [Zod validation](#zod-validation)
@@ -50,7 +52,7 @@ export const getSomeData = myQueryBuilder({
     const { db, apiUser, scheduler } = ctx;
     const { someArg } = args;
     // ...
-  }
+  },
 });
 ```
 
@@ -100,6 +102,7 @@ idempotent or doesn't have any unsafe side effects.
 See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
 
 Example:
+
 ```ts
  // in convex/utils.ts
  import { makeActionRetrier } from "convex-helpers/server/retries";
@@ -114,7 +117,83 @@ Example:
      await runWithRetries(ctx, internal.myModule.myAction, { arg1: 123 });
    }
  });
+```
 
+## Stateful migrations
+
+A helper to define and run migrations. You can persist the migration state to a
+table so you can query the status, or use it without persistence.
+
+See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
+
+In `convex/schema.ts` (if you want persistence):
+
+```ts
+// In convex/schema.ts
+import { migrationsTable } from "convex-helpers/server/migrations";
+export default defineSchema({
+  migrations: migrationsTable,
+  // other tables...
+});
+```
+
+In `convex/migrations.ts` (or wherever you want to define them):
+
+```ts
+import { makeMigration } from "convex-helpers/server/migrations";
+import { internalMutation } from "./_generated/server";
+
+const migration = makeMigration(internalMutation, {
+  migrationTable: "migrations",
+});
+
+export const myMigration = migration({
+  table: "users",
+  migrateOne: async (ctx, doc) => {
+    await ctx.db.patch(doc._id, { newField: "value" });
+  },
+});
+```
+
+To run from the CLI / dashboard:
+You can run this manually from the CLI or dashboard:
+
+```sh
+# Start or resume a migration. No-ops if it's already done:
+npx convex run migrations:myMigration '{fn: "migrations:myMigration"}'
+```
+
+Or call it directly within a function:
+
+```ts
+import { startMigration } from "convex-helpers/server/migrations";
+
+//... within a mutation or action
+await startMigration(ctx, internal.migrations.myMigration, {
+  startCursor: null, // optional override
+  batchSize: 10, // optional override
+});
+```
+
+Or define many to run in series (skips already completed migrations / rows):
+
+```ts
+import { startMigrationsSerially } from "convex-helpers/server/migrations";
+import { internalMutation } from "./_generated/server";
+
+export default internalMutation(async (ctx) => {
+  await startMigrationsSerially(ctx, [
+    internal.migrations.myMigration,
+    internal.migrations.myOtherMigration,
+    //...
+  ]);
+});
+```
+
+If this default export is in `convex/migrations.ts` you can run:
+
+```sh
+npx convex run migrations --prod
 ```
 
 ## Session tracking via client-side sessionID storage

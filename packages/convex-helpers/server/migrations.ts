@@ -82,13 +82,15 @@ type MigrationTableNames<DataModel extends GenericDataModel> = {
  * e.g. in your schema:
  * ```ts
  * import { migrationsTable } from "convex-helpers/server/migrations";
- * defineSchema({
+ * export default defineSchema({
  *  migrations: migrationsTable,
  *  // other tables...
  * })
  * ```
  * And in convex/migrations.ts for example:
  * ```ts
+ * import { makeMigration } from "convex-helpers/server/migrations";
+ * import { internalMutation } from "./_generated/server";
  * const migration = makeMigration(internalMutation, {
  *   migrationTable: "migrations",
  * });

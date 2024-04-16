@@ -8,13 +8,14 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 | In the [`convex-helpers`](./packages/convex-helpers/) [npm package](https://www.npmjs.com/package/convex-helpers):    | In this directory for copy-pasting:                                                     |
 | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)                                              | [Migrations](#migrations-data-mutations)                                                |
-| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)                                      | [Sessions: via a server table](#server-persisted-session-data)                          |
-| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [The withUser utility](#authentication-withuser)                                        |
-| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                          | [Testing with a local backend](#testing-with-a-local-backend)                           |
-| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                  | [Presence](#presence)                                                                   |
-| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)            | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
-| [CRUD](./packages/convex-helpers/README.md#crud-utilities)                                                            | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
+| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)                                              | [Sessions: via a server table](#server-persisted-session-data)                          |
+| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)                                      | [The withUser utility](#authentication-withuser)                                        |
+| [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)                                        | [Testing with a local backend](#testing-with-a-local-backend)                           |
+| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [Presence](#presence)                                                                   |
+| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                          | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
+| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                  | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
+| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)            |
+| [CRUD](./packages/convex-helpers/README.md#crud-utilities)                                                            |
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)                                        |
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)                                               |
 | [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)                                            |
@@ -109,12 +110,8 @@ will check your access rules on read/insert/modify per-document.
 See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
 and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
 
-Use the [migration](./convex/lib/migrations.ts) wrapper to define a function to
-run over a given table.
-It generates an internalMutation to migrate a batch of documents.
-
-Run the mutation to test it out, then run it over the whole table with the
-[runMigration](./convex/lib/migrations.ts) action.
+See the [convex-helpers package](./packages/convex-helpers/README.md)
+for examples and usage.
 
 ## Relationship helpers
 

@@ -7,9 +7,7 @@ import {
 } from "convex-helpers/server/migrations";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { asyncMap } from "convex-helpers";
 import { v } from "convex/values";
-import { makeFunctionReference } from "convex/server";
 
 const migration = makeMigration(internalMutation, {
   migrationTable: "migrations",
@@ -65,9 +63,6 @@ export const cancel = internalMutation({
 // Call from CLI: `npx convex run migrationsExample`
 // As part of a deploy script:
 //  `npx convex deploy && npx convex run --prod migrationsExample`
-export default internalMutation({
-  args: {},
-  handler: async (ctx) => {
-    await startMigrationsSerially(ctx, standardMigrations);
-  },
+export default internalMutation(async (ctx) => {
+  await startMigrationsSerially(ctx, standardMigrations);
 });
