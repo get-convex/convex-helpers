@@ -126,7 +126,7 @@ export const SessionProvider: React.FC<{
         ssrFriendly && initial ? SSR_DEFAULT : sessionId || SSR_DEFAULT,
       refreshSessionId,
     }),
-    [sessionId, refreshSessionId]
+    [ssrFriendly, initial, sessionId, refreshSessionId]
   );
 
   return React.createElement(SessionContext.Provider, { value }, children);
