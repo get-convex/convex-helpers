@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.29",
+  "version": "0.1.30-alpha.0",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
@@ -35,6 +35,10 @@
     "./server": {
       "types": "./dist/server/index.d.ts",
       "default": "./dist/server/index.js"
+    },
+    "./server/migrations": {
+      "types": "./dist/server/migrations.d.ts",
+      "default": "./dist/server/migrations.js"
     },
     "./server/relationships": {
       "types": "./dist/server/relationships.d.ts",

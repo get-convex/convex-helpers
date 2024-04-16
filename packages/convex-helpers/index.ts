@@ -99,7 +99,9 @@ export const omit = <T extends Record<string, any>, Keys extends (keyof T)[]>(
 
 // Type utils:
 const error = Symbol();
-export type Error<Reason extends string> = Reason & { __error: typeof error };
+export type TypeError<Reason extends string> = Reason & {
+  __error: typeof error;
+};
 
 // Copied from convex/server since it wasn't exported
 export type EmptyObject = Record<string, never>;
@@ -133,11 +135,10 @@ export type Expand<ObjectType extends Record<any, any>> =
  * Taken from https://github.com/Microsoft/TypeScript/issues/27024#issuecomment-421529650
  * (Apache Version 2.0, January 2004)
  */
-export type Equals<X, Y> = (<T>() => T extends X ? 1 : 2) extends <
-  T
->() => T extends Y ? 1 : 2
-  ? true
-  : false;
+export type Equals<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+    ? true
+    : false;
 
 /**
  * A utility for both compile-time type assertions and runtime assertions.
