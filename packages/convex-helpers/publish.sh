@@ -10,6 +10,10 @@ git diff --exit-code || {
   exit 1
 }
 
+if [ "$1" == "alpha" ]; then
+  npm version prerelease --preid alpha
+fi
+
 cat <<EOF
 Test it:
   - Add some example usage to the outer convex-helpers repo.
