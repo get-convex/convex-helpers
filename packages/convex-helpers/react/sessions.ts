@@ -101,10 +101,12 @@ export const SessionProvider: React.FC<{
     ssrFriendly ? undefined : idGen()
   );
 
+  const [initial, setInitial] = useState(true);
   // Generate a new session ID on first load.
   // This is to get around SSR issues with localStorage.
   useEffect(() => {
     if (!sessionId || sessionId === SSR_DEFAULT) setSessionId(idGen());
+    if (ssrFriendly && initial) setInitial(false);
   }, [setSessionId, sessionId]);
 
   const refreshSessionId = useCallback<RefreshSessionFn>(
@@ -120,7 +122,8 @@ export const SessionProvider: React.FC<{
   );
   const value = useMemo(
     () => ({
-      sessionId: sessionId || SSR_DEFAULT,
+      sessionId:
+        ssrFriendly && initial ? SSR_DEFAULT : sessionId || SSR_DEFAULT,
       refreshSessionId,
     }),
     [sessionId, refreshSessionId]
