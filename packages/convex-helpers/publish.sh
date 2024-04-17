@@ -20,18 +20,19 @@ Test it:
   - Install from another project via \`npm link\`.
   - Run \`npm pack\` and install it elsewhere from the .tgz file.
 EOF
-echo "Current version:"
-grep '"version":' package.json || {
-  echo "No version number found in package.json"
-  exit 1
-}
-read -r -p "Enter the new version number: " version
+echo "Latest versions:"
+npm view convex-helpers@latest version
+npm view convex-helpers@alpha version
+echo "Version in package.json (default):"
+current=$(npm pkg get version | tr -d '"')
+
+read -r -p "Enter the new version number (hit enter for $current): " version
 
 if [ -n "$version" ]; then
-  sed -i '' "s/\"version\": \".*\"/\"version\": \"$version\"/g" package.json
+  npm pkg set version="$version"
   npm i
 else
-  version=$(grep '"version":' package.json | sed 's/.*"\(.*\)",.*/\1/')
+  version=$current
 fi
 
 npm publish --dry-run
