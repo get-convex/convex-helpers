@@ -4,8 +4,9 @@ import {
   useSessionQuery,
 } from "convex-helpers/react/sessions";
 import { api } from "../../convex/_generated/api";
-import { useMutation } from "convex/react";
+import { SessionProvider } from "convex-helpers/react/sessions";
 import { useState } from "react";
+// import { useLocalStorage } from "usehooks-ts";
 
 export default () => {
   const [sessionId, refreshSessionId] = useSessionId();
@@ -15,7 +16,10 @@ export default () => {
   const joinRoom = useSessionMutation(api.sessionsExample.joinRoom);
   const [room, setRoom] = useState("");
   return (
-    <>
+    <SessionProvider
+    // storageKey={"ConvexSessionId"}
+    // useStorage={useLocalStorage}
+    >
       <h2>Sessions Example</h2>
       <span>{sessionId}</span>
       <button
@@ -44,6 +48,6 @@ export default () => {
       <button onClick={() => refreshSessionId((newSessionId) => logout())}>
         Delete Session Data on Log Out
       </button>
-    </>
+    </SessionProvider>
   );
 };

@@ -70,7 +70,7 @@ export const SSR_DEFAULT = "SSR default session ID" as SessionId;
  * Context for a Convex session, creating a server session and providing the id.
  *
  * @param useStorage - Where you want your session ID to be persisted. Roughly:
- *  - sessionStorage is saved per-tab
+ *  - sessionStorage is saved per-tab (default).
  *  - localStorage is shared between tabs, but not browser profiles.
  * @param storageKey - Key under which to store the session ID in the store
  * @param idGenerator - Function to return a new, unique session ID string. Defaults to crypto.randomUUID
@@ -83,7 +83,7 @@ export const SSR_DEFAULT = "SSR default session ID" as SessionId;
  * To be used with useSessionQuery and useSessionMutation.
  */
 export const SessionProvider: React.FC<{
-  useStorage?: UseStorage<SessionId>;
+  useStorage?: UseStorage<SessionId | undefined>;
   storageKey?: string;
   idGenerator?: () => string;
   ssrFriendly?: boolean;
@@ -98,18 +98,16 @@ export const SessionProvider: React.FC<{
   const useStorageOrDefault = useStorage ?? useSessionStorage;
   const [sessionId, setSessionId] = useStorageOrDefault(
     storeKey,
-    ssrFriendly ? SSR_DEFAULT : idGen()
+    ssrFriendly ? undefined : idGen()
   );
 
   const [initial, setInitial] = useState(true);
-  if (ssrFriendly) {
-    // Generate a new session ID on first load.
-    // This is to get around SSR issues with localStorage.
-    useEffect(() => {
-      if (sessionId === SSR_DEFAULT) setSessionId(idGen());
-      if (initial) setInitial(false);
-    }, [setSessionId, sessionId, setInitial, initial]);
-  }
+  // Generate a new session ID on first load.
+  // This is to get around SSR issues with localStorage.
+  useEffect(() => {
+    if (!sessionId || sessionId === SSR_DEFAULT) setSessionId(idGen());
+    if (ssrFriendly && initial) setInitial(false);
+  }, [setSessionId, sessionId]);
 
   const refreshSessionId = useCallback<RefreshSessionFn>(
     async (beforeUpdate) => {
@@ -124,10 +122,11 @@ export const SessionProvider: React.FC<{
   );
   const value = useMemo(
     () => ({
-      sessionId: initial && ssrFriendly ? SSR_DEFAULT : sessionId,
+      sessionId:
+        ssrFriendly && initial ? SSR_DEFAULT : sessionId || SSR_DEFAULT,
       refreshSessionId,
     }),
-    [initial, ssrFriendly, sessionId, refreshSessionId]
+    [ssrFriendly, initial, sessionId, refreshSessionId]
   );
 
   return React.createElement(SessionContext.Provider, { value }, children);
@@ -199,14 +198,20 @@ export function useSessionId() {
   return [ctx.sessionId, ctx.refreshSessionId] as const;
 }
 
-export function useSessionStorage(key: string, initialValue: SessionId) {
+export function useSessionStorage(
+  key: string,
+  initialValue: SessionId | undefined
+) {
   const [value, setValueInternal] = useState(() => {
     if (typeof sessionStorage !== "undefined") {
       const existing = sessionStorage.getItem(key);
       if (existing) {
+        if (existing === "undefined") {
+          return undefined;
+        }
         return existing as SessionId;
       }
-      sessionStorage.setItem(key, initialValue);
+      if (initialValue !== undefined) sessionStorage.setItem(key, initialValue);
     }
     return initialValue;
   });
