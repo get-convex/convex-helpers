@@ -14,6 +14,12 @@
  * - Cancel an in-progress migration.
  * - Run a dry run to see what the migration would do without committing.
  * - Start a migration from an explicit cursor.
+ *
+ * Ideas for the future:
+ * - Only run the migration on documents created before the migration started.
+ * - Allow a migration to run on a time range. e.g. while a bug was live.
+ * - Allow running a migration in reverse order, to prioritize newer documents.
+ * - Allow scheduling multiple batches at once. Maybe partition by time.
  */
 import {
   DataModelFromSchemaDefinition,
@@ -52,6 +58,10 @@ const migrationsFields = {
   latestEnd: v.optional(v.number()),
 };
 type MigrationMetadata = ObjectType<typeof migrationsFields>;
+type MigrationMetadataDoc<TableName extends string> = MigrationMetadata & {
+  _id: GenericId<TableName>;
+  _creationTime: number;
+};
 export const migrationsTable = defineTable(migrationsFields).index("name", [
   "name",
 ]);
@@ -118,10 +128,7 @@ export function makeMigration<
   }
 ) {
   const migrationTableName = opts?.migrationTable;
-  type MigrationDoc = ObjectType<typeof migrationsFields> & {
-    _id: GenericId<MigrationTable>;
-    _creationTime: number;
-  };
+  type MigrationDoc = MigrationMetadataDoc<MigrationTable>;
   const migrationRef = makeFunctionReference<"mutation", MigrationArgs>;
   /**
    * Use this to wrap a mutation that will be run over all documents in a table.
@@ -437,6 +444,21 @@ export async function startMigrationsSerially(
   });
 }
 
+export type MigrationStatus<TableName extends string> = (
+  | MigrationMetadataDoc<TableName>
+  | { name: string; status: "not found"; workerId: undefined; isDone: false }
+) & {
+  workerStatus?:
+    | "pending"
+    | "inProgress"
+    | "success"
+    | "failed"
+    | "canceled"
+    | undefined;
+  batchSize?: any;
+  next?: any;
+};
+
 /**
  * Get the status of a migration or all migrations.
  * @param ctx Context from a mutation or query. Only needs the db.
@@ -445,11 +467,21 @@ export async function startMigrationsSerially(
  * @param migrations The migrations to get the status of. Defaults to all.
  * @returns The status of the migrations, in the order of the input.
  */
-export async function getStatus<DataModel extends GenericDataModel>(
+export async function getStatus<
+  DataModel extends GenericDataModel,
+  MigrationTable extends MigrationTableNames<DataModel>,
+>(
   ctx: { db: GenericDatabaseReader<DataModel> },
-  migrationTable: MigrationTableNames<DataModel>,
-  migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[]
-) {
+  {
+    migrationTable,
+    migrations,
+    limit,
+  }: {
+    migrationTable: MigrationTable;
+    migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[];
+    limit?: number;
+  }
+): Promise<MigrationStatus<MigrationTable>[]> {
   const docs = migrations
     ? await asyncMap(
         migrations,
@@ -457,20 +489,20 @@ export async function getStatus<DataModel extends GenericDataModel>(
           ((await ctx.db
             .query(migrationTable)
             .withIndex("name", (q) => q.eq("name", getFunctionName(m) as any))
-            .unique()) as MigrationMetadata | null) ?? {
+            .unique()) as MigrationMetadataDoc<MigrationTable> | null) ?? {
             name: getFunctionName(m),
-            status: "not found",
+            status: "not found" as const,
             workerId: undefined,
-            isDone: false,
+            isDone: false as const,
           }
       )
     : ((await ctx.db
         .query(migrationTable)
         .order("desc")
-        .take(10)) as MigrationMetadata[]);
+        .take(limit ?? 10)) as MigrationMetadataDoc<MigrationTable>[]);
 
   return Promise.all(
-    docs.map(async (migration) => {
+    docs.reverse().map(async (migration) => {
       const { workerId, isDone } = migration;
       if (isDone) return migration;
       const worker = workerId && (await ctx.db.system.get(workerId));
@@ -506,7 +538,7 @@ export async function cancelMigration<DataModel extends GenericDataModel>(
   if (!state) {
     throw new Error(`Migration ${name} not found`);
   }
-  if (!state.isDone) {
+  if (state.isDone) {
     return state;
   }
   const worker = state.workerId && (await ctx.db.system.get(state.workerId));

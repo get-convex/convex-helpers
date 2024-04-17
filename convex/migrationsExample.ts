@@ -2,6 +2,7 @@ import {
   cancelMigration,
   getStatus,
   makeMigration,
+  MigrationStatus,
   startMigration,
   startMigrationsSerially,
 } from "convex-helpers/server/migrations";
@@ -48,9 +49,11 @@ const standardMigrations = [
   internal.migrationsExample.cleanUpBrokenRefs,
 ];
 
-export const status = internalQuery(async (ctx) => {
-  return await getStatus(ctx, "migrations");
-});
+export const status = internalQuery(
+  async (ctx): Promise<MigrationStatus<"migrations">[]> => {
+    return await getStatus(ctx, { migrationTable: "migrations" });
+  }
+);
 
 export const cancel = internalMutation({
   args: { fn: v.string() },
