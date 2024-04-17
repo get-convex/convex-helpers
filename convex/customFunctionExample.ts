@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  CustomCtx,
   customCtx,
   customMutation,
   customQuery,
@@ -11,8 +12,8 @@ import {
 } from "convex-helpers/server/rowLevelSecurity";
 import { getUserByTokenIdentifier } from "./lib/withUser";
 import { Rules } from "convex-helpers/server/rowLevelSecurity";
-import { DataModel, Doc } from "./_generated/dataModel";
-import { SessionIdArg, vSessionId } from "convex-helpers/server/sessions";
+import { DataModel, Doc, Id } from "./_generated/dataModel";
+import { vSessionId } from "convex-helpers/server/sessions";
 import { filter } from "convex-helpers/server/filter";
 
 const rules: Rules<{ user: Doc<"users"> }, DataModel> = {
@@ -40,16 +41,24 @@ const authenticatedQueryBuilder = customQuery(
   })
 );
 
+type AuthQueryCtx = CustomCtx<typeof authenticatedQueryBuilder>;
+
 // Example query that doesn't specify argument validation (no `args` param).
 export const unvalidatedQuery = authenticatedQueryBuilder((ctx) => {
   return { user: ctx.user };
 });
 
+// You can also use the CustomCtx to type functions that take the custom ctx.
+function getPresenceInternal(
+  ctx: AuthQueryCtx,
+  args: { presenceId: Id<"presence"> }
+) {
+  return ctx.db.get(args.presenceId);
+}
+
 export const getPresence = authenticatedQueryBuilder({
   args: { presenceId: v.id("presence") },
-  handler: async (ctx, args) => {
-    return await ctx.db.get(args.presenceId);
-  },
+  handler: getPresenceInternal,
 });
 
 const apiMutationBuilder = customMutation(mutation, {
@@ -103,10 +112,8 @@ export const someMutation = myMutationBuilder({
 export const queryFiltered = query({
   args: {},
   handler: async (ctx) => {
-    return await filter(ctx.db
-      .query("presence"), async (presence) => {
-        return presence.updated > 10;
-      })
-      .first();
+    return await filter(ctx.db.query("presence"), async (presence) => {
+      return presence.updated > 10;
+    }).first();
   },
 });
