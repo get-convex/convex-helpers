@@ -99,7 +99,7 @@ export const omit = <T extends Record<string, any>, Keys extends (keyof T)[]>(
 
 // Type utils:
 const error = Symbol();
-export type TypeError<Reason extends string> = Reason & {
+export type ErrorMessage<Reason extends string> = Reason & {
   __error: typeof error;
 };
 
