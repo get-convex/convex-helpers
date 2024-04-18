@@ -42,6 +42,7 @@ import {
 } from "convex/server";
 import { GenericId, ObjectType, v } from "convex/values";
 import { asyncMap, ErrorMessage } from "../index.js";
+import { pretendRequired } from "../validators.js";
 
 export const DEFAULT_BATCH_SIZE = 100;
 
@@ -67,7 +68,7 @@ export const migrationsTable = defineTable(migrationsFields).index("name", [
 ]);
 
 const migrationArgs = {
-  fn: v.string(),
+  fn: pretendRequired(v.string()),
   cursor: v.optional(v.union(v.string(), v.null())),
   batchSize: v.optional(v.number()),
   next: v.optional(v.array(v.string())),
@@ -153,14 +154,15 @@ export function makeMigration<
    * npx convex run migrations:myMigration '{fn: "migrations:myMigration"}'
    *
    * # Restart a migration from a cursor (null is from the beginning):
-   * '{fn: "migrations:foo", cursor: null }'
+   * npx convex run migrations:myMigration '{fn: "migrations:foo", cursor: null }'
    *
    * # Dry run - runs one batch but doesn't schedule or commit changes.
    * # so you can see what it would do without committing the transaction.
-   * '{fn: "migrations:foo", dryRun: true }'
+   * npx convex run migrations:myMigration '{ dryRun: true }'
    *
    * # Run many migrations serially:
-   * '{fn: "migrations:foo", next: ["migrations:bar", "migrations:baz"] }'
+   * npx convex run migrations:myMigration '{fn: "migrations:foo", \
+   *   next: ["migrations:bar", "migrations:baz"] }'
    * ```
    *
    * The fn is the string form of the function reference. See:
@@ -170,20 +172,22 @@ export function makeMigration<
    * ```ts
    * import { startMigration } from "convex-helpers/server/migrations";
    *
-   * await startMigration(ctx, internal.migrations.myMigration, {
-   *   startCursor: null, // optional override
-   *   batchSize: 10, // optional override
-   * });
+   * // in a mutation or action:
+   *   await startMigration(ctx, internal.migrations.myMigration, {
+   *     startCursor: null, // optional override
+   *     batchSize: 10, // optional override
+   *   });
    * ```
    *
    * Serially:
    * ```ts
    * import { startMigrationsSerially } from "convex-helpers/server/migrations";
    *
-   * await startMigrationsSerially(ctx, [
-   *  internal.migrations.myMigration,
-   *  internal.migrations.myOtherMigration,
-   * ]);
+   * // in a mutation or action:
+   *   await startMigrationsSerially(ctx, [
+   *    internal.migrations.myMigration,
+   *    internal.migrations.myOtherMigration,
+   *   ]);
    *
    * It runs one batch at a time currently.
    *
@@ -236,8 +240,8 @@ export function makeMigration<
               Use undefined / unset to resume from where it left off.`);
           }
         }
-        if (args.fn === "" && !args.dryRun) {
-          // We allow passing an empty string for dry runs.
+        if (!args.fn && !args.dryRun) {
+          // We allow omitting fn for dry runs.
           // They don't need to recursively schedule.
           throw new Error("fn must be set if dryRun: false.");
         }
