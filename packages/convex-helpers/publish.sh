@@ -23,7 +23,6 @@ EOF
 echo "Latest versions:"
 npm view convex-helpers@latest version
 npm view convex-helpers@alpha version
-echo "Version in package.json (default):"
 current=$(npm pkg get version | tr -d '"')
 
 read -r -p "Enter the new version number (hit enter for $current): " version

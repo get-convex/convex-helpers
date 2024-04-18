@@ -219,6 +219,29 @@ export function makeMigration<
     return internalMutation({
       args: migrationArgs,
       handler: async (ctx, args) => {
+        if (args.batchSize === 0) {
+          throw new Error(
+            "Batch size must be greater than zero.\n" +
+              "Running this from the dashboard? Here's some args to use:\n" +
+              `{ fn: "${args.fn}", cursor: null, dryRun:  }`
+          );
+        }
+        if (args.cursor === "") {
+          if (args.dryRun) {
+            console.warn("Setting cursor to null for dry run");
+            args.cursor = null;
+          } else {
+            throw new Error(`Cursor can't be an empty string.
+              Use null to start from the beginning.
+              Use undefined / unset to resume from where it left off.`);
+          }
+        }
+        if (args.fn === "" && !args.dryRun) {
+          // We allow passing an empty string for dry runs.
+          // They don't need to recursively schedule.
+          throw new Error("fn must be set if dryRun: false.");
+        }
+
         // Making a db typed specifically to the migration table.
         const db = ctx.db as unknown as GenericDatabaseWriter<
           DataModelFromSchemaDefinition<
@@ -234,12 +257,18 @@ export function makeMigration<
           processed: 0,
           latestStart: Date.now(),
         };
-        if (migrationTableName) {
+        if (migrationTableName && args.fn) {
           const existing = await db
             .query(migrationTableName)
             .withIndex("name", (q) => q.eq("name", args.fn))
             .unique();
           if (existing) {
+            if (existing.table !== table) {
+              throw new Error(
+                "Table mismatch: ${existing.table} !== ${table}. " +
+                  "Did you run a migration with the wrong function name?"
+              );
+            }
             state = existing as MigrationDoc;
           } else {
             state._id = await db.insert(migrationTableName, state);
@@ -280,7 +309,7 @@ export function makeMigration<
               after: page[0] && (await ctx.db.get(page[0]!._id as any)),
               state,
             });
-            throw new Error("Dry run");
+            throw new Error("Dry run - rolling back transaction.");
           }
         } else {
           // This happens if:
@@ -359,7 +388,7 @@ export function makeMigration<
         if (args.dryRun) {
           // By throwing an error, the transaction will be rolled back.
           console.debug({ args, state });
-          throw new Error("Dry run");
+          throw new Error("Dry run - rolling back transaction.");
         }
         return state;
       },
