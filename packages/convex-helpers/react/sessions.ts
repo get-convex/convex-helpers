@@ -45,7 +45,7 @@ export type RefreshSessionFn = (
 ) => Promise<SessionId>;
 
 const SessionContext = React.createContext<{
-  sessionId: SessionId;
+  sessionId: SessionId | undefined;
   refreshSessionId: RefreshSessionFn;
 } | null>(null);
 
@@ -63,8 +63,6 @@ type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action">> =
   keyof FunctionArgs<Fn> extends "sessionId"
     ? [args?: EmptyObject]
     : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
-
-export const SSR_DEFAULT = "SSR default session ID" as SessionId;
 
 /**
  * Context for a Convex session, creating a server session and providing the id.
@@ -105,7 +103,7 @@ export const SessionProvider: React.FC<{
   // Generate a new session ID on first load.
   // This is to get around SSR issues with localStorage.
   useEffect(() => {
-    if (!sessionId || sessionId === SSR_DEFAULT) setSessionId(idGen());
+    if (!sessionId) setSessionId(idGen());
     if (ssrFriendly && initial) setInitial(false);
   }, [setSessionId, sessionId]);
 
@@ -122,8 +120,7 @@ export const SessionProvider: React.FC<{
   );
   const value = useMemo(
     () => ({
-      sessionId:
-        ssrFriendly && initial ? SSR_DEFAULT : sessionId || SSR_DEFAULT,
+      sessionId: ssrFriendly && initial ? undefined : sessionId,
       refreshSessionId,
     }),
     [ssrFriendly, initial, sessionId, refreshSessionId]
@@ -138,7 +135,7 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
   ...args: SessionQueryArgsArray<Query>
 ): FunctionReturnType<Query> | undefined {
   const [sessionId] = useSessionId();
-  const skip = args[0] === "skip" || sessionId === SSR_DEFAULT;
+  const skip = args[0] === "skip" || sessionId === undefined;
   const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
 
   const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
@@ -157,6 +154,9 @@ export function useSessionMutation<
     (
       ...args: SessionArgsArray<Mutation>
     ): Promise<FunctionReturnType<Mutation>> => {
+      if (sessionId === undefined) {
+        throw new Error("useSessionMutation: Session ID is not available yet.");
+      }
       const newArgs = {
         ...(args[0] ?? {}),
         sessionId,
@@ -179,6 +179,9 @@ export function useSessionAction<Action extends SessionFunction<"action">>(
     (
       ...args: SessionArgsArray<Action>
     ): Promise<FunctionReturnType<Action>> => {
+      if (sessionId === undefined) {
+        throw new Error("useSessionMutation: Session ID is not available yet.");
+      }
       const newArgs = {
         ...(args[0] ?? {}),
         sessionId,
@@ -190,12 +193,30 @@ export function useSessionAction<Action extends SessionFunction<"action">>(
   );
 }
 
-export function useSessionId() {
+/**
+ * Get the session ID within the SessionProvider context and a refres function.
+ *
+ * @param ssrFriendly - Set if you're using this with ssrFriendly. In these
+ * cases, the session ID will be undefined on the first render.
+ * @returns The current session ID and a function to refresh it.
+ * Note: The session ID will only be undefined on the first render
+ * when ssrFriendly is passed to SessionProvider.
+ */
+export function useSessionId<SSR extends "ssr" | undefined = undefined>(
+  ssrFriendly?: SSR
+): readonly [
+  SSR extends "ssr" ? SessionId | undefined : SessionId,
+  RefreshSessionFn,
+] {
   const ctx = useContext(SessionContext);
   if (ctx === null) {
     throw new Error("Missing a <SessionProvider> wrapping this code.");
   }
-  return [ctx.sessionId, ctx.refreshSessionId] as const;
+  const sessionId = ctx.sessionId;
+  if (ssrFriendly !== "ssr" && sessionId === undefined) {
+    throw new Error("Session ID is not available yet.");
+  }
+  return [sessionId!, ctx.refreshSessionId] as const;
 }
 
 export function useSessionStorage(
