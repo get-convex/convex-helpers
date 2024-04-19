@@ -47,6 +47,7 @@ export type RefreshSessionFn = (
 const SessionContext = React.createContext<{
   sessionId: SessionId | undefined;
   refreshSessionId: RefreshSessionFn;
+  ssrFriendly?: boolean;
 } | null>(null);
 
 type SessionFunction<
@@ -122,6 +123,7 @@ export const SessionProvider: React.FC<{
     () => ({
       sessionId: ssrFriendly && initial ? undefined : sessionId,
       refreshSessionId,
+      ssrFriendly,
     }),
     [ssrFriendly, initial, sessionId, refreshSessionId]
   );
@@ -134,7 +136,7 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
   query: Query,
   ...args: SessionQueryArgsArray<Query>
 ): FunctionReturnType<Query> | undefined {
-  const [sessionId] = useSessionId();
+  const [sessionId] = useSessionId("ssr");
   const skip = args[0] === "skip" || sessionId === undefined;
   const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
 
@@ -147,7 +149,7 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
 export function useSessionMutation<
   Mutation extends SessionFunction<"mutation">,
 >(name: Mutation) {
-  const [sessionId] = useSessionId();
+  const [sessionId] = useSessionId("ssr");
   const originalMutation = useMutation(name);
 
   return useCallback(
@@ -172,7 +174,7 @@ export function useSessionMutation<
 export function useSessionAction<Action extends SessionFunction<"action">>(
   name: Action
 ) {
-  const [sessionId] = useSessionId();
+  const [sessionId] = useSessionId("ssr");
   const originalAction = useAction(name);
 
   return useCallback(
@@ -212,11 +214,16 @@ export function useSessionId<SSR extends "ssr" | undefined = undefined>(
   if (ctx === null) {
     throw new Error("Missing a <SessionProvider> wrapping this code.");
   }
-  const sessionId = ctx.sessionId;
-  if (ssrFriendly !== "ssr" && sessionId === undefined) {
-    throw new Error("Session ID is not available yet.");
+  if (ssrFriendly !== "ssr" && ctx.ssrFriendly) {
+    throw new Error(
+      "When you use ssrFriendly with ConvexProvider, " +
+        "you need to pass 'ssr' to useSessionId."
+    );
   }
-  return [sessionId!, ctx.refreshSessionId] as const;
+  if (!ctx.ssrFriendly && ctx.sessionId === undefined) {
+    throw new Error("Session ID invalid. Clear your storage?");
+  }
+  return [ctx.sessionId!, ctx.refreshSessionId] as const;
 }
 
 export function useSessionStorage(
