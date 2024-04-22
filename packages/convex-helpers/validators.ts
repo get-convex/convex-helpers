@@ -6,13 +6,18 @@ import { Expand } from "./index.js";
  *
  * e.g. `literals("a", 1, false)` is equivalent to
  * `v.union(v.literal("a"), v.literal(1), v.literal(false))`
+ * To use with an array:
+ * ```ts
+ * const myLiterals = ["a", 1, false] as const;
+ * literals(...myLiterals)
+ * ```
  *
  * @param args Values you want to use in a union of literals.
  * @returns A validator for the union of the literals.
  */
 export const literals = <
   V extends string | number | boolean | bigint,
-  T extends [V, V, ...V[]]
+  T extends V[],
 >(
   ...args: T
 ): Validator<T[number]> => {
@@ -100,7 +105,7 @@ export const systemFields = <TableName extends string>(
  */
 export const withSystemFields = <
   TableName extends string,
-  T extends Record<string, Validator<any, any, any>>
+  T extends Record<string, Validator<any, any, any>>,
 >(
   tableName: TableName,
   fields: T
