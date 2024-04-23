@@ -21,6 +21,9 @@ export const literals = <
 >(
   ...args: T
 ): Validator<T[number]> => {
+  if (args.length < 2) {
+    throw new Error("literals needs at least 2 arguments");
+  }
   return v.union(
     v.literal(args[0]),
     v.literal(args[1]),
