@@ -1,11 +1,13 @@
 import {
   useSessionId,
+  useSessionIdArg,
   useSessionMutation,
   useSessionQuery,
 } from "convex-helpers/react/sessions";
 import { api } from "../../convex/_generated/api";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { useState } from "react";
+import { useStableQuery } from "../hooks/useStableQuery";
 // import { useLocalStorage } from "usehooks-ts";
 
 export default () => {
@@ -15,11 +17,12 @@ export default () => {
   const myPresence = useSessionQuery(api.sessionsExample.myPresence);
   const joinRoom = useSessionMutation(api.sessionsExample.joinRoom);
   const [room, setRoom] = useState("");
+  const roomData = useStableQuery(
+    api.sessionsExample.roomPresence,
+    room ? useSessionIdArg({ room }) : "skip"
+  );
   return (
-    <SessionProvider
-    // storageKey={"ConvexSessionId"}
-    // useStorage={useLocalStorage}
-    >
+    <div>
       <h2>Sessions Example</h2>
       <span>{sessionId}</span>
       <button
@@ -44,10 +47,12 @@ export default () => {
           onChange={(e) => setRoom(e.target.value)}
         />
       </form>
+      <p>{JSON.stringify(roomData)}</p>
       <ul>{myPresence && myPresence.map((room) => <li>{room}</li>)}</ul>
+
       <button onClick={() => refreshSessionId((newSessionId) => logout())}>
         Delete Session Data on Log Out
       </button>
-    </SessionProvider>
+    </div>
   );
 };

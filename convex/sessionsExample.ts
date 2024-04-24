@@ -158,6 +158,20 @@ export const myPresence = queryWithSession({
   },
 });
 
+export const roomPresence = queryWithSession({
+  args: { room: v.string() },
+  handler: async (ctx, args) => {
+    const presenceDoc = await ctx.db
+      .query("presence")
+      .withIndex("user_room", (q) =>
+        q.eq("user", ctx.sessionId).eq("room", args.room)
+      )
+      .order("desc")
+      .first();
+    return presenceDoc?.data;
+  },
+});
+
 export const joinRoom = mutationWithSession({
   args: { room: v.string() },
   handler: async (ctx, args) => {

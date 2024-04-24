@@ -255,6 +255,20 @@ export function useSessionId(): readonly [
 }
 
 /**
+ * Use this in place of args to a Convex query that also take a sessionId.
+ * e.g.
+ * ```ts
+ * const myQuery = useQuery(api.foo.bar, useSessionIdArg({ arg: "baz" }));
+ * ```
+ * @param args Usually args to a Convex query that also take a sessionId.
+ * @returns "skip" during server & first client render, if ssrFriendly is set.
+ */
+export function useSessionIdArg<T>(args: T) {
+  const [sessionId] = useSessionId();
+  return sessionId ? { ...args, sessionId } : "skip";
+}
+
+/**
  * Compare with {@link useState}, but also persists the value in sessionStorage.
  * @param key Key to use for sessionStorage.
  * @param initialValue If there is no value in storage, use this.
