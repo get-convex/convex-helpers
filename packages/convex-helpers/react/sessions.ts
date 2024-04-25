@@ -263,9 +263,9 @@ export function useSessionId(): readonly [
  * @param args Usually args to a Convex query that also take a sessionId.
  * @returns "skip" during server & first client render, if ssrFriendly is set.
  */
-export function useSessionIdArg<T>(args: T) {
+export function useSessionIdArg<T>(args: T | "skip") {
   const [sessionId] = useSessionId();
-  return sessionId ? { ...args, sessionId } : "skip";
+  return sessionId && args !== "skip" ? { ...args, sessionId } : "skip";
 }
 
 /**
