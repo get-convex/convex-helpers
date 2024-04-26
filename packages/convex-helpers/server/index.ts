@@ -122,17 +122,19 @@ export function crud<
     name: TableName;
     _id: Validator<GenericId<TableName>>;
     withoutSystemFields: Fields;
-    withSystemFields: Fields;
   },
   query: QueryBuilder<DataModel, QueryVisibility>,
   mutation: MutationBuilder<DataModel, MutationVisibility>
 ) {
+  const systemFields = {
+    _id: v.id(table.name),
+    _creationTime: v.number(),
+  };
   return {
     create: mutation({
       args: {
         ...table.withoutSystemFields,
-        _id: v.optional(v.id(table.name)),
-        _creationTime: v.optional(v.number()),
+        ...partial(systemFields),
       },
       handler: async (ctx, args) => {
         if ("_id" in args) delete args._id;
@@ -175,7 +177,12 @@ export function crud<
     update: mutation({
       args: {
         id: v.id(table.name),
-        patch: v.object(partial(table.withSystemFields)),
+        // this could be partial(table.withSystemFields) but keeping
+        // the api less coupled to Table
+        patch: v.object({
+          ...partial(table.withoutSystemFields),
+          ...partial(systemFields),
+        }),
       },
       handler: async (ctx, args) => {
         await ctx.db.patch(
