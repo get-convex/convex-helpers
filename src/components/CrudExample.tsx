@@ -21,6 +21,7 @@ export default () => {
       <h2>CRUD Example</h2>
       <p>
         <button onClick={() => create(testUser({}))}>Create</button>
+        {user && <button onClick={() => create(user)}>Copy</button>}
       </p>
       <p>
         Read: {id} User Name: {user?.name}

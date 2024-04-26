@@ -122,14 +122,21 @@ export function crud<
     name: TableName;
     _id: Validator<GenericId<TableName>>;
     withoutSystemFields: Fields;
+    withSystemFields: Fields;
   },
   query: QueryBuilder<DataModel, QueryVisibility>,
   mutation: MutationBuilder<DataModel, MutationVisibility>
 ) {
   return {
     create: mutation({
-      args: table.withoutSystemFields,
+      args: {
+        ...table.withoutSystemFields,
+        _id: v.optional(v.id(table.name)),
+        _creationTime: v.optional(v.number()),
+      },
       handler: async (ctx, args) => {
+        if ("_id" in args) delete args._id;
+        if ("_creationTime" in args) delete args._creationTime;
         const id = await ctx.db.insert(
           table.name,
           args as unknown as WithoutSystemFields<
@@ -168,7 +175,7 @@ export function crud<
     update: mutation({
       args: {
         id: v.id(table.name),
-        patch: v.object(partial(table.withoutSystemFields)),
+        patch: v.object(partial(table.withSystemFields)),
       },
       handler: async (ctx, args) => {
         await ctx.db.patch(
