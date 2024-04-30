@@ -7,6 +7,7 @@ import {
 import { defineTable } from "convex/server";
 import { v } from "convex/values";
 import { z } from "zod";
+import { DataModel } from "./_generated/dataModel";
 
 const zQuery = zCustomQuery(query, {
   // You could require arguments for all queries here.
@@ -28,9 +29,19 @@ export const getCounterId = query({
   },
 });
 
+// This is an example of how to make a version of `zid` that
+// enforces that the type matches one of your defined tables.
+// Note that it can't be used in anything imported by schema.ts
+// since the types would be circular.
+// For argument validation it might be useful to you, however.
+const zId = zid<DataModel>;
+
 const kitchenSinkValidator = {
   email: z.string().email(),
-  counterId: zid("counter_table"),
+  // If you want to use the type-safe version we made above:
+  counterId: zId("counter_table"),
+  // Otherwise this is equivalent, but wouldn't catch zid("CounterTable")
+  // counterId: zid("counter_table"),
   num: z.number().min(0),
   nan: z.nan(),
   bigint: z.bigint(),
