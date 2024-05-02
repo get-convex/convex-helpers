@@ -27,7 +27,7 @@ export const literals = <
   return v.union(
     v.literal(args[0]),
     v.literal(args[1]),
-    ...args.slice(2).map(v.literal)
+    ...args.slice(2).map(v.literal),
   ) as Validator<T[number]>;
 };
 
@@ -51,9 +51,12 @@ export const nullable = <V extends Validator<any, false, any>>(x: V) =>
  */
 export const partial = <T extends PropertyValidators>(obj: T) => {
   return Object.fromEntries(
-    Object.entries(obj).map(([k, vv]) => [k, v.optional(vv)])
+    Object.entries(obj).map(([k, vv]) => [
+      k,
+      vv.isOptional ? vv : v.optional(vv),
+    ]),
   ) as unknown as {
-    [K in keyof T]: T[K] extends Validator<infer V, false, infer F>
+    [K in keyof T]: T[K] extends Validator<infer V, boolean, infer F>
       ? Validator<V | undefined, true, F>
       : never;
   };
@@ -91,7 +94,7 @@ export const arrayBuffer = bytes;
  * @returns Validators for the system fields: _id and _creationTime
  */
 export const systemFields = <TableName extends string>(
-  tableName: TableName
+  tableName: TableName,
 ) => ({
   _id: v.id(tableName),
   _creationTime: v.number(),
@@ -111,7 +114,7 @@ export const withSystemFields = <
   T extends Record<string, Validator<any, any, any>>,
 >(
   tableName: TableName,
-  fields: T
+  fields: T,
 ) => {
   const system = systemFields(tableName);
   return {
@@ -161,7 +164,7 @@ export const deprecated = v.optional(v.any()) as Validator<null, true>;
  * });
  */
 export const pretend = <T extends Validator<any, any, any>>(
-  _typeToImmitate: T
+  _typeToImmitate: T,
 ): T => v.optional(v.any()) as T;
 
 /** A validator that validates as optional but type checks as required.
@@ -202,5 +205,5 @@ export const pretend = <T extends Validator<any, any, any>>(
  * });
  */
 export const pretendRequired = <T extends Validator<any, false, any>>(
-  optionalType: T
+  optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
