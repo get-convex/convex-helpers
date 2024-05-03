@@ -36,6 +36,6 @@
     "npm-run-all2": "6.1.2",
     "typescript": "5.4.4",
     "vite": "5.2.8",
-    "vitest": "1.4.0"
+    "vitest": "1.6.0"
   }
 }
