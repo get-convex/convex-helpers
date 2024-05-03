@@ -35,13 +35,13 @@ import { EmptyObject, BetterOmit, assert, Equals } from "../index.js";
 
 export type UseStorage<T> = (
   key: string,
-  initialValue: T
+  initialValue: T,
 ) =>
   | readonly [T, (value: T) => void]
   | readonly [T, (value: T) => void, () => void];
 
 export type RefreshSessionFn = (
-  beforeUpdate?: (newSessionId: SessionId) => any | Promise<any>
+  beforeUpdate?: (newSessionId: SessionId) => any | Promise<any>,
 ) => Promise<SessionId>;
 
 const SessionContext = React.createContext<{
@@ -98,12 +98,17 @@ export const SessionProvider: React.FC<{
     // On the server, crypto may not be defined.
     return (idGenerator ?? crypto.randomUUID.bind(crypto))() as SessionId;
   }
+  const initialValue = useMemo(
+    () => (ssrFriendly ? undefined : idGen()),
+    [useStorage],
+  );
   // Get or set the ID from our desired storage location.
   const useStorageOrDefault = useStorage ?? useSessionStorage;
-  const [sessionId, setSessionId] = useStorageOrDefault(
-    storeKey,
-    ssrFriendly ? undefined : idGen()
-  );
+  const [sessionId, setSessionId] = useStorageOrDefault(storeKey, initialValue);
+  useEffect(() => {
+    // If we're not using our session storage, let's ensure they save it.
+    if (useStorage && sessionId) setSessionId(sessionId);
+  }, [useStorage]);
   const [sessionIdPromise, resolveSessionId] = useMemo(() => {
     if (sessionId) return [Promise.resolve(sessionId), (_: SessionId) => {}];
     let resolve: (value: SessionId) => void;
@@ -132,7 +137,7 @@ export const SessionProvider: React.FC<{
       setSessionId(newSessionId);
       return newSessionId;
     },
-    [setSessionId]
+    [setSessionId],
   );
   const value = useMemo(
     () => ({
@@ -141,7 +146,7 @@ export const SessionProvider: React.FC<{
       sessionIdPromise,
       ssrFriendly,
     }),
-    [ssrFriendly, initial, sessionId, refreshSessionId, sessionIdPromise]
+    [ssrFriendly, initial, sessionId, refreshSessionId, sessionIdPromise],
   );
 
   return React.createElement(SessionContext.Provider, { value }, children);
@@ -195,7 +200,7 @@ export function useSessionMutation<
 
       return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
     },
-    [sessionId, originalMutation]
+    [sessionId, originalMutation],
   );
 }
 
@@ -209,7 +214,7 @@ export function useSessionMutation<
  * valid sessionId.
  */
 export function useSessionAction<Action extends SessionFunction<"action">>(
-  name: Action
+  name: Action,
 ) {
   const [sessionId, _, sessionIdPromise] = useSessionId();
   const originalAction = useAction(name);
@@ -225,7 +230,7 @@ export function useSessionAction<Action extends SessionFunction<"action">>(
 
       return originalAction(...([newArgs] as OptionalRestArgs<Action>));
     },
-    [sessionId, originalAction]
+    [sessionId, originalAction],
   );
 }
 
@@ -276,7 +281,7 @@ export function useSessionIdArg<T>(args: T | "skip") {
  */
 export function useSessionStorage(
   key: string,
-  initialValue: SessionId | undefined
+  initialValue: SessionId | undefined,
 ) {
   const [value, setValueInternal] = useState(() => {
     if (typeof sessionStorage !== "undefined") {
@@ -296,7 +301,7 @@ export function useSessionStorage(
       sessionStorage.setItem(key, value);
       setValueInternal(value);
     },
-    [key]
+    [key],
   );
   return [value, setValue] as const;
 }

@@ -5,7 +5,6 @@ import {
   useSessionQuery,
 } from "convex-helpers/react/sessions";
 import { api } from "../../convex/_generated/api";
-import { SessionProvider } from "convex-helpers/react/sessions";
 import { useState } from "react";
 import { useStableQuery } from "../hooks/useStableQuery";
 // import { useLocalStorage } from "usehooks-ts";
@@ -19,7 +18,7 @@ export default () => {
   const [room, setRoom] = useState("");
   const roomData = useStableQuery(
     api.sessionsExample.roomPresence,
-    room ? useSessionIdArg({ room }) : "skip"
+    room ? useSessionIdArg({ room }) : "skip",
   );
   return (
     <div>
