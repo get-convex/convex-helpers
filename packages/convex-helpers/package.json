@@ -113,6 +113,6 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.15.3",
     "chokidar-cli": "3.0.0",
-    "typescript": "5.4.4"
+    "typescript": "5.4.5"
   }
 }
