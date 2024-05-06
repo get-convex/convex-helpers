@@ -126,7 +126,7 @@ export function makeMigration<
   opts?: {
     migrationTable?: MigrationTable;
     defaultBatchSize?: number;
-  }
+  },
 ) {
   const migrationTableName = opts?.migrationTable;
   type MigrationDoc = MigrationMetadataDoc<MigrationTable>;
@@ -208,12 +208,11 @@ export function makeMigration<
     table: TableName;
     migrateOne: (
       ctx: GenericMutationCtx<DataModel>,
-      doc: DocumentByName<DataModel, TableName>
+      doc: DocumentByName<DataModel, TableName>,
     ) =>
       | void
       | Partial<DocumentByName<DataModel, TableName>>
-      | Promise<void>
-      | Promise<Partial<DocumentByName<DataModel, TableName>>>;
+      | Promise<Partial<DocumentByName<DataModel, TableName>> | void>;
     batchSize?: number;
   }) {
     const defaultBatchSize =
@@ -227,7 +226,7 @@ export function makeMigration<
           throw new Error(
             "Batch size must be greater than zero.\n" +
               "Running this from the dashboard? Here's some args to use:\n" +
-              `{ fn: "${args.fn}", cursor: null, dryRun:  }`
+              `{ fn: "${args.fn}", cursor: null, dryRun:  }`,
           );
         }
         if (args.cursor === "") {
@@ -270,7 +269,7 @@ export function makeMigration<
             if (existing.table !== table) {
               throw new Error(
                 "Table mismatch: ${existing.table} !== ${table}. " +
-                  "Did you run a migration with the wrong function name?"
+                  "Did you run a migration with the wrong function name?",
               );
             }
             state = existing as MigrationDoc;
@@ -291,7 +290,7 @@ export function makeMigration<
           for (const doc of page) {
             try {
               const next = await migrateOne(ctx, doc);
-              if (next) {
+              if (next && Object.keys(next).length > 0) {
                 await ctx.db.patch(doc._id as GenericId<TableName>, next);
               }
             } catch (error) {
@@ -347,7 +346,7 @@ export function makeMigration<
           state.workerId = await ctx.scheduler.runAfter(
             0,
             migrationRef(args.fn),
-            { ...args, cursor: state.cursor }
+            { ...args, cursor: state.cursor },
           );
           if (!state._id) console.debug(`Next cursor: ${state.cursor}`);
         } else {
@@ -380,7 +379,7 @@ export function makeMigration<
           } else {
             console.debug(
               `Migration ${args.fn} is done.` +
-                (i < next.length ? ` Next: ${next[i]}` : "")
+                (i < next.length ? ` Next: ${next[i]}` : ""),
             );
           }
         }
@@ -430,7 +429,7 @@ export async function startMigration(
     startCursor?: string | null;
     batchSize?: number;
     dryRun?: boolean;
-  }
+  },
 ) {
   // Future: Call it so that it can return the id: ctx.runMutation?
   await ctx.scheduler.runAfter(0, fnRef, {
@@ -467,7 +466,7 @@ export async function startMigration(
  */
 export async function startMigrationsSerially(
   ctx: { scheduler: Scheduler },
-  fnRefs: FunctionReference<"mutation", "internal", MigrationArgs>[]
+  fnRefs: FunctionReference<"mutation", "internal", MigrationArgs>[],
 ) {
   if (fnRefs.length === 0) return;
   const [fnRef, ...rest] = fnRefs;
@@ -513,7 +512,7 @@ export async function getStatus<
     migrationTable: MigrationTable;
     migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[];
     limit?: number;
-  }
+  },
 ): Promise<MigrationStatus<MigrationTable>[]> {
   const docs = migrations
     ? await asyncMap(
@@ -527,7 +526,7 @@ export async function getStatus<
             status: "not found" as const,
             workerId: undefined,
             isDone: false as const,
-          }
+          },
       )
     : ((await ctx.db
         .query(migrationTable)
@@ -545,7 +544,7 @@ export async function getStatus<
         batchSize: worker?.args[0]?.batchSize,
         next: worker?.args[0]?.next,
       };
-    })
+    }),
   );
 }
 
@@ -559,7 +558,7 @@ export async function getStatus<
 export async function cancelMigration<DataModel extends GenericDataModel>(
   ctx: { db: GenericDatabaseReader<DataModel>; scheduler: Scheduler },
   migrationTable: MigrationTableNames<DataModel>,
-  migration: FunctionReference<"mutation", "internal", MigrationArgs> | string
+  migration: FunctionReference<"mutation", "internal", MigrationArgs> | string,
 ) {
   const name =
     typeof migration === "string" ? migration : getFunctionName(migration);
