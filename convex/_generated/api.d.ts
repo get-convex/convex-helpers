@@ -23,7 +23,6 @@ import type * as migrationsExample from "../migrationsExample.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as retriesExample from "../retriesExample.js";
-import type * as rowLevelSecurityExample from "../rowLevelSecurityExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 import type * as zodExample from "../zodExample.js";
@@ -46,7 +45,6 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
   retriesExample: typeof retriesExample;
-  rowLevelSecurityExample: typeof rowLevelSecurityExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
   zodExample: typeof zodExample;
