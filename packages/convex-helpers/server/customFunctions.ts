@@ -41,12 +41,12 @@ export type Mod<
   Ctx extends Record<string, any>,
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>
+  ModMadeArgs extends Record<string, any>,
 > = {
   args: ModArgsValidator;
   input: (
     ctx: Ctx,
-    args: ObjectType<ModArgsValidator>
+    args: ObjectType<ModArgsValidator>,
   ) =>
     | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
     | { ctx: ModCtx; args: ModMadeArgs };
@@ -60,9 +60,9 @@ export type Mod<
  */
 export function customCtx<
   InCtx extends Record<string, any>,
-  OutCtx extends Record<string, any>
+  OutCtx extends Record<string, any>,
 >(
-  mod: (original: InCtx) => Promise<OutCtx> | OutCtx
+  mod: (original: InCtx) => Promise<OutCtx> | OutCtx,
 ): Mod<InCtx, {}, OutCtx, {}> {
   return {
     args: {},
@@ -137,10 +137,10 @@ export function customQuery<
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
-  DataModel extends GenericDataModel
+  DataModel extends GenericDataModel,
 >(
   query: QueryBuilder<DataModel, Visibility>,
-  mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
+  mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
   function customQueryBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
@@ -157,7 +157,7 @@ export function customQuery<
           const added = await inputMod(ctx, split);
           return await fn.handler(
             { ...ctx, ...added.ctx },
-            { ...rest, ...added.args }
+            { ...rest, ...added.args },
           );
         },
       });
@@ -165,14 +165,14 @@ export function customQuery<
     if (Object.keys(inputArgs).length > 0) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too."
+          "modifier, you must declare the arguments for the function too.",
       );
     }
     const handler = fn.handler ?? fn;
     return query({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, args);
+        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
   }
@@ -244,10 +244,15 @@ export function customMutation<
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
-  DataModel extends GenericDataModel
+  DataModel extends GenericDataModel,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
-  mod: Mod<GenericMutationCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
+  mod: Mod<
+    GenericMutationCtx<DataModel>,
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs
+  >,
 ) {
   function customMutationBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
@@ -264,7 +269,7 @@ export function customMutation<
           const added = await inputMod(ctx, split);
           return await fn.handler(
             { ...ctx, ...added.ctx },
-            { ...rest, ...added.args }
+            { ...rest, ...added.args },
           );
         },
       });
@@ -272,14 +277,14 @@ export function customMutation<
     if (Object.keys(inputArgs).length > 0) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too."
+          "modifier, you must declare the arguments for the function too.",
       );
     }
     const handler = fn.handler ?? fn;
     return mutation({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, args);
+        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
   }
@@ -353,10 +358,10 @@ export function customAction<
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
-  DataModel extends GenericDataModel
+  DataModel extends GenericDataModel,
 >(
   action: ActionBuilder<DataModel, Visibility>,
-  mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>
+  mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ): CustomBuilder<
   "action",
   ModArgsValidator,
@@ -380,7 +385,7 @@ export function customAction<
           const added = await inputMod(ctx, split);
           return await fn.handler(
             { ...ctx, ...added.ctx },
-            { ...rest, ...added.args }
+            { ...rest, ...added.args },
           );
         },
       });
@@ -388,14 +393,14 @@ export function customAction<
     if (Object.keys(inputArgs).length > 0) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too."
+          "modifier, you must declare the arguments for the function too.",
       );
     }
     const handler = fn.handler ?? fn;
     return action({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, args);
+        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
   }
@@ -419,10 +424,10 @@ export function customAction<
  */
 export function splitArgs<
   SplitArgsValidator extends PropertyValidators,
-  Args extends Record<string, any>
+  Args extends Record<string, any>,
 >(
   splitArgsValidator: SplitArgsValidator,
-  args: Args & ObjectType<SplitArgsValidator>
+  args: Args & ObjectType<SplitArgsValidator>,
 ): {
   split: ObjectType<SplitArgsValidator>;
   rest: { [k in Exclude<keyof Args, keyof SplitArgsValidator>]: Args[k] };
@@ -450,7 +455,7 @@ export type Registration<
   FuncType extends "query" | "mutation" | "action",
   Visibility extends FunctionVisibility,
   Args extends DefaultFunctionArgs,
-  Output
+  Output,
 > = {
   query: RegisteredQuery<Visibility, Args, Output>;
   mutation: RegisteredMutation<Visibility, Args, Output>;
@@ -467,12 +472,12 @@ type ValidatedBuilder<
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   InputCtx,
-  Visibility extends FunctionVisibility
+  Visibility extends FunctionVisibility,
 > = <ExistingArgsValidator extends PropertyValidators, Output>(fn: {
   args: ExistingArgsValidator;
   handler: (
     ctx: Overwrite<InputCtx, ModCtx>,
-    args: Overwrite<ObjectType<ExistingArgsValidator>, ModMadeArgs>
+    args: Overwrite<ObjectType<ExistingArgsValidator>, ModMadeArgs>,
   ) => Output;
 }) => Registration<
   FuncType,
@@ -491,7 +496,7 @@ export type UnvalidatedBuilder<
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   InputCtx,
-  Visibility extends FunctionVisibility
+  Visibility extends FunctionVisibility,
 > = <Output, ExistingArgs extends DefaultFunctionArgs = DefaultFunctionArgs>(
   fn: UnvalidatedFunction<
     Overwrite<InputCtx, ModCtx>,
@@ -503,7 +508,7 @@ export type UnvalidatedBuilder<
     // This is done to let TypeScript infer what ExistingArgs is more easily.
     [ExistingArgs & ModMadeArgs],
     Output
-  >
+  >,
 ) => Registration<
   FuncType,
   Visibility,
@@ -526,7 +531,7 @@ type CustomBuilder<
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   InputCtx,
-  Visibility extends FunctionVisibility
+  Visibility extends FunctionVisibility,
 > = ModArgsValidator extends EmptyObject
   ? ValidatedBuilder<
       FuncType,
@@ -546,15 +551,16 @@ type CustomBuilder<
       Visibility
     >;
 
-export type CustomCtx<Builder> = Builder extends ValidatedBuilder<
-  any,
-  any,
-  infer ModCtx,
-  any,
-  infer InputCtx,
-  any
->
-  ? Overwrite<InputCtx, ModCtx>
-  : never;
+export type CustomCtx<Builder> =
+  Builder extends ValidatedBuilder<
+    any,
+    any,
+    infer ModCtx,
+    any,
+    infer InputCtx,
+    any
+  >
+    ? Overwrite<InputCtx, ModCtx>
+    : never;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
