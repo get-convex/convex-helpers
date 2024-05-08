@@ -31,7 +31,7 @@ export const ExampleFields = {
   name: string,
   age: number,
   nickname: optional(string),
-  id: optional(id("example_table")),
+  id: optional(id("users")),
   balance: nullable(bigint),
   ephemeral: boolean,
   status: literals("active", "inactive"),

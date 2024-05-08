@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as crud from "../crud.js";
+import type * as customFnTests from "../customFnTests.js";
 import type * as table from "../table.js";
 import type * as validators from "../validators.js";
 
@@ -28,6 +29,7 @@ import type * as validators from "../validators.js";
  */
 declare const fullApi: ApiFromModules<{
   crud: typeof crud;
+  customFnTests: typeof customFnTests;
   table: typeof table;
   validators: typeof validators;
 }>;

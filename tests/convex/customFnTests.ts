@@ -5,61 +5,35 @@ import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
-import { filter } from "convex-helpers/server/filter";
-import {
-  Rules,
-  wrapDatabaseReader,
-  wrapDatabaseWriter,
-} from "convex-helpers/server/rowLevelSecurity";
+import { wrapDatabaseWriter } from "convex-helpers/server/rowLevelSecurity";
 import { vSessionId } from "convex-helpers/server/sessions";
 import { v } from "convex/values";
-import { DataModel, Doc, Id } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
-import { getUserByTokenIdentifier } from "./lib/withUser";
-
-const rules: Rules<{ user: Doc<"users"> }, DataModel> = {
-  presence: {
-    insert: async ({ user }, doc) => {
-      return doc.user === user._id;
-    },
-    read: async ({ user }, doc) => {
-      return true;
-    },
-    modify: async ({ user }, doc) => {
-      return doc.user === user._id;
-    },
-  },
-};
+import { DatabaseReader, mutation, query } from "./_generated/server";
+import { Auth } from "convex/server";
 
 const authenticatedQueryBuilder = customQuery(
   query,
   customCtx(async (ctx) => {
     const user = await getUserByTokenIdentifier(ctx);
-    return {
-      user,
-      db: wrapDatabaseReader({ user }, ctx.db, rules),
-    };
+    return { user };
   }),
 );
 
 type AuthQueryCtx = CustomCtx<typeof authenticatedQueryBuilder>;
 
 // Example query that doesn't specify argument validation (no `args` param).
-export const unvalidatedQuery = authenticatedQueryBuilder((ctx) => {
+export const unvalidatedArgsQuery = authenticatedQueryBuilder((ctx) => {
   return { user: ctx.user };
 });
 
 // You can also use the CustomCtx to type functions that take the custom ctx.
-function getPresenceInternal(
-  ctx: AuthQueryCtx,
-  args: { presenceId: Id<"presence"> },
-) {
-  return ctx.db.get(args.presenceId);
+function getSomethingInternal(ctx: AuthQueryCtx, args: { foo: string }) {
+  return [args.foo, ctx.user._id];
 }
 
-export const getPresence = authenticatedQueryBuilder({
-  args: { presenceId: v.id("presence") },
-  handler: getPresenceInternal,
+export const getSomething = authenticatedQueryBuilder({
+  args: { foo: v.string() },
+  handler: getSomethingInternal,
 });
 
 const apiMutationBuilder = customMutation(mutation, {
@@ -72,52 +46,49 @@ const apiMutationBuilder = customMutation(mutation, {
 });
 
 export const fnCalledFromMyBackend = apiMutationBuilder({
-  args: { increment: v.number() },
+  args: { tokenIdentifier: v.string() },
   handler: async (ctx, args) => {
-    const counter = await ctx.db.query("counter_table").first();
-    if (!counter) throw new Error("Counter not found");
-    await ctx.db.patch(counter._id, {
-      counter: counter.counter + args.increment,
-    });
-    return { success: true };
+    return ctx.db.insert("users", args);
   },
 });
 
 export const myMutationBuilder = customMutation(mutation, {
   args: { sessionId: vSessionId },
   input: async (ctx, { sessionId }) => {
-    const user = await getUserByTokenIdentifier(ctx);
-    const db = wrapDatabaseWriter({ user }, ctx.db, {
-      presence: {
-        modify: async ({ user }, doc) => {
-          return doc.user === user._id;
-        },
+    const db = wrapDatabaseWriter({}, ctx.db, {
+      users: {
+        insert: async (_, doc) =>
+          doc.tokenIdentifier ===
+          (await ctx.auth.getUserIdentity())?.tokenIdentifier,
       },
     });
-    return { ctx: { user, sessionId, db }, args: {} };
+    return { ctx: { sessionId, db }, args: {} };
   },
 });
 
-export const someMutation = myMutationBuilder({
-  args: { someArg: v.string() },
+export const create = myMutationBuilder({
+  args: { tokenIdentifier: v.string() },
   handler: async (ctx, args) => {
-    //...
-    args.someArg;
-    ctx.db;
-    ctx.sessionId;
-    ctx.user;
-    return { success: true };
+    if (!ctx.sessionId) throw new Error("No session ID");
+    return ctx.db.insert("users", args);
   },
 });
 
-export const queryFiltered = query({
-  args: {},
-  handler: async (ctx) => {
-    return await filter(ctx.db.query("presence"), async (presence) => {
-      return presence.updated > 10;
-    }).first();
-  },
-});
+async function getUserByTokenIdentifier(ctx: {
+  auth: Auth;
+  db: DatabaseReader;
+}) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Unauthenticated");
+  const user = await ctx.db
+    .query("users")
+    .withIndex("tokenIdentifier", (q) =>
+      q.eq("tokenIdentifier", identity.tokenIdentifier),
+    )
+    .unique();
+  if (!user) throw new Error("User not found");
+  return user;
+}
 
 /**
  * Type tests
@@ -132,7 +103,7 @@ const addCtxArg = customQuery(
     return { a: "hi" };
   }),
 );
-const addC = addCtxArg({
+export const addC = addCtxArg({
   args: {},
   handler: async (ctx) => {
     return { ctxA: ctx.a }; // !!!
@@ -140,19 +111,19 @@ const addC = addCtxArg({
 });
 queryMatches(addC, {}, { ctxA: "" });
 // Unvalidated
-const addCU = addCtxArg({
+export const addCU = addCtxArg({
   handler: async (ctx) => {
     return { ctxA: ctx.a }; // !!!
   },
 });
 // Unvalidated variant 2
 queryMatches(addCU, {}, { ctxA: "" });
-const addCU2 = addCtxArg(async (ctx) => {
+export const addCU2 = addCtxArg(async (ctx) => {
   return { ctxA: ctx.a }; // !!!
 });
 queryMatches(addCU2, {}, { ctxA: "" });
 
-const addCtxWithExistingArg = addCtxArg({
+export const addCtxWithExistingArg = addCtxArg({
   args: { b: v.string() },
   handler: async (ctx, args) => {
     return { ctxA: ctx.a, argB: args.b }; // !!!
@@ -169,20 +140,20 @@ const addArg = customQuery(query, {
     return { ctx: {}, args: { a: "hi" } };
   },
 });
-const add = addArg({
+export const add = addArg({
   args: {},
   handler: async (_ctx, args) => {
     return { argsA: args.a }; // !!!
   },
 });
 queryMatches(add, {}, { argsA: "" });
-const addUnverified = addArg({
+export const addUnverified = addArg({
   handler: async (_ctx, args) => {
     return { argsA: args.a }; // !!!
   },
 });
 queryMatches(addUnverified, {}, { argsA: "" });
-const addUnverified2 = addArg((_ctx, args) => {
+export const addUnverified2 = addArg((_ctx, args) => {
   return { argsA: args.a }; // !!!
 });
 queryMatches(addUnverified2, {}, { argsA: "" });
@@ -196,7 +167,7 @@ const consumeArg = customQuery(query, {
     return { ctx: { a }, args: {} };
   },
 });
-const consume = consumeArg({
+export const consume = consumeArg({
   args: {},
   handler: async (ctx, emptyArgs) => {
     assert<Equals<typeof emptyArgs, {}>>(); // !!!
@@ -232,7 +203,7 @@ const passThrougArg = customQuery(query, {
     return { ctx: { a: args.a }, args };
   },
 });
-const passThrough = passThrougArg({
+export const passThrough = passThrougArg({
   args: {},
   handler: async (ctx, args) => {
     return { ctxA: ctx.a, argsA: args.a }; // !!!
@@ -249,10 +220,10 @@ const modifyArg = customQuery(query, {
     return { ctx: { a }, args: { a: 123 } }; // !!!
   },
 });
-const modify = modifyArg({
+export const modify = modifyArg({
   args: {},
   handler: async (ctx, args) => {
-    args.a.toFixed; // !!!
+    args.a.toFixed(); // !!!
     return { ctxA: ctx.a, argsA: args.a };
   },
 });
@@ -265,7 +236,7 @@ const redefineArg = customQuery(query, {
   args: { a: v.string() },
   input: async (_ctx, args) => ({ ctx: {}, args }),
 });
-const redefine = redefineArg({
+export const redefine = redefineArg({
   args: { a: v.string() },
   handler: async (_ctx, args) => {
     return { argsA: args.a };
@@ -280,7 +251,7 @@ const badRedefineArg = customQuery(query, {
   args: { a: v.string(), b: v.number() },
   input: async (_ctx, args) => ({ ctx: {}, args }),
 });
-const badRedefine = badRedefineArg({
+export const badRedefine = badRedefineArg({
   args: { a: v.number() },
   handler: async (_ctx, args) => {
     return { argsA: args.a };

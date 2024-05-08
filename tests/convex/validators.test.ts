@@ -27,7 +27,7 @@ const valid = {
 test("validators preserve things when they're set", async () => {
   const t = convexTest(schema);
   const id = await t.run((ctx) => {
-    return ctx.db.insert("example_table", {});
+    return ctx.db.insert("users", { tokenIdentifier: "" });
   });
   // when evertything is set
   const obj = { ...valid, id };

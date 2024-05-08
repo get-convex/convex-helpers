@@ -15,7 +15,6 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as counter from "../counter.js";
-import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as filterExample from "../filterExample.js";
 import type * as http from "../http.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
@@ -40,7 +39,6 @@ import type * as zodExample from "../zodExample.js";
  */
 declare const fullApi: ApiFromModules<{
   counter: typeof counter;
-  customFunctionExample: typeof customFunctionExample;
   filterExample: typeof filterExample;
   http: typeof http;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;

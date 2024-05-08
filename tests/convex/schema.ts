@@ -5,7 +5,9 @@ import { tableExampleTables } from "./table";
 import { crudExampleTables } from "./crud";
 
 export default defineSchema({
-  example_table: defineTable({}),
+  users: defineTable({
+    tokenIdentifier: v.string(),
+  }).index("tokenIdentifier", ["tokenIdentifier"]),
   ...tableExampleTables,
   ...crudExampleTables,
 });
