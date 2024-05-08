@@ -155,8 +155,8 @@ export function zCustomQuery<
     const handler = fn.handler ?? fn;
     return query({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, args);
+        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
   }
@@ -284,8 +284,8 @@ export function zCustomMutation<
     const handler = fn.handler ?? fn;
     return mutation({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, args);
+        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
   }
@@ -408,8 +408,8 @@ export function zCustomAction<
     const handler = fn.handler ?? fn;
     return action({
       handler: async (ctx, args: any) => {
-        const { ctx: modCtx } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, args);
+        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
+        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
   }
