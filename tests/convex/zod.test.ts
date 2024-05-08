@@ -73,8 +73,24 @@ type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 test("zod kitchen sink", async () => {
   const t = convexTest(schema);
   const response = await t.query(api.zodFns.kitchenSink, kitchenSink);
-  expect(response).toMatchObject(kitchenSink);
+  expect(response).toMatchObject({
+    ...kitchenSink,
+    default: "default",
+    pipeline: "0",
+  });
+  const stored = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("sink", kitchenSink);
+    return ctx.db.get(id);
+  });
+  expect(stored).toMatchObject(kitchenSink);
 });
+
+test("zod date round trip", async () => {
+  const t = convexTest(schema);
+  const date = new Date().toISOString();
+  const response = await t.query(api.zodFns.dateRoundTrip, { date });
+  expect(response).toBe(date);
+}
 
 describe("zod functions", () => {
   test("add ctx", async () => {
