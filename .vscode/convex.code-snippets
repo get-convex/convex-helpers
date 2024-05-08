@@ -139,4 +139,30 @@
 		],
 		"scope": "javascript,typescript",
 	},
+
+	"Covnex Test": {
+		"prefix": "convex:test",
+		"body": [
+			"import { convexTest } from \"convex-test\";",
+			"import { v } from \"convex/values\";",
+			"import { expect, test } from \"vitest\";",
+			"import { api, internal } from \"./_generated/api\";",
+			"import { Doc, Id } from \"./_generated/dataModel\";",
+			"import {",
+			"  action,",
+			"  internalAction,",
+			"  internalMutation,",
+			"  internalQuery,",
+			"  mutation,",
+			"  query,",
+			"} from \"./_generated/server\";",
+			"import schema from \"./schema\";",
+			"",
+			"test(\"$1\", async () => {",
+			"  const t = convexTest(schema);",
+			"  $0",
+			"});",
+		],
+		"scope": "javascript,typescript",
+	}
 }
