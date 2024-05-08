@@ -62,7 +62,7 @@ export const partial = <T extends PropertyValidators>(obj: T) => {
   };
 };
 
-// Shorthand for defining validators
+// Shorthand for defining validators that look like types.
 
 /** Any string value. */
 export const string = v.string();
