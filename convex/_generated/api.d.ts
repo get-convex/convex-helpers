@@ -26,6 +26,7 @@ import type * as retriesExample from "../retriesExample.js";
 import type * as rowLevelSecurityExample from "../rowLevelSecurityExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
+import type * as zodExample from "../zodExample.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   rowLevelSecurityExample: typeof rowLevelSecurityExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
+  zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

@@ -3,6 +3,7 @@ import RelationshipExample from "./components/RelationshipExample";
 import SessionsExample from "./components/SessionsExample";
 import { HonoExample } from "./components/HonoExample";
 import RowLevelSecurityExample from "./components/RowLevelSecurityExample";
+import ZodExample from "./components/ZodExample";
 import { SessionProvider } from "convex-helpers/react/sessions";
 // Used for the session example if you want to store sessionId in local storage
 // import { useLocalStorage } from "usehooks-ts";
@@ -16,6 +17,7 @@ export default function App() {
       >
         <Counter />
         <RelationshipExample />
+        <ZodExample />
         <SessionsExample />
         <HonoExample />
         <RowLevelSecurityExample />
