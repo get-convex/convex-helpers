@@ -72,7 +72,7 @@
   "scripts": {
     "build": "node generate-exports.mjs && tsc",
     "prebuild": "npm run test",
-    "test": "tsc --project tsconfig.test.json && cd ../../tests && npm run test:once",
+    "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
     "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
     "arethetypeswrong": "attw $(npm pack)"

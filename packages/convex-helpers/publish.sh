@@ -5,6 +5,9 @@ set -e
 npm i
 npm run clean
 npm run build
+pushd ../../tests >/dev/null
+npm run test:once
+popd >/dev/null
 git diff --exit-code || {
   echo "Uncommitted changes found. Commit or stash them before publishing."
   exit 1
