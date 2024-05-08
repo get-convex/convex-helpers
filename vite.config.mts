@@ -8,13 +8,13 @@ export default defineConfig({
     environment: "jsdom",
     // These contain `.test.ts` files that are not actual
     // vitest tests
-    exclude: ["packages\/convex-helpers\/server\/**", "**\/node_modules\/**"],
+    exclude: ["**/node_modules/**"],
     passWithNoTests: true,
-  
+
     // Only run one suite at a time because all of our tests are running against
     // the same backend and we don't want to leak state.
     maxWorkers: 1,
     minWorkers: 1,
-    globals: true
+    globals: true,
   },
 });
