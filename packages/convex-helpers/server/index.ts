@@ -57,18 +57,25 @@ export function Table<
 }
 
 /**
- *
+ * @deprecated Use `missingEnvVariableError`
+ */
+export function missingEnvVariableUrl(envVarName: string, whereToGet: string) {
+  return missingEnvVariableError(envVarName, whereToGet);
+}
+
+/**
  * @param envVarName - The missing environment variable, e.g. OPENAI_API_KEY
  * @param whereToGet - Where to get it, e.g. "https://platform.openai.com/account/api-keys"
  * @returns A string with instructions on how to set the environment variable.
  */
-export function missingEnvVariableUrl(envVarName: string, whereToGet: string) {
-  const deployment = deploymentName();
-  if (!deployment) return `Missing ${envVarName} in environment variables.`;
+export function missingEnvVariableError(
+  envVarName: string,
+  whereToGet: string,
+) {
   return (
     `\n  Missing ${envVarName} in environment variables.\n\n` +
-    `  Get it from ${whereToGet} .\n  Paste it on the Convex dashboard:\n` +
-    `  https://dashboard.convex.dev/d/${deployment}/settings/environment-variables?var=${envVarName}`
+    `  Get it from ${whereToGet} .\n  Then run:\n` +
+    `  npx convex env set ${envVarName} <value> # --prod for production\n`
   );
 }
 
@@ -124,7 +131,7 @@ export function crud<
     withoutSystemFields: Fields;
   },
   query: QueryBuilder<DataModel, QueryVisibility>,
-  mutation: MutationBuilder<DataModel, MutationVisibility>
+  mutation: MutationBuilder<DataModel, MutationVisibility>,
 ) {
   const systemFields = {
     _id: v.id(table.name),
@@ -143,7 +150,7 @@ export function crud<
           table.name,
           args as unknown as WithoutSystemFields<
             DocumentByName<DataModel, TableName>
-          >
+          >,
         );
         return (await ctx.db.get(id))!;
       },
@@ -187,7 +194,7 @@ export function crud<
       handler: async (ctx, args) => {
         await ctx.db.patch(
           args.id,
-          args.patch as Partial<DocumentByName<DataModel, TableName>>
+          args.patch as Partial<DocumentByName<DataModel, TableName>>,
         );
       },
     }) as RegisteredMutation<
