@@ -199,7 +199,9 @@ See [this Stack article](https://stack.convex.dev/testing-with-local-oss-backend
 
 To set these up for yourself:
 
-- Clone the [Convex open source backend repo](https://github.com/get-convex/convex-backend) and follow setup instructions
+- Either [download a pre-built binary(recommended)](https://github.com/get-convex/convex-backend/releases),
+  or [build it from source](https://stack.convex.dev/building-the-oss-backend).
+  `just run-local-backend` will attempt to download the binary automatically.
 - Create a `clearAll` function to reset data between tests (see [`convex/testingFunctions.ts`](./convex/testingFunctions.ts) for an example)
 - Start writing tests using [`ConvexTestingHelper.ts`](./packages/convex-helpers/testing.ts)
 - Make sure to call `clearAll` between tests and configure your testing framework to run one test at

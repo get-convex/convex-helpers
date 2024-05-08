@@ -8,7 +8,20 @@ export const getCounter = query(
       .filter((q) => q.eq(q.field("name"), counterName))
       .first();
     return counterDoc === null ? 0 : counterDoc.counter;
-  }
+  },
+);
+
+export const getCounterOrThrow = query(
+  async (ctx, { counterName }: { counterName: string }): Promise<number> => {
+    const counterDoc = await ctx.db
+      .query("counter_table")
+      .filter((q) => q.eq(q.field("name"), counterName))
+      .first();
+    if (counterDoc === null) {
+      throw new Error("Counter not found");
+    }
+    return counterDoc.counter;
+  },
 );
 
 export const upload = action({
@@ -24,7 +37,7 @@ export const incrementCounter = mutation({
   args: { counterName: v.string(), increment: v.number() },
   handler: async (
     ctx,
-    { counterName, increment }: { counterName: string; increment: number }
+    { counterName, increment }: { counterName: string; increment: number },
   ) => {
     const counterDoc = await ctx.db
       .query("counter_table")

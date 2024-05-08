@@ -19,11 +19,29 @@ _default:
 set positional-arguments
 
 reset-local-backend:
-  cd $CONVEX_LOCAL_BACKEND_PATH; rm -rf convex_local_storage && rm -f convex_local_backend.sqlite3
+  rm -rf convex_local_storage && rm -f convex_local_backend.sqlite3
 
-# (*) Run the open source convex backend on port 3210
-run-local-backend *ARGS:
-  cd $CONVEX_LOCAL_BACKEND_PATH && just run-local-backend --port 3210
+# (*) Run the open source convex backend, downloading first if necessary.
+run-local-backend:
+  #!/usr/bin/env sh
+  if [ ! -x ./convex-local-backend ]; then
+    if [ "$(uname)" == "Darwin" ]; then
+      if [ "$(uname -m)" == "arm64" ]; then
+        pkg=convex-local-backend-aarch64-apple-darwin.zip
+      elif [ "$(uname -m)" == "x86_64" ]; then
+        pkg=convex-local-backend-x86_64-apple-darwin.zip
+      fi
+    elif [ "$(uname -m)" == "x86_64" ]; then
+      pkg=convex-local-backend-x86_64-unknown-linux-gnu.zip
+    fi
+    if [ -z "$pkg" ]; then
+      echo "Download or build the convex-local-backend: https://github.com/get-convex/convex-backend"
+      exit 1
+    fi
+    curl  -L -O "https://github.com/get-convex/convex-backend/releases/latest/download/$pkg"
+    unzip "$pkg"
+  fi
+  ./convex-local-backend
 
 # Taken from https://github.com/get-convex/convex-backend/blob/main/Justfile
 # (*) Run convex CLI commands like `convex dev` against local backend from `just run-local-backend`.
