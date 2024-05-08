@@ -6,9 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    // These contain `.test.ts` files that are not actual
-    // vitest tests
-    exclude: ["**/node_modules/**"],
+    exclude: ["tests/**", "**/node_modules/**"],
     passWithNoTests: true,
 
     // Only run one suite at a time because all of our tests are running against

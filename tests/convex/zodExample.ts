@@ -5,12 +5,40 @@ import {
   zodToConvexFields,
 } from "convex-helpers/server/zod";
 import { useQuery } from "convex/react";
-import { ApiFromModules, defineTable } from "convex/server";
+import { anyApi, ApiFromModules, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { z } from "zod";
 import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 
+/**
+       ? {
+          email: "email@example.com",
+          counterId,
+          num: 1,
+          nan: NaN,
+          bigint: BigInt(1),
+          bool: true,
+          null: null,
+          any: [1, "2"],
+          array: ["1", "2"],
+          object: { a: "1", b: 2 },
+          union: 1,
+          discriminatedUnion: { kind: "a", a: "1" },
+          literal: "hi",
+          tuple: ["2", 1],
+          lazy: "lazy",
+          enum: "b",
+          effect: "effect",
+          optional: undefined,
+          nullable: null,
+          branded: "branded",
+          default: undefined,
+          readonly: { a: "1", b: 2 },
+          pipeline: 0,
+        }
+
+ */
 const zQuery = zCustomQuery(query, {
   // You could require arguments for all queries here.
   args: {},
@@ -104,6 +132,21 @@ export const dateRoundTrip = zQuery({
 /**
  * Type tests
  */
+/**
+ * Test helpers
+ */
+
+const api: ApiFromModules<{
+  test: {
+    badRedefine: typeof badRedefine;
+    redefine: typeof redefine;
+    modify: typeof modify;
+    consume: typeof consume;
+    passThrough: typeof passThrough;
+    add: typeof add;
+    addC: typeof addC;
+  };
+}> = anyApi as any;
 
 /**
  * Adding ctx
@@ -235,22 +278,6 @@ const badRedefineResult = useQuery(api.test.badRedefine, {
   a: never,
 });
 console.log(badRedefineResult?.argsA);
-
-/**
- * Test helpers
- */
-
-declare const api: ApiFromModules<{
-  test: {
-    badRedefine: typeof badRedefine;
-    redefine: typeof redefine;
-    modify: typeof modify;
-    consume: typeof consume;
-    passThrough: typeof passThrough;
-    add: typeof add;
-    addC: typeof addC;
-  };
-}>;
 
 /**
  * Test type translation

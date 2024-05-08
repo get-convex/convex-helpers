@@ -15,7 +15,6 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as counter from "../counter.js";
-import type * as filterExample from "../filterExample.js";
 import type * as http from "../http.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
 import type * as lib_withUser from "../lib/withUser.js";
@@ -27,7 +26,6 @@ import type * as retriesExample from "../retriesExample.js";
 import type * as rowLevelSecurityExample from "../rowLevelSecurityExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
-import type * as zodExample from "../zodExample.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -39,7 +37,6 @@ import type * as zodExample from "../zodExample.js";
  */
 declare const fullApi: ApiFromModules<{
   counter: typeof counter;
-  filterExample: typeof filterExample;
   http: typeof http;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
   "lib/withUser": typeof lib_withUser;
@@ -51,7 +48,6 @@ declare const fullApi: ApiFromModules<{
   rowLevelSecurityExample: typeof rowLevelSecurityExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
-  zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

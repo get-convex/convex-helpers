@@ -1,7 +1,6 @@
 import Counter from "./components/Counter";
 import RelationshipExample from "./components/RelationshipExample";
 import SessionsExample from "./components/SessionsExample";
-import ZodExample from "./components/ZodExample";
 import { HonoExample } from "./components/HonoExample";
 import RowLevelSecurityExample from "./components/RowLevelSecurityExample";
 import { SessionProvider } from "convex-helpers/react/sessions";
@@ -16,7 +15,6 @@ export default function App() {
       // useStorage={useLocalStorage}
       >
         <Counter />
-        <ZodExample />
         <RelationshipExample />
         <SessionsExample />
         <HonoExample />
