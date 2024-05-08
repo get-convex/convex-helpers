@@ -1,10 +1,13 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Users } from "./validatorsExample";
 import { migrationsTable } from "convex-helpers/server/migrations";
 
 export default defineSchema({
-  users: Users.table.index("tokenIdentifier", ["tokenIdentifier"]),
+  users: defineTable({
+    name: v.string(),
+    age: v.number(),
+    tokenIdentifier: v.string(),
+  }).index("tokenIdentifier", ["tokenIdentifier"]),
   join_table_example: defineTable({
     userId: v.id("users"),
     presenceId: v.id("presence"),

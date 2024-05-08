@@ -10,25 +10,37 @@ import {
   getManyViaOrThrow,
 } from "convex-helpers/server/relationships";
 import { asyncMap } from "convex-helpers";
-import { testUser } from "./validatorsExample";
 import { internal } from "./_generated/api";
+import { Doc } from "./_generated/dataModel";
+import { WithoutSystemFields } from "convex/server";
+
+function testUser(
+  fields: Partial<Doc<"users">>,
+): WithoutSystemFields<Doc<"users">> {
+  return {
+    name: "test",
+    age: 5,
+    tokenIdentifier: "test",
+    ...fields,
+  };
+}
 
 export const relationshipTest = mutation({
   args: {},
   handler: async (ctx, args) => {
     const userId = await ctx.db.insert(
       "users",
-      testUser({ name: "test", tokenIdentifier: "test123" })
+      testUser({ name: "test", tokenIdentifier: "test123" }),
     );
     await ctx.db.insert(
       "users",
-      testUser({ name: "test2", tokenIdentifier: "test456" })
+      testUser({ name: "test2", tokenIdentifier: "test456" }),
     );
     const user2 = await getOneFromOrThrow(
       ctx.db,
       "users",
       "tokenIdentifier",
-      "test456"
+      "test456",
     );
     const userIds = [userId, user2._id];
 
@@ -61,7 +73,7 @@ export const relationshipTest = mutation({
       ctx.db,
       "join_table_example",
       "by_userId",
-      userId
+      userId,
     );
     assertLength(edges, 2);
     const sessions = await getManyVia(
@@ -69,7 +81,7 @@ export const relationshipTest = mutation({
       "join_table_example",
       "presenceId",
       "by_userId",
-      userId
+      userId,
     );
     assertLength(sessions, 2);
     const sessions2 = await getManyViaOrThrow(
@@ -77,7 +89,7 @@ export const relationshipTest = mutation({
       "join_table_example",
       "presenceId",
       "by_userId",
-      user2._id
+      user2._id,
     );
     assertLength(sessions2, 1);
     // const userSessions = await ctx.db.query("join_table_example").collect();
@@ -101,8 +113,8 @@ export const relationshipTest = mutation({
         "join_table_example",
         "presenceId",
         "by_userId",
-        userId
-      )
+        userId,
+      ),
     );
     try {
       await getManyViaOrThrow(
@@ -110,7 +122,7 @@ export const relationshipTest = mutation({
         "join_table_example",
         "presenceId",
         "by_userId",
-        userId
+        userId,
       );
     } catch {
       console.log("Successfully caught missing presenceId");
@@ -118,19 +130,19 @@ export const relationshipTest = mutation({
     await asyncMap(edges, (edge) => ctx.db.delete(edge._id));
     await asyncMap(
       await getManyFrom(ctx.db, "join_table_example", "by_userId", user2._id),
-      (edge) => ctx.db.delete(edge._id)
+      (edge) => ctx.db.delete(edge._id),
     );
 
     // Testing custom index names
     assertNotNull(
       (await getOneFromOrThrow(ctx.db, "presence", "user_room", userId, "user"))
-        .user
+        .user,
     );
     assertNotNull(
-      await getOneFrom(ctx.db, "presence", "user_room", userId, "user")
+      await getOneFrom(ctx.db, "presence", "user_room", userId, "user"),
     );
     (await getManyFrom(ctx.db, "presence", "user_room", userId, "user")).map(
-      assertNotNull
+      assertNotNull,
     );
     await ctx.db.delete(presenceId);
 
@@ -139,7 +151,7 @@ export const relationshipTest = mutation({
       console.log("No file found, adding one. Try again");
       await ctx.scheduler.runAfter(
         0,
-        internal.relationshipsExample.addRandomFile
+        internal.relationshipsExample.addRandomFile,
       );
       return false;
     }
@@ -155,7 +167,7 @@ export const relationshipTest = mutation({
         "storageId",
         "userId_storageId",
         userId,
-        "userId"
+        "userId",
       )
     ).map(assertNotNull);
     (
@@ -165,7 +177,7 @@ export const relationshipTest = mutation({
         "storageId",
         "userId_storageId",
         userId,
-        "userId"
+        "userId",
       )
     ).map(assertNotNull);
     await ctx.db.delete(userId);
@@ -177,7 +189,7 @@ export const relationshipTest = mutation({
 
 export const addRandomFile = internalAction({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     await ctx.storage.store(new Blob(["test"]));
   },
 });
@@ -190,7 +202,7 @@ export const joinTableExample = query({
       "join_table_example",
       "presenceId",
       "by_userId",
-      args.userId
+      args.userId,
     );
     const files = await getManyVia(
       ctx.db,
@@ -198,14 +210,14 @@ export const joinTableExample = query({
       "storageId",
       "userId_storageId",
       args.userId,
-      "userId"
+      "userId",
     );
     const users = await getManyVia(
       ctx.db,
       "join_storage_example",
       "userId",
       "storageId",
-      args.sid
+      args.sid,
     );
     return { sessions, files, users };
   },

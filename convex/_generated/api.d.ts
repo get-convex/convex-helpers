@@ -15,7 +15,6 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as counter from "../counter.js";
-import type * as crudExample from "../crudExample.js";
 import type * as customFunctionExample from "../customFunctionExample.js";
 import type * as filterExample from "../filterExample.js";
 import type * as http from "../http.js";
@@ -29,7 +28,6 @@ import type * as retriesExample from "../retriesExample.js";
 import type * as rowLevelSecurityExample from "../rowLevelSecurityExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
-import type * as validatorsExample from "../validatorsExample.js";
 import type * as zodExample from "../zodExample.js";
 
 /**
@@ -42,7 +40,6 @@ import type * as zodExample from "../zodExample.js";
  */
 declare const fullApi: ApiFromModules<{
   counter: typeof counter;
-  crudExample: typeof crudExample;
   customFunctionExample: typeof customFunctionExample;
   filterExample: typeof filterExample;
   http: typeof http;
@@ -56,7 +53,6 @@ declare const fullApi: ApiFromModules<{
   rowLevelSecurityExample: typeof rowLevelSecurityExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
-  validatorsExample: typeof validatorsExample;
   zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<

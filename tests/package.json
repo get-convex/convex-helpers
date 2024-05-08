@@ -1,0 +1,32 @@
+{
+  "name": "tests",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Tests for convex-helpers",
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:helpers dev:backend dev:frontend",
+    "dev:backend": "convex dev",
+    "dev:frontend": "vite",
+    "predev": "convex dev --until-success",
+    "test": "vitest",
+    "test:once": "vitest run",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism"
+  },
+  "author": "Ian Macartney (Convex)",
+  "license": "MIT",
+  "dependencies": {
+    "convex": "^1.11.3",
+    "convex-helpers": "file:../packages/convex-helpers",
+    "hono": "^4.0.10",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "usehooks-ts": "^3.1.0",
+    "zod": "^3.20.2"
+  },
+  "devDependencies": {
+    "@edge-runtime/vm": "^3.2.0",
+    "convex-test": "^0.0.14",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
