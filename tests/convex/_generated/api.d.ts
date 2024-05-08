@@ -16,8 +16,11 @@ import type {
 } from "convex/server";
 import type * as crud from "../crud.js";
 import type * as customFnTests from "../customFnTests.js";
+import type * as customFns from "../customFns.js";
 import type * as table from "../table.js";
 import type * as validators from "../validators.js";
+import type * as zodExample from "../zodExample.js";
+import type * as zodFns from "../zodFns.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -30,8 +33,11 @@ import type * as validators from "../validators.js";
 declare const fullApi: ApiFromModules<{
   crud: typeof crud;
   customFnTests: typeof customFnTests;
+  customFns: typeof customFns;
   table: typeof table;
   validators: typeof validators;
+  zodExample: typeof zodExample;
+  zodFns: typeof zodFns;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
