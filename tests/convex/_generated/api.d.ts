@@ -19,6 +19,7 @@ import type * as customFnTests from "../customFnTests.js";
 import type * as customFns from "../customFns.js";
 import type * as table from "../table.js";
 import type * as validators from "../validators.js";
+import type * as zodFns from "../zodFns.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   customFns: typeof customFns;
   table: typeof table;
   validators: typeof validators;
+  zodFns: typeof zodFns;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

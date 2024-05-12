@@ -2,17 +2,14 @@ import {
   defineTable,
   defineSchema,
   DataModelFromSchemaDefinition,
-  GenericDatabaseReader,
-  GenericDatabaseWriter,
 } from "convex/server";
 import { Equals, assert, omit } from "convex-helpers";
-import { zCustomQuery, zodToConvexFields } from "convex-helpers/server/zod";
-import { useQuery } from "convex/react";
+import { zodToConvexFields } from "convex-helpers/server/zod";
 import { kitchenSinkValidator } from "./zodFns";
 import { v } from "convex/values";
 import { z } from "zod";
 import { convexTest } from "convex-test";
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
 
 const schema = defineSchema({
