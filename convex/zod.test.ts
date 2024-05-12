@@ -1,80 +1,61 @@
-import { Equals, assert } from "convex-helpers";
+import {
+  defineTable,
+  defineSchema,
+  DataModelFromSchemaDefinition,
+  GenericDatabaseReader,
+  GenericDatabaseWriter,
+} from "convex/server";
+import { Equals, assert, omit } from "convex-helpers";
 import { zCustomQuery, zodToConvexFields } from "convex-helpers/server/zod";
 import { useQuery } from "convex/react";
-import { anyApi, ApiFromModules, defineTable } from "convex/server";
+import { kitchenSinkValidator } from "./zodFns";
 import { v } from "convex/values";
 import { z } from "zod";
-import { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
-
-/**
-       ? {
-          email: "email@example.com",
-          counterId,
-          num: 1,
-          nan: NaN,
-          bigint: BigInt(1),
-          bool: true,
-          null: null,
-          any: [1, "2"],
-          array: ["1", "2"],
-          object: { a: "1", b: 2 },
-          union: 1,
-          discriminatedUnion: { kind: "a", a: "1" },
-          literal: "hi",
-          tuple: ["2", 1],
-          lazy: "lazy",
-          enum: "b",
-          effect: "effect",
-          optional: undefined,
-          nullable: null,
-          branded: "branded",
-          default: undefined,
-          readonly: { a: "1", b: 2 },
-          pipeline: 0,
-        }
-
- */
-const kitchenSink = {
-  email: "email@example.com",
-  counterId,
-  num: 1,
-  nan: NaN,
-  bigint: BigInt(1),
-  bool: true,
-  null: null,
-  any: [1, "2"],
-  array: ["1", "2"],
-  object: { a: "1", b: 2 },
-  union: 1,
-  discriminatedUnion: { kind: "a", a: "1" },
-  literal: "hi",
-  tuple: ["2", 1],
-  lazy: "lazy",
-  enum: "b",
-  effect: "effect",
-  optional: undefined,
-  nullable: null,
-  branded: "branded",
-  default: undefined,
-  readonly: { a: "1", b: 2 },
-  pipeline: 0,
-};
+import { convexTest } from "convex-test";
+import { expect, test } from "vitest";
+import { api } from "./_generated/api";
 
 const schema = defineSchema({
   sink: defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", [
     "email",
   ]),
+  users: defineTable({}),
 });
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
-type DatabaseReader = GenericDatabaseReader<DataModel>;
-type DatabaseWriter = GenericDatabaseWriter<DataModel>;
+// type DatabaseReader = GenericDatabaseReader<DataModel>;
+// type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 
 test("zod kitchen sink", async () => {
   const t = convexTest(schema);
+  const userId = await t.run((ctx) => ctx.db.insert("users", {}));
+  const kitchenSink = {
+    email: "email@example.com",
+    userId,
+    num: 1,
+    nan: NaN,
+    bigint: BigInt(1),
+    bool: true,
+    null: null,
+    any: [1, "2"],
+    array: ["1", "2"],
+    object: { a: "1", b: 2 },
+    union: 1,
+    discriminatedUnion: { kind: "a" as const, a: "1" },
+    literal: "hi" as const,
+    tuple: ["2", 1] as [string, number],
+    lazy: "lazy",
+    enum: "b" as const,
+    effect: "effect",
+    optional: undefined,
+    nullable: null,
+    branded: "branded",
+    default: undefined,
+    readonly: { a: "1", b: 2 },
+    pipeline: 0,
+  };
   const response = await t.query(api.zodFns.kitchenSink, kitchenSink);
   expect(response).toMatchObject({
-    ...kitchenSink,
+    ...omit(kitchenSink, ["optional"]),
     default: "default",
     pipeline: "0",
   });
@@ -82,7 +63,7 @@ test("zod kitchen sink", async () => {
     const id = await ctx.db.insert("sink", kitchenSink);
     return ctx.db.get(id);
   });
-  expect(stored).toMatchObject(kitchenSink);
+  expect(stored).toMatchObject(omit(kitchenSink, ["optional", "default"]));
 });
 
 test("zod date round trip", async () => {
@@ -151,16 +132,12 @@ describe("zod functions", () => {
 
   test("bad redefinition", async () => {
     const t = convexTest(schema);
-    expect(
-      await t.query(api.zodFns.badRedefine, {
+    expect(() =>
+      t.query(api.zodFns.badRedefine, {
         a: "foo" as never,
         b: 0,
       }),
-    ).toMatchObject({
-      // Note: argsA is still "foo" because the custom function takes precedent.
-      // Ideally this would throw instead, or refuse to let you re-define args.
-      argsA: "foo",
-    });
+    ).rejects.toThrow();
   });
 });
 

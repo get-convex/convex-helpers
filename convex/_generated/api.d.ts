@@ -25,6 +25,7 @@ import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as retriesExample from "../retriesExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
+import type * as zodFns from "../zodFns.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   retriesExample: typeof retriesExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
+  zodFns: typeof zodFns;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

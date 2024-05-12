@@ -123,9 +123,9 @@ export function zCustomQuery<
           ...inputArgs,
         },
         handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
+          const { split } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
-          const parsed = z.object(fn.args).safeParse(rest);
+          const parsed = z.object(fn.args).safeParse(allArgs);
           if (!parsed.success) {
             throw new ConvexError({
               ZodError: JSON.parse(

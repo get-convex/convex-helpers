@@ -4,6 +4,7 @@ import {
   zid,
   zodToConvexFields,
 } from "convex-helpers/server/zod";
+import { customCtx } from "convex-helpers/server/customFunctions";
 import { useQuery } from "convex/react";
 import { anyApi, ApiFromModules, defineTable } from "convex/server";
 import { v } from "convex/values";
@@ -27,12 +28,11 @@ const zQuery = zCustomQuery(query, {
 // Note that it can't be used in anything imported by schema.ts
 // since the types would be circular.
 // For argument validation it might be useful to you, however.
-const zId = zid<DataModel>;
+// const zId = zid<DataModel>;
 
 export const kitchenSinkValidator = {
   email: z.string().email(),
-  // If you want to use the type-safe version we made above:
-  counterId: zId("counter_table"),
+  userId: zid("users"),
   // Otherwise this is equivalent, but wouldn't catch zid("CounterTable")
   // counterId: zid("counter_table"),
   num: z.number().min(0),
@@ -64,16 +64,12 @@ export const kitchenSinkValidator = {
   pipeline: z.number().pipe(z.coerce.string()),
 };
 
-// Example of how you'd define a table in schema.ts with zod validators
-defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", ["email"]);
-
 export const kitchenSink = zQuery({
   args: kitchenSinkValidator,
   handler: async (ctx, args) => {
     ctx.db;
     return {
       ...args,
-      counter: await ctx.db.get(args.counterId),
     };
   },
   // output: z
@@ -126,7 +122,7 @@ export const addCU2 = addCtxArg(async (ctx) => {
 queryMatches(addCU2, {}, { ctxA: "" });
 
 export const addCtxWithExistingArg = addCtxArg({
-  args: { b: v.string() },
+  args: { b: z.string() },
   handler: async (ctx, args) => {
     return { ctxA: ctx.a, argB: args.b }; // !!!
   },
