@@ -22,11 +22,13 @@
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "usehooks-ts": "^3.1.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.6"
   },
   "devDependencies": {
     "@edge-runtime/vm": "^3.2.0",
+    "@types/node": "^20.12.11",
     "convex-test": "^0.0.14",
+    "npm-run-all2": "^6.1.2",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0"
   }

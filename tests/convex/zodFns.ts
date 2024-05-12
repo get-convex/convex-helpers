@@ -233,7 +233,7 @@ const never: never = null as never;
 // Errors if you pass a string or number to "a".
 // It doesn't show never in the handler or return type, but input args is where
 // we expect the never, so should be sufficient.
-queryMatches(badRedefine, { b: 3, a: never }, { argsA: "" }); // !!!
+queryMatches(badRedefine, { b: 3, a: never }, { argsA: 2 }); // !!!
 
 /**
  * Test helpers
