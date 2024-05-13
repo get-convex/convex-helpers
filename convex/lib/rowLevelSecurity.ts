@@ -4,7 +4,7 @@ import {
   customQuery,
 } from "convex-helpers/server/customFunctions";
 import { mutation, query } from "../_generated/server";
-import { Wraps, DEFAULT, wrapDB } from "convex-helpers/server/wrapDB";
+import { Wrappers, DEFAULT, wrapDB } from "convex-helpers/server/wrapDB";
 import { DataModel } from "../_generated/dataModel";
 import { getUserByTokenIdentifier } from "./withUser";
 import { v } from "convex/values";
@@ -12,7 +12,7 @@ import { v } from "convex/values";
 /**
  * Example usage:
  */
-const rules: Wraps<DataModel> = {
+const rules: Wrappers<DataModel> = {
   users: async ({ ctx, op, doc }) => {
     const loggedInUser = await getUserByTokenIdentifier(ctx);
     switch (op) {
