@@ -46,6 +46,9 @@ if [ "$publish" = "y" ]; then
   pushd "../.." >/dev/null
   npm i
   git add package.json package-lock.json
+  cd tests
+  npm i
+  git add package.json package-lock.json
   popd >/dev/null
 
   # If there's nothing to commit, continue
