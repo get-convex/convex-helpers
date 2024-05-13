@@ -1,13 +1,31 @@
 import {
-  GenericActionCtx,
-  GenericDataModel,
-  TableNamesInDataModel,
+  GenericDatabaseReader,
+  GenericDatabaseWriter,
+  DocumentByInfo,
   DocumentByName,
+  GenericDataModel,
+  GenericTableInfo,
   GenericQueryCtx,
   GenericMutationCtx,
+  NamedTableInfo,
+  QueryInitializer,
+  TableNamesInDataModel,
+  WithoutSystemFields,
 } from "convex/server";
+import { GenericId } from "convex/values";
+import { filter } from "./filter.js";
 
-const DEFAULT = Symbol("default");
+export const DEFAULT = Symbol("default");
+
+export type Callbacks<DataModel extends GenericDataModel> = {
+  [T in TableNamesInDataModel<DataModel>]?: (
+    args: CallbackArgs<DataModel, T>,
+  ) => Promise<boolean> | Promise<void> | boolean | void;
+} & {
+  [DEFAULT]?: <TableName extends TableNamesInDataModel<DataModel>>(
+    args: CallbackArgs<DataModel, TableName>,
+  ) => Promise<boolean> | boolean;
+};
 
 export type CallbackArgs<
   DataModel extends GenericDataModel,
@@ -21,7 +39,7 @@ export type CallbackArgs<
     }
   | {
       op: "create";
-      doc: DocumentByName<DataModel, TableName>;
+      doc: WithoutSystemFields<DocumentByName<DataModel, TableName>>;
       update: undefined;
       ctx: GenericMutationCtx<DataModel>;
     }
@@ -38,21 +56,167 @@ export type CallbackArgs<
       ctx: GenericMutationCtx<DataModel>;
     };
 
+function isMutationCtx<DataModel extends GenericDataModel>(ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>): ctx is GenericMutationCtx<DataModel> {
+  return "insert" in ctx.db;
+}
+
 export function wrapDB<
   DataModel extends GenericDataModel,
-  Ctx extends GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>,
->(
-  ctx: Ctx,
-  _callbacks: {
-    [T in TableNamesInDataModel<DataModel>]?: (
-      args: CallbackArgs<DataModel, T>,
-    ) => Promise<boolean | void> | boolean | void;
-  } & {
-    [DEFAULT]?: <TableName extends TableNamesInDataModel<DataModel>>(
-      table: TableName,
-      args: CallbackArgs<DataModel, TableName>,
-    ) => Promise<boolean | void> | boolean | void;
-  },
-) {
-  return ctx;
+>(ctx: GenericMutationCtx<DataModel>, callbacks: Callbacks<DataModel>): GenericDatabaseWriter<DataModel>;
+export function wrapDB<
+  DataModel extends GenericDataModel,
+>(ctx: GenericQueryCtx<DataModel>, callbacks: Callbacks<DataModel>): GenericDatabaseReader<DataModel>;
+export function wrapDB<
+  DataModel extends GenericDataModel,
+>(ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>, callbacks: Callbacks<DataModel>): GenericDatabaseReader<DataModel> | GenericDatabaseWriter<DataModel> {
+  if (isMutationCtx(ctx)) {
+    return new WrapWriter(ctx, callbacks);
+  } else {
+    return new WrapReader(ctx, callbacks);
+
+  }
+}
+
+class WrapReader<
+  DataModel extends GenericDataModel,
+>
+  implements GenericDatabaseReader<DataModel>
+{
+
+  system: GenericDatabaseReader<DataModel>["system"];
+
+  constructor(
+    private ctx: GenericQueryCtx<DataModel>,
+    private callbacks: Callbacks<DataModel>,
+  ) {
+    this.system = ctx.db.system;
+  }
+
+  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+    id: string,
+  ): GenericId<TableName> | null {
+    return this.ctx.db.normalizeId(tableName, id);
+  }
+
+  tableName<TableName extends string>(
+    id: GenericId<TableName>,
+  ): TableName | null {
+    for (const tableName of Object.keys(this.callbacks)) {
+      if (this.ctx.db.normalizeId(tableName, id)) {
+        return tableName as TableName;
+      }
+    }
+    return null;
+  }
+
+  async get<TableName extends string>(
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null> {
+    const doc = await this.ctx.db.get(id);
+    if (doc) {
+      const tableName = this.tableName(id);
+      const callback = tableName ? this.callbacks[tableName] : this.callbacks[DEFAULT];
+      if (callback && (await callback({
+      ctx: this.ctx, doc, op: "read", update: undefined,}) === false)) {
+        return null;
+      }
+      return doc;
+    }
+    return null;
+  }
+
+  query<TableName extends string>(
+    tableName: TableName,
+  ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
+      const callback = this.callbacks[tableName] || this.callbacks[DEFAULT];
+    if (!callback) {
+      return this.ctx.db.query(tableName);
+    }
+    return filter(this.ctx.db.query(tableName), async (doc) =>
+      await callback({ctx: this.ctx, doc, op: "read", update: undefined,}) !== false
+    );
+  }
+}
+
+class WrapWriter<Ctx, DataModel extends GenericDataModel>
+  implements GenericDatabaseWriter<DataModel>
+{
+  system: GenericDatabaseWriter<DataModel>["system"];
+  reader: GenericDatabaseReader<DataModel>;
+
+  constructor(
+    private ctx: GenericMutationCtx<DataModel>,
+    private callbacks: Callbacks<DataModel>,
+  ) {
+    this.system = ctx.db.system;
+    this.reader = new WrapReader(ctx, callbacks);
+  }
+
+  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+    id: string,
+  ): GenericId<TableName> | null {
+    return this.ctx.db.normalizeId(tableName, id);
+  }
+  tableName<TableName extends string>(
+    id: GenericId<TableName>,
+  ): TableName | null {
+    for (const tableName of Object.keys(this.callbacks)) {
+      if (this.ctx.db.normalizeId(tableName, id)) {
+        return tableName as TableName;
+      }
+    }
+    return null;
+  }
+  get<TableName extends string>(id: GenericId<TableName>): Promise<any> {
+    return this.reader.get(id);
+  }
+  query<TableName extends string>(tableName: TableName): QueryInitializer<any> {
+    return this.reader.query(tableName);
+  }
+
+  async insert<TableName extends string>(
+    tableName: TableName,
+    value: WithoutSystemFields<DocumentByName<DataModel, TableName>>
+  ) {
+    const callback = this.callbacks[tableName] || this.callbacks[DEFAULT];
+    if (callback && (await callback({ctx: this.ctx, doc: value, op: "create", update: undefined,}) === false)) {
+      throw new Error("insert access not allowed");
+    }
+    return this.ctx.db.insert(tableName, value);
+  }
+  async docAndCallback(id: GenericId<string>) {
+    const doc = await this.ctx.db.get(id);
+    if (!doc) return [null, null];
+    const tableName = this.tableName(id);
+    return [doc, tableName && (this.callbacks[tableName] || this.callbacks[DEFAULT])] as const;
+  }
+  async patch<TableName extends string>(
+    id: GenericId<TableName>,
+    update: Partial<any>,
+  ): Promise<void> {
+    const [doc, callback] = await this.docAndCallback(id);
+    if (doc && callback && (await callback({ctx: this.ctx, doc, op: "update", update}) === false)) {
+      throw new Error("update access not allowed");
+    }
+    return await this.ctx.db.patch(id, update);
+  }
+  async replace<TableName extends string>(
+    id: GenericId<TableName>,
+    update: any,
+  ): Promise<void> {
+    const [doc, callback] = await this.docAndCallback(id);
+    if (doc && callback && (await callback({ctx: this.ctx, doc, op: "update", update}) === false)) {
+      throw new Error("update access not allowed");
+    }
+    return await this.ctx.db.replace(id, update);
+  }
+  async delete(id: GenericId<string>): Promise<void> {
+    const [doc, callback] = await this.docAndCallback(id);
+    if (doc && callback && (await callback({ctx: this.ctx, doc, op: "delete", update: undefined,}) === false)) {
+      throw new Error("insert access not allowed");
+    }
+    return await this.ctx.db.delete(id);
+  }
 }
