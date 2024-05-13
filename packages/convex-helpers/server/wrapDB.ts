@@ -62,13 +62,8 @@ function isMutationCtx<DataModel extends GenericDataModel>(ctx: GenericQueryCtx<
 
 export function wrapDB<
   DataModel extends GenericDataModel,
->(ctx: GenericMutationCtx<DataModel>, callbacks: Callbacks<DataModel>): GenericDatabaseWriter<DataModel>;
-export function wrapDB<
-  DataModel extends GenericDataModel,
->(ctx: GenericQueryCtx<DataModel>, callbacks: Callbacks<DataModel>): GenericDatabaseReader<DataModel>;
-export function wrapDB<
-  DataModel extends GenericDataModel,
->(ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>, callbacks: Callbacks<DataModel>): GenericDatabaseReader<DataModel> | GenericDatabaseWriter<DataModel> {
+  Ctx extends GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>,
+>(ctx: Ctx, callbacks: Callbacks<DataModel>): Ctx["db"] {
   if (isMutationCtx(ctx)) {
     return new WrapWriter(ctx, callbacks);
   } else {
