@@ -56,6 +56,10 @@
       "types": "./dist/server/sessions.d.ts",
       "default": "./dist/server/sessions.js"
     },
+    "./server/wrapDB": {
+      "types": "./dist/server/wrapDB.d.ts",
+      "default": "./dist/server/wrapDB.js"
+    },
     "./server/zod": {
       "types": "./dist/server/zod.d.ts",
       "default": "./dist/server/zod.js"

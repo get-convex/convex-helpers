@@ -27,95 +27,6 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
 };
 
 /**
- * Apply row level security (RLS) to queries and mutations with the returned
- * middleware functions.
- * @deprecated Use `wrapDatabaseReader`/`Writer` with `customFunction` instead.
- *
- * Example:
- * ```
- * // Defined in a common file so it can be used by all queries and mutations.
- * import { Auth } from "convex/server";
- * import { DataModel } from "./_generated/dataModel";
- * import { DatabaseReader } from "./_generated/server";
- * import { RowLevelSecurity } from "./rowLevelSecurity";
- *
- * export const {withMutationRLS} = RowLevelSecurity<{auth: Auth, db: DatabaseReader}, DataModel>(
- *  {
- *    cookies: {
- *      read: async ({auth}, cookie) => !cookie.eaten,
- *      modify: async ({auth, db}, cookie) => {
- *        const user = await getUser(auth, db);
- *        return user.isParent;  // only parents can reach the cookies.
- *      },
- *  }
- * );
- * // Mutation with row level security enabled.
- * export const eatCookie = mutation(withMutationRLS(
- *  async ({db}, {cookieId}) => {
- *   // throws "does not exist" error if cookie is already eaten or doesn't exist.
- *   // throws "write access" error if authorized user is not a parent.
- *   await db.patch(cookieId, {eaten: true});
- * }));
- * ```
- *
- * Notes:
- * * Rules may read any row in `db` -- rules do not apply recursively within the
- *   rule functions themselves.
- * * Tables with no rule default to full access.
- * * Middleware functions like `withUser` can be composed with RowLevelSecurity
- *   to cache fetches in `ctx`. e.g.
- * ```
- * const {withQueryRLS} = RowLevelSecurity<{user: Doc<"users">}, DataModel>(
- *  {
- *    cookies: async ({user}, cookie) => user.isParent,
- *  }
- * );
- * export default query(withUser(withRLS(...)));
- * ```
- *
- * @param rules - rule for each table, determining whether a row is accessible.
- *  - "read" rule says whether a document should be visible.
- *  - "modify" rule says whether to throw an error on `replace`, `patch`, and `delete`.
- *  - "insert" rule says whether to throw an error on `insert`.
- *
- * @returns Functions `withQueryRLS` and `withMutationRLS` to be passed to
- * `query` or `mutation` respectively.
- *  For each row read, modified, or inserted, the security rules are applied.
- */
-export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
-  rules: Rules<RuleCtx, DataModel>
-) => {
-  const withMutationRLS = <
-    Ctx extends GenericMutationCtx<DataModel>,
-    Args extends ArgsArray,
-    Output
-  >(
-    f: Handler<Ctx, Args, Output>
-  ): Handler<Ctx, Args, Output> => {
-    return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapWriter(ctx, ctx.db, rules);
-      return (f as any)({ ...ctx, db: wrappedDb }, ...args);
-    }) as Handler<Ctx, Args, Output>;
-  };
-  const withQueryRLS = <
-    Ctx extends GenericQueryCtx<DataModel>,
-    Args extends ArgsArray,
-    Output
-  >(
-    f: Handler<Ctx, Args, Output>
-  ): Handler<Ctx, Args, Output> => {
-    return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapReader(ctx, ctx.db, rules);
-      return (f as any)({ ...ctx, db: wrappedDb }, ...args);
-    }) as Handler<Ctx, Args, Output>;
-  };
-  return {
-    withMutationRLS,
-    withQueryRLS,
-  };
-};
-
-/**
  * If you just want to read from the DB, you can copy this.
  * Later, you can use `generateQueryWithMiddleware` along
  * with a custom function using wrapQueryDB with rules that
@@ -149,27 +60,27 @@ export function BasicRowLevelSecurity(
 }
  */
 
+/**
+ * @deprecated Use wrapDB instead.
+ */
 export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
   db: GenericDatabaseReader<DataModel>,
-  rules: Rules<Ctx, DataModel>
+  rules: Rules<Ctx, DataModel>,
 ): GenericDatabaseReader<DataModel> {
   return new WrapReader(ctx, db, rules);
 }
 
+/**
+ * @deprecated Use wrapDB instead.
+ */
 export function wrapDatabaseWriter<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
   db: GenericDatabaseWriter<DataModel>,
-  rules: Rules<Ctx, DataModel>
+  rules: Rules<Ctx, DataModel>,
 ): GenericDatabaseWriter<DataModel> {
   return new WrapWriter(ctx, db, rules);
 }
-
-type ArgsArray = [] | [FunctionArgs<any>];
-type Handler<Ctx, Args extends ArgsArray, Output> = (
-  ctx: Ctx,
-  ...args: Args
-) => Output;
 
 class WrapReader<Ctx, DataModel extends GenericDataModel>
   implements GenericDatabaseReader<DataModel>
@@ -182,7 +93,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   constructor(
     ctx: Ctx,
     db: GenericDatabaseReader<DataModel>,
-    rules: Rules<Ctx, DataModel>
+    rules: Rules<Ctx, DataModel>,
   ) {
     this.ctx = ctx;
     this.db = db;
@@ -192,13 +103,13 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
-    id: string
+    id: string,
   ): GenericId<TableName> | null {
     return this.db.normalizeId(tableName, id);
   }
 
   tableName<TableName extends string>(
-    id: GenericId<TableName>
+    id: GenericId<TableName>,
   ): TableName | null {
     for (const tableName of Object.keys(this.rules)) {
       if (this.db.normalizeId(tableName, id)) {
@@ -210,7 +121,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 
   async predicate<T extends GenericTableInfo>(
     tableName: string,
-    doc: DocumentByInfo<T>
+    doc: DocumentByInfo<T>,
   ): Promise<boolean> {
     if (!this.rules[tableName]?.read) {
       return true;
@@ -219,7 +130,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   }
 
   async get<TableName extends string>(
-    id: GenericId<TableName>
+    id: GenericId<TableName>,
   ): Promise<DocumentByName<DataModel, TableName> | null> {
     const doc = await this.db.get(id);
     if (doc) {
@@ -233,10 +144,10 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   }
 
   query<TableName extends string>(
-    tableName: TableName
+    tableName: TableName,
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
     return filter(this.db.query(tableName), (d) =>
-      this.predicate(tableName, d)
+      this.predicate(tableName, d),
     );
   }
 }
@@ -252,7 +163,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
 
   async modifyPredicate<T extends GenericTableInfo>(
     tableName: string,
-    doc: DocumentByInfo<T>
+    doc: DocumentByInfo<T>,
   ): Promise<boolean> {
     if (!this.rules[tableName]?.modify) {
       return true;
@@ -263,7 +174,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   constructor(
     ctx: Ctx,
     db: GenericDatabaseWriter<DataModel>,
-    rules: Rules<Ctx, DataModel>
+    rules: Rules<Ctx, DataModel>,
   ) {
     this.ctx = ctx;
     this.db = db;
@@ -273,13 +184,13 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
-    id: string
+    id: string,
   ): GenericId<TableName> | null {
     return this.db.normalizeId(tableName, id);
   }
   async insert<TableName extends string>(
     table: TableName,
-    value: any
+    value: any,
   ): Promise<any> {
     const rules = this.rules[table];
     if (rules?.insert && !(await rules.insert(this.ctx, value))) {
@@ -288,7 +199,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     return await this.db.insert(table, value);
   }
   tableName<TableName extends string>(
-    id: GenericId<TableName>
+    id: GenericId<TableName>,
   ): TableName | null {
     for (const tableName of Object.keys(this.rules)) {
       if (this.db.normalizeId(tableName, id)) {
@@ -316,14 +227,14 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
   async patch<TableName extends string>(
     id: GenericId<TableName>,
-    value: Partial<any>
+    value: Partial<any>,
   ): Promise<void> {
     await this.checkAuth(id);
     return await this.db.patch(id, value);
   }
   async replace<TableName extends string>(
     id: GenericId<TableName>,
-    value: any
+    value: any,
   ): Promise<void> {
     await this.checkAuth(id);
     return await this.db.replace(id, value);
