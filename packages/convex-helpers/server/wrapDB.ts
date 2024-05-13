@@ -16,17 +16,17 @@ import { filter } from "./filter.js";
 
 export const DEFAULT = Symbol("default");
 
-export type Wrappers<DataModel extends GenericDataModel> = {
+export type Wraps<DataModel extends GenericDataModel> = {
   [T in TableNamesInDataModel<DataModel>]?: (
-    args: CallbackArgs<DataModel, T>,
+    args: WrapTableArgs<DataModel, T>,
   ) => Promise<boolean> | Promise<void> | boolean;
 } & {
   [DEFAULT]?: <TableName extends TableNamesInDataModel<DataModel>>(
-    args: CallbackArgs<DataModel, TableName>,
+    args: WrapTableArgs<DataModel, TableName>,
   ) => Promise<boolean> | boolean;
 };
 
-export type CallbackArgs<
+export type WrapTableArgs<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
 > =
@@ -64,7 +64,7 @@ function isMutationCtx<DataModel extends GenericDataModel>(
 export function wrapDB<
   DataModel extends GenericDataModel,
   Ctx extends GenericQueryCtx<DataModel> = GenericQueryCtx<DataModel>,
->(ctx: Ctx, callbacks: Wrappers<DataModel>): Ctx["db"] {
+>(ctx: Ctx, callbacks: Wraps<DataModel>): Ctx["db"] {
   if (isMutationCtx(ctx)) {
     return new WrapWriter(ctx, callbacks);
   } else {
@@ -79,7 +79,7 @@ class WrapReader<DataModel extends GenericDataModel>
 
   constructor(
     private ctx: GenericQueryCtx<DataModel>,
-    private callbacks: Wrappers<DataModel>,
+    private callbacks: Wraps<DataModel>,
   ) {
     this.system = ctx.db.system;
   }
@@ -155,7 +155,7 @@ class WrapWriter<DataModel extends GenericDataModel>
 
   constructor(
     private ctx: GenericMutationCtx<DataModel>,
-    private callbacks: Wrappers<DataModel>,
+    private callbacks: Wraps<DataModel>,
   ) {
     this.system = ctx.db.system;
     this.reader = new WrapReader(ctx, callbacks);
