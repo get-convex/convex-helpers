@@ -11,7 +11,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { Callbacks, DEFAULT, wrapDB } from "convex-helpers/server/wrapDB";
+import { Wraps, DEFAULT, wrapDB } from "convex-helpers/server/wrapDB";
 import {
   DataModelFromSchemaDefinition,
   defineSchema,
@@ -31,7 +31,7 @@ type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 test("wrapReader", async () => {
   const t = convexTest(schema);
   await t.run(async (ctx) => {
-    const rules: Callbacks<DataModel> = {
+    const rules: Wraps<DataModel> = {
       tableA: ({ ctx, op, doc, update }) => {
         switch (op) {
           case "create":
@@ -81,7 +81,7 @@ test("wrapReader", async () => {
           return true;
         },
         [DEFAULT]: async ({ ctx, op, doc, update }) => true,
-      } as Callbacks<DataModel>,
+      } as Wraps<DataModel>,
     );
     const wrappedCtx3 = wrapDB<DataModel>(ctx, {
       tableA: ({ ctx, op, doc, update }) => {
