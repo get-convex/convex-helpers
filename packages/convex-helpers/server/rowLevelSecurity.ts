@@ -3,12 +3,9 @@ import {
   GenericDatabaseWriter,
   DocumentByInfo,
   DocumentByName,
-  FunctionArgs,
   GenericDataModel,
   GenericTableInfo,
-  GenericMutationCtx,
   NamedTableInfo,
-  GenericQueryCtx,
   QueryInitializer,
   TableNamesInDataModel,
   WithoutSystemFields,
@@ -18,6 +15,9 @@ import { filter } from "./filter.js";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
+/**
+ * @deprecated Use Callbacks and wrapDB instead.
+ */
 export type Rules<Ctx, DataModel extends GenericDataModel> = {
   [T in TableNamesInDataModel<DataModel>]?: {
     read?: Rule<Ctx, DocumentByName<DataModel, T>>;
@@ -25,40 +25,6 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
     insert?: Rule<Ctx, WithoutSystemFields<DocumentByName<DataModel, T>>>;
   };
 };
-
-/**
- * If you just want to read from the DB, you can copy this.
- * Later, you can use `generateQueryWithMiddleware` along
- * with a custom function using wrapQueryDB with rules that
- * depend on values generated once at the start of the function.
- * E.g. Looking up a user to use for your rules:
- * //TODO: Add example
-export function BasicRowLevelSecurity(
-  rules: Rules<GenericQueryCtx<DataModel>, DataModel>
-) {
-  return {
-    queryWithRLS: customQuery(
-      query,
-      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
-    ),
-
-    mutationWithRLS: customMutation(
-      mutation,
-      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
-    ),
-
-    internalQueryWithRLS: customQuery(
-      internalQuery,
-      customCtx((ctx) => ({ db: wrapDatabaseReader(ctx, ctx.db, rules) }))
-    ),
-
-    internalMutationWithRLS: customMutation(
-      internalMutation,
-      customCtx((ctx) => ({ db: wrapDatabaseWriter(ctx, ctx.db, rules) }))
-    ),
-  };
-}
- */
 
 /**
  * @deprecated Use wrapDB instead.
