@@ -20,7 +20,7 @@ export const DEFAULT = Symbol("default");
 export type Callbacks<DataModel extends GenericDataModel> = {
   [T in TableNamesInDataModel<DataModel>]?: (
     args: CallbackArgs<DataModel, T>,
-  ) => Promise<boolean> | Promise<void> | boolean | void;
+  ) => Promise<boolean> | Promise<void> | boolean;
 } & {
   [DEFAULT]?: <TableName extends TableNamesInDataModel<DataModel>>(
     args: CallbackArgs<DataModel, TableName>,
