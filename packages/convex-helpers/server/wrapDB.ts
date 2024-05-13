@@ -56,18 +56,14 @@ export type CallbackArgs<
     };
 
 function isMutationCtx<DataModel extends GenericDataModel>(
-  ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>,
+  ctx: GenericQueryCtx<DataModel>,
 ): ctx is GenericMutationCtx<DataModel> {
   return "insert" in ctx.db;
 }
 
-type EitherCtx<DataModel extends GenericDataModel> =
-  | GenericQueryCtx<DataModel>
-  | GenericMutationCtx<DataModel>;
-
 export function wrapDB<
   DataModel extends GenericDataModel,
-  Ctx extends EitherCtx<DataModel> = EitherCtx<DataModel>,
+  Ctx extends GenericQueryCtx<DataModel> = GenericQueryCtx<DataModel>,
 >(ctx: Ctx, callbacks: Callbacks<DataModel>): Ctx["db"] {
   if (isMutationCtx(ctx)) {
     return new WrapWriter(ctx, callbacks);
