@@ -226,7 +226,7 @@ export function makeMigration<
           throw new Error(
             "Batch size must be greater than zero.\n" +
               "Running this from the dashboard? Here's some args to use:\n" +
-              `{ fn: "${args.fn}", cursor: null, dryRun:  }`,
+              `{ fn: "${args.fn || "migrations:yourFnName"}", cursor: null, dryRun: true }`,
           );
         }
         if (args.cursor === "") {
