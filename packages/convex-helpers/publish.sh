@@ -3,6 +3,7 @@
 set -e
 
 npm i
+npm run test
 npm run clean
 npm run build
 pushd ../../tests >/dev/null
