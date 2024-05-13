@@ -3,8 +3,8 @@ import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
-import { mutation, MutationCtx, query, QueryCtx } from "../_generated/server";
-import { DEFAULT, wrapDB } from "convex-helpers/server/wrapDB";
+import { mutation, query } from "../_generated/server";
+import { Callbacks, DEFAULT, wrapDB } from "convex-helpers/server/wrapDB";
 import { DataModel } from "../_generated/dataModel";
 import { getUserByTokenIdentifier } from "./withUser";
 import { v } from "convex/values";
@@ -12,41 +12,39 @@ import { v } from "convex/values";
 /**
  * Example usage:
  */
-function addRLS<Ctx extends QueryCtx | MutationCtx>(ctx: Ctx) {
-  return wrapDB<DataModel, Ctx>(ctx, {
-    users: async ({ ctx, op, doc }) => {
-      const loggedInUser = await getUserByTokenIdentifier(ctx);
-      switch (op) {
-        case "read":
-          return true;
-        case "create":
-          if (loggedInUser) {
-            return loggedInUser.tokenIdentifier === doc.tokenIdentifier;
-          } else {
-            return (
-              (await ctx.auth.getUserIdentity())?.tokenIdentifier ===
-              doc.tokenIdentifier
-            );
-          }
-        case "update":
-        case "delete":
-          return loggedInUser?._id === doc._id;
-      }
-    },
-    [DEFAULT]: (table) => {
-      throw new Error(`No rule for table ${table}`);
-    },
-  });
-}
+const rules: Callbacks<DataModel> = {
+  users: async ({ ctx, op, doc }) => {
+    const loggedInUser = await getUserByTokenIdentifier(ctx);
+    switch (op) {
+      case "read":
+        return true;
+      case "create":
+        if (loggedInUser) {
+          return loggedInUser.tokenIdentifier === doc.tokenIdentifier;
+        } else {
+          return (
+            (await ctx.auth.getUserIdentity())?.tokenIdentifier ===
+            doc.tokenIdentifier
+          );
+        }
+      case "update":
+      case "delete":
+        return loggedInUser?._id === doc._id;
+    }
+  },
+  [DEFAULT]: (table) => {
+    throw new Error(`No rule for table ${table}`);
+  },
+};
 
 const queryWithRLS = customQuery(
   query,
-  customCtx((ctx) => ({ db: addRLS(ctx) })),
+  customCtx((ctx) => ({ db: wrapDB(ctx, rules) })),
 );
 
 const mutationWithRLS = customMutation(
   mutation,
-  customCtx((ctx) => ({ db: addRLS(ctx) })),
+  customCtx((ctx) => ({ db: wrapDB(ctx, rules) })),
 );
 
 export const getUsers = queryWithRLS({
