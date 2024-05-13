@@ -74,7 +74,7 @@
     "prebuild": "npm run test",
     "test": "tsc --project tsconfig.test.json",
     "clean": "rm -rf dist",
-    "watch": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
+    "dev": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
     "arethetypeswrong": "attw $(npm pack)"
   },
   "repository": {

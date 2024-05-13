@@ -40,7 +40,7 @@ To run these locally, run: `npm i && npm run dev`.
 This will symlink the packages/convex-helpers directory so you can edit the
 convex helpers source while using it in this example project.
 It will also run `chokidar` to re-compile convex-helpers on file changes.
-See the [watch script](./packages/convex-helpers/package.json) for details.
+See the [dev script](./packages/convex-helpers/package.json) for details.
 
 ## Custom Functions
 

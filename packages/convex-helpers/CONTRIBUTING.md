@@ -14,7 +14,7 @@ Adding helpers usually involves:
 
    1. exports
    2. files (if it's in a new folder or in ./)
-   3. scripts: watch if it's in a new folder
+   3. scripts: dev if it's in a new folder
 
 3. [README.md](./README.md) blurb on how to use it, and a link in the TOC.
 4. [parent README.md](../../README.md) link in the TOC.
@@ -37,9 +37,8 @@ Adding helpers usually involves:
 
 Run commands from this folder (packages/convex-helpers).
 
-**NOTE**: make sure you aren't running `npm run watch` anywhere when you're
-publishing (don't run `npm run dev` in the parent folder) to avoid races with
-re-generating files while publishing.
+**NOTE**: make sure you aren't running `npm run dev` anywhere when you're
+publishing to avoid races with re-generating files while publishing.
 
 In general you can run `./publish.sh` to go through the publish workflow.
 It will prompt you for a new version. If you've already adjusted the version,
