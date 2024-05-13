@@ -4,9 +4,8 @@
   "version": "0.0.0",
   "description": "Tests for convex-helpers",
   "scripts": {
-    "dev": "npm-run-all --parallel dev:helpers dev:backend dev:helpers test",
+    "dev": "npm-run-all --parallel dev:backend test",
     "dev:backend": "convex dev --tail-logs",
-    "dev:helpers": "cd ../packages/convex-helpers && npm run watch",
     "setup": "convex dev --until-success",
     "pretest": "tsc --noEmit",
     "test": "vitest",
