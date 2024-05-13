@@ -226,7 +226,8 @@ export function makeMigration<
           throw new Error(
             "Batch size must be greater than zero.\n" +
               "Running this from the dashboard? Here's some args to use:\n" +
-              `{ fn: "${args.fn || "migrations:yourFnName"}", cursor: null, dryRun: true }`,
+              `Dry run: { dryRun: true }\n` +
+              `For real: { fn: "${args.fn || "migrations:yourFnName"}" }`,
           );
         }
         if (args.cursor === "") {
@@ -242,7 +243,9 @@ export function makeMigration<
         if (!args.fn && !args.dryRun) {
           // We allow omitting fn for dry runs.
           // They don't need to recursively schedule.
-          throw new Error("fn must be set if dryRun: false.");
+          throw new Error(
+            "fn must be set if dryRun: false. This should be the name of your function, such as migrations:myMigration.",
+          );
         }
 
         // Making a db typed specifically to the migration table.
