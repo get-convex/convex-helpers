@@ -591,9 +591,19 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                             : never
                                           : Z extends z.ZodBranded<
                                                 infer Inner,
-                                                any
+                                                infer Brand
                                               >
-                                            ? ConvexValidatorFromZod<Inner>
+                                            ? ConvexValidatorFromZod<Inner> extends Validator<
+                                                infer InnerConvex,
+                                                infer InnerOptional,
+                                                infer InnerFieldPaths
+                                              >
+                                              ? Validator<
+                                                  InnerConvex & z.BRAND<Brand>,
+                                                  InnerOptional,
+                                                  InnerFieldPaths
+                                                >
+                                              : never
                                             : Z extends z.ZodDefault<
                                                   infer Inner
                                                 > // Treat like optional

@@ -6,7 +6,7 @@ import {
 import { Equals, assert, omit } from "convex-helpers";
 import { zodToConvexFields } from "convex-helpers/server/zod";
 import { kitchenSinkValidator } from "./zodFns";
-import { v } from "convex/values";
+import { v, Validator } from "convex/values";
 import { z } from "zod";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
@@ -45,7 +45,7 @@ test("zod kitchen sink", async () => {
     effect: "effect",
     optional: undefined,
     nullable: null,
-    branded: "branded",
+    branded: "branded" as string & z.BRAND<"branded">,
     default: undefined,
     readonly: { a: "1", b: 2 },
     pipeline: 0,
@@ -170,7 +170,7 @@ assert(
       bi: v.int64(),
       bool: v.boolean(),
       literal: v.literal("hi"),
-      branded: v.string(),
+      branded: v.string() as Validator<string & z.BRAND<"branded">>,
     },
   ),
 );
