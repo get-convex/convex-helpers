@@ -8,7 +8,7 @@
  */
 export async function asyncMap<FromType, ToType>(
   list: Iterable<FromType> | Promise<Iterable<FromType>>,
-  asyncTransform: (item: FromType, index: number) => Promise<ToType>
+  asyncTransform: (item: FromType, index: number) => Promise<ToType>,
 ): Promise<ToType[]> {
   const promises: Promise<ToType>[] = [];
   let index = 0;
@@ -59,16 +59,16 @@ export function nullThrows<T>(doc: T | null, message?: string): T {
  * @param keys The keys to pick from the object.
  * @returns A new object with only the keys you picked and their values.
  */
-export const pick = <T extends Record<string, any>, Keys extends (keyof T)[]>(
+export function pick<T extends Record<string, any>, Keys extends (keyof T)[]>(
   obj: T,
-  keys: Keys
-) => {
+  keys: Keys,
+) {
   return Object.fromEntries(
-    Object.entries(obj).filter(([k]) => keys.includes(k as Keys[number]))
+    Object.entries(obj).filter(([k]) => keys.includes(k as Keys[number])),
   ) as {
     [K in Keys[number]]: T[K];
   };
-};
+}
 
 /**
  * omit helps you omit keys from an object more concisely.
@@ -88,14 +88,14 @@ export const pick = <T extends Record<string, any>, Keys extends (keyof T)[]>(
  * @param keys The keys to omit from the object.
  * @returns A new object with the keys you omitted removed.
  */
-export const omit = <T extends Record<string, any>, Keys extends (keyof T)[]>(
+export function omit<T extends Record<string, any>, Keys extends (keyof T)[]>(
   obj: T,
-  keys: Keys
-) => {
+  keys: Keys,
+) {
   return Object.fromEntries(
-    Object.entries(obj).filter(([k]) => !keys.includes(k as Keys[number]))
+    Object.entries(obj).filter(([k]) => !keys.includes(k as Keys[number])),
   ) as BetterOmit<T, Keys[number]>;
-};
+}
 
 // Type utils:
 const error = Symbol();
