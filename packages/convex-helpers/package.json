@@ -40,6 +40,10 @@
       "types": "./dist/server/migrations.d.ts",
       "default": "./dist/server/migrations.js"
     },
+    "./server/rateLimit": {
+      "types": "./dist/server/rateLimit.d.ts",
+      "default": "./dist/server/rateLimit.js"
+    },
     "./server/relationships": {
       "types": "./dist/server/relationships.d.ts",
       "default": "./dist/server/relationships.js"
