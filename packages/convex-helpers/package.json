@@ -118,6 +118,7 @@
     "@types/node": "^20.12.11",
     "@types/react": "^18.3.2",
     "chokidar-cli": "3.0.0",
+    "convex-test": "^0.0.17",
     "typescript": "5.4.5"
   }
 }
