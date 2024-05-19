@@ -37,129 +37,163 @@ export function defineRateLimits<
 >(limits: Limits) {
   type RateLimitNames = keyof Limits & string;
 
-  async function getExisting<DataModel extends RateLimitDataModel>(
-    db: GenericDatabaseReader<DataModel>,
-    name: RateLimitNames,
-    key: string | undefined,
-  ) {
-    return (db as unknown as GenericDatabaseReader<RateLimitDataModel>)
-      .query(tableName)
-      .withIndex("name", (q) => q.eq("name", name).eq("key", key))
-      .unique();
-  }
+  return {
+    async checkRateLimit<
+      DataModel extends RateLimitDataModel,
+      Name extends string = RateLimitNames,
+    >(
+      { db }: { db: GenericDatabaseReader<DataModel> },
+      args: {
+        name: Name;
+        key?: string;
+        count?: number;
+        reserve?: boolean;
+        throws?: boolean;
+      } & (Name extends RateLimitNames ? {} : { config: SlidingRateLimit }),
+    ) {
+      const config = ("config" in args && args.config) || limits[args.name];
+      return checkRateLimit({ db }, { ...args, config });
+    },
 
-  async function resetRateLimit<Name extends string = RateLimitNames>(
-    ctx: { db: GenericDatabaseWriter<RateLimitDataModel> },
-    args: { name: Name; key?: string; to?: number },
-  ) {
-    const existing = await getExisting(ctx.db, args.name, args.key);
-    if (args.to !== undefined) {
-      if (existing) {
-        await ctx.db.patch(existing._id, {
-          value: args.to,
-          updatedAt: Date.now(),
-        });
-      } else {
-        await ctx.db.insert(tableName, {
-          name: args.name,
-          key: args.key,
-          value: args.to,
-          updatedAt: Date.now(),
-        });
-      }
-    } else if (existing) {
-      await ctx.db.delete(existing._id);
-    }
-  }
+    async rateLimit<Name extends string = RateLimitNames>(
+      { db }: { db: GenericDatabaseWriter<RateLimitDataModel> },
+      args: {
+        name: Name;
+        key?: string;
+        count?: number;
+        reserve?: boolean;
+        throws?: boolean;
+      } & (Name extends RateLimitNames ? {} : { config: SlidingRateLimit }),
+    ) {
+      const config = ("config" in args && args.config) || limits[args.name];
+      return rateLimit({ db }, { ...args, config });
+    },
 
-  async function checkRateLimit<
-    DataModel extends RateLimitDataModel,
-    Name extends string = RateLimitNames,
-  >(
-    { db }: { db: GenericDatabaseReader<DataModel> },
-    args: {
-      name: Name;
-      key?: string;
-      count?: number;
-      reserve?: boolean;
-      throws?: boolean;
-    } & (Name extends RateLimitNames ? {} : { config: SlidingRateLimit }),
-  ) {
-    const config = ("config" in args && args.config) || limits[args.name];
-    if (!config) {
-      throw new Error(`Rate limit ${args.name} config not defined.`);
-    }
+    async resetRateLimit<Name extends string = RateLimitNames>(
+      ctx: { db: GenericDatabaseWriter<RateLimitDataModel> },
+      args: { name: Name; key?: string; to?: number },
+    ) {
+      return resetRateLimit(ctx, args);
+    },
+  };
+}
+
+export async function rateLimit(
+  { db }: { db: GenericDatabaseWriter<RateLimitDataModel> },
+  args: {
+    name: string;
+    key?: string;
+    count?: number;
+    reserve?: boolean;
+    throws?: boolean;
+    config: SlidingRateLimit;
+  },
+) {
+  const { ok, retryAt, nextState: state } = await checkRateLimit({ db }, args);
+  if (state) {
     const existing = await getExisting(db, args.name, args.key);
-    const now = Date.now();
-    const max = config.burst ?? config.rate;
-    const state = existing ?? { value: max, updatedAt: now };
-    const elapsed = now - state.updatedAt;
-    const rate = config.rate / config.period;
-    const value = Math.min(state.value + elapsed * rate, max);
-    const consuming = args.count ?? 1;
-    if (args.reserve) {
-      if (config.maxReserved && consuming > max + config.maxReserved) {
-        throw new Error(
-          `Rate limit ${args.name} count exceeds ${max + config.maxReserved}.`,
-        );
-      }
-    } else if (consuming > max) {
-      throw new Error(`Rate limit ${args.name} count exceeds ${max}.`);
+    if (existing) {
+      await db.patch(existing._id, state);
+    } else {
+      await db.insert(tableName, {
+        name: args.name,
+        key: args.key,
+        ...state,
+      });
     }
-    const nextState = {
-      updatedAt: now,
-      value: value - consuming,
-    };
-    if (value < consuming) {
-      const deficit = consuming - value;
-      const retryAt = now + deficit / rate;
-      if (
-        args.reserve &&
-        (!config.maxReserved || deficit <= config.maxReserved)
-      ) {
-        return { ok: true, retryAt, nextState };
-      }
-      if (args.throws) {
-        throw new ConvexError({
-          kind: "RateLimited",
-          name: args.name,
-          ok: false,
-          retryAt,
-        });
-      }
-      return { ok: false, retryAt, nextState: undefined };
-    }
-    return { ok: true, retryAt: undefined, nextState };
   }
+  return { ok, retryAt };
+}
 
-  async function rateLimit<Name extends string = RateLimitNames>(
-    { db }: { db: GenericDatabaseWriter<RateLimitDataModel> },
-    args: {
-      name: Name;
-      key?: string;
-      count?: number;
-      reserve?: boolean;
-      throws?: boolean;
-    } & (Name extends RateLimitNames ? {} : { config: SlidingRateLimit }),
-  ) {
-    const {
-      ok,
-      retryAt,
-      nextState: state,
-    } = await checkRateLimit({ db }, args);
-    if (state) {
-      const existing = await getExisting(db, args.name, args.key);
-      if (existing) {
-        await db.patch(existing._id, state);
-      } else {
-        await db.insert(tableName, {
-          name: args.name,
-          key: args.key,
-          ...state,
-        });
-      }
-    }
-    return { ok, retryAt };
+export async function checkRateLimit<DataModel extends RateLimitDataModel>(
+  { db }: { db: GenericDatabaseReader<DataModel> },
+  args: {
+    name: string;
+    key?: string;
+    count?: number;
+    reserve?: boolean;
+    throws?: boolean;
+    config: SlidingRateLimit;
+  },
+) {
+  const config = args.config;
+  if (!config) {
+    throw new Error(`Rate limit ${args.name} config not defined.`);
   }
-  return { checkRateLimit, rateLimit, resetRateLimit };
+  const existing = await getExisting(db, args.name, args.key);
+  const now = Date.now();
+  const max = config.burst ?? config.rate;
+  const state = existing ?? { value: max, updatedAt: now };
+  const elapsed = now - state.updatedAt;
+  const rate = config.rate / config.period;
+  const value = Math.min(state.value + elapsed * rate, max);
+  const consuming = args.count ?? 1;
+  if (args.reserve) {
+    if (config.maxReserved && consuming > max + config.maxReserved) {
+      throw new Error(
+        `Rate limit ${args.name} count exceeds ${max + config.maxReserved}.`,
+      );
+    }
+  } else if (consuming > max) {
+    throw new Error(`Rate limit ${args.name} count exceeds ${max}.`);
+  }
+  const nextState = {
+    updatedAt: now,
+    value: value - consuming,
+  };
+  if (value < consuming) {
+    const deficit = consuming - value;
+    const retryAt = now + deficit / rate;
+    if (
+      args.reserve &&
+      (!config.maxReserved || deficit <= config.maxReserved)
+    ) {
+      return { ok: true, retryAt, nextState };
+    }
+    if (args.throws) {
+      throw new ConvexError({
+        kind: "RateLimited",
+        name: args.name,
+        ok: false,
+        retryAt,
+      });
+    }
+    return { ok: false, retryAt, nextState: undefined };
+  }
+  return { ok: true, retryAt: undefined, nextState };
+}
+
+export async function resetRateLimit(
+  ctx: { db: GenericDatabaseWriter<RateLimitDataModel> },
+  args: { name: string; key?: string; to?: number },
+) {
+  const existing = await getExisting(ctx.db, args.name, args.key);
+  if (args.to !== undefined) {
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        value: args.to,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert(tableName, {
+        name: args.name,
+        key: args.key,
+        value: args.to,
+        updatedAt: Date.now(),
+      });
+    }
+  } else if (existing) {
+    await ctx.db.delete(existing._id);
+  }
+}
+
+async function getExisting<DataModel extends RateLimitDataModel>(
+  db: GenericDatabaseReader<DataModel>,
+  name: string,
+  key: string | undefined,
+) {
+  return (db as unknown as GenericDatabaseReader<RateLimitDataModel>)
+    .query(tableName)
+    .withIndex("name", (q) => q.eq("name", name).eq("key", key))
+    .unique();
 }

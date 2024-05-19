@@ -1,7 +1,8 @@
 import { defineTable, defineSchema } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test, vi } from "vitest";
-import { defineRateLimits, rateLimitTables, SlidingRateLimit } from "./rateLimit.js";
+import { defineRateLimits, rateLimitTables, SlidingRateLimit,
+  checkRateLimit, rateLimit, resetRateLimit } from "./rateLimit.js";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
@@ -283,6 +284,23 @@ describe("rateLimit", () => {
   test("inline config", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit, checkRateLimit, resetRateLimit } = defineRateLimits({ });
+    const config: SlidingRateLimit = { kind: "sliding", rate: 1, period: Second };
+    await t.run(async (ctx) => {
+      const before = await rateLimit(ctx, { name: "simple", config });
+      expect(before.ok).toBe(true);
+      expect(before.retryAt).toBe(undefined);
+      const after = await checkRateLimit(ctx, { name: "simple", config });
+      expect(after.ok).toBe(false);
+      expect(after.retryAt).toBeGreaterThan(Date.now());
+      await resetRateLimit(ctx, { name: "simple", to: 1 });
+      const after2 = await checkRateLimit(ctx, { name: "simple", config });
+      expect(after2.ok).toBe(true);
+      expect(after2.retryAt).toBe(undefined);
+    });
+  });
+
+  test("inline vanilla", async () => {
+    const t = convexTest(schema, modules);
     const config: SlidingRateLimit = { kind: "sliding", rate: 1, period: Second };
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "simple", config });
