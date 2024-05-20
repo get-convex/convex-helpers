@@ -8,8 +8,7 @@
     "dev:backend": "convex dev --tail-logs",
     "setup": "convex dev --until-success",
     "pretest": "tsc --noEmit",
-    "test": "vitest",
-    "test:once": "npm run pretest && vitest run",
+    "test": "vitest run",
     "test:debug": "vitest --inspect-brk --no-file-parallelism"
   },
   "author": "Ian Macartney (Convex)",

@@ -3,11 +3,12 @@
 set -e
 
 npm i
+npm run lint
 npm run test
 npm run clean
 npm run build
 pushd ../../tests >/dev/null
-npm run test:once
+npm run test
 popd >/dev/null
 git diff --exit-code || {
   echo "Uncommitted changes found. Commit or stash them before publishing."
