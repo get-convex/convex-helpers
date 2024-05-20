@@ -449,8 +449,8 @@ export async function startMigration(
  * If a migration has previously completed it will skip it.
  * If a migration had partial progress, it will resume from where it left off.
  * If a migration is already in progress when attempted, it will no-op.
- * If a migration fails, it will stop executing and NOT execute any subsequent
- * migrations in the series. Call the series again to retry.
+ * If a migration fails or is canceled, it will stop executing and NOT execute
+ * any subsequent migrations in the series. Call the series again to retry.
  *
  * This is useful to run as an post-deploy script where you specify all the
  * live migrations that should be run.
@@ -554,6 +554,8 @@ export async function getStatus<
 /**
  * Cancels a migration if it's in progress.
  * You can resume it later by calling the migration without an explicit cursor.
+ * If the migration had "next" migrations, e.g. from startMigrationsSerially,
+ * they will not run. To resume, call the series again or manually pass "next".
  * @param ctx Context from a query or mutation. Only needs the db and scheduler.
  * @param migrationId Migration to cancel. Get from status or logs.
  * @returns The status of the migration after attempting to cancel it.
