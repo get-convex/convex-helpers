@@ -14,7 +14,6 @@ import {
 import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
 import { Expand } from "../index.js";
 import { partial } from "../validators.js";
-export * from "./rateLimit.js";
 
 /**
  * Define a table with system fields _id and _creationTime. This also returns
