@@ -1,8 +1,14 @@
 import { defineTable, defineSchema } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test, vi } from "vitest";
-import { defineRateLimits, rateLimitTables, SlidingRateLimit,
-  checkRateLimit, rateLimit, resetRateLimit } from "./rateLimit.js";
+import {
+  defineRateLimits,
+  rateLimitTables,
+  checkRateLimit,
+  rateLimit,
+  resetRateLimit,
+  TokenBucketRateLimit,
+} from "./rateLimit.js";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
@@ -14,11 +20,11 @@ const Second = 1_000;
 const Minute = 60 * Second;
 const Hour = 60 * Minute;
 
-describe("rateLimit", () => {
+describe("bucket rateLimit", () => {
   test("simple check", async () => {
     const t = convexTest(schema, modules);
     const { checkRateLimit, rateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 1, period: Second },
+      simple: { kind: "token bucket", rate: 1, period: Second },
     });
     await t.run(async (ctx) => {
       const before = await checkRateLimit(ctx, { name: "simple" });
@@ -36,7 +42,7 @@ describe("rateLimit", () => {
   test("simple consume", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 1, period: Second },
+      simple: { kind: "token bucket", rate: 1, period: Second },
     });
     const global = await t.run(async (ctx) =>
       rateLimit(ctx, { name: "simple" }),
@@ -53,7 +59,7 @@ describe("rateLimit", () => {
   test("keyed", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 1, period: Second },
+      simple: { kind: "token bucket", rate: 1, period: Second },
     });
     const keyed = await t.run(async (ctx) =>
       rateLimit(ctx, { name: "simple", key: "key" }),
@@ -70,7 +76,7 @@ describe("rateLimit", () => {
   test("burst", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit } = defineRateLimits({
-      burst: { kind: "sliding", rate: 1, period: Second, burst: 3 },
+      burst: { kind: "token bucket", rate: 1, period: Second, burst: 3 },
     });
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "burst", count: 3 });
@@ -91,7 +97,7 @@ describe("rateLimit", () => {
   test("simple reset", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit, resetRateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 1, period: Second },
+      simple: { kind: "token bucket", rate: 1, period: Second },
     });
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "simple" });
@@ -110,7 +116,7 @@ describe("rateLimit", () => {
   test("keyed reset", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit, resetRateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 1, period: Second },
+      simple: { kind: "token bucket", rate: 1, period: Second },
     });
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "simple" });
@@ -126,7 +132,7 @@ describe("rateLimit", () => {
   test("reserved without max", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit, checkRateLimit } = defineRateLimits({
-      res: { kind: "sliding", rate: 1, period: Hour },
+      res: { kind: "token bucket", rate: 1, period: Hour },
     });
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "res" });
@@ -149,7 +155,7 @@ describe("rateLimit", () => {
     const t = convexTest(schema, modules);
     const { rateLimit, checkRateLimit } = defineRateLimits({
       res: {
-        kind: "sliding",
+        kind: "token bucket",
         rate: 1,
         period: Hour,
         maxReserved: 1,
@@ -177,7 +183,7 @@ describe("rateLimit", () => {
   test("throws", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 1, period: Second },
+      simple: { kind: "token bucket", rate: 1, period: Second },
     });
     expect(() =>
       t.run(async (ctx) => {
@@ -190,7 +196,7 @@ describe("rateLimit", () => {
   test("retryAt is accurate", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 10, period: Minute },
+      simple: { kind: "token bucket", rate: 10, period: Minute },
     });
     vi.useFakeTimers();
     const one = await t.run(async (ctx) => {
@@ -204,7 +210,7 @@ describe("rateLimit", () => {
     });
     expect(one).toBeDefined();
     expect(one?.value).toBe(5);
-    vi.setSystemTime(one!.updatedAt + 6 * Second);
+    vi.setSystemTime(one!.ts + 6 * Second);
     const two = await t.run(async (ctx) => {
       const result = await rateLimit(ctx, { name: "simple", count: 6 });
       expect(result.ok).toBe(true);
@@ -219,7 +225,7 @@ describe("rateLimit", () => {
     const three = await t.run(async (ctx) => {
       const result = await rateLimit(ctx, { name: "simple", count: 10 });
       expect(result.ok).toBe(false);
-      expect(result.retryAt).toBe(two!.updatedAt + Minute);
+      expect(result.retryAt).toBe(two!.ts + Minute);
       return ctx.db
         .query("rateLimits")
         .withIndex("name", (q) => q.eq("name", "simple"))
@@ -227,13 +233,13 @@ describe("rateLimit", () => {
     });
     expect(three).toBeDefined();
     expect(three!.value).toBe(0);
-    expect(three!.updatedAt).toBe(two!.updatedAt);
+    expect(three!.ts).toBe(two!.ts);
   });
 
   test("retryAt for reserved is accurate", async () => {
     const t = convexTest(schema, modules);
     const { rateLimit } = defineRateLimits({
-      simple: { kind: "sliding", rate: 10, period: Minute },
+      simple: { kind: "token bucket", rate: 10, period: Minute },
     });
     vi.useFakeTimers();
     const one = await t.run(async (ctx) => {
@@ -247,7 +253,7 @@ describe("rateLimit", () => {
     });
     expect(one).toBeDefined();
     expect(one!.value).toBe(5);
-    vi.setSystemTime(one!.updatedAt + 6 * Second);
+    vi.setSystemTime(one!.ts + 6 * Second);
     const two = await t.run(async (ctx) => {
       const result = await rateLimit(ctx, {
         name: "simple",
@@ -255,7 +261,7 @@ describe("rateLimit", () => {
         reserve: true,
       });
       expect(result.ok).toBe(true);
-      expect(result.retryAt).toBe(one!.updatedAt + 6 * Second + Minute);
+      expect(result.retryAt).toBe(one!.ts + 6 * Second + Minute);
       return ctx.db
         .query("rateLimits")
         .withIndex("name", (q) => q.eq("name", "simple"))
@@ -263,7 +269,7 @@ describe("rateLimit", () => {
     });
     expect(two).toBeDefined();
     expect(two!.value).toBe(-10);
-    vi.setSystemTime(two!.updatedAt + 30 * Second);
+    vi.setSystemTime(two!.ts + 30 * Second);
     const three = await t.run(async (ctx) => {
       const result = await rateLimit(ctx, {
         name: "simple",
@@ -271,7 +277,7 @@ describe("rateLimit", () => {
         reserve: true,
       });
       expect(result.ok).toBe(true);
-      expect(result.retryAt).toBe(two!.updatedAt + 30 * Second + Minute);
+      expect(result.retryAt).toBe(two!.ts + 30 * Second + Minute);
       return ctx.db
         .query("rateLimits")
         .withIndex("name", (q) => q.eq("name", "simple"))
@@ -283,8 +289,12 @@ describe("rateLimit", () => {
 
   test("inline config", async () => {
     const t = convexTest(schema, modules);
-    const { rateLimit, checkRateLimit, resetRateLimit } = defineRateLimits({ });
-    const config: SlidingRateLimit = { kind: "sliding", rate: 1, period: Second };
+    const { rateLimit, checkRateLimit, resetRateLimit } = defineRateLimits({});
+    const config = {
+      kind: "token bucket",
+      rate: 1,
+      period: Second,
+    } as TokenBucketRateLimit;
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "simple", config });
       expect(before.ok).toBe(true);
@@ -301,7 +311,11 @@ describe("rateLimit", () => {
 
   test("inline vanilla", async () => {
     const t = convexTest(schema, modules);
-    const config: SlidingRateLimit = { kind: "sliding", rate: 1, period: Second };
+    const config = {
+      kind: "token bucket",
+      rate: 1,
+      period: Second,
+    } as TokenBucketRateLimit;
     await t.run(async (ctx) => {
       const before = await rateLimit(ctx, { name: "simple", config });
       expect(before.ok).toBe(true);

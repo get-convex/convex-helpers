@@ -8,22 +8,33 @@ import {
   SchemaDefinition,
 } from "convex/server";
 
-export type SlidingRateLimit = {
-  kind: "sliding";
+export type TokenBucketRateLimit = {
+  kind: "token bucket";
   rate: number;
   period: number;
-  burst?: number;
+  capacity?: number;
   maxReserved?: number;
 };
 
-const tableName = "rateLimits";
+export type FixedWindowRateLimit = {
+  kind: "fixed window";
+  rate: number;
+  period: number;
+  capacity?: number;
+  maxReserved?: number;
+  start?: number;
+};
+
+export type RateLimit = TokenBucketRateLimit | FixedWindowRateLimit;
+
+export const RateLimitTable = "rateLimits";
 
 export const rateLimitTables = {
-  [tableName]: defineTable({
+  [RateLimitTable]: defineTable({
     name: v.string(),
     key: v.optional(v.string()), // undefined is singleton
     value: v.number(), // can go negative if capacity is reserved ahead of time
-    updatedAt: v.number(),
+    ts: v.number(),
   }).index("name", ["name", "key"]),
 };
 
@@ -32,9 +43,9 @@ export interface RateLimitDataModel
     SchemaDefinition<typeof rateLimitTables, true>
   > {}
 
-export function defineRateLimits<
-  Limits extends Record<string, SlidingRateLimit>,
->(limits: Limits) {
+export function defineRateLimits<Limits extends Record<string, RateLimit>>(
+  limits: Limits,
+) {
   type RateLimitNames = keyof Limits & string;
 
   return {
@@ -49,7 +60,7 @@ export function defineRateLimits<
         count?: number;
         reserve?: boolean;
         throws?: boolean;
-      } & (Name extends RateLimitNames ? {} : { config: SlidingRateLimit }),
+      } & (Name extends RateLimitNames ? {} : { config: RateLimit }),
     ) {
       const config = ("config" in args && args.config) || limits[args.name];
       return checkRateLimit({ db }, { ...args, config });
@@ -63,7 +74,7 @@ export function defineRateLimits<
         count?: number;
         reserve?: boolean;
         throws?: boolean;
-      } & (Name extends RateLimitNames ? {} : { config: SlidingRateLimit }),
+      } & (Name extends RateLimitNames ? {} : { config: RateLimit }),
     ) {
       const config = ("config" in args && args.config) || limits[args.name];
       return rateLimit({ db }, { ...args, config });
@@ -86,7 +97,7 @@ export async function rateLimit(
     count?: number;
     reserve?: boolean;
     throws?: boolean;
-    config: SlidingRateLimit;
+    config: RateLimit;
   },
 ) {
   const { ok, retryAt, nextState: state } = await checkRateLimit({ db }, args);
@@ -95,7 +106,7 @@ export async function rateLimit(
     if (existing) {
       await db.patch(existing._id, state);
     } else {
-      await db.insert(tableName, {
+      await db.insert(RateLimitTable, {
         name: args.name,
         key: args.key,
         ...state,
@@ -113,18 +124,18 @@ export async function checkRateLimit<DataModel extends RateLimitDataModel>(
     count?: number;
     reserve?: boolean;
     throws?: boolean;
-    config: SlidingRateLimit;
+    config: RateLimit;
   },
 ) {
   const config = args.config;
   if (!config) {
     throw new Error(`Rate limit ${args.name} config not defined.`);
   }
-  const existing = await getExisting(db, args.name, args.key);
   const now = Date.now();
-  const max = config.burst ?? config.rate;
-  const state = existing ?? { value: max, updatedAt: now };
-  const elapsed = now - state.updatedAt;
+  const existing = await getExisting(db, args.name, args.key);
+  const max = config.capacity ?? config.rate;
+  const state = existing ?? { value: max, ts: now };
+  const elapsed = now - state.ts;
   const rate = config.rate / config.period;
   const value = Math.min(state.value + elapsed * rate, max);
   const consuming = args.count ?? 1;
@@ -138,7 +149,7 @@ export async function checkRateLimit<DataModel extends RateLimitDataModel>(
     throw new Error(`Rate limit ${args.name} count exceeds ${max}.`);
   }
   const nextState = {
-    updatedAt: now,
+    ts: now,
     value: value - consuming,
   };
   if (value < consuming) {
@@ -154,7 +165,6 @@ export async function checkRateLimit<DataModel extends RateLimitDataModel>(
       throw new ConvexError({
         kind: "RateLimited",
         name: args.name,
-        ok: false,
         retryAt,
       });
     }
@@ -172,14 +182,14 @@ export async function resetRateLimit(
     if (existing) {
       await ctx.db.patch(existing._id, {
         value: args.to,
-        updatedAt: Date.now(),
+        ts: Date.now(),
       });
     } else {
-      await ctx.db.insert(tableName, {
+      await ctx.db.insert(RateLimitTable, {
         name: args.name,
         key: args.key,
         value: args.to,
-        updatedAt: Date.now(),
+        ts: Date.now(),
       });
     }
   } else if (existing) {
@@ -193,7 +203,7 @@ async function getExisting<DataModel extends RateLimitDataModel>(
   key: string | undefined,
 ) {
   return (db as unknown as GenericDatabaseReader<RateLimitDataModel>)
-    .query(tableName)
+    .query(RateLimitTable)
     .withIndex("name", (q) => q.eq("name", name).eq("key", key))
     .unique();
 }
