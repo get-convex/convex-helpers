@@ -121,6 +121,7 @@
     "@arethetypeswrong/cli": "0.15.3",
     "@types/node": "^20.12.11",
     "@types/react": "^18.3.2",
+    "@vitest/coverage-v8": "^1.6.0",
     "chokidar-cli": "3.0.0",
     "convex-test": "^0.0.17",
     "typescript": "5.4.5"
