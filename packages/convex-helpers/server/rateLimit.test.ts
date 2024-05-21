@@ -375,7 +375,7 @@ describe.each(["token bucket", "fixed window"] as const)(
         const after = await checkRateLimit(ctx, { name: "simple", config });
         expect(after.ok).toBe(false);
         expect(after.retryAt).toBeGreaterThan(Date.now());
-        await resetRateLimit(ctx, { name: "simple", to: 1 });
+        await resetRateLimit(ctx, { name: "simple" });
         const after2 = await checkRateLimit(ctx, { name: "simple", config });
         expect(after2.ok).toBe(true);
         expect(after2.retryAt).toBe(undefined);
@@ -396,7 +396,7 @@ describe.each(["token bucket", "fixed window"] as const)(
         const after = await checkRateLimit(ctx, { name: "simple", config });
         expect(after.ok).toBe(false);
         expect(after.retryAt).toBeGreaterThan(Date.now());
-        await resetRateLimit(ctx, { name: "simple", to: 1 });
+        await resetRateLimit(ctx, { name: "simple" });
         const after2 = await checkRateLimit(ctx, { name: "simple", config });
         expect(after2.ok).toBe(true);
         expect(after2.retryAt).toBe(undefined);
