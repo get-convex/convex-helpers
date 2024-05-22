@@ -66,6 +66,16 @@ interface RateLimitArgsWithoutConfig<Name extends string = string> {
   throws?: boolean;
 }
 
+export type RateLimitError = {
+  kind: "RateLimited",
+  name: string,
+  retryAt: number,
+};
+
+export function isRateLimitError(error: unknown): error is {data: RateLimitError} {
+  return error instanceof ConvexError &&  'kind' in error.data && error.data.kind === "RateLimited"
+}
+
 /**
  * Arguments for rate limiting.
  * @param name The name of the rate limit.
