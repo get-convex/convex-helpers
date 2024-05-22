@@ -11,14 +11,15 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Custom Functions](./packages/convex-helpers/README.md#custom-functions)                                              | [Sessions: via a server table](#server-persisted-session-data)                          |
 | [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)                                      | [The withUser utility](#authentication-withuser)                                        |
 | [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)                                        | [Testing with a local backend](#testing-with-a-local-backend)                           |
-| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [Presence](#presence)                                                                   |
-| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                          | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
-| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                  | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
+| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)                                            | [Presence](#presence)                                                                   |
+| [Rate limiting](./packages/convex-helpers/README.md#rate-limiting)                                                    | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
+| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
+| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                          |
+| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                  |
 | [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)            |
 | [CRUD](./packages/convex-helpers/README.md#crud-utilities)                                                            |
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)                                        |
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)                                               |
-| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)                                            |
 
 ## `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers)
 
@@ -57,62 +58,6 @@ define custom behavior, allowing you to:
 
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
-## Zod Validation
-
-To validate your arguments with zod instead of the
-[built-in argument validation](https://stack.convex.dev/track-sessions-without-cookies),
-you can import from `convex-helpers` from `"convex-helpers/server/zod"`.
-Read more in the [Stack post](https://stack.convex.dev/typescript-zod-function-validation).
-
-## Server-Persisted Session Data
-
-There are two approaches to sessions data:
-
-1. Creating a session ID client-side and passing it up to the server on every
-   request. This is the [recommended approach](https://stack.convex.dev/track-sessions-without-cookies)
-   and is available by **importing from `"convex-helpers/server/sessions"`**.
-   See more [in the convex-helpers README](./packages/convex-helpers/README.md).
-
-2. Create a new session document in a `sessions` table for every new client,
-   where you can store associated data.
-   See [this article on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware)
-   for tips on how to set up and use Sessions. To use theses sessions, copy the files:
-   - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
-   - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
-   - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
-
-## Retrying actions
-
-Use helper functions to retry a Convex action until it succeeds.
-
-See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
-and the [convex-helpers package README](./packages/convex-helpers/README.md)
-for examples and usage.
-
-## Authentication: withUser
-
-See the [Stack post on withUser](https://stack.convex.dev/wrappers-as-middleware-authentication)
-
-Use the [withUser](./convex/lib/withUser.ts) wrappers in your functions to easily look up a user.
-You'll need to add an entry in your schema similar to [convex/schema.ts](./convex/schema.ts).
-
-## Row-level security
-
-See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
-
-Use the [RowLevelSecurity](./convex/lib/rowLevelSecurity.ts) helper to define
-`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
-server-side function. Any access to `db` inside functions wrapped with these
-will check your access rules on read/insert/modify per-document.
-
-## Migrations: Data mutations
-
-See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
-and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
-
-See the [convex-helpers package](./packages/convex-helpers/README.md)
-for examples and usage.
-
 ## Relationship helpers
 
 See the [Stack post on relationship helpers](https://stack.convex.dev/functional-relationships-helpers)
@@ -123,6 +68,46 @@ See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 To copy code: Use [relationships.ts](./packages/convex-helpers/server/relationships.ts)
 to traverse database relationships in queries more cleanly.
+
+## Migrations: Data mutations
+
+See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
+and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
+
+See the [convex-helpers package](./packages/convex-helpers/README.md)
+for examples and usage.
+
+## Retrying actions
+
+Use helper functions to retry a Convex action until it succeeds.
+
+See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
+and the [convex-helpers package README](./packages/convex-helpers/README.md)
+for examples and usage.
+
+## Rate limiting
+
+Define and use rate limits to avoid users abusing your product.
+
+See the [Stack post](https://stack.convex.dev/rate-limiting)
+and the [convex-helpers package README](./packages/convex-helpers/README.md)
+for examples and usage.
+
+## Row-level security
+
+See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
+
+Use the [RowLevelSecurity](./convex/lib/rowLevelSecurity.ts) helper to define
+`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
+server-side function. Any access to `db` inside functions wrapped with these
+will check your access rules on read/insert/modify per-document.
+
+## Zod Validation
+
+To validate your arguments with zod instead of the
+[built-in argument validation](https://stack.convex.dev/track-sessions-without-cookies),
+you can import from `convex-helpers` from `"convex-helpers/server/zod"`.
+Read more in the [Stack post](https://stack.convex.dev/typescript-zod-function-validation).
 
 ## HTTP Endpoints: Using Hono for advanced functionality
 
@@ -149,29 +134,6 @@ these functions for a given table:
 **To use `convex-helpers`, import { crud } from "convex-helpers/server"**
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
-## Throttling client-side requests by Single-Flighting
-
-See the [Stack post on single-flighting](https://stack.convex.dev/throttling-requests-by-single-flighting) for info on a technique to limit client requests.
-
-You'll need the [useSingleFlight.ts](./src/hooks/useSingleFlight.ts) file, or [useLatestValue.ts](./src/hooks/useLatestValue.ts) utilities.
-
-## Stable query results via useStableQuery
-
-If you're fine getting stale results from queries when parameters change, check out the [Stack post on useStableQuery](https://stack.convex.dev/help-my-app-is-overreacting).
-
-You'll need the [useStableQuery.ts](./src/hooks/useStableQuery.ts) file.
-
-## Presence
-
-See the [Stack post on implementing presence](https://stack.convex.dev/presence-with-convex) for details on how to implement presence in your app.
-
-Related files:
-
-- [presence.ts](./convex/presence.ts) for server-side presence functions. Intended to be modified for your application.
-- [usePresence.ts](./src/hooks/usePresence.ts) for client-side React hooks. Modify to match your server API.
-- (optional)[useTypingIndicator.ts](./src/hooks/useTypingIndicator.ts) for specifically doing typing indicator presence.
-- (optional)[Facepile.tsx](./src/components/Facepile.tsx) for showing a facepile based on presence data. Intended to be used as an example to extend.
-
 ## Validator utilities
 
 When using validators for defining database schema or function arguments,
@@ -190,6 +152,23 @@ these validators help:
    runtime values. (This is controvercial and not required to use the above).
 
 See more [in the convex-helpers README](./packages/convex-helpers/README.md).
+
+## Server-Persisted Session Data
+
+There are two approaches to sessions data:
+
+1. Creating a session ID client-side and passing it up to the server on every
+   request. This is the [recommended approach](https://stack.convex.dev/track-sessions-without-cookies)
+   and is available by **importing from `"convex-helpers/server/sessions"`**.
+   See more [in the convex-helpers README](./packages/convex-helpers/README.md).
+
+2. Create a new session document in a `sessions` table for every new client,
+   where you can store associated data.
+   See [this article on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware)
+   for tips on how to set up and use Sessions. To use theses sessions, copy the files:
+   - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
+   - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
+   - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
 
 ## Testing with a local backend
 
@@ -212,6 +191,29 @@ To set these up for yourself:
   - Deploys code to the backend
   - Runs the tests
   - Tears down the backend
+
+## Throttling client-side requests by Single-Flighting
+
+See the [Stack post on single-flighting](https://stack.convex.dev/throttling-requests-by-single-flighting) for info on a technique to limit client requests.
+
+You'll need the [useSingleFlight.ts](./src/hooks/useSingleFlight.ts) file, or [useLatestValue.ts](./src/hooks/useLatestValue.ts) utilities.
+
+## Stable query results via useStableQuery
+
+If you're fine getting stale results from queries when parameters change, check out the [Stack post on useStableQuery](https://stack.convex.dev/help-my-app-is-overreacting).
+
+You'll need the [useStableQuery.ts](./src/hooks/useStableQuery.ts) file.
+
+## Presence
+
+See the [Stack post on implementing presence](https://stack.convex.dev/presence-with-convex) for details on how to implement presence in your app.
+
+Related files:
+
+- [presence.ts](./convex/presence.ts) for server-side presence functions. Intended to be modified for your application.
+- [usePresence.ts](./src/hooks/usePresence.ts) for client-side React hooks. Modify to match your server API.
+- (optional)[useTypingIndicator.ts](./src/hooks/useTypingIndicator.ts) for specifically doing typing indicator presence.
+- (optional)[Facepile.tsx](./src/components/Facepile.tsx) for showing a facepile based on presence data. Intended to be used as an example to extend.
 
 # 🧑‍🏫 What is Convex?
 

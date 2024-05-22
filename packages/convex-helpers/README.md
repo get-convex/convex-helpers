@@ -199,34 +199,76 @@ npx convex run migrations --prod
 
 ## Rate limiting
 
-Configure and use rate limits.
+Configure and use rate limits to avoid product abuse.
+See the associated Stack post for details:
+
+https://stack.convex.dev/rate-limiting
 
 ```ts
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
-const Second = 1000; // ms
-const Minute = 60 * Second;
-const Hour = 60 * Minute;
-const Day = 24 * Hour;
+
+const SECOND = 1000; // ms
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
+  // A per-user limit, allowing one every ~6 seconds.
+  // Allows up to 3 in quick succession if they haven't sent many recently.
+  sendMessage: { kind: "token bucket", rate: 10, period: MINUTE, capacity: 3 },
   // One global / singleton rate limit
-  freeTrialSignUp: { kind: "sliding", rate: 100, period: Hour },
-  // A per-user limit, allowing bursts up to 20. See below for details on burst.
-  sendMessage: { kind: "sliding", rate: 10, period: Minute, burst: 20 },
+  freeTrialSignUp: { kind: "fixed window", rate: 100, period: HOUR },
 });
 ```
 
-It uses a token bucket approach to provide guarantees for overall consumption
-limiting, while also allowing unused capacity to accumulate (like "rollover"
-minutes) up to some `burst` value. So if you could normally send 10 per minute,
-and allow accumulating up to 20, then every two minutes you could send 20, or if
-in the last minute you only sent 5, you can send 15 now.
+And add the rate limit table to your schema:
 
-The values accumulate continuously, so if your limit is 10 per minute, you could
-use one credit every 6 seconds, or a half credit every 3 second.
+```ts
+// in convex/schema.ts
+import { rateLimitTables } from "./rateLimit.js";
+
+export default defineSchema({
+  ...rateLimitTables,
+  otherTable: defineTable({}),
+  // other tables
+});
+```
+
+If you don't care about centralizing the configuration and type safety on the
+rate limit names, you don't have to use `defineRateLimits`, and can inline the
+config:
+
+```ts
+import { checkRateLimit, rateLimit, resetRateLimit } from "./rateLimit.js";
+
+//...
+await rateLimit(ctx, {
+  name: "callLLM",
+  count: numTokens,
+  config: { kind: "fixed window", rate: 40000, period: DAY },
+});,
+```
+
+You also don't have to define all of your rate limits in one place.
+You can use `defineRateLimits` multiple times.
+
+### Strategies:
+
+The **`token bucket`** approach provides guarantees for overall consumption via the
+`rate` per `period` at which tokens are added, while also allowing unused
+tokens to accumulate (like "rollover" minutes) up to some `capacity` value.
+So if you could normally send 10 per minute, with a capacity of 20, then every
+two minutes you could send 20, or if in the last two minutes you only sent 5,
+you can send 15 now.
+
+The **`fixed window`** approach differs in that the tokens are granted all at once,
+every `period` milliseconds. It similarly allows accumulating "rollover" tokens
+up to a `capacity` (defaults to the `rate` for both rate limit strategies).
+
+### Reserving capacity:
 
 You can also allow it to "reserve" capacity to avoid starvation on larger
-requests. See below for details.
+requests. Details in the [Stack post](https://stack.convex.dev/rate-limiting).
 
 ### To use a simple global rate limit:
 
@@ -234,12 +276,13 @@ requests. See below for details.
 const { ok, retryAt } = await rateLimit(ctx, { name: "freeTrialSignUp" });
 ```
 
-`ok` is whether it successfully consumed the resource
+- `ok` is whether it successfully consumed the resource
+- `retryAt` is when it would have succeeded in the future.
 
-`retryAt` is when it would have succeeded in the future.
 **Note**: If you have many clients using the `retryAt` to decide when to retry,
 defend against a [thundering herd](https://en.wikipedia.org/wiki/Thundering_herd_problem)
-by adding some jitter. Or use the reserved functionality discussed below.
+by adding some [jitter](https://stack.convex.dev/rate-limiting#jitter-introducing-randomness-to-avoid-thundering-herds).
+Or use the reserved functionality discussed in the [Stack post](https://stack.convex.dev/rate-limiting).
 
 ### To use a per-user rate limit:
 
@@ -252,50 +295,12 @@ await rateLimit(ctx, {
 });
 ```
 
-`key` is a rate limit specific to some user / team / session ID / etc.
+- `key` is a rate limit specific to some user / team / session ID / etc.
+- `count` is how many to consume (default is 1)
+- `throws` configures it to throw a `ConvexError` with `RateLimitError` data
+  instead of returning when `ok` is false.
 
-`count` is how many to consume (default is 1)
-
-`throws` configures it to throw a structured error instead of returning.
-
-### Reserving capacity
-
-If you want to ensure an operation will run in the future if there isn't
-capacity now, you can use `reserved: true`. This will pre-allocate capacity for
-the operation, and give you the time it should run.
-
-When you use this strategy, it's up to you to not run the operation until the
-designated time, at which point you don't need to check any rate limits, since
-the system will have waited to accumulate enough credits and accounted for it.
-
-```ts
-import { rateLimit } from "convex-helpers/server/rateLimit";
-
-export const sendOrQueueEmail = internalMutation({
-  args: { to: v.string(), subject: v.string(), body: v.string() },
-  handler: async (ctx, args) => {
-    const { ok, retryAt } = await rateLimit(ctx, {
-      name: "sendMarketingEmail",
-      key: args.to,
-      reserve: true,
-      config: { kind: "sliding", rate: 1, period: Minute, maxReserved: 10 },
-    });
-    if (!ok) throw new Error("Email is too overloaded, dropping message.");
-    if (retryAt) {
-      await ctx.scheduler.runAt(retryAt, internal.emails.send, args);
-    } else {
-      await ctx.scheduler.runAfter(0, internal.emails.send, args);
-    }
-  },
-});
-```
-
-Here we used the inline config and direct import.
-If you don't care about centralizing the configuration and type safety on the
-rate limit names, you don't have to use `defineRateLimits`.
-
-You also don't have to define all of your rate limits in one place.
-You can use `defineRateLimits` multiple times.
+Read more in the [Stack post](https://stack.convex.dev/rate-limiting).
 
 ## Session tracking via client-side sessionID storage
 
