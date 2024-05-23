@@ -1,4 +1,8 @@
-import { OptionalRestArgsOrSkip, useQueries, useQuery } from "convex/react";
+import {
+  OptionalRestArgsOrSkip,
+  useQueries,
+  useQuery as useQueryOriginal,
+} from "convex/react";
 import { FunctionReference, FunctionReturnType } from "convex/server";
 
 /**
@@ -6,7 +10,7 @@ import { FunctionReference, FunctionReturnType } from "convex/server";
  * function but instead return `{ status, data, error, isSuccess, isPending, isError}`.
  *
  * Status is one of "success", "pending", or "error".
- * Docs copied from {@link useQuery} until `returns` block:
+ * Docs copied from {@link useQueryOriginal} until `returns` block:
  *
  * Load a reactive query within a React component.
  *
@@ -27,7 +31,7 @@ import { FunctionReference, FunctionReturnType } from "convex/server";
  * - `isPending` is `true` if the query is still loading or "skip" was passed.
  * - `isError` is `true` if the query threw an exception.
  */
-export function useQueryWithError<Query extends FunctionReference<"query">>(
+export function useQuery<Query extends FunctionReference<"query">>(
   query: Query,
   ...args: OptionalRestArgsOrSkip<Query>
 ):
