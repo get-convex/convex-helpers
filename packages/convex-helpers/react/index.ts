@@ -3,9 +3,11 @@ import { FunctionReference, FunctionReturnType } from "convex/server";
 
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query
- * function but instead return `{ data, isLoading, error}`.
+ * function but instead return `{ status, data, error, isSuccess, isPending, isError}`.
+ *
+ * Status is one of "success", "pending", or "error".
  * Docs copied from {@link useQuery} until `returns` block:
-
+ *
  * Load a reactive query within a React component.
  *
  * This React hook contains internal state that will cause a rerender
@@ -17,18 +19,42 @@ import { FunctionReference, FunctionReturnType } from "convex/server";
  * like `api.dir1.dir2.filename.func`.
  * @param args - The arguments to the query function or the string "skip" if the
  * query should not be loaded.
- * @returns {data, isLoading, error} where:
+ * @returns {status, data, error, isSuccess, isPending, isError} where:
+ * - `status` is one of "success", "pending", or "error"
  * - `data` is the result of the query function, if it loaded successfully,
- * - `isLoading` is `true` if the query is still loading or "skip" was passed.
  * - `error` is an `Error` if the query threw an exception.
+ * - `isSuccess` is `true` if the query loaded successfully.
+ * - `isPending` is `true` if the query is still loading or "skip" was passed.
+ * - `isError` is `true` if the query threw an exception.
  */
 export function useQueryWithError<Query extends FunctionReference<"query">>(
   query: Query,
   ...args: OptionalRestArgsOrSkip<Query>
 ):
-  | { data: FunctionReturnType<Query>; isLoading: false; error: undefined }
-  | { data: undefined; isLoading: true; error: undefined }
-  | { data: undefined; isLoading: false; error: Error } {
+  | {
+      status: "success";
+      data: FunctionReturnType<Query>;
+      error: undefined;
+      isSuccess: true;
+      isPending: false;
+      isError: false;
+    }
+  | {
+      status: "pending";
+      data: undefined;
+      error: undefined;
+      isSuccess: false;
+      isPending: true;
+      isError: false;
+    }
+  | {
+      status: "error";
+      data: undefined;
+      error: Error;
+      isSuccess: false;
+      isPending: false;
+      isError: true;
+    } {
   const result = useQueries(
     args[0] === "skip"
       ? {}
@@ -40,11 +66,42 @@ export function useQueryWithError<Query extends FunctionReference<"query">>(
         },
   );
   if (args[0] === "skip") {
-    return { data: undefined, isLoading: true, error: undefined };
+    return {
+      status: "pending",
+      data: undefined,
+      error: undefined,
+      isSuccess: false,
+      isPending: true,
+      isError: false,
+    };
   }
   if (result.data instanceof Error) {
-    return { data: undefined, isLoading: false, error: result.data };
+    return {
+      status: "error",
+      data: undefined,
+      error: result.data,
+      isSuccess: false,
+      isPending: false,
+      isError: true,
+    };
   }
   const { data } = result;
-  return { data, isLoading: data === undefined, error: undefined };
+  if (data === undefined) {
+    return {
+      status: "pending",
+      data,
+      error: undefined,
+      isSuccess: false,
+      isPending: true,
+      isError: false,
+    };
+  }
+  return {
+    status: "success",
+    data,
+    error: undefined,
+    isSuccess: true,
+    isPending: false,
+    isError: false,
+  };
 }
