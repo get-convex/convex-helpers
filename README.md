@@ -6,152 +6,49 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 ## Index
 
-| In the [`convex-helpers`](./packages/convex-helpers/) [npm package](https://www.npmjs.com/package/convex-helpers):    | In this directory for copy-pasting:                                                     |
-| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)                                              | [Sessions: via a server table](#server-persisted-session-data)                          |
-| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)                                      | [The withUser utility](#authentication-withuser)                                        |
-| [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)                                        | [Testing with a local backend](#testing-with-a-local-backend)                           |
-| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)                                            | [Presence](#presence)                                                                   |
-| [Rate limiting](./packages/convex-helpers/README.md#rate-limiting)                                                    | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
-| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage) | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
-| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                          |
-| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                  |
-| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)            |
-| [CRUD](./packages/convex-helpers/README.md#crud-utilities)                                                            |
-| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)                                        |
-| [Filter db queries with JS](./packages/convex-helpers/README.md#filter)                                               |
+| In the [`convex-helpers`](./packages/convex-helpers/) [npm package](https://www.npmjs.com/package/convex-helpers):
+| ------------------------------------------------------------------------------------------------------------------
+| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)
+| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)
+| [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)
+| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)
+| [Rate limiting](./packages/convex-helpers/README.md#rate-limiting)
+| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage)
+| [Row-level security](./packages/convex-helpers/README.md#row-level-security)
+| [Zod validation](./packages/convex-helpers/README.md#zod-validation)
+| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)
+| [CRUD](./packages/convex-helpers/README.md#crud-utilities)
+| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)
+| [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
 
-## `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers)
+| In this directory for copy-pasting:
+| -----------------------------------
+| [Sessions: via a server table](#server-persisted-session-data)
+| [Testing with a local backend](#testing-with-a-local-backend)
+| [Presence](#presence)
+| [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting)
+| [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)
 
-In the [packages](./packages/) directory there's the [convex-helpers](./packages/convex-helpers/)
-directory. To use it:
+## 👉 `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers) 👈
+
+In the [packages/](./packages/) there's the [convex-helpers](./packages/convex-helpers/)
+directory. To use it in your own project:
 
 ```sh
  npm install convex-helpers@latest
 ```
 
-It doesn't have all of the below features, but the ones it has can be used directly,
-rather than copying the code from this repo.
-
 See the [README](./packages/convex-helpers/README.md) for more details.
 
-## Running these examples:
+The sections that follow are examples from which you can copy code.
+
+## Running the examples:
 
 To run these locally, run: `npm i && npm run dev`.
 This will symlink the packages/convex-helpers directory so you can edit the
 convex helpers source while using it in this example project.
 It will also run `chokidar` to re-compile convex-helpers on file changes.
 See the [dev script](./packages/convex-helpers/package.json) for details.
-
-## Custom Functions
-
-Build your own customized versions of `query`, `mutation`, and `action` that
-define custom behavior, allowing you to:
-
-- Run authentication logic before the request starts.
-- Look up commonly used data and add it to the ctx argument.
-- Replace a ctx or argument field with a different value, such as a version
-  of `db` that runs custom functions on data access.
-- Consume arguments from the client that are not passed to the action, such
-  as taking in an authentication parameter like an API key or session ID.
-  These arguments must be sent up by the client along with each request.
-
-See more [in the convex-helpers README](./packages/convex-helpers/README.md).
-
-## Relationship helpers
-
-See the [Stack post on relationship helpers](https://stack.convex.dev/functional-relationships-helpers)
-and the [relationship schema structures post](https://stack.convex.dev/relationship-structures-let-s-talk-about-schemas).
-
-**To use `convex-helpers`, import from "convex-helpers/server/relationships"**
-See more [in the convex-helpers README](./packages/convex-helpers/README.md).
-
-To copy code: Use [relationships.ts](./packages/convex-helpers/server/relationships.ts)
-to traverse database relationships in queries more cleanly.
-
-## Migrations: Data mutations
-
-See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
-and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
-
-See the [convex-helpers package](./packages/convex-helpers/README.md)
-for examples and usage.
-
-## Retrying actions
-
-Use helper functions to retry a Convex action until it succeeds.
-
-See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
-and the [convex-helpers package README](./packages/convex-helpers/README.md)
-for examples and usage.
-
-## Rate limiting
-
-Define and use rate limits to avoid users abusing your product.
-
-See the [Stack post](https://stack.convex.dev/rate-limiting)
-and the [convex-helpers package README](./packages/convex-helpers/README.md)
-for examples and usage.
-
-## Row-level security
-
-See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
-
-Use the [RowLevelSecurity](./convex/lib/rowLevelSecurity.ts) helper to define
-`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
-server-side function. Any access to `db` inside functions wrapped with these
-will check your access rules on read/insert/modify per-document.
-
-## Zod Validation
-
-To validate your arguments with zod instead of the
-[built-in argument validation](https://stack.convex.dev/track-sessions-without-cookies),
-you can import from `convex-helpers` from `"convex-helpers/server/zod"`.
-Read more in the [Stack post](https://stack.convex.dev/typescript-zod-function-validation).
-
-## HTTP Endpoints: Using Hono for advanced functionality
-
-[Hono](https://hono.dev/) is an optimized web framework you can use to define
-HTTP API endpoints easily
-([`httpAction` in Convex](https://docs.convex.dev/functions/http-actions)).
-
-See the [guide on Stack](https://stack.convex.dev/hono-with-convex) for tips on using Hono for HTTP endpoints.
-
-**To use `convex-helpers`, import from "convex-helpers/server/hono"**
-See more [in the convex-helpers README](./packages/convex-helpers/README.md).
-
-## CRUD utilities
-
-To generate a basic CRUD api for your tables, you can use this helper to define
-these functions for a given table:
-
-- `create`
-- `read`
-- `update`
-- `delete`
-- `paginate`
-
-**To use `convex-helpers`, import { crud } from "convex-helpers/server"**
-See more [in the convex-helpers README](./packages/convex-helpers/README.md).
-
-## Validator utilities
-
-When using validators for defining database schema or function arguments,
-these validators help:
-
-1. Add a `Table` utility that defines a table and keeps references to the fields
-   to avoid re-defining validators. To learn more about sharing validators, read
-   [this article](https://stack.convex.dev/argument-validation-without-repetition),
-   an extension of [this article](https://stack.convex.dev/types-cookbook).
-2. Add utilties for partial, pick and omit to match the TypeScript type
-   utilities.
-3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
-   field, and `brandedString`. To learn more about branded strings see
-   [this article](https://stack.convex.dev/using-branded-types-in-validators).
-4. Make the validators look more like TypeScript types, even though they're
-   runtime values. (This is controvercial and not required to use the above).
-
-See more [in the convex-helpers README](./packages/convex-helpers/README.md).
 
 ## Server-Persisted Session Data
 
