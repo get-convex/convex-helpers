@@ -126,6 +126,7 @@ A helper to define and run migrations. You can persist the migration state to a
 table so you can query the status, or use it without persistence.
 
 See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
+and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
 
 In `convex/schema.ts` (if you want persistence):
 
@@ -486,7 +487,7 @@ these validators help:
    to avoid re-defining validators. To learn more about sharing validators, read
    [this article](https://stack.convex.dev/argument-validation-without-repetition),
    an extension of [this article](https://stack.convex.dev/types-cookbook).
-2. Add utilties for partial, pick and omit to match the TypeScript type
+2. Add utilties for `partial`, `pick` and `omit` to match the TypeScript type
    utilities.
 3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
    field, and `brandedString`. To learn more about branded strings see
