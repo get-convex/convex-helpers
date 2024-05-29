@@ -34,7 +34,7 @@
     "@types/react-dom": "~18.3.0",
     "@vitejs/plugin-react": "~4.2.1",
     "jsdom": "~24.0.0",
-    "npm-run-all2": "~6.1.2",
+    "npm-run-all2": "~6.2.0",
     "typescript": "~5.4.5",
     "vite": "~5.2.11",
     "vitest": "~1.6.0"
