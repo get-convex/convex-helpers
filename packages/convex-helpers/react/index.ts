@@ -3,7 +3,13 @@ import {
   useQueries,
   useQuery as useQueryOriginal,
 } from "convex/react";
-import { FunctionReference, FunctionReturnType } from "convex/server";
+import {
+  FunctionReference,
+  FunctionReturnType,
+  getFunctionName,
+} from "convex/server";
+import { useMemo } from "react";
+import { EmptyObject } from "../index.js";
 
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query
@@ -33,7 +39,7 @@ import { FunctionReference, FunctionReturnType } from "convex/server";
  */
 export function useQuery<Query extends FunctionReference<"query">>(
   query: Query,
-  ...args: OptionalRestArgsOrSkip<Query>
+  ...queryArgs: OptionalRestArgsOrSkip<Query>
 ):
   | {
       status: "success";
@@ -59,17 +65,21 @@ export function useQuery<Query extends FunctionReference<"query">>(
       isPending: false;
       isError: true;
     } {
-  const result = useQueries(
-    args[0] === "skip"
-      ? {}
-      : {
-          data: {
-            query,
-            args: args[0] ?? {},
-          },
-        },
-  );
-  if (args[0] === "skip") {
+  const args = queryArgs[0] ?? {};
+  const queries = useMemo(() => {
+    if (args === "skip") {
+      return {} as EmptyObject;
+    }
+    return {
+      data: {
+        query,
+        args,
+      },
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getFunctionName(query), JSON.stringify(args)]);
+  const result = useQueries(queries);
+  if (args === "skip") {
     return {
       status: "pending",
       data: undefined,
