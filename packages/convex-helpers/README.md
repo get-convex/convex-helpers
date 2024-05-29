@@ -10,6 +10,7 @@ Table of contents:
 - [Stateful migrations](#stateful-migrations)
 - [Rate limiting](#rate-limiting)
 - [Sessions](#session-tracking-via-client-side-sessionid-storage)
+- [Richer useQuery](#richer-usequery)
 - [Row-level security](#row-level-security)
 - [Zod validation](#zod-validation)
 - [Hono for HTTP endpoints](#hono-for-advanced-http-endpoint-definitions)
@@ -362,6 +363,51 @@ export const queryWithSession = customQuery(query, {
 ```
 
 **Note:** `getAnonUser` is some function you write to look up a user by session.
+
+## Richer useQuery
+
+Use in place of `useQuery` from "convex/react" to fetch data from a query, with
+a richer return value.
+
+By default, `useQuery` will throw an error when the server throws. It also
+returns `undefined` to indicate a "loading" state. This helper returns:
+
+```ts
+const { status, data, error, isSuccess, isPending, isError } = useQuery(
+  api.foo.bar,
+  { myArg: 123 },
+);
+```
+
+The types of the return is:
+
+```ts
+type ret =
+  | {
+      status: "success";
+      data: FunctionReturnType<Query>;
+      error: undefined;
+      isSuccess: true;
+      isPending: false;
+      isError: false;
+    }
+  | {
+      status: "pending";
+      data: undefined;
+      error: undefined;
+      isSuccess: false;
+      isPending: true;
+      isError: false;
+    }
+  | {
+      status: "error";
+      data: undefined;
+      error: Error;
+      isSuccess: false;
+      isPending: false;
+      isError: true;
+    };
+```
 
 ## Row-level security
 
