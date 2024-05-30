@@ -13,7 +13,7 @@ import { EmptyObject } from "../index.js";
 
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query
- * function but instead return `{ status, data, error, isSuccess, isPending, isError}`.
+ * function but instead returns `{ status, data, error, isSuccess, isPending, isError}`.
  *
  * Status is one of "success", "pending", or "error".
  * Docs copied from {@link useQueryOriginal} until `returns` block:

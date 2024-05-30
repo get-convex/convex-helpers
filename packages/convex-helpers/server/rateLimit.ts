@@ -67,13 +67,19 @@ interface RateLimitArgsWithoutConfig<Name extends string = string> {
 }
 
 export type RateLimitError = {
-  kind: "RateLimited",
-  name: string,
-  retryAt: number,
+  kind: "RateLimited";
+  name: string;
+  retryAt: number;
 };
 
-export function isRateLimitError(error: unknown): error is {data: RateLimitError} {
-  return error instanceof ConvexError &&  'kind' in error.data && error.data.kind === "RateLimited"
+export function isRateLimitError(
+  error: unknown,
+): error is { data: RateLimitError } {
+  return (
+    error instanceof ConvexError &&
+    "kind" in error.data &&
+    error.data.kind === "RateLimited"
+  );
 }
 
 /**
@@ -143,14 +149,14 @@ export function defineRateLimits<
      * This function will be typed based on the limits you provide, so the names
      * will auto-complete, and you won't need to specify the config inline.
      */
-    async checkRateLimit<
+    checkRateLimit: async <
       DataModel extends RateLimitDataModel,
       Name extends string = RateLimitNames,
     >(
       { db }: { db: GenericDatabaseReader<DataModel> },
       args: RateLimitArgsWithoutConfig<Name> &
         (Name extends RateLimitNames ? {} : { config: RateLimitConfig }),
-    ) {
+    ) => {
       const config = ("config" in args && args.config) || limits[args.name];
       return checkRateLimit({ db }, { ...args, config });
     },
@@ -168,11 +174,11 @@ export function defineRateLimits<
      * If `reserve` is true, `retryAt` is the time you must schedule the
      * work to be done.
      */
-    async rateLimit<Name extends string = RateLimitNames>(
+    rateLimit: async <Name extends string = RateLimitNames>(
       ctx: { db: GenericDatabaseWriter<RateLimitDataModel> },
       args: RateLimitArgsWithoutConfig<Name> &
         (Name extends RateLimitNames ? {} : { config: RateLimitConfig }),
-    ) {
+    ) => {
       const config = ("config" in args && args.config) || limits[args.name];
       return rateLimit(ctx, { ...args, config });
     },
@@ -186,10 +192,10 @@ export function defineRateLimits<
      * limit for the shared value.
      * @returns
      */
-    async resetRateLimit<Name extends string = RateLimitNames>(
+    resetRateLimit: async <Name extends string = RateLimitNames>(
       ctx: { db: GenericDatabaseWriter<RateLimitDataModel> },
       args: { name: Name; key?: string },
-    ) {
+    ) => {
       return resetRateLimit(ctx, args);
     },
   };
