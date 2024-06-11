@@ -10,7 +10,7 @@
  *   as taking in an authentication parameter like an API key or session ID.
  *   These arguments must be sent up by the client along with each request.
  */
-import { ObjectType, PropertyValidators } from "convex/values";
+import { ObjectType, PropertyValidators, Validator } from "convex/values";
 import {
   ActionBuilder,
   DefaultFunctionArgs,
@@ -25,6 +25,7 @@ import {
   RegisteredMutation,
   RegisteredQuery,
   UnvalidatedFunction,
+  ValidatorTypeToReturnType,
 } from "convex/server";
 import { EmptyObject } from "../index.js";
 
@@ -152,6 +153,7 @@ export function customQuery<
           ...fn.args,
           ...inputArgs,
         },
+        returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
@@ -264,6 +266,7 @@ export function customMutation<
           ...fn.args,
           ...inputArgs,
         },
+        returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
@@ -380,6 +383,7 @@ export function customAction<
           ...fn.args,
           ...inputArgs,
         },
+        returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
@@ -466,7 +470,35 @@ export type Registration<
  * A builder that customizes a Convex function using argument validation.
  * e.g. `query({ args: {}, handler: async (ctx, args) => {} })`
  */
-type ValidatedBuilder<
+type ArgsAndReturnValueValidatedBuilder<
+  FuncType extends "query" | "mutation" | "action",
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
+  InputCtx,
+  Visibility extends FunctionVisibility,
+> = <
+  ExistingArgsValidator extends PropertyValidators,
+  ReturnValidator extends Validator<any, any, any>,
+>(fn: {
+  args: ExistingArgsValidator;
+  returns: ReturnValidator;
+  handler: (
+    ctx: Overwrite<InputCtx, ModCtx>,
+    args: Overwrite<ObjectType<ExistingArgsValidator>, ModMadeArgs>,
+  ) => ValidatorTypeToReturnType<ReturnValidator["type"]>;
+}) => Registration<
+  FuncType,
+  Visibility,
+  ObjectType<ExistingArgsValidator & ModArgsValidator>,
+  ValidatorTypeToReturnType<ReturnValidator["type"]>
+>;
+
+/**
+ * A builder that customizes a Convex function using argument validation.
+ * e.g. `query({ args: {}, handler: async (ctx, args) => {} })`
+ */
+type ArgsValidatedBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
@@ -533,7 +565,7 @@ type CustomBuilder<
   InputCtx,
   Visibility extends FunctionVisibility,
 > = ModArgsValidator extends EmptyObject
-  ? ValidatedBuilder<
+  ? ArgsAndReturnValueValidatedBuilder<
       FuncType,
       ModArgsValidator,
       ModCtx,
@@ -541,18 +573,34 @@ type CustomBuilder<
       InputCtx,
       Visibility
     > &
+      ArgsValidatedBuilder<
+        FuncType,
+        ModArgsValidator,
+        ModCtx,
+        ModMadeArgs,
+        InputCtx,
+        Visibility
+      > &
       UnvalidatedBuilder<FuncType, ModCtx, ModMadeArgs, InputCtx, Visibility>
-  : ValidatedBuilder<
+  : ArgsAndReturnValueValidatedBuilder<
       FuncType,
       ModArgsValidator,
       ModCtx,
       ModMadeArgs,
       InputCtx,
       Visibility
-    >;
+    > &
+      ArgsValidatedBuilder<
+        FuncType,
+        ModArgsValidator,
+        ModCtx,
+        ModMadeArgs,
+        InputCtx,
+        Visibility
+      >;
 
 export type CustomCtx<Builder> =
-  Builder extends ValidatedBuilder<
+  Builder extends ArgsValidatedBuilder<
     any,
     any,
     infer ModCtx,
@@ -561,6 +609,15 @@ export type CustomCtx<Builder> =
     any
   >
     ? Overwrite<InputCtx, ModCtx>
-    : never;
+    : Builder extends ArgsAndReturnValueValidatedBuilder<
+          any,
+          any,
+          infer ModCtx,
+          any,
+          infer InputCtx,
+          any
+        >
+      ? Overwrite<InputCtx, ModCtx>
+      : never;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
