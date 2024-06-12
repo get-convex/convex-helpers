@@ -29,6 +29,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Presence](#presence)
 | [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting)
 | [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)
+| [Query caching with ConvexQueryCacheProvider](#query-caching)
 
 ## 👉 `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers) 👈
 
@@ -112,6 +113,25 @@ Related files:
 - [usePresence.ts](./src/hooks/usePresence.ts) for client-side React hooks. Modify to match your server API.
 - (optional)[useTypingIndicator.ts](./src/hooks/useTypingIndicator.ts) for specifically doing typing indicator presence.
 - (optional)[Facepile.tsx](./src/components/Facepile.tsx) for showing a facepile based on presence data. Intended to be used as an example to extend.
+
+## Query Caching
+
+A query cache implementation which persists subscriptions to the server for some expiration
+period even after app `useQuery` hooks have all unmounted. This allows very fast reloading
+of unevicted values during navigation changes, view changes, etc.
+
+Related files:
+
+- [provider.ts](./src/hooks/cache/provider.tsx) contains `ConvexQueryCacheProvider`,
+  a configurable cache provider you put in your react app's root.
+- [useQuery.tsx](./src/hooks/cache/useQuery.tsx) is a drop-in replacement for the
+  `convex/react` equivalent that utilizes this configured cache.
+- [CacheExample.tsx](./src/components/CacheExample.tsx) is a demo component demonstrating
+  the cache's `useQuery` to reuse app-side values when child components are
+  unmounted and re-mounted.
+
+To use the query cache, copy the entire `src/hooks/cache` directory into your project. The
+`cache/index.ts` re-exports the things you'll need.
 
 # 🧑‍🏫 What is Convex?
 
