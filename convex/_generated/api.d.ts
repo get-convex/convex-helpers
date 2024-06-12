@@ -14,6 +14,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as addIt from "../addIt.js";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
 import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
@@ -35,6 +36,7 @@ import type * as testingFunctions from "../testingFunctions.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  addIt: typeof addIt;
   counter: typeof counter;
   http: typeof http;
   "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
