@@ -44,6 +44,10 @@
       "types": "./dist/server/migrations.d.ts",
       "default": "./dist/server/migrations.js"
     },
+    "./server/pagination": {
+      "types": "./dist/server/pagination.d.ts",
+      "default": "./dist/server/pagination.js"
+    },
     "./server/rateLimit": {
       "types": "./dist/server/rateLimit.d.ts",
       "default": "./dist/server/rateLimit.js"

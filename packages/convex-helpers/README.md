@@ -88,10 +88,10 @@ const posts = await asyncMap(
       "postCategories",
       "categoryId",
       "postId",
-      post._id,
+      post._id
     );
     return { ...post, comments, categories };
-  },
+  }
 );
 ```
 
@@ -375,7 +375,7 @@ returns `undefined` to indicate a "loading" state. This helper returns:
 ```ts
 const { status, data, error, isSuccess, isPending, isError } = useQuery(
   api.foo.bar,
-  { myArg: 123 },
+  { myArg: 123 }
 );
 ```
 
@@ -613,7 +613,7 @@ export const evens = query({
   handler: async (ctx) => {
     return await filter(
       ctx.db.query("counter_table"),
-      (c) => c.counter % 2 === 0,
+      (c) => c.counter % 2 === 0
     ).collect();
   },
 });
@@ -623,10 +623,264 @@ export const lastCountLongerThanName = query({
   handler: async (ctx) => {
     return await filter(
       ctx.db.query("counter_table"),
-      (c) => c.counter > c.name.length,
+      (c) => c.counter > c.name.length
     )
       .order("desc")
       .first();
+  },
+});
+```
+
+## Manual Pagination
+
+### Benefits of manual pagination
+
+- You can preprocess the table to store all page boundaries, allowing skipping to an
+  arbitrary page.
+- You can do multiple paginated queries within a single Convex query.
+- Avoid subscribing to pages that are no longer on-screen.
+- Avoid querying too much data and hitting errors.
+  - If you use `absoluteMaxRows`, you will never hit errors as the data changes
+    and pages get bigger, but keeping the list contiguous (described below) gets
+    harder.
+
+### Benefits of built-in pagination
+
+- No need to import anything.
+- It works with query pipelines, so you can use `.filter`, `.withSearchIndex`,
+  etc.
+- But the main benefit is keeping your list contiguous in a reactive world:
+  https://stack.convex.dev/fully-reactive-pagination
+  - I recommend reading that article, to learn why you should care about this
+    problem.
+  - You can implement this with manual pagination, described in each example
+    below as "Refresh the query with the same endpoints"
+  - Refreshing each manual query could double your query and bandwidth costs,
+    while built-in pagination automatically swaps the query under-the-hood,
+    without rerunning it.
+
+### Pattern: infinite-scroll pagination
+
+Initial request:
+
+```js
+const { page, indexKeys, hasMore } = await getPage(ctx, {
+  table: "messages",
+});
+```
+
+Fetch the subsequent page:
+
+```js
+const {
+  page: page2,
+  indexKeys: indexKeys2,
+  hasMore,
+} = await getPage({
+  table: "messages",
+  startIndexKey: indexKeys[indexKeys.length - 1],
+});
+```
+
+Refresh the first page, with the same endpoints, so it stays adjacent to the
+second page:
+
+```js
+const { page, indexKeys } = await getPage(ctx, {
+  table: "messages",
+  endIndexKey: indexKeys[indexKeys.length - 1],
+});
+```
+
+Refetch the second page, with the same endpoints, so it stays adjacent
+to the first and third pages.
+
+```js
+const { page: page2 } = await getPage(ctx, {
+  table: "messages",
+  startIndexKey: indexKeys[indexKeys.length - 1],
+  endIndexKey: indexKeys2[indexKeys2.length - 1],
+});
+```
+
+Refetch the last page, which you should do when `hasMore` becomes false.
+
+```js
+const { page: lastPage } = await getPage(ctx, {
+  table: "messages",
+  startIndexKey: penultimateIndexKeys[penultimateIndexKeys.length - 1],
+  endIndexKey: [],
+});
+```
+
+### Pattern: skip to a specific place in the table
+
+Jump to users with names starting with "G", like in an address book.
+
+```js
+import schema from "./schema";
+const { page, indexKeys } = await getPage(ctx, {
+  table: "users",
+  index: "by_name",
+  schema,
+  startIndexKey: ["G"],
+  startInclusive: true,
+});
+```
+
+Refetch that same first page, with the same endpoints:
+
+```js
+const { page } = await getPage(ctx, {
+  table: "users",
+  index: "by_name",
+  schema,
+  startIndexKey: ["G"],
+  startInclusive: true,
+  endIndexKey: indexKeys[indexKeys.length - 1],
+});
+```
+
+Subsequent page, i.e. "the user scrolled down":
+
+```js
+const { page: page2, indexKeys: indexKeys2 } = await getPage({
+  table: "users",
+  index: "by_name",
+  schema,
+  startIndexKey: indexKeys[indexKeys.length - 1],
+});
+```
+
+Previous page, i.e. "the user scrolled up". Note these results will be in
+reverse-alphabetical order.
+
+```js
+const { page: pagePrev, indexKeys: indexKeysPrev } = await getPage({
+  table: "users",
+  index: "by_name",
+  schema,
+  startIndexKey: ["G"],
+  order: "desc",
+});
+```
+
+Refetch previous page in alphabetical order, with same endpoints.
+
+```js
+const { page: pagePrev } = await getPage({
+  table: "users",
+  index: "by_name",
+  schema,
+  startIndexKey: indexKeysPrev[indexKeysPrev.length - 1],
+  startInclusive: true,
+  endIndexKey: ["G"],
+  endInclusive: false,
+});
+```
+
+### Pattern: pre-computed page boundaries
+
+You can call this code once to compute page boundaries and store them in a
+separate table. You could also set up a cron to recompute periodically.
+
+As an alternative to this batch-computation, you can calculate page boundaries
+when documents are inserted if they are always added at the end of the index,
+and rarely deleted.
+
+```js
+export const computePages = internalMutation({
+  args: {},
+  handler: async (ctx, _args) => {
+    for await (const existingPage of ctx.db.query("pages")) {
+      await ctx.db.delete(existingPage._id);
+    }
+    await ctx.scheduler.runAfter(0, internal.words.computeNextPage, {
+      pageIndex: 0,
+      startKey: [],
+    });
+  },
+});
+
+export const computeNextPage = internalMutation({
+  args: { pageIndex: v.number(), startKey: v.array(v.any()) },
+  handler: async (ctx, args) => {
+    const { hasMore, indexKeys } = await getPage(ctx, {
+      table: "messages",
+      startIndexKey: args.startKey,
+    });
+    const endKey = hasMore ? indexKeys[indexKeys.length - 1] : [];
+    await ctx.db.insert("pages", {
+      pageIndex: args.pageIndex,
+      startKey: args.startKey,
+      endKey,
+    });
+    if (hasMore) {
+      await ctx.scheduler.runAfter(0, internal.words.computeNextPage, {
+        pageIndex: args.pageIndex + 1,
+        startKey: endKey,
+      });
+    }
+  },
+});
+```
+
+Once you have page boundaries computed, you can fetch each page by index.
+
+```js
+export const pageOfWords = query({
+  args: { pageIndex: v.number() },
+  handler: async (ctx, args) => {
+    const pageDoc = await ctx.db
+      .query("pages")
+      .withIndex("pageIndex", (q) => q.eq("pageIndex", args.pageIndex))
+      .unique();
+    const { page } = await getPage(ctx, {
+      table: "messages",
+      startIndexKey: pageDoc.startKey,
+      endIndexKey: pageDoc.endKey,
+    });
+    return page;
+  },
+});
+```
+
+### Pattern: computing page boundaries on insert
+
+This pattern is simpler than the cron recomputation, but it works best when
+the table is append-only, i.e. new documents are at the end of the index, and
+they aren't often deleted.
+
+```js
+export const insertMessage = mutation({
+  args: { body: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("messages", { body });
+
+    const lastPageDoc = await ctx.db.query("pages")
+      .withIndex("pageIndex").order("desc").first();
+    if (lastPageDoc) {
+      const { indexKeys, hasMore } = await getPage(ctx, {
+        table: "messages",
+        startIndexKey: lastPageDoc.startKey,
+      });
+      if (hasMore) {
+        await ctx.db.patch(lastPageDoc._id, {
+          endKey: indexKeys[indexKeys.length - 1],
+        });
+        await ctx.db.insert("pages" {
+          pageIndex: lastPageDoc.pageIndex + 1,
+          startKey: indexKeys[indexKeys.length - 1],
+          endKey: [],
+        });
+      }
+    } else {
+      await ctx.db.insert("pages", {
+        pageIndex: 0,
+        startKey: [],
+        endKey: [],
+      });
+    }
   },
 });
 ```
