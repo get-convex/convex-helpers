@@ -66,18 +66,19 @@ export async function getPage<
   T extends TableNamesInDataModel<DataModel>,
 >(
   ctx: GenericQueryCtx<DataModel>,
-  request: PageRequest<DataModel, T>
+  request: PageRequest<DataModel, T>,
 ): Promise<PageResponse<DataModel, T>> {
   const index = request.index ?? "by_creation_time";
   const indexFields = getIndexFields(request);
   const startIndexKey = request.startIndexKey ?? [];
   const endIndexKey = request.endIndexKey ?? [];
   const startInclusive = request.startInclusive ?? false;
+  const order = request.order === "desc" ? "desc" : "asc";
   const startBoundType =
-    request.order === "desc" ? ltOr(startInclusive) : gtOr(startInclusive);
+    order === "desc" ? ltOr(startInclusive) : gtOr(startInclusive);
   const endInclusive = request.endInclusive ?? true;
   const endBoundType =
-    request.order === "desc" ? gtOr(endInclusive) : ltOr(endInclusive);
+    order === "desc" ? gtOr(endInclusive) : ltOr(endInclusive);
   if (
     indexFields.length < startIndexKey.length ||
     indexFields.length < endIndexKey.length
@@ -89,7 +90,7 @@ export async function getPage<
     startIndexKey,
     endIndexKey,
     startBoundType,
-    endBoundType
+    endBoundType,
   );
   const absoluteMaxRows = request.absoluteMaxRows ?? Infinity;
   const targetMaxRows = request.targetMaxRows ?? DEFAULT_TARGET_MAX_ROWS;
@@ -102,7 +103,8 @@ export async function getPage<
   for (const range of split) {
     const query = ctx.db
       .query(request.table)
-      .withIndex(index, rangeToQuery(range));
+      .withIndex(index, rangeToQuery(range))
+      .order(order);
     for await (const doc of query) {
       if (page.length >= absoluteLimit) {
         hasMore = true;
@@ -158,7 +160,7 @@ function splitRange(
   startBound: IndexKey,
   endBound: IndexKey,
   startBoundType: "gt" | "lt" | "gte" | "lte",
-  endBoundType: "gt" | "lt" | "gte" | "lte"
+  endBoundType: "gt" | "lt" | "gte" | "lte",
 ): Bound[][] {
   // Three parts to the split:
   // 1. reduce down from startBound to common prefix
@@ -179,7 +181,7 @@ function splitRange(
   }
   const makeCompare = (
     boundType: "gt" | "lt" | "gte" | "lte",
-    key: IndexKey
+    key: IndexKey,
   ) => {
     const range = commonPrefix.slice();
     let i = 0;
@@ -238,7 +240,7 @@ function getIndexFields<
   request: Pick<
     PageRequest<DataModel, T>,
     "indexFields" | "schema" | "table" | "index"
-  >
+  >,
 ): string[] {
   const indexDescriptor = String(request.index ?? "by_creation_time");
   if (indexDescriptor === "by_creation_time") {
@@ -262,11 +264,11 @@ function getIndexFields<
   }
   const table = request.schema.tables[request.table];
   const index = table.indexes.find(
-    (index: any) => index.indexDescriptor === indexDescriptor
+    (index: any) => index.indexDescriptor === indexDescriptor,
   );
   if (!index) {
     throw new Error(
-      `Index ${indexDescriptor} not found in table ${request.table}`
+      `Index ${indexDescriptor} not found in table ${request.table}`,
     );
   }
   const fields = index.fields.slice();

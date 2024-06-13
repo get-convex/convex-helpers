@@ -646,6 +646,8 @@ export const lastCountLongerThanName = query({
 
 ### Benefits of built-in pagination
 
+Pagination is built in to Convex with `.paginate()` and `usePaginatedQuery`.
+
 - No need to import anything.
 - It works with query pipelines, so you can use `.filter`, `.withSearchIndex`,
   etc.
