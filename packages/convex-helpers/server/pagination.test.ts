@@ -10,10 +10,7 @@ const schema = defineSchema({
     a: v.number(),
     b: v.number(),
     c: v.number(),
-  })
-    // TODO: defining by_creation_time shouldn't be necessary.
-    .index("by_creation_time", ["_creationTime"])
-    .index("abc", ["a", "b", "c"]),
+  }).index("abc", ["a", "b", "c"]),
 });
 
 function stripSystemFields(doc: GenericDocument) {
@@ -221,7 +218,7 @@ describe("manual pagination", () => {
         index: "abc",
         schema,
         targetMaxRows: 3,
-        startIndexKey: indexKeysAt[0],
+        startIndexKey: [1],
         startInclusive: false,
         order: "desc",
       });
@@ -237,7 +234,7 @@ describe("manual pagination", () => {
         schema,
         targetMaxRows: 3,
         startIndexKey: indexKeysPrev[2],
-        endIndexKey: indexKeysAt[0],
+        endIndexKey: [1],
         startInclusive: true,
         endInclusive: false,
       });

@@ -132,7 +132,7 @@
     "@types/react": "^18.3.2",
     "@vitest/coverage-v8": "^1.6.0",
     "chokidar-cli": "3.0.0",
-    "convex-test": "^0.0.20",
+    "convex-test": "^0.0.21",
     "typescript": "5.4.5",
     "vitest": "^1.6.0"
   }
