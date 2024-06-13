@@ -157,7 +157,7 @@ export class CacheRegistry {
           remove();
         } else {
           this.idle += 1;
-          const evictTimer = setTimeout(() => {
+          const evictTimer = window.setTimeout(() => {
             this.idle -= 1;
             remove();
           }, this.timeout);
