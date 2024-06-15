@@ -2,9 +2,10 @@ import { Value, convexToJson } from "convex/values";
 import {
   DocumentByName,
   GenericDataModel,
-  GenericQueryCtx,
+  GenericDatabaseReader,
   IndexNames,
   NamedTableInfo,
+  SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
 
@@ -45,7 +46,7 @@ export type PageRequest<
   /// you need to provide the index fields, either directly or from the schema.
   /// schema can be found with
   /// `import schema from "./schema";`
-  schema?: any;
+  schema?: SchemaDefinition<any, boolean>;
   indexFields?: string[];
 };
 
@@ -53,9 +54,14 @@ export type PageResponse<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > = {
+  /// Page of documents in the table.
+  /// Order is by the `index`, possibly reversed by `order`.
   page: DocumentByName<DataModel, T>[];
+  /// hasMore is true if this page did not exhaust the queried range.
   hasMore: boolean;
-  // indexKeys[i] is the index key for the document page[i].
+  /// indexKeys[i] is the index key for the document page[i].
+  /// indexKeys can be used as `startIndexKey` or `endIndexKey` to fetch pages
+  /// relative to this one.
   indexKeys: IndexKey[];
 };
 
@@ -65,7 +71,7 @@ export async function getPage<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 >(
-  ctx: GenericQueryCtx<DataModel>,
+  ctx: { db: GenericDatabaseReader<DataModel> },
   request: PageRequest<DataModel, T>,
 ): Promise<PageResponse<DataModel, T>> {
   const index = request.index ?? "by_creation_time";
@@ -99,7 +105,6 @@ export async function getPage<
     : Math.min(absoluteMaxRows, targetMaxRows);
   const page = [];
   const indexKeys = [];
-  let hasMore = false;
   for (const range of split) {
     const query = ctx.db
       .query(request.table)
@@ -107,8 +112,11 @@ export async function getPage<
       .order(order);
     for await (const doc of query) {
       if (page.length >= absoluteLimit) {
-        hasMore = true;
-        break;
+        return {
+          page,
+          hasMore: true,
+          indexKeys,
+        };
       }
       page.push(doc);
       indexKeys.push(getIndexKey(doc, indexFields));
@@ -116,7 +124,7 @@ export async function getPage<
   }
   return {
     page,
-    hasMore,
+    hasMore: false,
     indexKeys,
   };
 }
