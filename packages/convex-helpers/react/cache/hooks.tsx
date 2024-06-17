@@ -6,8 +6,8 @@ import {
 } from "convex/react";
 import { FunctionReference, FunctionReturnType } from "convex/server";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { ConvexQueryCacheContext } from "./provider";
-import { createQueryKey } from "./core";
+import { ConvexQueryCacheContext } from "./provider.js";
+import { createQueryKey } from "./core.js";
 import { Value } from "convex/values";
 
 /**
@@ -140,7 +140,6 @@ export function useQuery<Query extends FunctionReference<"query">>(
   query: Query,
   ...queryArgs: OptionalRestArgsOrSkip<Query>
 ): FunctionReturnType<Query> {
-  let skipping = false;
   const args = useMemo(() => queryArgs[0] ?? {}, [queryArgs]);
   const params: RequestForQueries = {};
   // Use queries doesn't support skip.

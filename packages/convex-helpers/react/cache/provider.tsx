@@ -1,6 +1,6 @@
 import { useConvex } from "convex/react";
 import { createContext, FC, PropsWithChildren } from "react";
-import { CacheRegistry, ConvexQueryCacheOptions } from "./core";
+import { CacheRegistry, ConvexQueryCacheOptions } from "./core.js";
 
 export const ConvexQueryCacheContext = createContext({
   registry: null as CacheRegistry | null,

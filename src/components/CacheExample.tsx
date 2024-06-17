@@ -25,12 +25,17 @@ export const CacheExample: FC = () => {
       Enter a new number of children:{" "}
       <input ref={ref} type="text" onBlur={updateCount} />
       <ul>{children}</ul>
+      <div>This is a skipped element that uses the cache:</div>
+      <div>
+        <Added top={-1} />
+      </div>
     </>
   );
 };
 
 const Added: FC<{ top: number }> = ({ top }) => {
-  const sum = useQuery(api.addIt.addItUp, { top });
+  const args = top === -1 ? "skip" : { top };
+  const sum = useQuery(api.addIt.addItUp, args);
   if (sum === undefined) {
     return <li>Loading {top}...</li>;
   } else {
