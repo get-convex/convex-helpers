@@ -16,7 +16,7 @@ export type CachedQuery<Query extends FunctionReference<"query">> = {
   refs: Set<string>;
   evictTimer: number | null; // SetTimeout
   unsub?: () => void;
-  value?: FunctionReturnType<Query>;
+  value?: FunctionReturnType<Query> | Error;
 };
 export type SubEntry<Query extends FunctionReference<"query">> = {
   queryKey: QueryKey;
@@ -122,7 +122,11 @@ export class CacheRegistry {
       const w = this.convex.watchQuery(query, args);
       const unsub = w.onUpdate(() => {
         const e = entry!;
-        e.value = w.localQueryResult();
+        try {
+          e.value = w.localQueryResult();
+        } catch (err) {
+          e.value = err;
+        }
         for (const ref of e.refs.values()) {
           this.subs.get(ref)?.setter(e.value);
         }

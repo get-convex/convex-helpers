@@ -6,6 +6,7 @@ export const addItUp = query({
     top: v.number(),
   },
   handler: async (ctx, args) => {
+    //    throw "Test Error";
     let sum = 0;
     for (let i = 0; i <= args.top; i++) {
       sum += i * 2;
