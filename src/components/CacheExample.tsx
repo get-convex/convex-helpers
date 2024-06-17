@@ -1,5 +1,5 @@
 import { FC, useRef, useState } from "react";
-import { useQuery } from "../hooks/cache/hooks";
+import { useQuery } from "convex-helpers/react/cache/hooks";
 import { api } from "../../convex/_generated/api";
 
 export const CacheExample: FC = () => {
