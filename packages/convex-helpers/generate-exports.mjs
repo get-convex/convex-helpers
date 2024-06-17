@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(new URL(import.meta.url)));
 function directoryContents(dirname) {
   return fs
     .readdirSync(path.join(__dirname, dirname))
-    .filter((filename) => filename.endsWith(".ts") | filename.endsWith(".tsx"))
+    .filter((filename) => filename.endsWith(".ts") || filename.endsWith(".tsx"))
     .filter((filename) => !filename.includes(".test"))
     .map((filename) => path.join(dirname, filename));
 }
