@@ -142,17 +142,6 @@ describe("zod functions", () => {
  * Test type translation
  */
 
-const a = z.object({ a: z.string(), b: z.object({ c: z.array(z.number()) }) });
-const b = v.array(v.boolean());
-const w = zodToConvex(a);
-
-const x = zodToConvexFields({
-  s: z.string().email().max(5),
-});
-
-const y = {
-  x: v.string(),
-};
 assert(
   sameType(
     zodToConvexFields({
