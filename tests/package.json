@@ -14,7 +14,7 @@
   "author": "Ian Macartney (Convex)",
   "license": "MIT",
   "dependencies": {
-    "convex": "^1.13.0-alpha",
+    "convex": "^1.13.0-alpha.1",
     "convex-helpers": "file:../packages/convex-helpers",
     "hono": "^4.0.10",
     "react": "^18.0.0",

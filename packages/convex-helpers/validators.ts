@@ -1,4 +1,9 @@
-import { PropertyValidators, Validator, v } from "convex/values";
+import {
+  OptionalProperty,
+  PropertyValidators,
+  Validator,
+  v,
+} from "convex/values";
 import { Expand } from "./index.js";
 
 /**
@@ -37,7 +42,7 @@ export const literals = <
  * @param x The validator to make nullable. As in, it can be the value or null.
  * @returns A new validator that can be the value or null.
  */
-export const nullable = <V extends Validator<any, false, any>>(x: V) =>
+export const nullable = <V extends Validator<any, "required", any>>(x: V) =>
   v.union(v.null(), x);
 
 /**
@@ -56,8 +61,8 @@ export const partial = <T extends PropertyValidators>(obj: T) => {
       vv.isOptional ? vv : v.optional(vv),
     ]),
   ) as unknown as {
-    [K in keyof T]: T[K] extends Validator<infer V, boolean, infer F>
-      ? Validator<V | undefined, true, F>
+    [K in keyof T]: T[K] extends Validator<infer V, OptionalProperty, infer F>
+      ? Validator<V | undefined, "optional", F>
       : never;
   };
 };
@@ -134,7 +139,7 @@ export const brandedString = <T extends string>(_brand: T) =>
   v.string() as Validator<string & { _: T }>;
 
 /** Mark fields as deprecated with this permissive validator typed as null */
-export const deprecated = v.optional(v.any()) as Validator<null, true>;
+export const deprecated = v.optional(v.any()) as Validator<null, "optional">;
 
 /** A maximally permissive validator that type checks as a given validator.
  *
@@ -204,6 +209,6 @@ export const pretend = <T extends Validator<any, any, any>>(
  *   },
  * });
  */
-export const pretendRequired = <T extends Validator<any, false, any>>(
+export const pretendRequired = <T extends Validator<any, "required", any>>(
   optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
