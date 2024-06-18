@@ -766,7 +766,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
       return zodToConvex((zod as any).unwrap()) as ConvexValidatorFromZod<Z>;
     case "ZodDefault":
       const withDefault = zodToConvex(zod._def.innerType);
-      if (withDefault.isOptional) {
+      if (withDefault.isOptional === "optional") {
         return withDefault as ConvexValidatorFromZod<Z>;
       }
       return v.optional(withDefault) as ConvexValidatorFromZod<Z>;
