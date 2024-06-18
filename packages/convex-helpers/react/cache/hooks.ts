@@ -1,14 +1,17 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   ConvexProvider,
   OptionalRestArgsOrSkip,
   RequestForQueries,
 } from "convex/react";
-import { FunctionReference, FunctionReturnType } from "convex/server";
+import {
+  FunctionArgs,
+  FunctionReference,
+  FunctionReturnType,
+  getFunctionName,
+} from "convex/server";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { ConvexQueryCacheContext } from "./provider.js";
-import { createQueryKey } from "./core.js";
-import { Value } from "convex/values";
+import { convexToJson, Value } from "convex/values";
 
 /**
  * Load a variable number of reactive Convex queries, utilizing
@@ -66,38 +69,50 @@ export function useQueries(
   queries: RequestForQueries,
 ): Record<string, any | undefined | Error> {
   const { registry } = useContext(ConvexQueryCacheContext);
-  const results: Record<string, any | undefined | Error> = {};
-  const listens: [
-    string,
-    FunctionReference<"query">,
-    Record<string, Value>,
-    (v: Value | Error) => void,
-  ][] = [];
-  const qkeys: string[] = [];
-  for (const key of Object.keys(queries)) {
-    const query = queries[key].query;
-    const args = queries[key].args;
-    const queryKey = createQueryKey(query, args);
-    const initialValue =
-      registry === null || queryKey === undefined
-        ? undefined
-        : registry.probe(queryKey!);
-    const [v, setV] = useState(initialValue);
-    results[key] = v;
-    listens.push([queryKey, query, args, setV]);
-    qkeys.push(queryKey);
-  }
-
   if (registry === null) {
     throw new Error(
       "Could not find `ConvexQueryCacheContext`! This `useQuery` implementation must be used in the React component " +
         "tree under `ConvexQueryCacheProvider`. Did you forget it? ",
     );
   }
+  const queryKeys: Record<string, string> = {};
+  for (const key of Object.keys(queries)) {
+    const query = queries[key].query;
+    const args = queries[key].args;
+    const queryKey = createQueryKey(query, args);
+    queryKeys[key] = queryKey;
+  }
+
+  const [values, setValues] = useState<Record<string, any | undefined | Error>>(
+    () =>
+      Object.fromEntries(
+        Object.keys(queries).map((key) => [
+          key,
+          registry.probe(queryKeys[key]),
+        ]),
+      ),
+  );
 
   useEffect(
     () => {
       const ids: string[] = [];
+      const listens: [
+        string,
+        FunctionReference<"query">,
+        Record<string, Value>,
+        (v: Value | Error) => void,
+      ][] = [];
+      for (const key of Object.keys(queries)) {
+        const query = queries[key].query;
+        const args = queries[key].args;
+        const queryKey = createQueryKey(query, args);
+        listens.push([
+          queryKey,
+          query,
+          args,
+          (v) => setValues((old) => ({ ...old, [key]: v })),
+        ]);
+      }
       for (const [queryKey, query, args, setV] of listens) {
         if (queryKey === undefined) {
           // No subscriptions.
@@ -115,9 +130,9 @@ export function useQueries(
     },
     // Safe to ignore query and args since queryKey is derived from them
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [registry, qkeys],
+    [registry, JSON.stringify(queryKeys)],
   );
-  return results;
+  return values;
 }
 
 /**
@@ -140,7 +155,7 @@ export function useQuery<Query extends FunctionReference<"query">>(
   query: Query,
   ...queryArgs: OptionalRestArgsOrSkip<Query>
 ): FunctionReturnType<Query> {
-  const args = useMemo(() => queryArgs[0] ?? {}, [queryArgs]);
+  const args = queryArgs[0] ?? {};
   const params: RequestForQueries = {};
   // Use queries doesn't support skip.
   if (args !== "skip") {
@@ -149,15 +164,26 @@ export function useQuery<Query extends FunctionReference<"query">>(
       args,
     };
   }
+  // Unlike the regular useQuery implementation, we don't need to memoize
+  // the params here, since the cached useQueries will handle that.
   const results = useQueries(params);
-  return useMemo(() => {
-    // This may be undefined either because the upstream
-    // value is actually undefined, or because the value
-    // was not sent to `useQueries` due to "skip".
-    const result = results._default;
-    if (result instanceof Error) {
-      throw result;
-    }
-    return result;
-  }, [results]);
+
+  // This may be undefined either because the upstream
+  // value is actually undefined, or because the value
+  // was not sent to `useQueries` due to "skip".
+  const result = results._default;
+  if (result instanceof Error) {
+    throw result;
+  }
+  return result;
+}
+
+export function createQueryKey<Query extends FunctionReference<"query">>(
+  query: Query,
+  args: FunctionArgs<Query>,
+): string {
+  const queryString = getFunctionName(query);
+  const key = [queryString, convexToJson(args)];
+  const queryKey = JSON.stringify(key);
+  return queryKey;
 }
