@@ -10,9 +10,16 @@
  *   as taking in an authentication parameter like an API key or session ID.
  *   These arguments must be sent up by the client along with each request.
  */
-import { ObjectType, PropertyValidators } from "convex/values";
+import {
+  GenericValidator,
+  ObjectType,
+  PropertyValidators,
+} from "convex/values";
 import {
   ActionBuilder,
+  ArgsArrayForOptionalValidator,
+  ArgsArrayToObject,
+  DefaultArgsForOptionalValidator,
   DefaultFunctionArgs,
   FunctionVisibility,
   GenericActionCtx,
@@ -24,9 +31,8 @@ import {
   RegisteredAction,
   RegisteredMutation,
   RegisteredQuery,
-  UnvalidatedFunction,
+  ReturnValueForOptionalValidator,
 } from "convex/server";
-import { EmptyObject } from "../index.js";
 
 /**
  * A modifier for a query, mutation, or action.
@@ -462,97 +468,72 @@ export type Registration<
   action: RegisteredAction<Visibility, Args, Output>;
 }[FuncType];
 
-/**
- * A builder that customizes a Convex function using argument validation.
- * e.g. `query({ args: {}, handler: async (ctx, args) => {} })`
+/*
+ * Hack! This type causes TypeScript to simplify how it renders object types.
+ *
+ * It is functionally the identity for object types, but in practice it can
+ * simplify expressions like `A & B`.
  */
-type ValidatedBuilder<
-  FuncType extends "query" | "mutation" | "action",
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
-  InputCtx,
-  Visibility extends FunctionVisibility,
-> = <ExistingArgsValidator extends PropertyValidators, Output>(fn: {
-  args: ExistingArgsValidator;
-  handler: (
-    ctx: Overwrite<InputCtx, ModCtx>,
-    args: Overwrite<ObjectType<ExistingArgsValidator>, ModMadeArgs>,
-  ) => Output;
-}) => Registration<
-  FuncType,
-  Visibility,
-  ObjectType<ExistingArgsValidator & ModArgsValidator>,
-  Output
->;
-
-/**
- * A builder that customizes a Convex function which doesn't validate arguments.
- * e.g. `query(async (ctx, args) => {})`
- * or `query({ handler: async (ctx, args) => {} })`
- */
-export type UnvalidatedBuilder<
-  FuncType extends "query" | "mutation" | "action",
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
-  InputCtx,
-  Visibility extends FunctionVisibility,
-> = <Output, ExistingArgs extends DefaultFunctionArgs = DefaultFunctionArgs>(
-  fn: UnvalidatedFunction<
-    Overwrite<InputCtx, ModCtx>,
-    // We don't need to overwrite the existing args with the mod ones.
-    // Technically you could try to pass one argument and have it overwritten
-    // But since you can't consume the arg in the unvalidated custom function,
-    // it would just get dropped. So force them to exclude the mod-made args
-    // from their regular parameters.
-    // This is done to let TypeScript infer what ExistingArgs is more easily.
-    [ExistingArgs & ModMadeArgs],
-    Output
-  >,
-) => Registration<
-  FuncType,
-  Visibility,
-  // Unvalidated functions are only allowed when there are no mod args.
-  // So we don't include the mod args in the output type.
-  // This allows us to use a customFunction (that doesn't modify ctx/args)
-  // as a parameter to other customFunctions, e.g. with RLS.
-  ExistingArgs,
-  Output
->;
+type Expand<ObjectType extends Record<any, any>> =
+  ObjectType extends Record<any, any>
+    ? {
+        [Key in keyof ObjectType]: ObjectType[Key];
+      }
+    : never;
 
 /**
  * A builder that customizes a Convex function, whether or not it validates
  * arguments. If the customization requires arguments, however, the resulting
  * builder will require argument validation too.
  */
-type CustomBuilder<
+export type CustomBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility,
-> = ModArgsValidator extends EmptyObject
-  ? ValidatedBuilder<
-      FuncType,
-      ModArgsValidator,
-      ModCtx,
-      ModMadeArgs,
-      InputCtx,
-      Visibility
-    > &
-      UnvalidatedBuilder<FuncType, ModCtx, ModMadeArgs, InputCtx, Visibility>
-  : ValidatedBuilder<
-      FuncType,
-      ModArgsValidator,
-      ModCtx,
-      ModMadeArgs,
-      InputCtx,
-      Visibility
-    >;
+> = {
+  <
+    ArgsValidator extends PropertyValidators | void,
+    ReturnsValidator extends GenericValidator | void,
+    ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> = any,
+    OneOrZeroArgs extends
+      ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
+  >(
+    func:
+      | {
+          args?: ArgsValidator;
+          returns?: ReturnsValidator;
+          handler: (
+            ctx: Overwrite<InputCtx, ModCtx>,
+            ...args: OneOrZeroArgs extends [infer A]
+              ? [Expand<A & ModMadeArgs>]
+              : [ModMadeArgs]
+          ) => ReturnValue;
+        }
+      | {
+          (
+            ctx: Overwrite<InputCtx, ModCtx>,
+            ...args: OneOrZeroArgs extends [infer A]
+              ? [Expand<A & ModMadeArgs>]
+              : [ModMadeArgs]
+          ): ReturnValue;
+        },
+  ): Registration<
+    FuncType,
+    Visibility,
+    ArgsArrayToObject<
+      OneOrZeroArgs extends [infer A]
+        ? [Expand<A & ObjectType<ModArgsValidator>>]
+        : [ObjectType<ModArgsValidator>]
+    >,
+    ReturnValue
+  >;
+};
 
 export type CustomCtx<Builder> =
-  Builder extends ValidatedBuilder<
+  Builder extends CustomBuilder<
     any,
     any,
     infer ModCtx,

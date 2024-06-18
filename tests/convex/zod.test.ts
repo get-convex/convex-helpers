@@ -4,7 +4,7 @@ import {
   DataModelFromSchemaDefinition,
 } from "convex/server";
 import { Equals, assert, omit } from "convex-helpers";
-import { zodToConvexFields } from "convex-helpers/server/zod";
+import { zodToConvex, zodToConvexFields } from "convex-helpers/server/zod";
 import { kitchenSinkValidator } from "./zodFns";
 import { v } from "convex/values";
 import { z } from "zod";
@@ -142,6 +142,17 @@ describe("zod functions", () => {
  * Test type translation
  */
 
+const a = z.object({ a: z.string(), b: z.object({ c: z.array(z.number()) }) });
+const b = v.array(v.boolean());
+const w = zodToConvex(a);
+
+const x = zodToConvexFields({
+  s: z.string().email().max(5),
+});
+
+const y = {
+  x: v.string(),
+};
 assert(
   sameType(
     zodToConvexFields({
