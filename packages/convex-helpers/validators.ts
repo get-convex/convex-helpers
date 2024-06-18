@@ -58,7 +58,7 @@ export const partial = <T extends PropertyValidators>(obj: T) => {
   return Object.fromEntries(
     Object.entries(obj).map(([k, vv]) => [
       k,
-      vv.isOptional ? vv : v.optional(vv),
+      vv.isOptional === "optional" ? vv : v.optional(vv),
     ]),
   ) as unknown as {
     [K in keyof T]: T[K] extends Validator<infer V, OptionalProperty, infer F>

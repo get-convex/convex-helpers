@@ -5,7 +5,6 @@ import { internal } from "./_generated/api";
 
 test("crud for table", async () => {
   const t = convexTest(schema);
-
   const doc = await t.mutation(internal.crud.create, { foo: "", bar: null });
   expect(doc).toMatchObject({ foo: "", bar: null });
   const read = await t.query(internal.crud.read, { id: doc._id });
