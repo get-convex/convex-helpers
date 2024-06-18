@@ -8,7 +8,7 @@ import {
 import { convexToJson } from "convex/values";
 
 const DEFAULT_EXPIRATION_MS = 300_000; // 5 minutes
-const DEFAULT_MAX_ENTRIES = Infinity;
+const DEFAULT_MAX_ENTRIES = 250;
 
 export type SubKey = string;
 export type QueryKey = string;
