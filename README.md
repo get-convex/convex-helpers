@@ -114,7 +114,6 @@ Related files:
 - (optional)[useTypingIndicator.ts](./src/hooks/useTypingIndicator.ts) for specifically doing typing indicator presence.
 - (optional)[Facepile.tsx](./src/components/Facepile.tsx) for showing a facepile based on presence data. Intended to be used as an example to extend.
 
-#
 # 🧑‍🏫 What is Convex?
 
 [Convex](https://convex.dev) is a hosted backend platform with a
