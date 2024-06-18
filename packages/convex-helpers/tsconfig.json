@@ -112,7 +112,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "_generated",
+    "server/_generated",
     "**/*.test.ts"
   ]
 }
