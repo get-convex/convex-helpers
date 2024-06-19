@@ -522,10 +522,6 @@ export type CustomBuilder<
   >;
 };
 
-/**
- * START Include some types from convex that aren't exported currently.
- */
-
 type ConvexUnionValidatorFromZod<T> = T extends z.ZodTypeAny[]
   ? VUnion<
       ConvexValidatorFromZod<T[number]>["type"],
@@ -538,9 +534,6 @@ type ConvexUnionValidatorFromZod<T> = T extends z.ZodTypeAny[]
       ConvexValidatorFromZod<T[number]>["fieldPaths"]
     >
   : never;
-/**
- * END types copied from Convex. Delete when Convex exports these types.
- */
 
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
