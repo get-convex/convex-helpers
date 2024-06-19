@@ -374,10 +374,13 @@ By default, `useQuery` will throw an error when the server throws. It also
 returns `undefined` to indicate a "loading" state. This helper returns:
 
 ```ts
-const { status, data, error, isSuccess, isPending, isError } = useQuery(
-  api.foo.bar,
-  { myArg: 123 },
-);
+import { makeUseQueryWithStatus } from "convex-helpers/react";
+import { useQueries } from "convex/react";
+// Do this once somewhere, name it whatever you want.
+export const useQueryWithStatus = makeUseQueryWithStatus(useQueries);
+
+const { status, data, error, isSuccess, isPending, isError } =
+  useQueryWithStatus(api.foo.bar, { myArg: 123 });
 ```
 
 The types of the return is:
@@ -641,9 +644,9 @@ navigation changes, view changes, etc.
 
 Related files:
 
-- [provider.ts](./react/cache/provider.tsx) contains `ConvexQueryCacheProvider`,
+- [provider.tsx](./react/cache/provider.tsx) contains `ConvexQueryCacheProvider`,
   a configurable cache provider you put in your react app's root.
-- [useQuery.tsx](./react/cache/hooks.tsx) contains cache-enabled drop-in
+- [hooks.ts](./react/cache/hooks.ts) contains cache-enabled drop-in
   replacements for both `useQuery` and `useQueries` from `convex/react`.
 
 To use the cache, first make sure to put a `<ConvexQueryCacheProvider>`
