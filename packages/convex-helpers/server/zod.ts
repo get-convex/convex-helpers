@@ -119,57 +119,7 @@ export function zCustomQuery<
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
-  // Looking forward to when input / args / ... are optional
-  const inputMod = mod.input ?? NoOp.input;
-  const inputArgs = mod.args ?? NoOp.args;
-  function customQueryBuilder(fn: any): any {
-    if ("args" in fn) {
-      const convexValidator = zodToConvexFields(fn.args);
-      return query({
-        args: {
-          ...convexValidator,
-          ...inputArgs,
-        },
-        handler: async (ctx, allArgs: any) => {
-          const { split } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
-          const parsed = z.object(fn.args).safeParse(allArgs);
-          if (!parsed.success) {
-            throw new ConvexError({
-              ZodError: JSON.parse(
-                JSON.stringify(parsed.error.errors, null, 2),
-              ) as Value[],
-            });
-          }
-          const result = await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...parsed.data, ...added.args },
-          );
-          if (fn.output) {
-            // We don't catch the error here. It's a developer error and we
-            // don't want to risk exposing the unexpected value to the client.
-            return fn.output.parse(result);
-          }
-          return result;
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return query({
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customQueryBuilder as CustomBuilder<
+  return customFnBuilder(query, mod) as CustomBuilder<
     "query",
     ModArgsValidator,
     ModCtx,
@@ -248,57 +198,7 @@ export function zCustomMutation<
     ModMadeArgs
   >,
 ) {
-  // Looking forward to when input / args / ... are optional
-  const inputMod = mod.input ?? NoOp.input;
-  const inputArgs = mod.args ?? NoOp.args;
-  function customMutationBuilder(fn: any): any {
-    if ("args" in fn) {
-      const convexValidator = zodToConvexFields(fn.args);
-      return mutation({
-        args: {
-          ...convexValidator,
-          ...inputArgs,
-        },
-        handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
-          const parsed = z.object(fn.args).safeParse(rest);
-          if (!parsed.success) {
-            throw new ConvexError({
-              ZodError: JSON.parse(
-                JSON.stringify(parsed.error.errors, null, 2),
-              ) as Value[],
-            });
-          }
-          const result = await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...parsed.data, ...added.args },
-          );
-          if (fn.output) {
-            // We don't catch the error here. It's a developer error and we
-            // don't want to risk exposing the unexpected value to the client.
-            return fn.output.parse(result);
-          }
-          return result;
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return mutation({
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customMutationBuilder as CustomBuilder<
+  return customFnBuilder(mutation, mod) as CustomBuilder<
     "mutation",
     ModArgsValidator,
     ModCtx,
@@ -372,18 +272,29 @@ export function zCustomAction<
   action: ActionBuilder<DataModel, Visibility>,
   mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
+  return customFnBuilder(action, mod) as CustomBuilder<
+    "action",
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    GenericActionCtx<DataModel>,
+    Visibility
+  >;
+}
+
+function customFnBuilder(builder: any, mod: any) {
   // Looking forward to when input / args / ... are optional
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
-  function customActionBuilder(fn: any): any {
+  return function customBuilder(fn: any): any {
     if ("args" in fn) {
       const convexValidator = zodToConvexFields(fn.args);
-      return action({
+      return builder({
         args: {
           ...convexValidator,
           ...inputArgs,
         },
-        handler: async (ctx, allArgs: any) => {
+        handler: async (ctx: any, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
           const parsed = z.object(fn.args).safeParse(rest);
@@ -414,22 +325,13 @@ export function zCustomAction<
       );
     }
     const handler = fn.handler ?? fn;
-    return action({
-      handler: async (ctx, args: any) => {
+    return builder({
+      handler: async (ctx: any, args: any) => {
         const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
       },
     });
-  }
-
-  return customActionBuilder as CustomBuilder<
-    "action",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
-    GenericActionCtx<DataModel>,
-    Visibility
-  >;
+  };
 }
 
 type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =

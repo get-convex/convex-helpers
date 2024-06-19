@@ -149,47 +149,7 @@ export function customQuery<
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
-  function customQueryBuilder(fn: any): any {
-    // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? NoOp.input;
-    const inputArgs = mod.args ?? NoOp.args;
-    if ("args" in fn) {
-      return query({
-        args: {
-          ...fn.args,
-          ...inputArgs,
-        },
-        returns: fn.returns,
-        handler: async (ctx, allArgs: any) => {
-          const added = await inputMod(
-            ctx,
-            pick(allArgs, Object.keys(inputArgs)) as any,
-          );
-          const args = pick(allArgs, Object.keys(fn.args));
-          return await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...args, ...added.args },
-          );
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return query({
-      returns: fn.returns,
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customQueryBuilder as CustomBuilder<
+  return customFnBuilder(query, mod) as CustomBuilder<
     "query",
     ModArgsValidator,
     ModCtx,
@@ -266,47 +226,7 @@ export function customMutation<
     ModMadeArgs
   >,
 ) {
-  function customMutationBuilder(fn: any): any {
-    // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? NoOp.input;
-    const inputArgs = mod.args ?? NoOp.args;
-    if ("args" in fn) {
-      return mutation({
-        args: {
-          ...fn.args,
-          ...inputArgs,
-        },
-        returns: fn.returns,
-        handler: async (ctx, allArgs: any) => {
-          const added = await inputMod(
-            ctx,
-            pick(allArgs, Object.keys(inputArgs)) as any,
-          );
-          const args = pick(allArgs, Object.keys(fn.args));
-          return await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...args, ...added.args },
-          );
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return mutation({
-      returns: fn.returns,
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customMutationBuilder as CustomBuilder<
+  return customFnBuilder(mutation, mod) as CustomBuilder<
     "mutation",
     ModArgsValidator,
     ModCtx,
@@ -387,27 +307,39 @@ export function customAction<
   GenericActionCtx<DataModel>,
   Visibility
 > {
-  function customActionBuilder(fn: any): any {
+  return customFnBuilder(action, mod) as CustomBuilder<
+    "action",
+    ModArgsValidator,
+    ModCtx,
+    ModMadeArgs,
+    GenericActionCtx<DataModel>,
+    Visibility
+  >;
+}
+
+function customFnBuilder(
+  builder: (args: any) => any,
+  mod: Mod<any, any, any, any>,
+) {
+  const inputMod = mod.input ?? NoOp.input;
+  const inputArgs = mod.args ?? NoOp.args;
+  return function customBuilder(fn: any): any {
     // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? NoOp.input;
-    const inputArgs = mod.args ?? NoOp.args;
+    const handler = fn.handler ?? fn;
     if ("args" in fn) {
-      return action({
+      return builder({
         args: {
           ...fn.args,
           ...inputArgs,
         },
         returns: fn.returns,
-        handler: async (ctx, allArgs: any) => {
+        handler: async (ctx: any, allArgs: any) => {
           const added = await inputMod(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
           );
           const args = pick(allArgs, Object.keys(fn.args));
-          return await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...args, ...added.args },
-          );
+          return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
         },
       });
     }
@@ -417,24 +349,14 @@ export function customAction<
           "modifier, you must declare the arguments for the function too.",
       );
     }
-    const handler = fn.handler ?? fn;
-    return action({
+    return builder({
       returns: fn.returns,
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
+      handler: async (ctx: any, args: any) => {
+        const added = await inputMod(ctx, args);
+        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
       },
     });
-  }
-
-  return customActionBuilder as CustomBuilder<
-    "action",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
-    GenericActionCtx<DataModel>,
-    Visibility
-  >;
+  };
 }
 
 /**
