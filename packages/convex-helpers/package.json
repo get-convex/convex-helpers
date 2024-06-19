@@ -24,6 +24,14 @@
       "types": "./dist/react/sessions.d.ts",
       "default": "./dist/react/sessions.js"
     },
+    "./react/cache/hooks": {
+      "types": "./dist/react/cache/hooks.d.ts",
+      "default": "./dist/react/cache/hooks.js"
+    },
+    "./react/cache/provider": {
+      "types": "./dist/react/cache/provider.d.ts",
+      "default": "./dist/react/cache/provider.js"
+    },
     "./server/customFunctions": {
       "types": "./dist/server/customFunctions.d.ts",
       "default": "./dist/server/customFunctions.js"
@@ -85,7 +93,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
     "clean": "rm -rf dist",
-    "dev": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
+    "dev": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'react/cache/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
     "arethetypeswrong": "attw $(npm pack)"
   },
   "repository": {
