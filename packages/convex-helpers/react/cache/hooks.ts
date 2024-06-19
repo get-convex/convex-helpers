@@ -160,7 +160,7 @@ export function useQuery<Query extends FunctionReference<"query">>(
  * @param args Arguments to the function, like { foo: "bar" }
  * @returns A string key that uniquely identifies the query and its arguments.
  */
-export function createQueryKey<Query extends FunctionReference<"query">>(
+function createQueryKey<Query extends FunctionReference<"query">>(
   query: Query,
   args: FunctionArgs<Query>,
 ): string {
