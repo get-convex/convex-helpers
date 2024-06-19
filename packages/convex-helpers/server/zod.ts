@@ -19,6 +19,7 @@ import {
   GenericValidator,
   VOptional,
   VObject,
+  Validator,
 } from "convex/values";
 import {
   FunctionVisibility,
@@ -621,8 +622,9 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                             >
                                           : never
                                         : Z extends z.ZodNullable<infer Inner>
-                                          ? ConvexValidatorFromZod<Inner> extends GenericValidator
-                                            ? VUnion<
+                                          ? ConvexValidatorFromZod<Inner> extends Validator<any, "required", any>
+                                            ?
+                                            VUnion<
                                                 | null
                                                 | ConvexValidatorFromZod<Inner>["type"],
                                                 [
@@ -631,7 +633,21 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                 ],
                                                 "required",
                                                 ConvexValidatorFromZod<Inner>["fieldPaths"]
-                                              >
+                                            >
+                                            // Swap nullable(optional(foo)) for optional(nullable(foo))
+                                            : ConvexValidatorFromZod<Inner> extends Validator<infer T, "optional", infer F>
+                                            ?
+                                            VUnion<
+                                                | null
+                                                | Exclude<ConvexValidatorFromZod<Inner>["type"], undefined>,
+                                                [
+                                                  Validator<T, "required", F>,
+                                                  VNull,
+                                                ],
+                                                "optional",
+                                                ConvexValidatorFromZod<Inner>["fieldPaths"]
+                                            >
+
                                             : never
                                           : Z extends z.ZodBranded<
                                                 infer Inner,
@@ -743,17 +759,19 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
         zodToConvex((zod as any).unwrap()) as any,
       ) as ConvexValidatorFromZod<Z>;
     case "ZodNullable":
-      const nullable = zodToConvex((zod as any).unwrap());
-      if (nullable.isOptional === "optional") {
+      const nullable = (zod as any).unwrap();
+      if (nullable._def.typeName === "ZodOptional") {
         // Swap nullable(optional(Z)) for optional(nullable(Z))
         // Casting to any to ignore the mismatch of optional
         return v.optional(
-          v.union(v.null(), nullable as any),
+          v.union(
+            zodToConvex(nullable.unwrap()) as any,
+            v.null(), ),
         ) as unknown as ConvexValidatorFromZod<Z>;
       }
       return v.union(
+        zodToConvex(nullable) as any,
         v.null(),
-        nullable,
       ) as unknown as ConvexValidatorFromZod<Z>;
     case "ZodBranded":
       return zodToConvex((zod as any).unwrap()) as ConvexValidatorFromZod<Z>;
