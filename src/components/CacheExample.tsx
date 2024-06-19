@@ -2,6 +2,11 @@ import { FC, useRef, useState } from "react";
 import { useQuery } from "convex-helpers/react/cache/hooks";
 import { api } from "../../convex/_generated/api";
 
+// Composing this with the tanstack-style useQuery:
+// import { makeUseQueryWithStatus } from "convex-helpers/react";
+// import { useQueries } from "convex-helpers/react/cache/hooks";
+// const useQuery= makeUseQueryWithStatus(useQueries);
+
 export const CacheExample: FC = () => {
   const [count, setCount] = useState(4);
   const ref = useRef<HTMLInputElement>(null);
@@ -30,9 +35,9 @@ export const CacheExample: FC = () => {
         onChange={updateCount}
       />
       <ul>{children}</ul>
-      <div>This is a skipped element that uses the cache:</div>
+      <div>This is an element that skips on odd numbers:</div>
       <div>
-        <Added top={-1} />
+        <Added top={count % 2 ? -1 : count} />
       </div>
     </>
   );
@@ -42,6 +47,10 @@ const Added: FC<{ top: number }> = ({ top }) => {
   const args = top === -1 ? "skip" : { top };
   const sum = useQuery(api.addIt.addItUp, args);
   if (sum === undefined) {
+    // If you want to try the tanstack-style useQuery:
+    // const { data: sum, isPending, error } = useQuery(api.addIt.addItUp, args);
+    // if (error) throw error;
+    // if (isPending) {
     return <li>Loading {top}...</li>;
   } else {
     return (
