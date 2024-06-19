@@ -9,9 +9,9 @@ import {
   FunctionReturnType,
   getFunctionName,
 } from "convex/server";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { ConvexQueryCacheContext } from "./provider.js";
-import { convexToJson, Value } from "convex/values";
+import { convexToJson } from "convex/values";
 
 /**
  * Load a variable number of reactive Convex queries, utilizing
@@ -76,50 +76,28 @@ export function useQueries(
     );
   }
   const queryKeys: Record<string, string> = {};
-  for (const key of Object.keys(queries)) {
-    const query = queries[key].query;
-    const args = queries[key].args;
+  const results: Record<string, any | undefined | Error> = {};
+  for (const [key, { query, args }] of Object.entries(queries)) {
     const queryKey = createQueryKey(query, args);
+    results[key] = registry.probe(queryKey);
     queryKeys[key] = queryKey;
   }
 
-  const [values, setValues] = useState<Record<string, any | undefined | Error>>(
-    () =>
-      Object.fromEntries(
-        Object.keys(queries).map((key) => [
-          key,
-          registry.probe(queryKeys[key]),
-        ]),
-      ),
-  );
+  const [_, setValues] =
+    useState<Record<string, any | undefined | Error>>(results);
 
   useEffect(
     () => {
       const ids: string[] = [];
-      const listens: [
-        string,
-        FunctionReference<"query">,
-        Record<string, Value>,
-        (v: Value | Error) => void,
-      ][] = [];
-      for (const key of Object.keys(queries)) {
-        const query = queries[key].query;
-        const args = queries[key].args;
-        const queryKey = createQueryKey(query, args);
-        listens.push([
-          queryKey,
-          query,
-          args,
-          (v) => setValues((old) => ({ ...old, [key]: v })),
-        ]);
-      }
-      for (const [queryKey, query, args, setV] of listens) {
-        if (queryKey === undefined) {
-          // No subscriptions.
-          return;
-        }
+      for (const [key, { query, args }] of Object.entries(queries)) {
         const id = crypto.randomUUID();
-        registry.start(id, queryKey, query, args, setV);
+        registry.start(id, queryKeys[key], query, args, (v) =>
+          setValues((old) => {
+            if (!(key in old)) return old; // We're no longer tracking this query
+            if (old[key] === v) return old; // No change
+            return { ...old, [key]: v };
+          }),
+        );
         ids.push(id);
       }
       return () => {
@@ -132,7 +110,7 @@ export function useQueries(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [registry, JSON.stringify(queryKeys)],
   );
-  return values;
+  return results;
 }
 
 /**
@@ -156,17 +134,15 @@ export function useQuery<Query extends FunctionReference<"query">>(
   ...queryArgs: OptionalRestArgsOrSkip<Query>
 ): FunctionReturnType<Query> {
   const args = queryArgs[0] ?? {};
-  const params: RequestForQueries = {};
-  // Use queries doesn't support skip.
-  if (args !== "skip") {
-    params["_default"] = {
-      query,
-      args,
-    };
-  }
   // Unlike the regular useQuery implementation, we don't need to memoize
   // the params here, since the cached useQueries will handle that.
-  const results = useQueries(params);
+  const results = useQueries(
+    args === "skip"
+      ? {} // Use queries doesn't support skip.
+      : {
+          _default: { query, args },
+        },
+  );
 
   // This may be undefined either because the upstream
   // value is actually undefined, or because the value
@@ -178,6 +154,12 @@ export function useQuery<Query extends FunctionReference<"query">>(
   return result;
 }
 
+/**
+ * Generate a query key from a query function and its arguments.
+ * @param query Query function reference like api.foo.bar
+ * @param args Arguments to the function, like { foo: "bar" }
+ * @returns A string key that uniquely identifies the query and its arguments.
+ */
 export function createQueryKey<Query extends FunctionReference<"query">>(
   query: Query,
   args: FunctionArgs<Query>,

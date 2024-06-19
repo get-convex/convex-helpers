@@ -3,7 +3,7 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 import { api } from "../../convex/_generated/api";
 
 export const CacheExample: FC = () => {
-  const [count, setCount] = useState(10);
+  const [count, setCount] = useState(4);
   const ref = useRef<HTMLInputElement>(null);
   const children = [];
   const updateCount = () => {
@@ -23,7 +23,12 @@ export const CacheExample: FC = () => {
     <>
       <h2>Query Cache Example</h2>
       Enter a new number of children:{" "}
-      <input ref={ref} type="text" onBlur={updateCount} />
+      <input
+        style={{ border: "1px solid" }}
+        ref={ref}
+        type="number"
+        onChange={updateCount}
+      />
       <ul>{children}</ul>
       <div>This is a skipped element that uses the cache:</div>
       <div>
