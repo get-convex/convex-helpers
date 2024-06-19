@@ -1,6 +1,10 @@
 import {
-  OptionalProperty,
+  GenericValidator,
   PropertyValidators,
+  VLiteral,
+  VOptional,
+  VString,
+  VUnion,
   Validator,
   v,
 } from "convex/values";
@@ -14,8 +18,11 @@ import { Expand } from "./index.js";
  * To use with an array:
  * ```ts
  * const myLiterals = ["a", 1, false] as const;
- * literals(...myLiterals)
+ * const literalValidator = literals(...myLiterals)
  * ```
+ * A similar result can be achieved with `v.union(...myLiterals.map(v.literal))`
+ * however the type of each union member will be the union of literal types,
+ * rather than each member being a specific literal type.
  *
  * @param args Values you want to use in a union of literals.
  * @returns A validator for the union of the literals.
@@ -25,15 +32,8 @@ export const literals = <
   T extends V[],
 >(
   ...args: T
-): Validator<T[number]> => {
-  if (args.length < 2) {
-    throw new Error("literals needs at least 2 arguments");
-  }
-  return v.union(
-    v.literal(args[0]),
-    v.literal(args[1]),
-    ...args.slice(2).map(v.literal),
-  ) as Validator<T[number]>;
+): VUnion<T[number], { [Index in keyof T]: VLiteral<T[Index]> }> => {
+  return v.union(...args.map(v.literal)) as any;
 };
 
 /**
@@ -60,10 +60,8 @@ export const partial = <T extends PropertyValidators>(obj: T) => {
       k,
       vv.isOptional === "optional" ? vv : v.optional(vv),
     ]),
-  ) as unknown as {
-    [K in keyof T]: T[K] extends Validator<infer V, OptionalProperty, infer F>
-      ? Validator<V | undefined, "optional", F>
-      : never;
+  ) as {
+    [K in keyof T]: VOptional<T[K]>;
   };
 };
 
@@ -116,7 +114,7 @@ export const systemFields = <TableName extends string>(
  */
 export const withSystemFields = <
   TableName extends string,
-  T extends Record<string, Validator<any, any, any>>,
+  T extends Record<string, GenericValidator>,
 >(
   tableName: TableName,
   fields: T,
@@ -136,7 +134,7 @@ export const withSystemFields = <
  * @param _brand - A unique string literal to brand the string with
  */
 export const brandedString = <T extends string>(_brand: T) =>
-  v.string() as Validator<string & { _: T }>;
+  v.string() as VString<string & { _: T }>;
 
 /** Mark fields as deprecated with this permissive validator typed as null */
 export const deprecated = v.optional(v.any()) as Validator<null, "optional">;
@@ -168,9 +166,8 @@ export const deprecated = v.optional(v.any()) as Validator<null, "optional">;
  *   },
  * });
  */
-export const pretend = <T extends Validator<any, any, any>>(
-  _typeToImmitate: T,
-): T => v.optional(v.any()) as T;
+export const pretend = <T extends GenericValidator>(_typeToImmitate: T): T =>
+  v.optional(v.any()) as T;
 
 /** A validator that validates as optional but type checks as required.
  *
