@@ -1,3 +1,4 @@
+"use client";
 import { useConvex, ConvexReactClient } from "convex/react";
 import {
   FunctionArgs,
