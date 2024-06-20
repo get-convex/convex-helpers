@@ -660,7 +660,7 @@ Fetch the next page:
 const {
   page: page2,
   indexKeys: indexKeys2,
-  hasMore,
+  hasMore: hasMore2,
 } = await getPage(ctx, {
   table: "messages",
   startIndexKey: indexKeys[indexKeys.length - 1],
