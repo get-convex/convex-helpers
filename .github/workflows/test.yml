@@ -30,6 +30,10 @@ jobs:
 
       - run: npm run test
 
+      - run: cd tests && npm i
+
+      - run: npm run test && cd ..
+
       # - run: npm run test-esm
 
       # - run: npm run format-check
