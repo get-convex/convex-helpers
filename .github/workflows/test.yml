@@ -26,17 +26,19 @@ jobs:
       - name: NPM v7
         run: npm install -g npm@7 --registry=https://registry.npmjs.org
 
-      - run: npm i
-
-      - run: npm run test
-
-      - working-directory: packages/convex-helpers
+      - name: Package directory
+        working-directory: packages/convex-helpers
         run: |
           npm i
           npm run test
           npm run lint
 
-      - working-directory: tests
+      - run: npm i
+
+      - run: npm run test
+
+      - name: Tests directory
+        working-directory: tests
         run: |
           npm i
           npm run test
