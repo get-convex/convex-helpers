@@ -1,0 +1,45 @@
+name: Test and lint
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  check:
+    name: Test and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18.15.0"
+
+      - name: NPM v7
+        run: npm install -g npm@7 --registry=https://registry.npmjs.org
+
+      - name: Package directory
+        working-directory: packages/convex-helpers
+        run: |
+          npm i
+          npm run test
+          npm run lint
+
+      - run: npm i
+
+      - run: npm run test
+
+      # TODO(ian): Move these into packages or get this working
+      # - name: Tests directory
+      #   working-directory: tests
+      #   run: |
+      #     npm i
+      #     npm run test
