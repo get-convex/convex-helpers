@@ -432,6 +432,11 @@ export function zCustomAction<
   >;
 }
 
+type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
+  [ArgsObject];
+
+export type ArgsArray = OneArgArray | [];
+
 export type ReturnValueForOptionalZodValidator<
   ReturnsValidator extends z.ZodTypeAny | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
@@ -442,13 +447,12 @@ export type ArgsArrayForOptionalValidator<
   ArgsValidator extends ZodValidator | void,
 > = [ArgsValidator] extends [ZodValidator]
   ? [z.output<z.ZodObject<ArgsValidator>>]
-  : [DefaultFunctionArgs] | [];
-
+  : ArgsArray;
 export type DefaultArgsForOptionalValidator<
   ArgsValidator extends ZodValidator | void,
 > = [ArgsValidator] extends [ZodValidator]
   ? [z.output<z.ZodObject<ArgsValidator>>]
-  : [DefaultFunctionArgs] | [];
+  : OneArgArray;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
 
@@ -516,7 +520,7 @@ export type CustomBuilder<
             >,
           ]
         : OneOrZeroArgs extends [infer A]
-          ? [Expand<A & ModMadeArgs>]
+          ? [Expand<A & ObjectType<ModArgsValidator>>]
           : [ObjectType<ModArgsValidator>]
     >,
     ReturnValue

@@ -110,14 +110,12 @@ export const addC = addCtxArg({
 queryMatches(addC, {}, { ctxA: "" });
 // Unvalidated
 export const addCU = addCtxArg({
-  // @ts-expect-error -- TODO(sarah) why is this broken
   handler: async (ctx) => {
     return { ctxA: ctx.a }; // !!!
   },
 });
 // Unvalidated variant 2
 queryMatches(addCU, {}, { ctxA: "" });
-// @ts-expect-error -- TODO(sarah) why is this broken
 export const addCU2 = addCtxArg(async (ctx) => {
   return { ctxA: ctx.a }; // !!!
 });
