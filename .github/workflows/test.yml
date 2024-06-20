@@ -21,7 +21,7 @@ jobs:
       - name: Node setup
         uses: actions/setup-node@v4
         with:
-          node-version: "16.15.1"
+          node-version: "18.15.0"
 
       - name: NPM v7
         run: npm install -g npm@7 --registry=https://registry.npmjs.org
@@ -30,7 +30,13 @@ jobs:
 
       - run: npm run test
 
-      - run: cd packages/convex-helpers && npm i && npm run test && npm run lint
+      - working-directory: packages/convex-helpers
+        run: |
+          npm i
+          npm run test
+          npm run lint
 
-      - run: cd tests && npm i
-      - run: cd tests && npm run test
+      - working-directory: tests
+        run: |
+          npm i
+          npm run test
