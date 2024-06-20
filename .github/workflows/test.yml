@@ -23,8 +23,8 @@ jobs:
         with:
           node-version: "16.15.1"
 
-      # - name: NPM v7
-      #   run: npm install -g npm@7 --registry=https://registry.npmjs.org
+      - name: NPM v7
+        run: npm install -g npm@7 --registry=https://registry.npmjs.org
 
       - run: cd tests && npm i && npm run test
 
