@@ -15,38 +15,45 @@ export type PageRequest<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > = {
-  /// Request a page of documents from this table.
+  /** Request a page of documents from this table. */
   table: T;
-  /// Where the page starts. Default or empty array is the start of the table.
+  /** Where the page starts. Default or empty array is the start of the table. */
   startIndexKey?: IndexKey;
-  /// Whether the startIndexKey is inclusive. Default is false.
+  /** Whether the startIndexKey is inclusive. Default is false. */
   startInclusive?: boolean;
-  /// Where the page ends. If provided, all documents up to this key will be
-  /// included, if possible. targetMaxRows will be ignored (but absoluteMaxRows
-  /// will not). This ensures adjacent pages stay adjacent, even as they grow.
-  /// An empty array means the end of the table.
+  /** Where the page ends. If provided, all documents up to this key will be
+   * included, if possible. targetMaxRows will be ignored (but absoluteMaxRows
+   * will not). This ensures adjacent pages stay adjacent, even as they grow.
+   * An empty array means the end of the table.
+   */
   endIndexKey?: IndexKey;
-  /// Whether the endIndexKey is inclusive. Default is true.
+  /** Whether the endIndexKey is inclusive. Default is true.*/
   endInclusive?: boolean;
-  /// Maximum number of rows to return, as long as endIndexKey is not provided.
-  /// Default is 100.
+  /** Maximum number of rows to return, as long as endIndexKey is not provided.
+   * Default is 100.
+   */
   targetMaxRows?: number;
-  /// Absolute maximum number of rows to return, even if endIndexKey is
-  /// provided. Use this to prevent a single page from growing too large, but
-  /// watch out because gaps can form between pages.
-  /// Default is unlimited.
+  /** Absolute maximum number of rows to return, even if endIndexKey is
+   * provided. Use this to prevent a single page from growing too large, but
+   * watch out because gaps can form between pages.
+   * Default is unlimited.
+   */
   absoluteMaxRows?: number;
-  /// Whether the index is walked in ascending or descending order. Default is
-  /// ascending.
+  /** Whether the index is walked in ascending or descending order. Default is
+   * ascending.
+   */
   order?: "asc" | "desc";
-  /// Which index to walk.
-  /// Default is by_creation_time.
+  /** Which index to walk.
+   * Default is by_creation_time.
+   */
   index?: IndexNames<NamedTableInfo<DataModel, T>>;
-  /// If index is not by_creation_time or by_id,
-  /// you need to provide the index fields, either directly or from the schema.
-  /// schema can be found with
-  /// `import schema from "./schema";`
+  /** If index is not by_creation_time or by_id,
+   * you need to provide the index fields, either directly or from the schema.
+   * schema can be found with
+   * `import schema from "./schema";`
+   */
   schema?: SchemaDefinition<any, boolean>;
+  /** The fields of the index, if you specified an index and not a schema. */
   indexFields?: string[];
 };
 
@@ -54,19 +61,26 @@ export type PageResponse<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > = {
-  /// Page of documents in the table.
-  /// Order is by the `index`, possibly reversed by `order`.
+  /** Page of documents in the table.
+   * Order is by the `index`, possibly reversed by `order`.
+   */
   page: DocumentByName<DataModel, T>[];
-  /// hasMore is true if this page did not exhaust the queried range.
+  /** hasMore is true if this page did not exhaust the queried range.*/
   hasMore: boolean;
-  /// indexKeys[i] is the index key for the document page[i].
-  /// indexKeys can be used as `startIndexKey` or `endIndexKey` to fetch pages
-  /// relative to this one.
+  /** indexKeys[i] is the index key for the document page[i].
+   * indexKeys can be used as `startIndexKey` or `endIndexKey` to fetch pages
+   * relative to this one.
+   */
   indexKeys: IndexKey[];
 };
 
-/// Get a single page of documents from a table.
-/// See examples in README.
+/**
+ * Get a single page of documents from a table.
+ * See examples in README.
+ * @param ctx A ctx from a query or mutation context.
+ * @param request What page to get.
+ * @returns { page, hasMore, indexKeys }.
+ */
 export async function getPage<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
@@ -151,18 +165,19 @@ const gtOr = (equal: boolean) => (equal ? "gte" : "gt");
 
 type Bound = ["gt" | "lt" | "gte" | "lte" | "eq", string, Value];
 
-/// Split a range query between two index keys into a series of range queries
-/// that should be executed in sequence. This is necessary because Convex only
-/// supports range queries of the form
-/// q.eq("f1", v).eq("f2", v).lt("f3", v).gt("f3", v).
-/// i.e. all fields must be equal except for the last field, which can have
-/// two inequalities.
-///
-/// For example, the range from >[1, 2, 3] to <=[1, 3, 2] would be split into
-/// the following queries:
-/// 1. q.eq("f1", 1).eq("f2", 2).gt("f3", 3)
-/// 2. q.eq("f1", 1).gt("f2", 2).lt("f2", 3)
-/// 3. q.eq("f1", 1).eq("f2", 3).lte("f3", 2)
+/** Split a range query between two index keys into a series of range queries
+ * that should be executed in sequence. This is necessary because Convex only
+ * supports range queries of the form
+ * q.eq("f1", v).eq("f2", v).lt("f3", v).gt("f3", v).
+ * i.e. all fields must be equal except for the last field, which can have
+ * two inequalities.
+ *
+ * For example, the range from >[1, 2, 3] to <=[1, 3, 2] would be split into
+ * the following queries:
+ * 1. q.eq("f1", 1).eq("f2", 2).gt("f3", 3)
+ * 2. q.eq("f1", 1).gt("f2", 2).lt("f2", 3)
+ * 3. q.eq("f1", 1).eq("f2", 3).lte("f3", 2)
+ */
 function splitRange(
   indexFields: string[],
   startBound: IndexKey,
