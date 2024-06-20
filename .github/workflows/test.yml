@@ -32,6 +32,9 @@ jobs:
           npm i
           npm run test
           npm run lint
+          cd ../../tests
+          npm i
+          npm run test
 
       - run: npm i
 
