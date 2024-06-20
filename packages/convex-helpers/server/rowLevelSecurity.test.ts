@@ -10,6 +10,7 @@ import {
   GenericDatabaseReader,
   GenericDatabaseWriter,
 } from "convex/server";
+import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
   users: defineTable({
@@ -43,7 +44,7 @@ describe("row level security", () => {
   };
 
   test("can only read own notes", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
       const bId = await ctx.db.insert("users", { tokenIdentifier: "Person B" });
@@ -72,7 +73,7 @@ describe("row level security", () => {
   });
 
   test("cannot delete someone else's note", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     const noteId = await t.run(async (ctx) => {
       const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
       const bId = await ctx.db.insert("users", { tokenIdentifier: "Person B" });

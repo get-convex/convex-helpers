@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import { v } from "convex/values";
 import { expect, test } from "vitest";
 import { defineSchema, defineTable } from "convex/server";
+import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
   tableA: defineTable({
@@ -15,7 +16,7 @@ const schema = defineSchema({
 });
 
 test("filter", async () => {
-  const t = convexTest(schema);
+  const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
     for (let i = 0; i < 10; i++) {
       const tableAId = await ctx.db.insert("tableA", { count: i });
