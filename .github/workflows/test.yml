@@ -26,10 +26,10 @@ jobs:
       # - name: NPM v7
       #   run: npm install -g npm@7 --registry=https://registry.npmjs.org
 
+      - run: cd tests && npm i && npm run test
+
       - run: npm i
 
       - run: npm run test
-
-      - run: cd tests && npm i && npm run test
 
       - run: cd packages/convex-helpers && npm i && npm run test && npm run lint && npm run arethetypeswrong -- --ignore-rules cjs-resolves-to-esm
