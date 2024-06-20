@@ -30,16 +30,6 @@ jobs:
 
       - run: npm run test
 
-      # tests/
-      - run: cd tests && npm i
+      - run: cd tests && npm i && npm run test
 
-      - run: npm run test && cd ..
-
-      # packages/convex-helpers/
-      - run: cd packages/convex-helpers && npm i
-
-      - run: npm run lint
-
-      - run: npm run arethetypeswrong -- --ignore-rules cjs-resolves-to-esm
-
-      - run: npm run test & cd ../..
+      - run: cd packages/convex-helpers && npm i && npm run test && npm run lint && npm run arethetypeswrong -- --ignore-rules cjs-resolves-to-esm
