@@ -2,18 +2,7 @@ import { filter } from "convex-helpers/server/filter";
 import { convexTest } from "convex-test";
 import { v } from "convex/values";
 import { expect, test } from "vitest";
-import { api, internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
-import {
-  action,
-  internalAction,
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-} from "./_generated/server";
 import { defineSchema, defineTable } from "convex/server";
-import { table } from "console";
 
 const schema = defineSchema({
   tableA: defineTable({

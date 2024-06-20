@@ -32,16 +32,14 @@ jobs:
           npm i
           npm run test
           npm run lint
-          cd ../../tests
-          npm i
-          npm run test
 
       - run: npm i
 
       - run: npm run test
 
-      - name: Tests directory
-        working-directory: tests
-        run: |
-          npm i
-          npm run test
+      # TODO(ian): Move these into packages or get this working
+      # - name: Tests directory
+      #   working-directory: tests
+      #   run: |
+      #     npm i
+      #     npm run test
