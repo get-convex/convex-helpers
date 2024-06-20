@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.43-alpha.0",
+  "version": "0.1.43-alpha.2",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
