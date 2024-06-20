@@ -1,10 +1,7 @@
 import { convexTest } from "convex-test";
 import { v } from "convex/values";
 import { describe, expect, test } from "vitest";
-import {
-  wrapDatabaseWriter,
-  wrapDatabaseReader,
-} from "convex-helpers/server/rowLevelSecurity";
+import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
 import {
   Auth,
   DataModelFromSchemaDefinition,
@@ -13,7 +10,6 @@ import {
   GenericDatabaseReader,
   GenericDatabaseWriter,
 } from "convex/server";
-import { customCtx } from "convex-helpers/server/customFunctions";
 
 const schema = defineSchema({
   users: defineTable({

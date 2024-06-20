@@ -1,4 +1,4 @@
-import { filter } from "convex-helpers/server/filter";
+import { filter } from "./filter.js";
 import { convexTest } from "convex-test";
 import { v } from "convex/values";
 import { expect, test } from "vitest";
