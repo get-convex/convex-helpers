@@ -23,9 +23,6 @@ jobs:
         with:
           node-version: "18.15.0"
 
-      - name: NPM v7
-        run: npm install -g npm@7 --registry=https://registry.npmjs.org
-
       - name: Package directory
         working-directory: packages/convex-helpers
         run: |

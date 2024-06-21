@@ -21,6 +21,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [CRUD](./packages/convex-helpers/README.md#crud-utilities)
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
+| [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)
 | [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)
 
 | In this directory for copy-pasting:

@@ -17,6 +17,7 @@ Table of contents:
 - [CRUD](#crud-utilities)
 - [Validator utilities](#validator-utilities)
 - [Filter db queries with JS](#filter)
+- [Manual pagination](#manual-pagination)
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
 
 ## Custom Functions
@@ -632,6 +633,82 @@ export const lastCountLongerThanName = query({
       .order("desc")
       .first();
   },
+});
+```
+
+## Manual Pagination
+
+Note Convex provides built-in pagination through `.paginate()` and
+`usePaginatedQuery()`.
+
+The `getPage` helper gives you more control of the pagination. You can specify
+the index ranges or do multiple paginations in the same query.
+An index range is all of the documents between two index keys: (start, end].
+An index key is an array of values for the fields in the specified index.
+For example, for an index defined like `defineTable({ a: v.number(), b: v.string() }).index("my_index", ["a", "b"])`
+an index key might be `[ 3 ]` or `[ 3, "abc" ]`. By default the index is the built-in "by_creation_time" index.
+The returned index keys are unique, including the two fields at the end of every index: `_creationTime` and `_id`.
+
+However, you have to handle edge cases yourself, as described in
+https://stack.convex.dev/fully-reactive-pagination.
+
+More details and patterns will appear in upcoming articles.
+
+### Examples
+
+Fetch the first page, by creation time:
+
+```js
+const { page, indexKeys, hasMore } = await getPage(ctx, {
+  table: "messages",
+});
+```
+
+Fetch the next page:
+
+```js
+const {
+  page: page2,
+  indexKeys: indexKeys2,
+  hasMore: hasMore2,
+} = await getPage(ctx, {
+  table: "messages",
+  startIndexKey: indexKeys[indexKeys.length - 1],
+});
+```
+
+You can change the page size and order by any index:
+
+```js
+import schema from "./schema";
+const { page, indexKeys, hasMore } = await getPage(ctx, {
+  table: "users",
+  index: "by_name",
+  schema,
+  targetMaxRows: 1000,
+});
+```
+
+Fetch of a page between two fixed places in the index, allowing you to display
+continuous pages even as documents change.
+
+```js
+const { page } = await getPage(ctx, {
+  table: "messages",
+  startIndexKey,
+  endIndexKey,
+});
+```
+
+Fetch starting at a given index key.
+For example, here are yesterday's messages, with recent at the top:
+
+```js
+const { page, indexKeys, hasMore } = await getPage(ctx, {
+  table: "messages",
+  startIndexKey: [Date.now() - 24 * 60 * 60 * 1000],
+  startInclusive: true,
+  order: "desc",
 });
 ```
 
