@@ -17,6 +17,8 @@ Table of contents:
 - [CRUD](#crud-utilities)
 - [Validator utilities](#validator-utilities)
 - [Filter db queries with JS](#filter)
+- [Manual pagination](#manual-pagination)
+- [Query caching with ConvexQueryCacheProvider](#query-caching)
 
 ## Custom Functions
 
@@ -373,10 +375,13 @@ By default, `useQuery` will throw an error when the server throws. It also
 returns `undefined` to indicate a "loading" state. This helper returns:
 
 ```ts
-const { status, data, error, isSuccess, isPending, isError } = useQuery(
-  api.foo.bar,
-  { myArg: 123 },
-);
+import { makeUseQueryWithStatus } from "convex-helpers/react";
+import { useQueries } from "convex/react";
+// Do this once somewhere, name it whatever you want.
+export const useQueryWithStatus = makeUseQueryWithStatus(useQueries);
+
+const { status, data, error, isSuccess, isPending, isError } =
+  useQueryWithStatus(api.foo.bar, { myArg: 123 });
 ```
 
 The types of the return is:
@@ -705,4 +710,65 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
   startInclusive: true,
   order: "desc",
 });
+```
+
+## Query Caching
+
+Utilize a query cache implementation which persists subscriptions to the
+server for some expiration period even after app `useQuery` hooks have all
+unmounted. This allows very fast reloading of unevicted values during
+navigation changes, view changes, etc.
+
+Related files:
+
+- [provider.tsx](./react/cache/provider.tsx) contains `ConvexQueryCacheProvider`,
+  a configurable cache provider you put in your react app's root.
+- [hooks.ts](./react/cache/hooks.ts) contains cache-enabled drop-in
+  replacements for both `useQuery` and `useQueries` from `convex/react`.
+
+To use the cache, first make sure to put a `<ConvexQueryCacheProvider>`
+inside `<ConvexProvider>` in your react component tree:
+
+```jsx
+
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache/provider";
+
+//...
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <ConvexClientProvider>
+          <ConvexQueryCacheProvider>{children}</ConvexQueryCacheProvider>
+        </ConvexClientProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+This provider takes three optional props:
+
+- **expiration** (number) -- Milliseconds to preserve unmounted subscriptions
+  in the cache. After this, the subscriptions will be dropped, and the value
+  will have to be re-fetched from the server. (Default: 300000, aka 5 minutes)
+- **maxIdleEntires** (number) -- Maximum number of unused subscriptions
+  kept in the cache. (Default: 250).
+- **debug** (boolean) -- Dump console logs every 3s to debug the state of
+  the cache (Default: false).
+
+Finally, you can utilize `useQuery` (and `useQueries`) just the same as
+their `convex/react` equivalents.
+
+```jsx
+import { useQuery } from "convex-helpers/react/cache/hooks";
+
+// ...
+
+const users = useQuery(api.users.getAll);
 ```

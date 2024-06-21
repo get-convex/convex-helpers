@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(new URL(import.meta.url)));
 function directoryContents(dirname) {
   return fs
     .readdirSync(path.join(__dirname, dirname))
-    .filter((filename) => filename.endsWith(".ts"))
+    .filter((filename) => filename.endsWith(".ts") || filename.endsWith(".tsx"))
     .filter((filename) => !filename.includes(".test"))
     .map((filename) => path.join(dirname, filename));
 }
@@ -19,6 +19,7 @@ function entryPointFiles() {
     "./testing.ts",
     "./validators.ts",
     ...directoryContents("react"),
+    ...directoryContents("react/cache"),
     ...directoryContents("server"),
   ];
 }
@@ -47,7 +48,7 @@ function entryPointFromFile(source) {
 function generateExport(source) {
   let extensionless = path.join(
     path.parse(source).dir,
-    path.parse(source).name
+    path.parse(source).name,
   );
 
   return {
@@ -66,18 +67,18 @@ function generateExports() {
 
 function checkPackageJsonExports() {
   const packageJson = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "package.json"))
+    fs.readFileSync(path.join(__dirname, "package.json")),
   );
   const actual = packageJson.exports;
   const expected = generateExports();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     console.error("-------------------->8--------------------");
     console.log(
-      `  "exports": ${indent(JSON.stringify(expected, null, 2), 2)},`
+      `  "exports": ${indent(JSON.stringify(expected, null, 2), 2)},`,
     );
     console.error("-------------------->8--------------------");
     console.error(
-      "`package.json` exports are not correct. Copy exports from above or run"
+      "`package.json` exports are not correct. Copy exports from above or run",
     );
     console.error("node generate-exports.mjs | pbcopy");
     console.error("and paste into package.json.");

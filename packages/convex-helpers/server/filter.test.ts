@@ -1,19 +1,9 @@
-import { filter } from "convex-helpers/server/filter";
+import { filter } from "./filter.js";
 import { convexTest } from "convex-test";
 import { v } from "convex/values";
 import { expect, test } from "vitest";
-import { api, internal } from "./_generated/api";
-import { Doc, Id } from "./_generated/dataModel";
-import {
-  action,
-  internalAction,
-  internalMutation,
-  internalQuery,
-  mutation,
-  query,
-} from "./_generated/server";
 import { defineSchema, defineTable } from "convex/server";
-import { table } from "console";
+import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
   tableA: defineTable({
@@ -26,7 +16,7 @@ const schema = defineSchema({
 });
 
 test("filter", async () => {
-  const t = convexTest(schema);
+  const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
     for (let i = 0; i < 10; i++) {
       const tableAId = await ctx.db.insert("tableA", { count: i });
