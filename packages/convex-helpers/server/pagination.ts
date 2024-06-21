@@ -117,8 +117,8 @@ export async function getPage<
   const absoluteLimit = request.endIndexKey
     ? absoluteMaxRows
     : Math.min(absoluteMaxRows, targetMaxRows);
-  const page = [];
-  const indexKeys = [];
+  const page: DocumentByName<DataModel, T>[] = [];
+  const indexKeys: IndexKey[] = [];
   for (const range of split) {
     const query = ctx.db
       .query(request.table)
@@ -217,14 +217,14 @@ function splitRange(
     return range;
   };
   // Stage 1.
-  const startRanges = [];
+  const startRanges: Bound[][] = [];
   while (startBound.length > 1) {
     startRanges.push(makeCompare(startBoundType, startBound));
     startBoundType = exclType(startBoundType);
     startBound = startBound.slice(0, -1);
   }
   // Stage 3.
-  const endRanges = [];
+  const endRanges: Bound[][] = [];
   while (endBound.length > 1) {
     endRanges.push(makeCompare(endBoundType, endBound));
     endBoundType = exclType(endBoundType);
@@ -304,7 +304,7 @@ function getIndexKey<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 >(doc: DocumentByName<DataModel, T>, indexFields: string[]): IndexKey {
-  const key = [];
+  const key: IndexKey = [];
   for (const field of indexFields) {
     let obj: any = doc;
     for (const subfield of field.split(".")) {
