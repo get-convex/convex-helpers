@@ -638,6 +638,11 @@ Note Convex provides built-in pagination through `.paginate()` and
 
 The `getPage` helper gives you more control of the pagination. You can specify
 the index ranges or do multiple paginations in the same query.
+An index range is all of the documents between two index keys: (start, end].
+An index key is an array of values for the fields in the specified index.
+For example, for an index defined like `defineTable({ a: v.number(), b: v.string() }).index("my_index", ["a", "b"])`
+an index key might be `[ 3 ]` or `[ 3, "abc" ]`. By default the index is the built-in "by_creation_time" index.
+The returned index keys are unique, including the two fields at the end of every index: `_creationTime` and `_id`.
 
 However, you have to handle edge cases yourself, as described in
 https://stack.convex.dev/fully-reactive-pagination.
@@ -680,7 +685,7 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
 ```
 
 Fetch of a page between two fixed places in the index, allowing you to display
-continuous pages even as documents change and the queries reactively update:
+continuous pages even as documents change.
 
 ```js
 const { page } = await getPage(ctx, {
