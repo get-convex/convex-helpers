@@ -1,5 +1,9 @@
 import { Equals, assert } from "convex-helpers";
-import { zCustomQuery, zid } from "convex-helpers/server/zod";
+import {
+  zCustomQuery,
+  zid,
+  zodToConvexFields,
+} from "convex-helpers/server/zod";
 import { customCtx } from "convex-helpers/server/customFunctions";
 import { v } from "convex/values";
 import { z } from "zod";
@@ -50,6 +54,8 @@ export const kitchenSinkValidator = {
     type: "refinement",
   }),
   optional: z.object({ a: z.string(), b: z.number() }).optional(),
+  nullableOptional: z.nullable(z.string().optional()),
+  optionalNullable: z.nullable(z.string()).optional(),
   nullable: z.nullable(z.string()),
   branded: z.string().brand("branded"),
   default: z.string().default("default"),
@@ -62,7 +68,8 @@ export const kitchenSink = zQuery({
   handler: async (ctx, args) => {
     ctx.db;
     return {
-      ...args,
+      args,
+      json: (v.object(zodToConvexFields(kitchenSinkValidator)) as any).json,
     };
   },
   // output: z

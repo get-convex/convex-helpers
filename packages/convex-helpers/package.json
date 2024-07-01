@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.43",
+  "version": "0.1.44",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
@@ -117,7 +117,7 @@
   },
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
-    "convex": "^1.12.0",
+    "convex": "^1.13.0",
     "hono": "^4.0.5",
     "react": "^17.0.2 || ^18.0.0",
     "zod": "^3.22.4"

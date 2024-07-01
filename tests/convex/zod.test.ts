@@ -51,10 +51,128 @@ test("zod kitchen sink", async () => {
     pipeline: 0,
   };
   const response = await t.query(api.zodFns.kitchenSink, kitchenSink);
-  expect(response).toMatchObject({
+  expect(response.args).toMatchObject({
     ...omit(kitchenSink, ["optional"]),
     default: "default",
     pipeline: "0",
+  });
+  expect(response.json).toMatchObject({
+    type: "object",
+    value: {
+      any: { fieldType: { type: "any" }, optional: false },
+      array: {
+        fieldType: { type: "array", value: { type: "string" } },
+        optional: false,
+      },
+      bigint: { fieldType: { type: "bigint" }, optional: false },
+      bool: { fieldType: { type: "boolean" }, optional: false },
+      branded: { fieldType: { type: "string" }, optional: false },
+      default: { fieldType: { type: "string" }, optional: true },
+      discriminatedUnion: {
+        fieldType: {
+          type: "union",
+          value: [
+            {
+              type: "object",
+              value: {
+                a: { fieldType: { type: "string" }, optional: false },
+                kind: {
+                  fieldType: { type: "literal", value: "a" },
+                  optional: false,
+                },
+              },
+            },
+            {
+              type: "object",
+              value: {
+                b: { fieldType: { type: "number" }, optional: false },
+                kind: {
+                  fieldType: { type: "literal", value: "b" },
+                  optional: false,
+                },
+              },
+            },
+          ],
+        },
+        optional: false,
+      },
+      effect: { fieldType: { type: "string" }, optional: false },
+      email: { fieldType: { type: "string" }, optional: false },
+      enum: {
+        fieldType: {
+          type: "union",
+          value: [
+            { type: "literal", value: "a" },
+            { type: "literal", value: "b" },
+          ],
+        },
+        optional: false,
+      },
+      lazy: { fieldType: { type: "string" }, optional: false },
+      literal: { fieldType: { type: "literal", value: "hi" }, optional: false },
+      nan: { fieldType: { type: "number" }, optional: false },
+      null: { fieldType: { type: "null" }, optional: false },
+      nullable: {
+        fieldType: {
+          type: "union",
+          value: [{ type: "string" }, { type: "null" }],
+        },
+        optional: false,
+      },
+      num: { fieldType: { type: "number" }, optional: false },
+      object: {
+        fieldType: {
+          type: "object",
+          value: {
+            a: { fieldType: { type: "string" }, optional: false },
+            b: { fieldType: { type: "number" }, optional: false },
+          },
+        },
+        optional: false,
+      },
+      optional: {
+        fieldType: {
+          type: "object",
+          value: {
+            a: { fieldType: { type: "string" }, optional: false },
+            b: { fieldType: { type: "number" }, optional: false },
+          },
+        },
+        optional: true,
+      },
+      pipeline: { fieldType: { type: "number" }, optional: false },
+      readonly: {
+        fieldType: {
+          type: "object",
+          value: {
+            a: { fieldType: { type: "string" }, optional: false },
+            b: { fieldType: { type: "number" }, optional: false },
+          },
+        },
+        optional: false,
+      },
+      tuple: {
+        fieldType: {
+          type: "array",
+          value: {
+            type: "union",
+            value: [{ type: "string" }, { type: "number" }],
+          },
+        },
+        optional: false,
+      },
+      union: {
+        fieldType: {
+          type: "union",
+          value: [{ type: "string" }, { type: "number" }],
+        },
+        optional: false,
+      },
+      userId: {
+        fieldType: { tableName: "users", type: "id" },
+        optional: false,
+      },
+    },
   });
   const stored = await t.run(async (ctx) => {
     const id = await ctx.db.insert("sink", kitchenSink);

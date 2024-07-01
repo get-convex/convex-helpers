@@ -14,7 +14,7 @@
   "author": "Ian Macartney (Convex)",
   "license": "MIT",
   "dependencies": {
-    "convex": "^1.12.0",
+    "convex": "^1.13.0",
     "convex-helpers": "file:../packages/convex-helpers",
     "hono": "^4.0.10",
     "react": "^18.0.0",
@@ -25,9 +25,9 @@
   "devDependencies": {
     "@edge-runtime/vm": "^3.2.0",
     "@types/node": "^20.12.11",
-    "convex-test": "^0.0.21",
+    "convex-test": "^0.0.22",
     "npm-run-all2": "^6.1.2",
-    "typescript": "^5.4.5",
+    "typescript": "5.5.2",
     "vitest": "^1.6.0"
   }
 }
