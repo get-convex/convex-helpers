@@ -158,6 +158,7 @@ export function customQuery<
           ...fn.args,
           ...inputArgs,
         },
+        returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
@@ -176,6 +177,7 @@ export function customQuery<
     }
     const handler = fn.handler ?? fn;
     return query({
+      returns: fn.returns,
       handler: async (ctx, args: any) => {
         const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
@@ -270,6 +272,7 @@ export function customMutation<
           ...fn.args,
           ...inputArgs,
         },
+        returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
@@ -288,6 +291,7 @@ export function customMutation<
     }
     const handler = fn.handler ?? fn;
     return mutation({
+      returns: fn.returns,
       handler: async (ctx, args: any) => {
         const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
@@ -386,6 +390,7 @@ export function customAction<
           ...fn.args,
           ...inputArgs,
         },
+        returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
           const { split, rest } = splitArgs(inputArgs, allArgs);
           const added = await inputMod(ctx, split);
@@ -404,6 +409,7 @@ export function customAction<
     }
     const handler = fn.handler ?? fn;
     return action({
+      returns: fn.returns,
       handler: async (ctx, args: any) => {
         const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
         return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
