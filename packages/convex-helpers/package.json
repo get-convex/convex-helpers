@@ -134,7 +134,7 @@
     }
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.15.3",
+    "@arethetypeswrong/cli": "0.16.0",
     "@edge-runtime/vm": "3.2.0",
     "@types/node": "20.14.9",
     "@types/react": "18.3.3",
