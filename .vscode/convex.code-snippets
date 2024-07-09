@@ -140,7 +140,31 @@
 		"scope": "javascript,typescript",
 	},
 
-	"Covnex Test": {
+	"Convex HTTP": {
+		"prefix": "convex:http",
+		"body": [
+			"import { httpRouter } from \"convex/server\";",
+			"import { httpAction } from \"./_generated/server\";",
+			"",
+			"const http = httpRouter();",
+			"",
+			"http.route({",
+			"  path: \"/echo\",",
+			"  method: \"GET\",",
+			"  handler: httpAction(async (ctx, request) => {",
+			"    const t = await request.text();",
+			"    return new Response(\"Received: \" + t);",
+			"  }),",
+			"});",
+			"",
+			"// Convex expects the router to be the default export of `convex/http.js`.",
+			"export default http;",
+		],
+		"scope": "javascript,typescript",
+	},
+
+
+	"Convex Test": {
 		"prefix": "convex:test",
 		"body": [
 			"import { convexTest } from \"convex-test\";",
