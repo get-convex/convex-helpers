@@ -8,6 +8,14 @@ import {
   v,
 } from "convex/values";
 import { Expand } from "./index.js";
+import {
+  DataModelFromSchemaDefinition,
+  DocumentByName,
+  FieldPaths,
+  NamedTableInfo,
+  SchemaDefinition,
+  TableNamesInDataModel,
+} from "convex/server";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -127,6 +135,34 @@ export const withSystemFields = <
     ...fields,
     ...system,
   } as Expand<T & typeof system>;
+};
+
+export const doc = <
+  Schema extends SchemaDefinition<any, boolean>,
+  TableName extends TableNamesInDataModel<
+    DataModelFromSchemaDefinition<Schema>
+  >,
+>(
+  schema: Schema,
+  tableName: TableName,
+): Validator<
+  DocumentByName<DataModelFromSchemaDefinition<Schema>, TableName>,
+  "required",
+  FieldPaths<NamedTableInfo<DataModelFromSchemaDefinition<Schema>, TableName>>
+> => {
+  const validator = schema.tables[tableName].validator;
+  if (validator.kind === "object") {
+    return v.object({
+      ...validator.fields,
+      ...systemFields(tableName),
+    });
+  }
+  if (validator.kind !== "union") {
+    throw new Error(
+      "Only object and union validators are supported for documents",
+    );
+  }
+  return v.union(...validator.members.map(doc));
 };
 
 /**
