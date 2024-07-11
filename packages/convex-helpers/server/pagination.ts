@@ -193,11 +193,11 @@ function splitRange(
   while (
     startBound.length > 0 &&
     endBound.length > 0 &&
-    equalValues(startBound[0], endBound[0])
+    equalValues(startBound[0]!, endBound[0]!)
   ) {
-    const indexField = indexFields[0];
+    const indexField = indexFields[0]!;
     indexFields = indexFields.slice(1);
-    const eqBound = startBound[0];
+    const eqBound = startBound[0]!;
     startBound = startBound.slice(1);
     endBound = endBound.slice(1);
     commonPrefix.push(["eq", indexField, eqBound]);
@@ -209,10 +209,10 @@ function splitRange(
     const range = commonPrefix.slice();
     let i = 0;
     for (; i < key.length - 1; i++) {
-      range.push(["eq", indexFields[i], key[i]]);
+      range.push(["eq", indexFields[i]!, key[i]!]);
     }
     if (i < key.length) {
-      range.push([boundType, indexFields[i], key[i]]);
+      range.push([boundType, indexFields[i]!, key[i]!]);
     }
     return range;
   };
@@ -238,11 +238,11 @@ function splitRange(
   } else if (startBound.length === 0) {
     middleRange = makeCompare(endBoundType, endBound);
   } else {
-    const startValue = startBound[0];
-    const endValue = endBound[0];
+    const startValue = startBound[0]!;
+    const endValue = endBound[0]!;
     middleRange = commonPrefix.slice();
-    middleRange.push([startBoundType, indexFields[0], startValue]);
-    middleRange.push([endBoundType, indexFields[0], endValue]);
+    middleRange.push([startBoundType, indexFields[0]!, startValue]);
+    middleRange.push([endBoundType, indexFields[0]!, endValue]);
   }
   return [...startRanges, middleRange, ...endRanges];
 }
