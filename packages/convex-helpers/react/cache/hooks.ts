@@ -91,7 +91,7 @@ export function useQueries(
       const ids: string[] = [];
       for (const [key, { query, args }] of Object.entries(queries)) {
         const id = crypto.randomUUID();
-        registry.start(id, queryKeys[key], query, args, (v) =>
+        registry.start(id, queryKeys[key]!, query, args, (v) =>
           setValues((old) => {
             if (!(key in old)) return old; // We're no longer tracking this query
             if (old[key] === v) return old; // No change

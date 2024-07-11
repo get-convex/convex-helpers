@@ -362,7 +362,7 @@ export function makeMigration<
               migrationTableName &&
               (await db
                 .query(migrationTableName)
-                .withIndex("name", (q) => q.eq("name", next[i]))
+                .withIndex("name", (q) => q.eq("name", next[i]!))
                 .unique());
             if (!doc || !doc.isDone) {
               const [nextFn, ...rest] = next.slice(i);
@@ -473,8 +473,8 @@ export async function startMigrationsSerially(
 ) {
   if (fnRefs.length === 0) return;
   const [fnRef, ...rest] = fnRefs;
-  await ctx.scheduler.runAfter(0, fnRef, {
-    fn: getFunctionName(fnRef),
+  await ctx.scheduler.runAfter(0, fnRef!, {
+    fn: getFunctionName(fnRef!),
     next: rest.map(getFunctionName),
   });
 }
