@@ -158,6 +158,9 @@ export function defineRateLimits<
         (Name extends RateLimitNames ? {} : { config: RateLimitConfig }),
     ) => {
       const config = ("config" in args && args.config) || limits[args.name];
+      if (!config) {
+        throw new Error(`Rate limit ${args.name} not defined.`);
+      }
       return checkRateLimit({ db }, { ...args, config });
     },
 
@@ -180,6 +183,9 @@ export function defineRateLimits<
         (Name extends RateLimitNames ? {} : { config: RateLimitConfig }),
     ) => {
       const config = ("config" in args && args.config) || limits[args.name];
+      if (!config) {
+        throw new Error(`Rate limit ${args.name} not defined.`);
+      }
       return rateLimit(ctx, { ...args, config });
     },
 
