@@ -79,7 +79,7 @@ export type HonoWithConvex<ActionCtx extends GenericActionCtx<any>> = Hono<{
  * ```
  */
 export class HttpRouterWithHono<
-  ActionCtx extends GenericActionCtx<any>
+  ActionCtx extends GenericActionCtx<any>,
 > extends HttpRouter {
   private _app: HonoWithConvex<ActionCtx>;
   private _handler: PublicHttpAction;
@@ -103,7 +103,7 @@ export class HttpRouterWithHono<
    *
    * @returns - an array of [path, method, endpoint] tuples.
    */
-  getRoutes = () => {
+  override getRoutes = () => {
     const convexRoutes: [string, RoutableMethod, (...args: any) => any][] = [];
 
     // Likely a better way to do this, but hono will have multiple handlers with the same
@@ -151,7 +151,7 @@ export class HttpRouterWithHono<
    *
    * @returns - a tuple [PublicHttpEndpoint, method, path] or null.
    */
-  lookup = (path: string, method: RoutableMethod | "HEAD") => {
+  override lookup = (path: string, method: RoutableMethod | "HEAD") => {
     const match = this._app.router.match(method, path);
     if (match === null) {
       return [this._handler, normalizeMethod(method), path] as const;
@@ -180,7 +180,7 @@ export class HttpRouterWithHono<
 }
 
 export function normalizeMethod(
-  method: RoutableMethod | "HEAD"
+  method: RoutableMethod | "HEAD",
 ): RoutableMethod {
   // HEAD is handled by Convex by running GET and stripping the body.
   if (method === "HEAD") return "GET";
