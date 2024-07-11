@@ -487,6 +487,16 @@ type Expand<ObjectType extends Record<any, any>> =
       }
     : never;
 
+type ArgsForHandlerType<
+  OneOrZeroArgs extends [] | [Record<string, any>],
+  ModMadeArgs extends Record<string, any>,
+> =
+  ModMadeArgs extends Record<string, never>
+    ? OneOrZeroArgs
+    : OneOrZeroArgs extends [infer A]
+      ? [Expand<A & ModMadeArgs>]
+      : [ModMadeArgs];
+
 /**
  * A builder that customizes a Convex function, whether or not it validates
  * arguments. If the customization requires arguments, however, the resulting
@@ -501,8 +511,8 @@ export type CustomBuilder<
   Visibility extends FunctionVisibility,
 > = {
   <
-    ArgsValidator extends PropertyValidators | void,
-    ReturnsValidator extends GenericValidator | void,
+    ArgsValidator extends PropertyValidators | GenericValidator | void,
+    ReturnsValidator extends PropertyValidators | GenericValidator | void,
     ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> = any,
     OneOrZeroArgs extends
       ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
@@ -513,17 +523,13 @@ export type CustomBuilder<
           returns?: ReturnsValidator;
           handler: (
             ctx: Overwrite<InputCtx, ModCtx>,
-            ...args: OneOrZeroArgs extends [infer A]
-              ? [Expand<A & ModMadeArgs>]
-              : [ModMadeArgs]
+            ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
           ) => ReturnValue;
         }
       | {
           (
             ctx: Overwrite<InputCtx, ModCtx>,
-            ...args: OneOrZeroArgs extends [infer A]
-              ? [Expand<A & ModMadeArgs>]
-              : [ModMadeArgs]
+            ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
           ): ReturnValue;
         },
   ): Registration<

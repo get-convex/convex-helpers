@@ -29,6 +29,16 @@ import {
 import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
+import { assert, Equals } from "convex-helpers";
+
+export const testLiterals = internalQueryGeneric({
+  args: {
+    foo: literals("bar", "baz"),
+  },
+  handler: async (ctx, args) => {
+    assert<Equals<typeof args.foo, "bar" | "baz">>;
+  },
+});
 
 const emailValidator = brandedString("email");
 type Email = Infer<typeof emailValidator>;

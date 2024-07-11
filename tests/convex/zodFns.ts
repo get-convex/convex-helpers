@@ -40,6 +40,7 @@ export const kitchenSinkValidator = {
   any: z.unknown(),
   array: z.array(z.string()),
   object: z.object({ a: z.string(), b: z.number() }),
+  objectWithOptional: z.object({ a: z.string(), b: z.number().optional() }),
   union: z.union([z.string(), z.number()]),
   discriminatedUnion: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("a"), a: z.string() }),
