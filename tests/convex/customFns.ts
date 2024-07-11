@@ -103,6 +103,7 @@ const addCtxArg = customQuery(
     return { a: "hi" };
   }),
 );
+
 export const addC = addCtxArg({
   args: {},
   handler: async (ctx) => {
@@ -116,12 +117,21 @@ export const addCU = addCtxArg({
     return { ctxA: ctx.a }; // !!!
   },
 });
-// Unvalidated variant 2
 queryMatches(addCU, {}, { ctxA: "" });
+
+// Unvalidated variant 2
 export const addCU2 = addCtxArg(async (ctx) => {
   return { ctxA: ctx.a }; // !!!
 });
 queryMatches(addCU2, {}, { ctxA: "" });
+
+// Unvalidated with type annotation
+export const addCU3 = addCtxArg({
+  handler: async (ctx, args: { foo: number }) => {
+    return { ctxA: ctx.a }; // !!!
+  },
+});
+queryMatches(addCU3, { foo: 123 }, { ctxA: "" });
 
 export const addCtxWithExistingArg = addCtxArg({
   args: { b: v.string() },

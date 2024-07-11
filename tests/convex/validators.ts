@@ -19,7 +19,8 @@ import {
   pretend,
 } from "convex-helpers/validators";
 import { internalQuery } from "./_generated/server";
-import { Infer, ObjectType } from "convex/values";
+import { Infer, ObjectType, v } from "convex/values";
+import { Equals, assert } from "convex-helpers/index";
 
 export const emailValidator = brandedString("email");
 export type Email = Infer<typeof emailValidator>;
@@ -63,5 +64,14 @@ export const echo = internalQuery({
   args: ExampleFields,
   handler: async (ctx, args) => {
     return args;
+  },
+});
+
+export const testLiterals = internalQuery({
+  args: {
+    foo: literals("bar", "baz"),
+  },
+  handler: async (ctx, args) => {
+    assert<Equals<typeof args.foo, "bar" | "baz">>;
   },
 });

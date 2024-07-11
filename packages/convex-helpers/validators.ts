@@ -1,7 +1,6 @@
 import {
   GenericValidator,
   PropertyValidators,
-  VLiteral,
   VOptional,
   VString,
   VUnion,
@@ -32,7 +31,11 @@ export const literals = <
   T extends V[],
 >(
   ...args: T
-): VUnion<T[number], { [Index in keyof T]: VLiteral<T[Index]> }> => {
+): VUnion<T[number], any> => {
+  // The `any` above is unfortunate, because then we cannot get proper types
+  // for `validator.members`, but without it, TypeScript seems to have a hard
+  // time inferring the TS type for the first parameter.
+
   return v.union(...args.map(v.literal)) as any;
 };
 

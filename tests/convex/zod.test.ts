@@ -36,6 +36,7 @@ test("zod kitchen sink", async () => {
     any: [1, "2"],
     array: ["1", "2"],
     object: { a: "1", b: 2 },
+    objectWithOptional: { a: "1" },
     union: 1,
     discriminatedUnion: { kind: "a" as const, a: "1" },
     literal: "hi" as const,
