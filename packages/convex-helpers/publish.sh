@@ -7,8 +7,12 @@ npm run lint
 npm run test
 npm run clean
 npm run build
-pushd ../../tests >/dev/null
+pushd ../.. >/dev/null
+npm i
+pushd tests >/dev/null
+npm i
 npm run test
+popd >/dev/null
 popd >/dev/null
 git diff --exit-code || {
   echo "Uncommitted changes found. Commit or stash them before publishing."
