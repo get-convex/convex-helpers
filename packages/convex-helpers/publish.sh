@@ -60,4 +60,7 @@ if [ "$publish" = "y" ]; then
   git tag "npm/$version"
   git push origin "npm/$version"
   git push
+else
+  echo "Aborted."
+  git co package.json package-lock.json
 fi
