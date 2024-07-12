@@ -30,8 +30,8 @@ import type {
   OptionalRestArgs,
 } from "convex/server";
 import { useQuery, useMutation, useAction } from "convex/react";
-import type { SessionId } from "../server/sessions.js";
-import { EmptyObject, BetterOmit, assert, Equals } from "../index.js";
+import type { SessionId } from "../server/sessions";
+import { EmptyObject, BetterOmit, assert, Equals } from "../index";
 
 export type UseStorage<T> = (
   key: string,

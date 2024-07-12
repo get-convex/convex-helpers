@@ -10,7 +10,7 @@ import {
   getFunctionName,
 } from "convex/server";
 import { useContext, useEffect, useState } from "react";
-import { ConvexQueryCacheContext } from "./provider.js";
+import { ConvexQueryCacheContext } from "./provider";
 import { convexToJson } from "convex/values";
 
 /**
