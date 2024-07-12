@@ -1,12 +1,12 @@
-import { Equals, assert } from "convex-helpers";
+import { Equals, assert } from "..";
 import {
   CustomCtx,
   customCtx,
   customMutation,
   customQuery,
-} from "convex-helpers/server/customFunctions";
-import { wrapDatabaseWriter } from "convex-helpers/server/rowLevelSecurity";
-import { SessionId, vSessionId } from "convex-helpers/server/sessions";
+} from "./customFunctions.js";
+import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
+import { SessionId, vSessionId } from "./sessions.js";
 import { convexTest } from "convex-test";
 import {
   anyApi,

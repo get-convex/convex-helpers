@@ -1,4 +1,4 @@
-import { assert, Equals } from "convex-helpers";
+import { assert, Equals } from "..";
 import {
   any,
   array,
@@ -18,7 +18,7 @@ import {
   pretend,
   pretendRequired,
   string,
-} from "convex-helpers/validators";
+} from "../validators";
 import { convexTest } from "convex-test";
 import {
   anyApi,

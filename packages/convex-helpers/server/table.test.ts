@@ -1,6 +1,6 @@
-import { assert, omit, pick, pruneNull } from "convex-helpers";
-import { Table } from "convex-helpers/server";
-import { partial } from "convex-helpers/validators";
+import { assert, omit, pick, pruneNull } from "..";
+import { Table } from ".";
+import { partial } from "../validators";
 import { convexTest } from "convex-test";
 import {
   anyApi,
