@@ -9,10 +9,6 @@ npm run clean
 npm run build
 pushd ../.. >/dev/null
 npm i
-pushd tests >/dev/null
-npm i
-npm run test
-popd >/dev/null
 popd >/dev/null
 git diff --exit-code || {
   echo "Uncommitted changes found. Commit or stash them before publishing."
@@ -52,9 +48,6 @@ if [ "$publish" = "y" ]; then
   pushd "../.." >/dev/null
   npm i
   git add package.json package-lock.json
-  cd tests
-  npm i
-  git add package.json package-lock.json
   popd >/dev/null
 
   # If there's nothing to commit, continue
@@ -65,6 +58,6 @@ if [ "$publish" = "y" ]; then
     npm publish
   fi
   git tag "npm/$version"
-  git push
   git push origin "npm/$version"
+  git push
 fi

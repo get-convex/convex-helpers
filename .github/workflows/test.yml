@@ -33,10 +33,3 @@ jobs:
           npm run lint
 
       - run: npm run test
-
-      # TODO(ian): Move these into packages or get this working
-      # - name: Tests directory
-      #   working-directory: tests
-      #   run: |
-      #     npm i
-      #     npm run test
