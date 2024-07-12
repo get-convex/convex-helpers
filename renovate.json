@@ -10,7 +10,6 @@
       "automerge": true
     }
   ],
-  "extends": [
-    "config:best-practices"
-  ]
+  "automergeSchedule": ["every 2 hours"],
+  "extends": ["config:best-practices"]
 }
