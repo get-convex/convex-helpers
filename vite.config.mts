@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    exclude: ["tests/**", "**/node_modules/**"],
+    exclude: ["**/node_modules/**", "packages/**/dist/**"],
     passWithNoTests: true,
 
     // Only run one suite at a time because all of our tests are running against

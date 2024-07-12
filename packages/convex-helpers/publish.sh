@@ -39,7 +39,11 @@ else
   version=$current
 fi
 
+cp package.json dist/
+
+pushd dist >/dev/null
 npm publish --dry-run
+popd >/dev/null
 echo "^^^ DRY RUN ^^^"
 read -r -p "Publish $version to npm? (y/n): " publish
 if [ "$publish" = "y" ]; then
@@ -52,11 +56,13 @@ if [ "$publish" = "y" ]; then
 
   # If there's nothing to commit, continue
   git commit -m "npm $version" || true
+  pushd dist >/dev/null
   if (echo "$version" | grep alpha >/dev/null); then
     npm publish --tag alpha
   else
     npm publish
   fi
+  popd >/dev/null
   git tag "npm/$version"
   git push origin "npm/$version"
   git push
