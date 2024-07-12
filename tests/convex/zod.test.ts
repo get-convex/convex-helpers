@@ -10,6 +10,7 @@ import { v } from "convex/values";
 import { z } from "zod";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
+import { modules } from "./setup.test";
 import { api } from "./_generated/api";
 
 const schema = defineSchema({
@@ -23,7 +24,7 @@ type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 // type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 
 test("zod kitchen sink", async () => {
-  const t = convexTest(schema);
+  const t = convexTest(schema, modules);
   const userId = await t.run((ctx) => ctx.db.insert("users", {}));
   const kitchenSink = {
     email: "email@example.com",
@@ -182,7 +183,7 @@ test("zod kitchen sink", async () => {
 });
 
 test("zod date round trip", async () => {
-  const t = convexTest(schema);
+  const t = convexTest(schema, modules);
   const date = new Date().toISOString();
   const response = await t.query(api.zodFns.dateRoundTrip, { date });
   expect(response).toBe(date);
@@ -190,7 +191,7 @@ test("zod date round trip", async () => {
 
 describe("zod functions", () => {
   test("add ctx", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.zodFns.addC, {})).toMatchObject({
       ctxA: "hi",
     });
@@ -203,7 +204,7 @@ describe("zod functions", () => {
   });
 
   test("add args", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.zodFns.add, {})).toMatchObject({
       argsA: "hi",
     });
@@ -216,14 +217,14 @@ describe("zod functions", () => {
   });
 
   test("consume arg, add to ctx", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.zodFns.consume, { a: "foo" })).toMatchObject({
       ctxA: "foo",
     });
   });
 
   test("pass through arg + ctx", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.zodFns.passThrough, { a: "foo" })).toMatchObject({
       ctxA: "foo",
       argsA: "foo",
@@ -231,7 +232,7 @@ describe("zod functions", () => {
   });
 
   test("modify arg type", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.zodFns.modify, { a: "foo" })).toMatchObject({
       ctxA: "foo",
       argsA: 123,
@@ -239,14 +240,14 @@ describe("zod functions", () => {
   });
 
   test("redefine arg", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.zodFns.redefine, { a: "foo" })).toMatchObject({
       argsA: "foo",
     });
   });
 
   test("bad redefinition", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(() =>
       t.query(api.zodFns.badRedefine, {
         a: "foo" as never,

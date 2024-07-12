@@ -7,9 +7,10 @@ import { Equals, assert } from "convex-helpers";
 import { customCtx, customQuery } from "convex-helpers/server/customFunctions";
 import { api, internal } from "./_generated/api";
 import { SessionId } from "convex-helpers/server/sessions";
+import { modules } from "./setup.test";
 
 test("custom function with user auth", async () => {
-  const t = convexTest(schema);
+  const t = convexTest(schema, modules);
   const userId = await t.run(async (ctx) => {
     return ctx.db.insert("users", { tokenIdentifier: "foo" });
   });
@@ -59,7 +60,7 @@ describe("custom functions with api auth", () => {
     process.env.API_KEY = originalAPIKey;
   });
   test("api auth", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     await t.mutation(api.customFns.fnCalledFromMyBackend, {
       apiKey,
       tokenIdentifier: "bar",
@@ -75,7 +76,7 @@ describe("custom functions with api auth", () => {
 
 describe("custom functions", () => {
   test("add args", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.customFns.add, {})).toMatchObject({
       argsA: "hi",
     });
@@ -88,7 +89,7 @@ describe("custom functions", () => {
   });
 
   test("add ctx", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.customFns.addC, {})).toMatchObject({
       ctxA: "hi",
     });
@@ -107,14 +108,14 @@ describe("custom functions", () => {
   });
 
   test("consume arg, add to ctx", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.customFns.consume, { a: "foo" })).toMatchObject({
       ctxA: "foo",
     });
   });
 
   test("pass through arg + ctx", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(
       await t.query(api.customFns.passThrough, { a: "foo" }),
     ).toMatchObject({
@@ -124,7 +125,7 @@ describe("custom functions", () => {
   });
 
   test("modify arg type", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.customFns.modify, { a: "foo" })).toMatchObject({
       ctxA: "foo",
       argsA: 123,
@@ -132,14 +133,14 @@ describe("custom functions", () => {
   });
 
   test("redefine arg", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(await t.query(api.customFns.redefine, { a: "foo" })).toMatchObject({
       argsA: "foo",
     });
   });
 
   test("bad redefinition", async () => {
-    const t = convexTest(schema);
+    const t = convexTest(schema, modules);
     expect(
       await t.query(api.customFns.badRedefine, {
         a: "foo" as never,
