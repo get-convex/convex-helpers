@@ -4,9 +4,9 @@ import {
   customCtx,
   customMutation,
   customQuery,
-} from "./customFunctions.js";
-import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
-import { SessionId, vSessionId } from "./sessions.js";
+} from "./customFunctions";
+import { wrapDatabaseWriter } from "./rowLevelSecurity";
+import { SessionId, vSessionId } from "./sessions";
 import { convexTest } from "convex-test";
 import {
   anyApi,

@@ -13,7 +13,7 @@ import {
   internalMutationGeneric,
 } from "convex/server";
 import { v, ObjectType } from "convex/values";
-import { omit } from "convex-helpers";
+import { omit } from "../index";
 
 const DEFAULTS = {
   waitBackoff: 100,
