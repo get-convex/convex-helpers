@@ -511,7 +511,7 @@ export type CustomBuilder<
   Visibility extends FunctionVisibility,
 > = {
   <
-    ArgsValidator extends PropertyValidators | GenericValidator | void,
+    ArgsValidator extends PropertyValidators | void,
     ReturnsValidator extends PropertyValidators | GenericValidator | void,
     ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> = any,
     OneOrZeroArgs extends
