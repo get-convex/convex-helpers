@@ -83,14 +83,14 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
  *  For each row read, modified, or inserted, the security rules are applied.
  */
 export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
-  rules: Rules<RuleCtx, DataModel>
+  rules: Rules<RuleCtx, DataModel>,
 ) => {
   const withMutationRLS = <
     Ctx extends GenericMutationCtx<DataModel>,
     Args extends ArgsArray,
-    Output
+    Output,
   >(
-    f: Handler<Ctx, Args, Output>
+    f: Handler<Ctx, Args, Output>,
   ): Handler<Ctx, Args, Output> => {
     return ((ctx: any, ...args: any[]) => {
       const wrappedDb = new WrapWriter(ctx, ctx.db, rules);
@@ -100,9 +100,9 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   const withQueryRLS = <
     Ctx extends GenericQueryCtx<DataModel>,
     Args extends ArgsArray,
-    Output
+    Output,
   >(
-    f: Handler<Ctx, Args, Output>
+    f: Handler<Ctx, Args, Output>,
   ): Handler<Ctx, Args, Output> => {
     return ((ctx: any, ...args: any[]) => {
       const wrappedDb = new WrapReader(ctx, ctx.db, rules);
@@ -152,7 +152,7 @@ export function BasicRowLevelSecurity(
 export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
   db: GenericDatabaseReader<DataModel>,
-  rules: Rules<Ctx, DataModel>
+  rules: Rules<Ctx, DataModel>,
 ): GenericDatabaseReader<DataModel> {
   return new WrapReader(ctx, db, rules);
 }
@@ -160,7 +160,7 @@ export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
 export function wrapDatabaseWriter<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
   db: GenericDatabaseWriter<DataModel>,
-  rules: Rules<Ctx, DataModel>
+  rules: Rules<Ctx, DataModel>,
 ): GenericDatabaseWriter<DataModel> {
   return new WrapWriter(ctx, db, rules);
 }
@@ -182,7 +182,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   constructor(
     ctx: Ctx,
     db: GenericDatabaseReader<DataModel>,
-    rules: Rules<Ctx, DataModel>
+    rules: Rules<Ctx, DataModel>,
   ) {
     this.ctx = ctx;
     this.db = db;
@@ -192,13 +192,13 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
-    id: string
+    id: string,
   ): GenericId<TableName> | null {
     return this.db.normalizeId(tableName, id);
   }
 
   tableName<TableName extends string>(
-    id: GenericId<TableName>
+    id: GenericId<TableName>,
   ): TableName | null {
     for (const tableName of Object.keys(this.rules)) {
       if (this.db.normalizeId(tableName, id)) {
@@ -210,7 +210,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
 
   async predicate<T extends GenericTableInfo>(
     tableName: string,
-    doc: DocumentByInfo<T>
+    doc: DocumentByInfo<T>,
   ): Promise<boolean> {
     if (!this.rules[tableName]?.read) {
       return true;
@@ -219,7 +219,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   }
 
   async get<TableName extends string>(
-    id: GenericId<TableName>
+    id: GenericId<TableName>,
   ): Promise<DocumentByName<DataModel, TableName> | null> {
     const doc = await this.db.get(id);
     if (doc) {
@@ -233,10 +233,10 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   }
 
   query<TableName extends string>(
-    tableName: TableName
+    tableName: TableName,
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
     return filter(this.db.query(tableName), (d) =>
-      this.predicate(tableName, d)
+      this.predicate(tableName, d),
     );
   }
 }
@@ -252,7 +252,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
 
   async modifyPredicate<T extends GenericTableInfo>(
     tableName: string,
-    doc: DocumentByInfo<T>
+    doc: DocumentByInfo<T>,
   ): Promise<boolean> {
     if (!this.rules[tableName]?.modify) {
       return true;
@@ -263,7 +263,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   constructor(
     ctx: Ctx,
     db: GenericDatabaseWriter<DataModel>,
-    rules: Rules<Ctx, DataModel>
+    rules: Rules<Ctx, DataModel>,
   ) {
     this.ctx = ctx;
     this.db = db;
@@ -273,13 +273,13 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
-    id: string
+    id: string,
   ): GenericId<TableName> | null {
     return this.db.normalizeId(tableName, id);
   }
   async insert<TableName extends string>(
     table: TableName,
-    value: any
+    value: any,
   ): Promise<any> {
     const rules = this.rules[table];
     if (rules?.insert && !(await rules.insert(this.ctx, value))) {
@@ -288,7 +288,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     return await this.db.insert(table, value);
   }
   tableName<TableName extends string>(
-    id: GenericId<TableName>
+    id: GenericId<TableName>,
   ): TableName | null {
     for (const tableName of Object.keys(this.rules)) {
       if (this.db.normalizeId(tableName, id)) {
@@ -316,14 +316,14 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
   async patch<TableName extends string>(
     id: GenericId<TableName>,
-    value: Partial<any>
+    value: Partial<any>,
   ): Promise<void> {
     await this.checkAuth(id);
     return await this.db.patch(id, value);
   }
   async replace<TableName extends string>(
     id: GenericId<TableName>,
-    value: any
+    value: any,
   ): Promise<void> {
     await this.checkAuth(id);
     return await this.db.replace(id, value);

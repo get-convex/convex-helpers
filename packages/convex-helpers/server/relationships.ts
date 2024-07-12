@@ -23,10 +23,10 @@ import { asyncMap, nullThrows } from "convex-helpers";
  */
 export async function getAll<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>,
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>
+  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
 ): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
   return asyncMap(ids, db.get);
 }
@@ -41,17 +41,17 @@ export async function getAll<
  */
 export async function getAllOrThrow<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>,
 >(
   db: GenericDatabaseReader<DataModel>,
-  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>
+  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
 ): Promise<DocumentByName<DataModel, TableName>[]> {
   return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
 }
 
 type UserIndexes<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>,
 > = Exclude<
   IndexNames<NamedTableInfo<DataModel, TableName>>,
   "by_creation_time"
@@ -70,25 +70,26 @@ type TablesWithLookups<DataModel extends GenericDataModel> = {
 type FirstIndexField<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
-  IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
+  IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>,
 > = NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0];
 
 type TypeOfFirstIndexField<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
+  IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>,
+> =
   IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
-> = IndexName extends IndexNames<NamedTableInfo<DataModel, TableName>>
-  ? FieldTypeFromFieldPath<
-      DocumentByName<DataModel, TableName>,
-      NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0]
-    >
-  : never;
+    ? FieldTypeFromFieldPath<
+        DocumentByName<DataModel, TableName>,
+        NamedIndex<NamedTableInfo<DataModel, TableName>, IndexName>[0]
+      >
+    : never;
 
 // `FieldPath`s that have an index starting with them
 // e.g. `.index("...", [FieldPath, ...])` on the table.
 type LookupFieldPaths<
   DataModel extends GenericDataModel,
-  TableName extends TableNamesInDataModel<DataModel>
+  TableName extends TableNamesInDataModel<DataModel>,
 > = {
   [IndexName in UserIndexes<DataModel, TableName>]: FirstIndexField<
     DataModel,
@@ -104,23 +105,24 @@ type LookupFieldPaths<
 type FieldIfDoesntMatchIndex<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
-  IndexName extends UserIndexes<DataModel, TableName>
-> = FirstIndexField<DataModel, TableName, IndexName> extends IndexName
-  ? // Enforce the variable itself doesn't start with "by_"
-    IndexName extends `by_${infer _}`
-    ? never
-    : [FirstIndexField<DataModel, TableName, IndexName>?]
-  : `by_${FirstIndexField<DataModel, TableName, IndexName>}` extends IndexName
-  ? [FirstIndexField<DataModel, TableName, IndexName>?]
-  : [FirstIndexField<DataModel, TableName, IndexName>];
+  IndexName extends UserIndexes<DataModel, TableName>,
+> =
+  FirstIndexField<DataModel, TableName, IndexName> extends IndexName
+    ? // Enforce the variable itself doesn't start with "by_"
+      IndexName extends `by_${infer _}`
+      ? never
+      : [FirstIndexField<DataModel, TableName, IndexName>?]
+    : `by_${FirstIndexField<DataModel, TableName, IndexName>}` extends IndexName
+      ? [FirstIndexField<DataModel, TableName, IndexName>?]
+      : [FirstIndexField<DataModel, TableName, IndexName>];
 
 function firstIndexField<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
-  IndexName extends UserIndexes<DataModel, TableName>
+  IndexName extends UserIndexes<DataModel, TableName>,
 >(
   index: IndexName,
-  field?: FirstIndexField<DataModel, TableName, IndexName>
+  field?: FirstIndexField<DataModel, TableName, IndexName>,
 ): FirstIndexField<DataModel, TableName, IndexName> {
   if (field) return field;
   if (index.startsWith("by_")) return index.slice(3);
@@ -149,7 +151,7 @@ function firstIndexField<
 export async function getOneFrom<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
-  IndexName extends UserIndexes<DataModel, TableName>
+  IndexName extends UserIndexes<DataModel, TableName>,
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
@@ -186,7 +188,7 @@ export async function getOneFrom<
 export async function getOneFromOrThrow<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
-  IndexName extends UserIndexes<DataModel, TableName>
+  IndexName extends UserIndexes<DataModel, TableName>,
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
@@ -201,7 +203,7 @@ export async function getOneFromOrThrow<
     .unique();
   return nullThrows(
     ret,
-    `Can't find a document in ${table} with field ${field} equal to ${value}`
+    `Can't find a document in ${table} with field ${field} equal to ${value}`,
   );
 }
 
@@ -226,7 +228,7 @@ export async function getOneFromOrThrow<
 export async function getManyFrom<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
-  IndexName extends UserIndexes<DataModel, TableName>
+  IndexName extends UserIndexes<DataModel, TableName>,
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
@@ -245,7 +247,7 @@ export async function getManyFrom<
 type IdFilePaths<
   DataModel extends GenericDataModel,
   InTableName extends TableNamesInDataModel<DataModel>,
-  TableName extends TableNamesInDataModel<DataModel> | SystemTableNames
+  TableName extends TableNamesInDataModel<DataModel> | SystemTableNames,
 > = {
   [FieldName in FieldPaths<
     NamedTableInfo<DataModel, InTableName>
@@ -264,7 +266,7 @@ type IdFilePaths<
 // One field has an indexed field for lookup, and another has the ID to get.
 type LookupAndIdFilePaths<
   DataModel extends GenericDataModel,
-  TableName extends TablesWithLookups<DataModel>
+  TableName extends TablesWithLookups<DataModel>,
 > = {
   [FieldPath in IdFilePaths<
     DataModel,
@@ -327,7 +329,7 @@ export async function getManyVia<
     ToField
   > extends GenericId<infer TargetTableName>
     ? TargetTableName
-    : never
+    : never,
 >(
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,
@@ -345,7 +347,7 @@ export async function getManyVia<
       } catch {
         return await db.system.get(id as GenericId<SystemTableNames>);
       }
-    }
+    },
   );
 }
 
@@ -387,7 +389,7 @@ export async function getManyViaOrThrow<
     ToField
   > extends GenericId<infer TargetTableName>
     ? TargetTableName
-    : never
+    : never,
 >(
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,
@@ -405,16 +407,16 @@ export async function getManyViaOrThrow<
           await db.get(id as GenericId<TargetTableName>),
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
-          } equal to ${value}`
+          } equal to ${value}`,
         );
       } catch {
         return nullThrows(
           await db.system.get(id as GenericId<SystemTableNames>),
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
-          } equal to ${value}`
+          } equal to ${value}`,
         );
       }
-    }
+    },
   );
 }

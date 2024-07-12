@@ -1,3 +1,4 @@
+import { assert, Equals } from "convex-helpers";
 import {
   any,
   array,
@@ -29,7 +30,6 @@ import {
 import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { assert, Equals } from "convex-helpers";
 
 export const testLiterals = internalQueryGeneric({
   args: {

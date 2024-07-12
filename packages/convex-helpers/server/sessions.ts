@@ -70,7 +70,7 @@ export const SessionIdArg = { sessionId: vSessionId };
 
 type SessionFunction<
   T extends "query" | "mutation" | "action",
-  Args extends any = any
+  Args extends any = any,
 > = FunctionReference<
   T,
   "public" | "internal",
@@ -79,7 +79,7 @@ type SessionFunction<
 >;
 
 type SessionArgsArray<
-  Fn extends SessionFunction<"query" | "mutation" | "action", any>
+  Fn extends SessionFunction<"query" | "mutation" | "action", any>,
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject]
   : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
@@ -132,7 +132,7 @@ export interface RunSessionFunctions {
 }
 export function runSessionFunctions<DataModel extends GenericDataModel>(
   ctx: GenericActionCtx<DataModel>,
-  sessionId: SessionId
+  sessionId: SessionId,
 ): RunSessionFunctions {
   return {
     runSessionQuery(fn, ...args) {

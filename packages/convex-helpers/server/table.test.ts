@@ -1,22 +1,20 @@
-import { convexTest } from "convex-test";
-import { expect, test } from "vitest";
-import { pruneNull } from "convex-helpers";
-import { modules } from "./setup.test";
+import { assert, omit, pick, pruneNull } from "convex-helpers";
 import { Table } from "convex-helpers/server";
 import { partial } from "convex-helpers/validators";
-import { assert, omit, pick } from "convex-helpers";
-import { v } from "convex/values";
+import { convexTest } from "convex-test";
 import {
   anyApi,
   ApiFromModules,
   DataModelFromSchemaDefinition,
   defineSchema,
-  GenericDatabaseReader,
   internalMutationGeneric,
   internalQueryGeneric,
   MutationBuilder,
   QueryBuilder,
 } from "convex/server";
+import { v } from "convex/values";
+import { expect, test } from "vitest";
+import { modules } from "./setup.test";
 
 // Define a table with system fields _id and _creationTime. This also returns
 // helpers for working with the table in validators. See:

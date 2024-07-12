@@ -57,7 +57,7 @@ export function makeActionRetrier(
     base?: number;
     maxFailures?: number;
     log?: (msg: string) => void;
-  }
+  },
 ) {
   const retryRef = makeFunctionReference<
     "action",
@@ -95,7 +95,7 @@ export function makeActionRetrier(
       null | Promise<null> | void | Promise<void>
     >,
     Args extends DefaultFunctionArgs,
-    Visibility extends FunctionVisibility = "internal"
+    Visibility extends FunctionVisibility = "internal",
   >(
     ctx: { scheduler: Scheduler },
     action: Action,
@@ -105,7 +105,7 @@ export function makeActionRetrier(
       retryBackoff?: number;
       base?: number;
       maxFailures?: number;
-    }
+    },
   ) {
     await ctx.scheduler.runAfter(0, retryRef, {
       action: getFunctionName(action),
@@ -134,7 +134,7 @@ export function makeActionRetrier(
         (await ctx.scheduler.runAfter(
           0,
           makeFunctionReference<"action">(args.action),
-          args.actionArgs
+          args.actionArgs,
         ));
       const status = await ctx.db.system.get(job);
       if (!status) {
@@ -150,7 +150,7 @@ export function makeActionRetrier(
         case "inProgress":
           log(
             `Job ${args.action}(${job}) not yet complete, ` +
-              `checking again in ${args.waitBackoff} ms.`
+              `checking again in ${args.waitBackoff} ms.`,
           );
           await ctx.scheduler.runAfter(withJitter(args.waitBackoff), retryRef, {
             ...args,
@@ -162,18 +162,18 @@ export function makeActionRetrier(
         case "failed":
           if (args.maxFailures <= 0) {
             log(
-              `Job ${args.action}(${job}) failed too many times, not retrying.`
+              `Job ${args.action}(${job}) failed too many times, not retrying.`,
             );
             break;
           }
           const newJob = await ctx.scheduler.runAfter(
             withJitter(args.retryBackoff),
             makeFunctionReference<"action">(args.action),
-            args.actionArgs
+            args.actionArgs,
           );
           log(
             `Job ${args.action}(${job}) failed, ` +
-              `retrying in ${args.retryBackoff} ms as ${newJob}.`
+              `retrying in ${args.retryBackoff} ms as ${newJob}.`,
           );
           await ctx.scheduler.runAfter(
             withJitter(args.retryBackoff + args.waitBackoff),
@@ -183,7 +183,7 @@ export function makeActionRetrier(
               job: newJob,
               retryBackoff: args.retryBackoff * args.base,
               maxFailures: args.maxFailures - 1,
-            }
+            },
           );
           break;
 
