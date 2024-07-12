@@ -2,16 +2,67 @@ import {
   defineTable,
   defineSchema,
   DataModelFromSchemaDefinition,
+  queryGeneric,
+  QueryBuilder,
+  anyApi,
+  ApiFromModules,
 } from "convex/server";
 import { Equals, assert, omit } from "convex-helpers";
-import { zodToConvexFields } from "convex-helpers/server/zod";
-import { kitchenSinkValidator } from "./zodFns";
-import { v } from "convex/values";
-import { z } from "zod";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test";
-import { api } from "./_generated/api";
+import {
+  zCustomQuery,
+  zid,
+  zodToConvexFields,
+} from "convex-helpers/server/zod";
+import { customCtx } from "convex-helpers/server/customFunctions";
+import { v } from "convex/values";
+import { z } from "zod";
+
+// This is an example of how to make a version of `zid` that
+// enforces that the type matches one of your defined tables.
+// Note that it can't be used in anything imported by schema.ts
+// since the types would be circular.
+// For argument validation it might be useful to you, however.
+// const zId = zid<DataModel>;
+
+export const kitchenSinkValidator = {
+  email: z.string().email(),
+  userId: zid("users"),
+  // Otherwise this is equivalent, but wouldn't catch zid("CounterTable")
+  // counterId: zid("counter_table"),
+  num: z.number().min(0),
+  nan: z.nan(),
+  bigint: z.bigint(),
+  bool: z.boolean(),
+  null: z.null(),
+  any: z.unknown(),
+  array: z.array(z.string()),
+  object: z.object({ a: z.string(), b: z.number() }),
+  objectWithOptional: z.object({ a: z.string(), b: z.number().optional() }),
+  union: z.union([z.string(), z.number()]),
+  discriminatedUnion: z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("a"), a: z.string() }),
+    z.object({ kind: z.literal("b"), b: z.number() }),
+  ]),
+  literal: z.literal("hi"),
+  tuple: z.tuple([z.string(), z.number()]),
+  lazy: z.lazy(() => z.string()),
+  enum: z.enum(["a", "b"]),
+  effect: z.effect(z.string(), {
+    refinement: () => true,
+    type: "refinement",
+  }),
+  optional: z.object({ a: z.string(), b: z.number() }).optional(),
+  nullableOptional: z.nullable(z.string().optional()),
+  optionalNullable: z.nullable(z.string()).optional(),
+  nullable: z.nullable(z.string()),
+  branded: z.string().brand("branded"),
+  default: z.string().default("default"),
+  readonly: z.object({ a: z.string(), b: z.number() }).readonly(),
+  pipeline: z.number().pipe(z.coerce.string()),
+};
 
 const schema = defineSchema({
   sink: defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", [
@@ -20,8 +71,226 @@ const schema = defineSchema({
   users: defineTable({}),
 });
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+const query = queryGeneric as QueryBuilder<DataModel, "public">;
 // type DatabaseReader = GenericDatabaseReader<DataModel>;
 // type DatabaseWriter = GenericDatabaseWriter<DataModel>;
+
+const zQuery = zCustomQuery(query, {
+  // You could require arguments for all queries here.
+  args: {},
+  input: async (ctx, args) => {
+    // Here you could use the args you declared and return patches for the
+    // function's ctx and args. e.g. looking up a user and passing it in ctx.
+    // Or just asserting that the user is logged in.
+    return { ctx: {}, args: {} };
+  },
+});
+
+export const kitchenSink = zQuery({
+  args: kitchenSinkValidator,
+  handler: async (ctx, args) => {
+    ctx.db;
+    return {
+      args,
+      json: (v.object(zodToConvexFields(kitchenSinkValidator)) as any).json,
+    };
+  },
+  // output: z
+  //   .object({
+  //     email: z.string().email(),
+  //   })
+  // You can add .strict() to fail if any more fields are passed
+  // .strict(),
+});
+
+export const dateRoundTrip = zQuery({
+  args: { date: z.string().transform((s) => new Date(Date.parse(s))) },
+  handler: async (ctx, args) => {
+    return args.date;
+  },
+  output: z.date().transform((d) => d.toISOString()),
+});
+
+/**
+ * Testing custom zod function modifications.
+ */
+
+/**
+ * Adding ctx
+ */
+const addCtxArg = zCustomQuery(
+  query,
+  customCtx(() => {
+    return { a: "hi" };
+  }),
+);
+export const addC = addCtxArg({
+  args: {},
+  handler: async (ctx) => {
+    return { ctxA: ctx.a }; // !!!
+  },
+});
+queryMatches(addC, {}, { ctxA: "" });
+// Unvalidated
+export const addCU = addCtxArg({
+  handler: async (ctx) => {
+    return { ctxA: ctx.a }; // !!!
+  },
+});
+// Unvalidated variant 2
+queryMatches(addCU, {}, { ctxA: "" });
+export const addCU2 = addCtxArg(async (ctx) => {
+  return { ctxA: ctx.a }; // !!!
+});
+queryMatches(addCU2, {}, { ctxA: "" });
+
+export const addCtxWithExistingArg = addCtxArg({
+  args: { b: z.string() },
+  handler: async (ctx, args) => {
+    return { ctxA: ctx.a, argB: args.b }; // !!!
+  },
+});
+queryMatches(addCtxWithExistingArg, { b: "" }, { ctxA: "", argB: "" });
+/**
+ * Adding arg
+ */
+const addArg = zCustomQuery(query, {
+  args: {},
+  input: async () => {
+    return { ctx: {}, args: { a: "hi" } };
+  },
+});
+export const add = addArg({
+  args: {},
+  handler: async (_ctx, args) => {
+    return { argsA: args.a }; // !!!
+  },
+});
+queryMatches(add, {}, { argsA: "" });
+export const addUnverified = addArg({
+  handler: async (_ctx, args) => {
+    return { argsA: args.a }; // !!!
+  },
+});
+queryMatches(addUnverified, {}, { argsA: "" });
+export const addUnverified2 = addArg((_ctx, args) => {
+  return { argsA: args.a }; // !!!
+});
+queryMatches(addUnverified2, {}, { argsA: "" });
+
+/**
+ * Consuming arg, add to ctx
+ */
+const consumeArg = zCustomQuery(query, {
+  args: { a: v.string() },
+  input: async (_ctx, { a }) => {
+    return { ctx: { a }, args: {} };
+  },
+});
+export const consume = consumeArg({
+  args: {},
+  handler: async (ctx, emptyArgs) => {
+    assert<Equals<typeof emptyArgs, {}>>(); // !!!
+    return { ctxA: ctx.a };
+  },
+});
+queryMatches(consume, { a: "" }, { ctxA: "" });
+
+/**
+ * Passing Through arg, also add to ctx for fun
+ */
+const passThrougArg = zCustomQuery(query, {
+  args: { a: v.string() },
+  input: async (_ctx, args) => {
+    return { ctx: { a: args.a }, args };
+  },
+});
+export const passThrough = passThrougArg({
+  args: {},
+  handler: async (ctx, args) => {
+    return { ctxA: ctx.a, argsA: args.a }; // !!!
+  },
+});
+queryMatches(passThrough, { a: "" }, { ctxA: "", argsA: "" });
+
+/**
+ * Modify arg type, don't need to re-defined "a" arg
+ */
+const modifyArg = zCustomQuery(query, {
+  args: { a: v.string() },
+  input: async (_ctx, { a }) => {
+    return { ctx: { a }, args: { a: 123 } }; // !!!
+  },
+});
+export const modify = modifyArg({
+  args: {},
+  handler: async (ctx, args) => {
+    args.a.toFixed(); // !!!
+    return { ctxA: ctx.a, argsA: args.a };
+  },
+});
+queryMatches(modify, { a: "" }, { ctxA: "", argsA: 0 }); // !!!
+
+/**
+ * Redefine arg type with the same type: OK!
+ */
+const redefineArg = zCustomQuery(query, {
+  args: { a: v.string() },
+  input: async (_ctx, args) => ({ ctx: {}, args }),
+});
+export const redefine = redefineArg({
+  args: { a: z.string() },
+  handler: async (_ctx, args) => {
+    return { argsA: args.a };
+  },
+});
+queryMatches(redefine, { a: "" }, { argsA: "" });
+
+/**
+ * Redefine arg type with different type: error!
+ */
+const badRedefineArg = zCustomQuery(query, {
+  args: { a: v.string(), b: v.number() },
+  input: async (_ctx, args) => ({ ctx: {}, args }),
+});
+export const badRedefine = badRedefineArg({
+  args: { a: z.number() },
+  handler: async (_ctx, args) => {
+    return { argsA: args.a };
+  },
+});
+const never: never = null as never;
+// Errors if you pass a string or number to "a".
+// It doesn't show never in the handler or return type, but input args is where
+// we expect the never, so should be sufficient.
+queryMatches(badRedefine, { b: 3, a: never }, { argsA: 2 }); // !!!
+
+/**
+ * Test helpers
+ */
+function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
+  _f: T,
+  _a: A,
+  _v: R,
+) {}
+
+const testApi: ApiFromModules<{
+  fns: {
+    kitchenSink: typeof kitchenSink;
+    dateRoundTrip: typeof dateRoundTrip;
+    addC: typeof addC;
+    addCU: typeof addCU;
+    addCU2: typeof addCU2;
+    add: typeof add;
+    addUnverified: typeof addUnverified;
+    addUnverified2: typeof addUnverified2;
+    consume: typeof consume;
+    passThrough: typeof passThrough;
+    modify: typeof modify;
+    redefine: typeof redefine;
+    badRedefine: typeof badRedefine;
+  };
+}>["fns"] = anyApi["zod.test"] as any;
 
 test("zod kitchen sink", async () => {
   const t = convexTest(schema, modules);
@@ -52,7 +321,7 @@ test("zod kitchen sink", async () => {
     readonly: { a: "1", b: 2 },
     pipeline: 0,
   };
-  const response = await t.query(api.zodFns.kitchenSink, kitchenSink);
+  const response = await t.query(testApi.kitchenSink, kitchenSink);
   expect(response.args).toMatchObject({
     ...omit(kitchenSink, ["optional"]),
     default: "default",
@@ -186,47 +455,47 @@ test("zod kitchen sink", async () => {
 test("zod date round trip", async () => {
   const t = convexTest(schema, modules);
   const date = new Date().toISOString();
-  const response = await t.query(api.zodFns.dateRoundTrip, { date });
+  const response = await t.query(testApi.dateRoundTrip, { date });
   expect(response).toBe(date);
 });
 
 describe("zod functions", () => {
   test("add ctx", async () => {
     const t = convexTest(schema, modules);
-    expect(await t.query(api.zodFns.addC, {})).toMatchObject({
+    expect(await t.query(testApi.addC, {})).toMatchObject({
       ctxA: "hi",
     });
-    expect(await t.query(api.zodFns.addCU, {})).toMatchObject({
+    expect(await t.query(testApi.addCU, {})).toMatchObject({
       ctxA: "hi",
     });
-    expect(await t.query(api.zodFns.addCU2, {})).toMatchObject({
+    expect(await t.query(testApi.addCU2, {})).toMatchObject({
       ctxA: "hi",
     });
   });
 
   test("add args", async () => {
     const t = convexTest(schema, modules);
-    expect(await t.query(api.zodFns.add, {})).toMatchObject({
+    expect(await t.query(testApi.add, {})).toMatchObject({
       argsA: "hi",
     });
-    expect(await t.query(api.zodFns.addUnverified, {})).toMatchObject({
+    expect(await t.query(testApi.addUnverified, {})).toMatchObject({
       argsA: "hi",
     });
-    expect(await t.query(api.zodFns.addUnverified2, {})).toMatchObject({
+    expect(await t.query(testApi.addUnverified2, {})).toMatchObject({
       argsA: "hi",
     });
   });
 
   test("consume arg, add to ctx", async () => {
     const t = convexTest(schema, modules);
-    expect(await t.query(api.zodFns.consume, { a: "foo" })).toMatchObject({
+    expect(await t.query(testApi.consume, { a: "foo" })).toMatchObject({
       ctxA: "foo",
     });
   });
 
   test("pass through arg + ctx", async () => {
     const t = convexTest(schema, modules);
-    expect(await t.query(api.zodFns.passThrough, { a: "foo" })).toMatchObject({
+    expect(await t.query(testApi.passThrough, { a: "foo" })).toMatchObject({
       ctxA: "foo",
       argsA: "foo",
     });
@@ -234,7 +503,7 @@ describe("zod functions", () => {
 
   test("modify arg type", async () => {
     const t = convexTest(schema, modules);
-    expect(await t.query(api.zodFns.modify, { a: "foo" })).toMatchObject({
+    expect(await t.query(testApi.modify, { a: "foo" })).toMatchObject({
       ctxA: "foo",
       argsA: 123,
     });
@@ -242,7 +511,7 @@ describe("zod functions", () => {
 
   test("redefine arg", async () => {
     const t = convexTest(schema, modules);
-    expect(await t.query(api.zodFns.redefine, { a: "foo" })).toMatchObject({
+    expect(await t.query(testApi.redefine, { a: "foo" })).toMatchObject({
       argsA: "foo",
     });
   });
@@ -250,7 +519,7 @@ describe("zod functions", () => {
   test("bad redefinition", async () => {
     const t = convexTest(schema, modules);
     expect(() =>
-      t.query(api.zodFns.badRedefine, {
+      t.query(testApi.badRedefine, {
         a: "foo" as never,
         b: 0,
       }),
