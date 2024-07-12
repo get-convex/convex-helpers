@@ -325,7 +325,7 @@ const testApi: ApiFromModules<{
     badRedefine: typeof badRedefine;
     create: typeof create;
   };
-}>["fns"] = anyApi["customFns.test"] as any;
+}>["fns"] = anyApi["customFunctions.test"] as any;
 
 test("custom function with user auth", async () => {
   const t = convexTest(schema, modules);
