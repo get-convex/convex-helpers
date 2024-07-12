@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.47-alpha.0",
+  "version": "0.1.47-alpha.1",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
@@ -98,7 +98,7 @@
     "validators.d.ts.map"
   ],
   "scripts": {
-    "build": "node generate-exports.mjs && mkdir -p dist && cp -r ./README.md ./package.json *.ts server react dist/ && rm dist/server/_generated/_ignore.ts && tsc",
+    "build": "node generate-exports.mjs && mkdir -p dist && cp -r ./tsconfig.json ./README.md ./package.json *.ts server react dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
     "lint": "tsc --project tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
