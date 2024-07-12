@@ -9,9 +9,13 @@ import { v } from "convex/values";
 import {
   anyApi,
   ApiFromModules,
+  DataModelFromSchemaDefinition,
   defineSchema,
+  GenericDatabaseReader,
   internalMutationGeneric,
   internalQueryGeneric,
+  MutationBuilder,
+  QueryBuilder,
 } from "convex/server";
 
 // Define a table with system fields _id and _creationTime. This also returns
@@ -23,7 +27,20 @@ const Example = Table("table_example", {
   baz: v.optional(v.boolean()),
 });
 
-export const allAtOnce = internalQueryGeneric({
+const schema = defineSchema({
+  [Example.name]: Example.table.index("by_foo", ["foo"]),
+});
+type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+const internalQuery = internalQueryGeneric as QueryBuilder<
+  DataModel,
+  "internal"
+>;
+const internalMutation = internalMutationGeneric as MutationBuilder<
+  DataModel,
+  "internal"
+>;
+
+export const allAtOnce = internalQuery({
   args: {
     id: Example._id,
     whole: Example.doc,
@@ -41,14 +58,14 @@ export const allAtOnce = internalQueryGeneric({
   },
 });
 
-export const get = internalQueryGeneric({
+export const get = internalQuery({
   args: { id: Example._id },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.id);
   },
 });
 
-export const docAsParam = internalQueryGeneric({
+export const docAsParam = internalQuery({
   args: { docs: v.array(Example.doc) },
   handler: async (ctx, args) => {
     return args.docs.map((doc) => {
@@ -57,7 +74,7 @@ export const docAsParam = internalQueryGeneric({
   },
 });
 
-export const insert = internalMutationGeneric({
+export const insert = internalMutation({
   args: Example.withoutSystemFields,
   handler: async (ctx, args) => {
     assert<keyof typeof args extends "_id" ? false : true>();
@@ -65,7 +82,7 @@ export const insert = internalMutationGeneric({
   },
 });
 
-export const patch = internalMutationGeneric({
+export const patch = internalMutation({
   args: {
     id: Example._id,
     patch: v.object(partial(Example.withoutSystemFields)),
@@ -75,7 +92,7 @@ export const patch = internalMutationGeneric({
   },
 });
 
-export const replace = internalMutationGeneric({
+export const replace = internalMutation({
   args: {
     // You can provide the document with or without system fields.
     ...Example.withoutSystemFields,
@@ -85,10 +102,6 @@ export const replace = internalMutationGeneric({
   handler: async (ctx, args) => {
     await ctx.db.replace(args._id, args);
   },
-});
-
-const schema = defineSchema({
-  [Example.name]: Example.table.index("by_foo", ["foo"]),
 });
 
 const testApi: ApiFromModules<{

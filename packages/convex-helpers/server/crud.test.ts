@@ -4,8 +4,11 @@ import { crud } from "convex-helpers/server";
 import {
   anyApi,
   ApiFromModules,
+  DataModelFromSchemaDefinition,
   defineSchema,
   defineTable,
+  MutationBuilder,
+  QueryBuilder,
 } from "convex/server";
 import { v } from "convex/values";
 import { internalQueryGeneric, internalMutationGeneric } from "convex/server";
@@ -18,6 +21,19 @@ const ExampleFields = {
 };
 const CrudTable = "crud_example";
 
+const schema = defineSchema({
+  [CrudTable]: defineTable(ExampleFields),
+});
+type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+const internalQuery = internalQueryGeneric as QueryBuilder<
+  DataModel,
+  "internal"
+>;
+const internalMutation = internalMutationGeneric as MutationBuilder<
+  DataModel,
+  "internal"
+>;
+
 export const { create, read, paginate, update, destroy } = crud(
   // We could use the Table helper instead, but showing it explicitly here.
   // E.g. Table("crud_example", ExampleFields)
@@ -26,13 +42,9 @@ export const { create, read, paginate, update, destroy } = crud(
     _id: v.id(CrudTable),
     withoutSystemFields: ExampleFields,
   },
-  internalQueryGeneric,
-  internalMutationGeneric,
+  internalQuery,
+  internalMutation,
 );
-
-const schema = defineSchema({
-  [CrudTable]: defineTable(ExampleFields),
-});
 
 const testApi: ApiFromModules<{
   fns: {
