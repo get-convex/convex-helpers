@@ -14,7 +14,7 @@ import {
   WithoutSystemFields,
 } from "convex/server";
 import { GenericId } from "convex/values";
-import { filter } from "./filter.js";
+import { filter } from "convex-helpers/server/filter";
 
 type Rule<Ctx, D> = (ctx: Ctx, doc: D) => Promise<boolean>;
 
