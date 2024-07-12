@@ -60,7 +60,7 @@ import {
   GenericDataModel,
 } from "convex/server";
 import { Validator, v } from "convex/values";
-import { BetterOmit, EmptyObject } from "../index";
+import { BetterOmit, EmptyObject } from "../index.js";
 
 // Branded string type for session IDs.
 export type SessionId = string & { __SessionId: true };

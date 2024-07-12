@@ -7,7 +7,7 @@ import {
   Validator,
   v,
 } from "convex/values";
-import { Expand } from "./index";
+import { Expand } from "./index.js";
 
 /**
  * Helper for defining a union of literals more concisely.

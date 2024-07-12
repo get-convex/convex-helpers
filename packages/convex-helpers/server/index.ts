@@ -12,8 +12,8 @@ import {
   PaginationResult,
 } from "convex/server";
 import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
-import { Expand } from "../index";
-import { partial } from "../validators";
+import { Expand } from "../index.js";
+import { partial } from "../validators.js";
 
 /**
  * Define a table with system fields _id and _creationTime. This also returns

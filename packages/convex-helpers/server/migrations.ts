@@ -41,8 +41,8 @@ import {
   TableNamesInDataModel,
 } from "convex/server";
 import { GenericId, ObjectType, v } from "convex/values";
-import { asyncMap, ErrorMessage } from "../index";
-import { pretendRequired } from "../validators";
+import { asyncMap, ErrorMessage } from "../index.js";
+import { pretendRequired } from "../validators.js";
 
 export const DEFAULT_BATCH_SIZE = 100;
 
