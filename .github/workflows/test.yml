@@ -21,7 +21,7 @@ jobs:
       - name: Node setup
         uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4
         with:
-          node-version: "18.15.0"
+          node-version: "18.18.0"
 
       - name: Package directory
         working-directory: packages/convex-helpers
