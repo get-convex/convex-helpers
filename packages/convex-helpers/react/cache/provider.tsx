@@ -5,7 +5,7 @@ import {
   FunctionReference,
   FunctionReturnType,
 } from "convex/server";
-import { createContext, FC, PropsWithChildren } from "react";
+import { createContext, FC, PropsWithChildren, useMemo } from "react";
 
 export const ConvexQueryCacheContext = createContext({
   registry: null as CacheRegistry | null,
@@ -21,7 +21,7 @@ export const ConvexQueryCacheContext = createContext({
  */
 export const ConvexQueryCacheProvider: FC<
   PropsWithChildren<ConvexQueryCacheOptions>
-> = ({ children, ...options }) => {
+> = ({ children, debug, expiration, maxIdleEntries }) => {
   const convex = useConvex();
   if (convex === undefined) {
     throw new Error(
@@ -30,7 +30,10 @@ export const ConvexQueryCacheProvider: FC<
         "See https://docs.convex.dev/quick-start#set-up-convex-in-your-react-app",
     );
   }
-  const registry = new CacheRegistry(convex, options);
+  const registry = useMemo(
+    () => new CacheRegistry(convex, { debug, expiration, maxIdleEntries }),
+    [convex, debug, expiration, maxIdleEntries],
+  );
   return (
     <ConvexQueryCacheContext.Provider value={{ registry }}>
       {children}
