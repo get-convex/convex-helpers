@@ -112,17 +112,11 @@ class CacheRegistry {
       }, 3000);
     }
   }
-  #getQueryEntry(
-    queryKey: QueryKey,
-  ): CachedQuery<FunctionReference<"query">> | undefined {
-    const entry = this.queries.get(queryKey);
-    return entry;
-  }
 
   probe<Query extends FunctionReference<"query">>(
     queryKey: QueryKey,
   ): FunctionReturnType<Query> | undefined {
-    const entry = this.#getQueryEntry(queryKey);
+    const entry = this.queries.get(queryKey);
     return entry === undefined ? undefined : entry.value;
   }
 
@@ -134,7 +128,7 @@ class CacheRegistry {
     args: FunctionArgs<Query>,
     setter: (v: FunctionReturnType<Query>) => void,
   ): void {
-    let entry = this.#getQueryEntry(queryKey);
+    let entry = this.queries.get(queryKey);
     this.subs.set(id, {
       queryKey,
       setter,
