@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.47",
+  "version": "0.1.48-alpha.0",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
@@ -105,7 +105,7 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
     "clean": "rm -rf dist",
-    "dev": "chokidar '*.ts' 'server/*.ts' 'react/*.ts' 'react/cache/*.ts' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
+    "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
     "arethetypeswrong": "attw $(npm pack)"
   },
   "repository": {

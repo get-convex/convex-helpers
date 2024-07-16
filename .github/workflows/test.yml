@@ -23,13 +23,18 @@ jobs:
         with:
           node-version: "18.18.0"
 
-      - run: npm i
-
-      - name: Package directory
+      - name: Installs
         working-directory: packages/convex-helpers
         run: |
           npm i
+          cd ../..
+          npm i
+
+      - name: Package tests
+        working-directory: packages/convex-helpers
+        run: |
           npm run test
           npm run lint
 
-      - run: npm run test
+      - run: |
+          npm run test

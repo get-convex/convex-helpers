@@ -5,7 +5,7 @@ import {
   FunctionReference,
   FunctionReturnType,
 } from "convex/server";
-import { createContext, FC, PropsWithChildren } from "react";
+import { createContext, FC, PropsWithChildren, useMemo } from "react";
 
 export const ConvexQueryCacheContext = createContext({
   registry: null as CacheRegistry | null,
@@ -21,7 +21,7 @@ export const ConvexQueryCacheContext = createContext({
  */
 export const ConvexQueryCacheProvider: FC<
   PropsWithChildren<ConvexQueryCacheOptions>
-> = ({ children, ...options }) => {
+> = ({ children, debug, expiration, maxIdleEntries }) => {
   const convex = useConvex();
   if (convex === undefined) {
     throw new Error(
@@ -30,7 +30,10 @@ export const ConvexQueryCacheProvider: FC<
         "See https://docs.convex.dev/quick-start#set-up-convex-in-your-react-app",
     );
   }
-  const registry = new CacheRegistry(convex, options);
+  const registry = useMemo(
+    () => new CacheRegistry(convex, { debug, expiration, maxIdleEntries }),
+    [convex, debug, expiration, maxIdleEntries],
+  );
   return (
     <ConvexQueryCacheContext.Provider value={{ registry }}>
       {children}
@@ -112,17 +115,11 @@ class CacheRegistry {
       }, 3000);
     }
   }
-  #getQueryEntry(
-    queryKey: QueryKey,
-  ): CachedQuery<FunctionReference<"query">> | undefined {
-    const entry = this.queries.get(queryKey);
-    return entry;
-  }
 
   probe<Query extends FunctionReference<"query">>(
     queryKey: QueryKey,
   ): FunctionReturnType<Query> | undefined {
-    const entry = this.#getQueryEntry(queryKey);
+    const entry = this.queries.get(queryKey);
     return entry === undefined ? undefined : entry.value;
   }
 
@@ -134,17 +131,21 @@ class CacheRegistry {
     args: FunctionArgs<Query>,
     setter: (v: FunctionReturnType<Query>) => void,
   ): void {
-    let entry = this.#getQueryEntry(queryKey);
+    let entry = this.queries.get(queryKey);
     this.subs.set(id, {
       queryKey,
       setter,
     });
     if (entry === undefined) {
+      const w = this.convex.watchQuery(query, args);
       entry = {
         refs: new Set(),
         evictTimer: null,
+        // On the first pass, it might already have a result,
+        // either if there are queries not managed by the cache previously,
+        // or if the registry is hot-reloaded.
+        value: w.localQueryResult(),
       };
-      const w = this.convex.watchQuery(query, args);
       const unsub = w.onUpdate(() => {
         const e = entry!;
         try {
