@@ -134,11 +134,15 @@ class CacheRegistry {
       setter,
     });
     if (entry === undefined) {
+      const w = this.convex.watchQuery(query, args);
       entry = {
         refs: new Set(),
         evictTimer: null,
+        // On the first pass, it might already have a result,
+        // either if there are queries not managed by the cache previously,
+        // or if the registry is hot-reloaded.
+        value: w.localQueryResult(),
       };
-      const w = this.convex.watchQuery(query, args);
       const unsub = w.onUpdate(() => {
         const e = entry!;
         try {
