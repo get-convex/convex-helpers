@@ -1,0 +1,7 @@
+{
+  "extends": "./packages/convex-helpers/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "exclude": ["node_modules", "packages/convex-helpers/dist", "**/*.test.ts"]
+}

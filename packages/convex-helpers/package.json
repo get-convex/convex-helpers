@@ -81,17 +81,6 @@
       "default": "./server/zod.js"
     }
   },
-  "scripts": {
-    "build": "node generate-exports.mjs && mkdir -p dist && cp -r ./tsconfig.json ./README.md ./CONTRIBUTING.md ../../LICENSE ./package.json *.ts server react dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
-    "lint": "tsc --project tsconfig.test.json",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:debug": "vitest --inspect-brk --no-file-parallelism",
-    "test:coverage": "vitest run --coverage --coverage.reporter=text",
-    "clean": "rm -rf dist",
-    "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
-    "arethetypeswrong": "attw $(npm pack)"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/get-convex/convex-helpers.git",
@@ -124,16 +113,5 @@
     "zod": {
       "optional": true
     }
-  },
-  "devDependencies": {
-    "@arethetypeswrong/cli": "0.15.3",
-    "@edge-runtime/vm": "3.2.0",
-    "@types/node": "20.14.9",
-    "@types/react": "18.3.3",
-    "@vitest/coverage-v8": "2.0.3",
-    "chokidar-cli": "3.0.0",
-    "convex-test": "0.0.23",
-    "typescript": "5.5.3",
-    "vitest": "2.0.3"
   }
 }

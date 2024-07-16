@@ -4,21 +4,24 @@
 
 Adding helpers usually involves:
 
-1. Adding code to :
+1. Adding code (and corresponding .test.ts file) to:
 
    - ./server/ if it helps write server-side code (imported in convex/)
    - ./react/ for client-side code. In the future beyond react/ there can be other framework-specific client-side helpers.
    - ./ if it's truly generic - can be imported client or server-side
 
-2. Adding the file to [package.json](./package.json) in the following places:
+2. Adding the file to [the root package.json](./package.json)
+   or
+   in the following places:
 
-   1. exports
-   2. files (if it's in a new folder or in ./)
-   3. scripts: dev if it's in a new folder
+   1. exports in [the npm library package.json](./packages/convex-helpers/package.json)
+      using `node generate-exports.mjs`.
+   2. scripts: Update the `dev:helpers` script if it isn't being included by the existing
+      globs, and the `build` command if it's not included in the `cp` command.
 
-3. [README.md](./README.md) blurb on how to use it, and a link in the TOC.
-4. [parent README.md](../../README.md) link in the TOC.
-5. Adding an example of usage in the [root of this repo](../../)
+3. [package README.md](./packages/convex-helpers/README.md) blurb on how to use it, and a link in the TOC.
+4. [root README.md](./README.md) link in the TOC.
+5. Adding an example of usage in the root of this repo.
 
    1. convex/fooExample.ts for server-side code
    1. src/components/FooExample.tsx for client-side code, added in App.tsx
@@ -35,7 +38,7 @@ Adding helpers usually involves:
 
 ## Releasing
 
-Run commands from this folder (packages/convex-helpers).
+Run commands from this folder (root of repo).
 
 **NOTE**: make sure you aren't running `npm run dev` anywhere when you're
 publishing to avoid races with re-generating files while publishing.
