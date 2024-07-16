@@ -81,24 +81,8 @@
       "default": "./server/zod.js"
     }
   },
-  "files": [
-    "index.js",
-    "index.ts",
-    "index.d.ts",
-    "index.d.ts.map",
-    "react",
-    "server",
-    "testing.js",
-    "testing.ts",
-    "testing.d.ts",
-    "testing.d.ts.map",
-    "validators.js",
-    "validators.ts",
-    "validators.d.ts",
-    "validators.d.ts.map"
-  ],
   "scripts": {
-    "build": "node generate-exports.mjs && mkdir -p dist && cp -r ./tsconfig.json ./README.md ./package.json *.ts server react dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
+    "build": "node generate-exports.mjs && mkdir -p dist && cp -r ./tsconfig.json ./README.md ./CONTRIBUTING.md ../../LICENSE ./package.json *.ts server react dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
     "lint": "tsc --project tsconfig.test.json",
     "test": "vitest run",
     "test:watch": "vitest",
