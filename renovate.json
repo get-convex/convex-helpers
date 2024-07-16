@@ -10,6 +10,6 @@
       "automerge": true
     }
   ],
-  "automergeSchedule": ["every weekday at 3am"],
+  "automergeSchedule": ["every weekday at 8pm"],
   "extends": ["config:best-practices"]
 }
