@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.15.3",
-    "@edge-runtime/vm": "3.2.0",
+    "@edge-runtime/vm": "4.0.1",
     "@testing-library/react": "16.0.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.12",
