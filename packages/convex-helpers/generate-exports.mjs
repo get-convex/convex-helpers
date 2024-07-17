@@ -72,16 +72,11 @@ function checkPackageJsonExports() {
   const actual = packageJson.exports;
   const expected = generateExports();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    console.error("-------------------->8--------------------");
-    console.log(
-      `  "exports": ${indent(JSON.stringify(expected, null, 2), 2)},`,
+    packageJson.exports = expected;
+    fs.writeFileSync(
+      path.join(__dirname, "package.json"),
+      JSON.stringify(packageJson, null, 2) + "\n",
     );
-    console.error("-------------------->8--------------------");
-    console.error(
-      "`package.json` exports are not correct. Copy exports from above or run",
-    );
-    console.error("node generate-exports.mjs | pbcopy");
-    console.error("and paste into package.json.");
     process.exit(1);
   }
 }
