@@ -34,6 +34,13 @@ npm view convex-helpers@alpha version
 
 read -r -p "Enter the new version number (hit enter for $current): " version
 
+node generate-entrypoints.mjs
+function cleanup() {
+  node delete-entrypoints.mjs
+  git co package-lock.json packages/convex-helpers/package.json
+}
+trap cleanup EXIT
+
 pushd packages/convex-helpers >/dev/null
 if [ -n "$version" ]; then
   npm pkg set version="$version"
@@ -41,9 +48,6 @@ else
   version=$current
 fi
 
-cp package.json dist/
-
-cd dist
 npm publish --dry-run
 popd >/dev/null
 echo "^^^ DRY RUN ^^^"
@@ -54,7 +58,7 @@ if [ "$publish" = "y" ]; then
   # If there's nothing to commit, continue
   git commit -m "npm $version" || true
 
-  pushd packages/convex-helpers/dist >/dev/null
+  pushd packages/convex-helpers >/dev/null
   if (echo "$version" | grep alpha >/dev/null); then
     npm publish --tag alpha
   else
@@ -64,7 +68,4 @@ if [ "$publish" = "y" ]; then
   git tag "npm/$version"
   git push origin "npm/$version"
   git push
-else
-  echo "Aborted."
-  git co package-lock.json packages/convex-helpers/package.json
 fi

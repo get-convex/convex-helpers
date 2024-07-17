@@ -1,4 +1,6 @@
 node_modules
 package-lock.json
+generate-exports.mjs
+vitest.config.mts
 *.tgz
 *.tsbuildinfo

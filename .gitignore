@@ -1,5 +1,5 @@
-# For this repo, let's not all share our convex projects
-convex.json
+# Login info for npm publishing
+.npmrc
 
 # Or our local env
 .env.local
