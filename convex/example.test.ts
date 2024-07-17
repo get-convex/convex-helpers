@@ -1,8 +1,7 @@
 import { api } from "./_generated/api";
 import { ConvexTestingHelper } from "convex-helpers/testing";
 
-// Un-skip this test to run end-to-end tests. Also see vitest.config.mts.
-describe.skip("testingExample", () => {
+describe("testingExample", () => {
   let t: ConvexTestingHelper;
 
   beforeEach(() => {
