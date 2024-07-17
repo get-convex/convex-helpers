@@ -35,6 +35,12 @@ npm view convex-helpers@alpha version
 read -r -p "Enter the new version number (hit enter for $current): " version
 
 node generate-entrypoints.mjs
+function cleanup() {
+  node delete-entrypoints.mjs
+  git co package-lock.json packages/convex-helpers/package.json
+}
+trap cleanup EXIT
+
 pushd packages/convex-helpers >/dev/null
 if [ -n "$version" ]; then
   npm pkg set version="$version"
@@ -59,12 +65,7 @@ if [ "$publish" = "y" ]; then
     npm publish
   fi
   popd >/dev/null
-  node delete-entrypoints.mjs
   git tag "npm/$version"
   git push origin "npm/$version"
   git push
-else
-  echo "Aborted."
-  node delete-entrypoints.mjs
-  git co package-lock.json packages/convex-helpers/package.json
 fi
