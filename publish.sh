@@ -54,10 +54,6 @@ echo "^^^ DRY RUN ^^^"
 read -r -p "Publish $version to npm? (y/n): " publish
 if [ "$publish" = "y" ]; then
   npm i
-  git add package.json package-lock.json packages/convex-helpers/package.json
-  # If there's nothing to commit, continue
-  git commit -m "npm $version" || true
-
   pushd packages/convex-helpers >/dev/null
   if (echo "$version" | grep alpha >/dev/null); then
     npm publish --tag alpha
@@ -65,6 +61,9 @@ if [ "$publish" = "y" ]; then
     npm publish
   fi
   popd >/dev/null
+  git add package.json package-lock.json packages/convex-helpers/package.json
+  # If there's nothing to commit, continue
+  git commit -m "npm $version" || true
   git tag "npm/$version"
   git push origin "npm/$version"
   git push
