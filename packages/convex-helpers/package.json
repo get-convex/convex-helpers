@@ -81,6 +81,8 @@
       "default": "./dist/server/zod.js"
     }
   },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/get-convex/convex-helpers.git",
