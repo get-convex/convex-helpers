@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/react/sessions.ts",
+  "types": "../dist/react/sessions.d.ts"
+}

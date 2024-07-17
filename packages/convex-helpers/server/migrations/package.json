@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/migrations.ts",
+  "types": "../dist/server/migrations.d.ts"
+}

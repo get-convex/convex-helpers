@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/zod.ts",
+  "types": "../dist/server/zod.d.ts"
+}

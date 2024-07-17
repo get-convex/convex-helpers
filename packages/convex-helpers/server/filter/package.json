@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/filter.ts",
+  "types": "../dist/server/filter.d.ts"
+}

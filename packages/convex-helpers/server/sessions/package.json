@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/sessions.ts",
+  "types": "../dist/server/sessions.d.ts"
+}

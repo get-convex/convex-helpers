@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/index.ts",
+  "types": "../dist/server.d.ts"
+}

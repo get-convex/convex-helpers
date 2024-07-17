@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/rowLevelSecurity.ts",
+  "types": "../dist/server/rowLevelSecurity.d.ts"
+}

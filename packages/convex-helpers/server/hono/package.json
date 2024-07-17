@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "module": "../dist/server/hono.ts",
+  "types": "../dist/server/hono.d.ts"
+}
