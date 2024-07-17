@@ -5,80 +5,80 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./index.d.ts",
-      "default": "./index.js"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./testing": {
-      "types": "./testing.d.ts",
-      "default": "./testing.js"
+      "types": "./dist/testing.d.ts",
+      "default": "./dist/testing.js"
     },
     "./validators": {
-      "types": "./validators.d.ts",
-      "default": "./validators.js"
+      "types": "./dist/validators.d.ts",
+      "default": "./dist/validators.js"
     },
     "./react": {
-      "types": "./react/index.d.ts",
-      "default": "./react/index.js"
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
     },
     "./react/sessions": {
-      "types": "./react/sessions.d.ts",
-      "default": "./react/sessions.js"
+      "types": "./dist/react/sessions.d.ts",
+      "default": "./dist/react/sessions.js"
     },
     "./react/cache/hooks": {
-      "types": "./react/cache/hooks.d.ts",
-      "default": "./react/cache/hooks.js"
+      "types": "./dist/react/cache/hooks.d.ts",
+      "default": "./dist/react/cache/hooks.js"
     },
     "./react/cache/provider": {
-      "types": "./react/cache/provider.d.ts",
-      "default": "./react/cache/provider.js"
+      "types": "./dist/react/cache/provider.d.ts",
+      "default": "./dist/react/cache/provider.js"
     },
     "./server/customFunctions": {
-      "types": "./server/customFunctions.d.ts",
-      "default": "./server/customFunctions.js"
+      "types": "./dist/server/customFunctions.d.ts",
+      "default": "./dist/server/customFunctions.js"
     },
     "./server/filter": {
-      "types": "./server/filter.d.ts",
-      "default": "./server/filter.js"
+      "types": "./dist/server/filter.d.ts",
+      "default": "./dist/server/filter.js"
     },
     "./server/hono": {
-      "types": "./server/hono.d.ts",
-      "default": "./server/hono.js"
+      "types": "./dist/server/hono.d.ts",
+      "default": "./dist/server/hono.js"
     },
     "./server": {
-      "types": "./server/index.d.ts",
-      "default": "./server/index.js"
+      "types": "./dist/server/index.d.ts",
+      "default": "./dist/server/index.js"
     },
     "./server/migrations": {
-      "types": "./server/migrations.d.ts",
-      "default": "./server/migrations.js"
+      "types": "./dist/server/migrations.d.ts",
+      "default": "./dist/server/migrations.js"
     },
     "./server/pagination": {
-      "types": "./server/pagination.d.ts",
-      "default": "./server/pagination.js"
+      "types": "./dist/server/pagination.d.ts",
+      "default": "./dist/server/pagination.js"
     },
     "./server/rateLimit": {
-      "types": "./server/rateLimit.d.ts",
-      "default": "./server/rateLimit.js"
+      "types": "./dist/server/rateLimit.d.ts",
+      "default": "./dist/server/rateLimit.js"
     },
     "./server/relationships": {
-      "types": "./server/relationships.d.ts",
-      "default": "./server/relationships.js"
+      "types": "./dist/server/relationships.d.ts",
+      "default": "./dist/server/relationships.js"
     },
     "./server/retries": {
-      "types": "./server/retries.d.ts",
-      "default": "./server/retries.js"
+      "types": "./dist/server/retries.d.ts",
+      "default": "./dist/server/retries.js"
     },
     "./server/rowLevelSecurity": {
-      "types": "./server/rowLevelSecurity.d.ts",
-      "default": "./server/rowLevelSecurity.js"
+      "types": "./dist/server/rowLevelSecurity.d.ts",
+      "default": "./dist/server/rowLevelSecurity.js"
     },
     "./server/sessions": {
-      "types": "./server/sessions.d.ts",
-      "default": "./server/sessions.js"
+      "types": "./dist/server/sessions.d.ts",
+      "default": "./dist/server/sessions.js"
     },
     "./server/zod": {
-      "types": "./server/zod.d.ts",
-      "default": "./server/zod.js"
+      "types": "./dist/server/zod.d.ts",
+      "default": "./dist/server/zod.js"
     }
   },
   "repository": {

@@ -7,9 +7,10 @@ const __dirname = path.dirname(fileURLToPath(new URL(import.meta.url)));
 
 function directoryContents(dirname) {
   return fs
-    .readdirSync(path.join(__dirname, dirname))
+    .readdirSync(path.join(__dirname, dirname), { recursive: true })
     .filter((filename) => filename.endsWith(".ts") || filename.endsWith(".tsx"))
     .filter((filename) => !filename.includes(".test"))
+    .filter((filename) => !filename.includes("_generated"))
     .map((filename) => path.join(dirname, filename));
 }
 
@@ -19,7 +20,6 @@ function entryPointFiles() {
     "./testing.ts",
     "./validators.ts",
     ...directoryContents("react"),
-    ...directoryContents("react/cache"),
     ...directoryContents("server"),
   ];
 }
@@ -52,8 +52,8 @@ function generateExport(source) {
   );
 
   return {
-    types: `./${extensionless}.d.ts`,
-    default: `./${extensionless}.js`,
+    types: `./dist/${extensionless}.d.ts`,
+    default: `./dist/${extensionless}.js`,
   };
 }
 
@@ -87,3 +87,38 @@ function checkPackageJsonExports() {
 }
 
 checkPackageJsonExports();
+
+function createEntrypoints() {
+  let created = false;
+  for (const entryPointFile of entryPointFiles()) {
+    const entryPoint = entryPointFromFile(entryPointFile);
+    if (entryPoint === ".") continue;
+    const entryPointPath = path.join(__dirname, entryPoint);
+    if (!fs.existsSync(entryPointPath)) {
+      // make directory
+      fs.mkdirSync(entryPointPath, { recursive: true });
+    }
+    const packagePath = path.join(entryPointPath, "package.json");
+    if (!fs.existsSync(packagePath)) {
+      fs.writeFileSync(
+        packagePath,
+        JSON.stringify(
+          {
+            type: "module",
+            module: path.join("..", "dist", entryPointFile),
+            types: path.join("..", "dist", `${entryPoint}.d.ts`),
+          },
+          null,
+          2,
+        ),
+      );
+      created = true;
+    }
+  }
+  if (created) {
+    console.log(`Created entrypoints. Check those into git.`);
+    process.exit(1);
+  }
+}
+
+createEntrypoints();

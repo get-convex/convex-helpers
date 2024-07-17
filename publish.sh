@@ -41,9 +41,6 @@ else
   version=$current
 fi
 
-cp package.json dist/
-
-cd dist
 npm publish --dry-run
 popd >/dev/null
 echo "^^^ DRY RUN ^^^"
@@ -54,7 +51,7 @@ if [ "$publish" = "y" ]; then
   # If there's nothing to commit, continue
   git commit -m "npm $version" || true
 
-  pushd packages/convex-helpers/dist >/dev/null
+  pushd packages/convex-helpers >/dev/null
   if (echo "$version" | grep alpha >/dev/null); then
     npm publish --tag alpha
   else
