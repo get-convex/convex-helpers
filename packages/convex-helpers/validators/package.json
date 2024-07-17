@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/validators.ts",
-  "types": "../dist/validators.d.ts"
-}

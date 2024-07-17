@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/server/customFunctions.ts",
-  "types": "../dist/server/customFunctions.d.ts"
-}

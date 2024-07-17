@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/server/rateLimit.ts",
-  "types": "../dist/server/rateLimit.d.ts"
-}

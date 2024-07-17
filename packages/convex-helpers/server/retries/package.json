@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/server/retries.ts",
-  "types": "../dist/server/retries.d.ts"
-}

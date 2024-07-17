@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/react/cache/hooks.ts",
-  "types": "../dist/react/cache/hooks.d.ts"
-}

@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/server/relationships.ts",
-  "types": "../dist/server/relationships.d.ts"
-}

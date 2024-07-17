@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/server/pagination.ts",
-  "types": "../dist/server/pagination.d.ts"
-}

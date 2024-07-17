@@ -1,5 +1,0 @@
-{
-  "type": "module",
-  "module": "../dist/react/cache/provider.tsx",
-  "types": "../dist/react/cache/provider.d.ts"
-}
