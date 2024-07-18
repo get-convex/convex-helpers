@@ -18,7 +18,7 @@
     "test:coverage": "vitest run --coverage --coverage.reporter=text",
     "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
     "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'",
-    "arethetypeswrong": "cd packges/convex-helpers && attw $(npm pack)",
+    "arethetypeswrong": "cd packages/convex-helpers && attw $(npm pack)",
     "publish": "./publish.sh"
   },
   "dependencies": {
