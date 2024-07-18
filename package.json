@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.15.3",
-    "@edge-runtime/vm": "^4.0.1",
+    "@edge-runtime/vm": "4.0.1",
     "@testing-library/react": "16.0.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.12",
@@ -43,9 +43,9 @@
     "@vitest/coverage-v8": "2.0.3",
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.23",
-    "eslint": "^9.7.0",
+    "eslint": "9.7.0",
     "jsdom": "24.1.0",
-    "npm-run-all2": "^6.2.2",
+    "npm-run-all2": "6.2.2",
     "typescript": "5.5.3",
     "vite": "5.3.4",
     "vitest": "2.0.3"
