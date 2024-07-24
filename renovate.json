@@ -10,6 +10,5 @@
       "automerge": true
     }
   ],
-  "platformAutomerge": true,
   "extends": ["config:best-practices"]
 }
