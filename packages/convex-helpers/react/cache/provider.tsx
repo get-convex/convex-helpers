@@ -1,10 +1,6 @@
 "use client";
 import { useConvex, ConvexReactClient } from "convex/react";
-import {
-  FunctionArgs,
-  FunctionReference,
-  FunctionReturnType,
-} from "convex/server";
+import { FunctionArgs, FunctionReference } from "convex/server";
 import { createContext, FC, PropsWithChildren, useMemo } from "react";
 
 export const ConvexQueryCacheContext = createContext({
@@ -76,21 +72,16 @@ export type ConvexQueryCacheOptions = {
 
 type SubKey = string;
 type QueryKey = string;
-type CachedQuery<Query extends FunctionReference<"query">> = {
+type CachedQuery = {
   refs: Set<string>;
   evictTimer: number | null; // SetTimeout
-  unsub?: () => void;
-  value?: FunctionReturnType<Query> | Error;
-};
-type SubEntry<Query extends FunctionReference<"query">> = {
-  queryKey: QueryKey;
-  setter: (v?: FunctionReturnType<Query>) => void;
+  unsub: () => void;
 };
 
 // Core caching structure.
 class CacheRegistry {
-  queries: Map<QueryKey, CachedQuery<FunctionReference<"query">>>;
-  subs: Map<SubKey, SubEntry<FunctionReference<"query">>>;
+  queries: Map<QueryKey, CachedQuery>;
+  subs: Map<SubKey, QueryKey>;
   convex: ConvexReactClient;
   timeout: number;
   maxIdleEntries: number;
@@ -116,48 +107,22 @@ class CacheRegistry {
     }
   }
 
-  probe<Query extends FunctionReference<"query">>(
-    queryKey: QueryKey,
-  ): FunctionReturnType<Query> | undefined {
-    const entry = this.queries.get(queryKey);
-    return entry === undefined ? undefined : entry.value;
-  }
-
   // Enable a new subscription.
   start<Query extends FunctionReference<"query">>(
     id: string,
     queryKey: string,
     query: Query,
     args: FunctionArgs<Query>,
-    setter: (v: FunctionReturnType<Query>) => void,
   ): void {
     let entry = this.queries.get(queryKey);
-    this.subs.set(id, {
-      queryKey,
-      setter,
-    });
+    this.subs.set(id, queryKey);
     if (entry === undefined) {
-      const w = this.convex.watchQuery(query, args);
       entry = {
         refs: new Set(),
         evictTimer: null,
-        // On the first pass, it might already have a result,
-        // either if there are queries not managed by the cache previously,
-        // or if the registry is hot-reloaded.
-        value: w.localQueryResult(),
+        // We only need to hold open subscriptions, we don't care about updates.
+        unsub: this.convex.watchQuery(query, args).onUpdate(() => {}),
       };
-      const unsub = w.onUpdate(() => {
-        const e = entry!;
-        try {
-          e.value = w.localQueryResult();
-        } catch (err) {
-          e.value = err;
-        }
-        for (const ref of e.refs.values()) {
-          this.subs.get(ref)?.setter(e.value);
-        }
-      });
-      entry.unsub = unsub;
       this.queries.set(queryKey, entry);
     } else if (entry.evictTimer !== null) {
       this.idle -= 1;
@@ -165,23 +130,19 @@ class CacheRegistry {
       entry.evictTimer = null;
     }
     entry.refs.add(id);
-    if (entry.value !== undefined) {
-      setter(entry.value);
-    }
   }
   // End a previous subscription.
   end(id: string) {
-    const sub = this.subs.get(id);
-    if (sub) {
+    const queryKey = this.subs.get(id);
+    if (queryKey) {
       this.subs.delete(id);
-      const cq = this.queries.get(sub.queryKey);
-      const qk = sub.queryKey;
+      const cq = this.queries.get(queryKey);
       cq?.refs.delete(id);
       // None left?
       if (cq?.refs.size === 0) {
         const remove = () => {
-          cq.unsub!();
-          this.queries.delete(qk);
+          cq.unsub();
+          this.queries.delete(queryKey);
         };
         if (this.idle == this.maxIdleEntries) {
           remove();
@@ -201,13 +162,11 @@ class CacheRegistry {
     console.log(`IDLE = ${this.idle}`);
     console.log(" SUBS");
     for (const [k, v] of this.subs.entries()) {
-      console.log(`  ${k} => ${v.queryKey}`);
+      console.log(`  ${k} => ${v}`);
     }
     console.log(" QUERIES");
     for (const [k, v] of this.queries.entries()) {
-      console.log(
-        `  ${k} => ${v.refs.size} refs, evict = ${v.evictTimer}, value = ${v.value}`,
-      );
+      console.log(`  ${k} => ${v.refs.size} refs, evict = ${v.evictTimer}`);
     }
     console.log("~~~~~~~~~~~~~~~~~~~~~~");
   }
