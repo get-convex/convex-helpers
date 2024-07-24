@@ -46,7 +46,7 @@
     "eslint": "9.7.0",
     "jsdom": "24.1.1",
     "npm-run-all2": "6.2.2",
-    "typescript": "5.5.3",
+    "typescript": "5.5.4",
     "vite": "5.3.4",
     "vitest": "2.0.3"
   }
