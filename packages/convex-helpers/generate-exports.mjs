@@ -5,14 +5,25 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(new URL(import.meta.url)));
 
-const EntryPointFiles = [
-  "./index.ts",
-  "./testing.ts",
-  "./validators.ts",
-  "./react.ts",
-  "./server.ts",
-];
-const EntryPointDirectories = ["./react", "./react/cache", "./server"];
+function directoryContents(dirname) {
+  return fs
+    .readdirSync(path.join(__dirname, dirname))
+    .filter((filename) => filename.endsWith(".ts") || filename.endsWith(".tsx"))
+    .filter((filename) => !filename.includes(".test"))
+    .map((filename) => path.join(dirname, filename));
+}
+
+const EntryPointDirectories = ["react", "react/cache", "server"];
+function entryPointFiles() {
+  return [
+    "./index.ts",
+    "./testing.ts",
+    "./validators.ts",
+    "./server.ts",
+    "./react.ts",
+    ...EntryPointDirectories.map(directoryContents).flat(),
+  ];
+}
 
 function entryPointFromFile(source) {
   let entryPoint = path.join(path.parse(source).dir, path.parse(source).name);
@@ -42,13 +53,13 @@ function generateExport(source) {
 
 function generateExports() {
   const obj = {};
-  for (const entryPoint of EntryPointFiles) {
+  for (const entryPoint of entryPointFiles()) {
     obj[entryPointFromFile(entryPoint)] = generateExport(entryPoint);
   }
   for (const entryPointDir of EntryPointDirectories) {
-    obj[entryPointDir + "/*"] = {
-      types: entryPointDir + "/*.d.ts",
-      default: entryPointDir + "/*.js",
+    obj[`./${entryPointDir}/*`] = {
+      types: `./${entryPointDir}/*.d.ts`,
+      default: `./${entryPointDir}/*.js`,
     };
   }
   return obj;
