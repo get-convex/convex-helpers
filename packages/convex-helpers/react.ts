@@ -9,7 +9,7 @@ import {
   getFunctionName,
 } from "convex/server";
 import { useMemo } from "react";
-import { EmptyObject } from "../index.js";
+import { EmptyObject } from "./index.js";
 
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query

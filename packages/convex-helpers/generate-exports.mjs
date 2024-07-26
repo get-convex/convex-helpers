@@ -5,31 +5,14 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(new URL(import.meta.url)));
 
-function directoryContents(dirname) {
-  return fs
-    .readdirSync(path.join(__dirname, dirname))
-    .filter((filename) => filename.endsWith(".ts") || filename.endsWith(".tsx"))
-    .filter((filename) => !filename.includes(".test"))
-    .map((filename) => path.join(dirname, filename));
-}
-
-function entryPointFiles() {
-  return [
-    "./index.ts",
-    "./testing.ts",
-    "./validators.ts",
-    ...directoryContents("react"),
-    ...directoryContents("react/cache"),
-    ...directoryContents("server"),
-  ];
-}
-
-function indent(s, n) {
-  const lines = s.split("\n");
-  return (
-    lines.shift() + "\n" + lines.map((line) => " ".repeat(n) + line).join("\n")
-  );
-}
+const EntryPointFiles = [
+  "./index.ts",
+  "./testing.ts",
+  "./validators.ts",
+  "./react.ts",
+  "./server.ts",
+];
+const EntryPointDirectories = ["./react", "./react/cache", "./server"];
 
 function entryPointFromFile(source) {
   let entryPoint = path.join(path.parse(source).dir, path.parse(source).name);
@@ -59,8 +42,14 @@ function generateExport(source) {
 
 function generateExports() {
   const obj = {};
-  for (const entryPoint of entryPointFiles()) {
+  for (const entryPoint of EntryPointFiles) {
     obj[entryPointFromFile(entryPoint)] = generateExport(entryPoint);
+  }
+  for (const entryPointDir of EntryPointDirectories) {
+    obj[entryPointDir + "/*"] = {
+      types: entryPointDir + "/*.d.ts",
+      default: entryPointDir + "/*.js",
+    };
   }
   return obj;
 }
@@ -72,16 +61,14 @@ function checkPackageJsonExports() {
   const actual = packageJson.exports;
   const expected = generateExports();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    console.error("-------------------->8--------------------");
-    console.log(
-      `  "exports": ${indent(JSON.stringify(expected, null, 2), 2)},`,
+    packageJson.exports = expected;
+    fs.writeFileSync(
+      path.join(__dirname, "package.json"),
+      JSON.stringify(packageJson, null, 2) + "\n",
     );
-    console.error("-------------------->8--------------------");
     console.error(
-      "`package.json` exports are not correct. Copy exports from above or run",
+      "`package.json` exports are not correct and have been updated. Review and commit the changes",
     );
-    console.error("node generate-exports.mjs | pbcopy");
-    console.error("and paste into package.json.");
     process.exit(1);
   }
 }

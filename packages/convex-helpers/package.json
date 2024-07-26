@@ -17,68 +17,24 @@
       "default": "./validators.js"
     },
     "./react": {
-      "types": "./react/index.d.ts",
-      "default": "./react/index.js"
-    },
-    "./react/sessions": {
-      "types": "./react/sessions.d.ts",
-      "default": "./react/sessions.js"
-    },
-    "./react/cache/hooks": {
-      "types": "./react/cache/hooks.d.ts",
-      "default": "./react/cache/hooks.js"
-    },
-    "./react/cache/provider": {
-      "types": "./react/cache/provider.d.ts",
-      "default": "./react/cache/provider.js"
-    },
-    "./server/customFunctions": {
-      "types": "./server/customFunctions.d.ts",
-      "default": "./server/customFunctions.js"
-    },
-    "./server/filter": {
-      "types": "./server/filter.d.ts",
-      "default": "./server/filter.js"
-    },
-    "./server/hono": {
-      "types": "./server/hono.d.ts",
-      "default": "./server/hono.js"
+      "types": "./react.d.ts",
+      "default": "./react.js"
     },
     "./server": {
-      "types": "./server/index.d.ts",
-      "default": "./server/index.js"
+      "types": "./server.d.ts",
+      "default": "./server.js"
     },
-    "./server/migrations": {
-      "types": "./server/migrations.d.ts",
-      "default": "./server/migrations.js"
+    "./react/*": {
+      "types": "./react/*.d.ts",
+      "default": "./react/*.js"
     },
-    "./server/pagination": {
-      "types": "./server/pagination.d.ts",
-      "default": "./server/pagination.js"
+    "./react/cache/*": {
+      "types": "./react/cache/*.d.ts",
+      "default": "./react/cache/*.js"
     },
-    "./server/rateLimit": {
-      "types": "./server/rateLimit.d.ts",
-      "default": "./server/rateLimit.js"
-    },
-    "./server/relationships": {
-      "types": "./server/relationships.d.ts",
-      "default": "./server/relationships.js"
-    },
-    "./server/retries": {
-      "types": "./server/retries.d.ts",
-      "default": "./server/retries.js"
-    },
-    "./server/rowLevelSecurity": {
-      "types": "./server/rowLevelSecurity.d.ts",
-      "default": "./server/rowLevelSecurity.js"
-    },
-    "./server/sessions": {
-      "types": "./server/sessions.d.ts",
-      "default": "./server/sessions.js"
-    },
-    "./server/zod": {
-      "types": "./server/zod.d.ts",
-      "default": "./server/zod.js"
+    "./server/*": {
+      "types": "./server/*.d.ts",
+      "default": "./server/*.js"
     }
   },
   "repository": {
