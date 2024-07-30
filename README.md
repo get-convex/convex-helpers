@@ -26,6 +26,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [TypeScript API Generator](./packages/convex-helpers/README.md#typescript-api-generation)
 | [OpenAPI Spec Generator](./packages/convex-helpers/README.md#open-api-spec-generation)
 | [Triggers](./packages/convex-helpers/README.md#triggers)
+| [CORS for HttpRouter](./packages/convex-helpers/README.md#cors-support-for-httprouter)
 
 | In this directory for copy-pasting:
 | -----------------------------------

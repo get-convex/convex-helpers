@@ -22,6 +22,7 @@ Table of contents:
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
 - [TypeScript API Generator](#typescript-api-generation)
 - [OpenAPI Spec Generator](#open-api-spec-generation)
+- [CORS support for HttpRouter](#cors-support-for-httprouter)
 
 ## Custom Functions
 
@@ -828,7 +829,7 @@ export const list = query({
   handler: async (ctx, { opts, author }) => {
     return await paginator(ctx.db, schema)
       .query("messages")
-      .withIndex("by_author", q=>q.eq("author", author))
+      .withIndex("by_author", (q) => q.eq("author", author))
       .order("desc")
       .paginate(opts);
   },
@@ -1064,3 +1065,79 @@ forbid using the raw mutation wrappers which don't call your triggers.
 > If you edit data in the Convex dashboard, the triggers won't run.
 >
 > If you upload data through `npx convex import`, the triggers won't run.
+> const users = useQuery(api.users.getAll);
+
+## CORS support for HttpRouter
+
+Add CORS support to your Convex httpAction routes by registering a
+handler for OPTIONS preflight requests and returning the appropriate headers.
+Supports configuring allowed origins, methods, and headers.
+
+Here's a snippet from our `http.ts` file demonstrating how to use the `corsHttpRouter`:
+
+```typescript
+import { getFact } from "./myHttpApi";
+import { corsHttpRouter } from "./helpers/corsHttpRouter";
+
+// Your standard Convex http router:
+// const router = httpRouter();
+
+// Your CORS router:
+const router = corsHttpRouter({
+  allowedOrigins: ["http://localhost:3000"], // or '*' to allow all
+});
+
+/**
+ * CORS routes
+ */
+http.corsRoute({
+  path: "/fact",
+  method: "GET",
+  handler: getFact,
+});
+
+http.corsRoute({
+  path: "/fact",
+  method: "POST",
+  handler: getFact,
+});
+
+/**
+ * Non-CORS routes
+ */
+http.route({
+  path: "/nocors/fact",
+  method: "GET",
+  handler: getFact,
+});
+
+http.route({
+  path: "/nocors/fact",
+  method: "POST",
+  handler: getFact,
+});
+```
+
+You can provide optional allowedOrigins per route:
+
+```typescript
+/**
+ * Per-path "allowedOrigins" will override the default "allowedOrigins" for that route
+ */
+http.corsRoute({
+  path: "/specialRouteOnlyForThisOrigin",
+  method: "GET",
+  handler: httpAction(async () => {
+    return new Response(
+      JSON.stringify({ message: "Custom allowed origins! Wow!" }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  }),
+  allowedOrigins: ["http://localhost:3000"],
+});
+```
