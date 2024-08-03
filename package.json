@@ -43,7 +43,7 @@
     "@vitejs/plugin-react": "4.3.1",
     "@vitest/coverage-v8": "2.0.5",
     "chokidar-cli": "3.0.0",
-    "convex-test": "0.0.23",
+    "convex-test": "0.0.24",
     "eslint": "9.8.0",
     "jsdom": "24.1.1",
     "npm-run-all2": "6.2.2",
