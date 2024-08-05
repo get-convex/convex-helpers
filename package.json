@@ -10,7 +10,8 @@
     "dev:helpers": "cd packages/convex-helpers && chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'npm run build' --initial",
     "predev": "cd packages/convex-helpers && npm run build",
     "lint": "tsc --project tsconfig.test.json",
-    "build": "cd packages/convex-helpers && node generate-exports.mjs && mkdir -p dist && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
+    "build:bin": "esbuild cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/bin.cjs",
+    "build": "cd packages/convex-helpers && node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
     "clean": "rm -rf packages/convex-helpers/dist",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -51,6 +52,8 @@
     "vite": "5.3.5",
     "vitest": "2.0.5"
   },
-  "bin": "./dist/bin.cjs",
+  "bin": { 
+    "convex-helpers": "./dist/bin.cjs"
+  },
   "build:bin": "esbuild src/cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/bin.cjs"
 }
