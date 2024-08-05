@@ -1,0 +1,121 @@
+
+openapi: 3.0.3
+info:
+  title: My Cool Convex App - OpenAPI 3.0
+  version: 0.0.0
+servers:
+  - url: instance-name
+tags:
+  - name: query
+  - name: mutation
+  - name: action
+paths:
+  
+  /api/run/messages/send:
+    post:
+      tags: 
+        - Mutation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Request_messages.send'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response_messages.send'    
+        '500':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailedResponse'
+  
+  
+  /api/run/messages/list:
+    post:
+      tags: 
+        - Query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Request_messages.list'
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response_messages.list'    
+        '500':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailedResponse'
+  
+components:
+  schemas:
+    
+    Request_messages.send:
+      type: object
+      required:
+        - args
+      properties:
+        args:
+            type: object
+            required:
+              - author
+              - body
+            properties:
+              author:
+                type: string
+              body:
+                type: string
+    
+    Response_messages.send:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - "success"
+        value:
+            type: object
+    
+    
+    Request_messages.list:
+      type: object
+      required:
+        - args
+      properties:
+        args:
+            type: object
+    
+    Response_messages.list:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - "success"
+        value:
+            type: object
+    
+    FailedResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - "error"
+        errorMessage:
+          type: string
+        errorData:
+          type: object

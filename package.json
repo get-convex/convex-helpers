@@ -50,5 +50,7 @@
     "typescript": "5.5.4",
     "vite": "5.3.5",
     "vitest": "2.0.5"
-  }
+  },
+  "bin": "./dist/bin.cjs",
+  "build:bin": "esbuild src/cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/bin.cjs"
 }
