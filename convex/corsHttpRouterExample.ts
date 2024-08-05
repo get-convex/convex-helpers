@@ -1,36 +1,38 @@
-import { corsHttpRouter } from "../packages/convex-helpers/server/corsHttpRouter";
+import { HttpRouter } from "convex/server";
+import { routeWithCors } from "../packages/convex-helpers/server/corsHttpRouter";
 import { httpAction } from "./_generated/server";
 
 const everythingHandler = httpAction(async () => {
   return new Response(JSON.stringify([{ fact: "Hello, world!" }]));
 });
 
-const http = corsHttpRouter({
+const http = new HttpRouter();
+const corsRoute = routeWithCors(http, {
   allowedOrigins: ["*"],
 });
 
 /**
  * Exact routes will match /fact exactly
  */
-http.corsRoute({
+corsRoute({
   path: "/fact",
   method: "GET",
   handler: everythingHandler,
 });
 
-http.corsRoute({
+corsRoute({
   path: "/fact",
   method: "POST",
   handler: everythingHandler,
 });
 
-http.corsRoute({
+corsRoute({
   path: "/fact",
   method: "PATCH",
   handler: everythingHandler,
 });
 
-http.corsRoute({
+corsRoute({
   path: "/fact",
   method: "DELETE",
   handler: everythingHandler,
@@ -54,13 +56,13 @@ http.route({
 /**
  * Prefix routes will match /dynamicFact/123 and /dynamicFact/456 etc.
  */
-http.corsRoute({
+corsRoute({
   pathPrefix: "/dynamicFact/",
   method: "GET",
   handler: everythingHandler,
 });
 
-http.corsRoute({
+corsRoute({
   pathPrefix: "/dynamicFact/",
   method: "PATCH",
   handler: everythingHandler,
@@ -69,7 +71,7 @@ http.corsRoute({
 /**
  * Per-path "allowedOrigins" will override the default "allowedOrigins" for that route
  */
-http.corsRoute({
+corsRoute({
   path: "/specialRouteOnlyForThisOrigin",
   method: "GET",
   handler: httpAction(async () => {
