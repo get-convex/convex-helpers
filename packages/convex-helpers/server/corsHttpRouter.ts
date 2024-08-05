@@ -30,38 +30,25 @@ type RouteSpecWithCors = RouteSpec & {
 /**
  * Factory function to create a new CorsHttpRouter instance.
  * @param allowedOrigins An array of allowed origins for CORS.
- * @returns A new CorsHttpRouter instance.
+ * @returns A function like http.route that adds cors as well.
  */
-export const corsHttpRouter = ({
-  allowedOrigins,
-}: {
-  allowedOrigins: string[];
-}) => new CorsHttpRouter({ allowedOrigins });
-
-export class CorsHttpRouter extends HttpRouter {
-  allowedOrigins: string[];
-
-  /**
-   * Constructor for CorsHttpRouter.
-   * @param allowedOrigins An array of allowed origins for CORS.
-   */
-  constructor({ allowedOrigins }: { allowedOrigins: string[] }) {
-    super();
-    this.allowedOrigins = allowedOrigins;
-  }
-
-  /**
-   * Overrides the route method to add CORS support.
-   * @param routeSpec The route specification to be added.
-   */
-  corsRoute = (routeSpec: RouteSpecWithCors): void => {
+export const routeWithCors =
+  (
+    http: HttpRouter,
+    {
+      allowedOrigins: defaultAllowedOrigins,
+    }: {
+      allowedOrigins: string[];
+    },
+  ) =>
+  (routeSpec: RouteSpecWithCors): void => {
     const tempRouter = httpRouter();
-    tempRouter.exactRoutes = this.exactRoutes;
-    tempRouter.prefixRoutes = this.prefixRoutes;
+    tempRouter.exactRoutes = http.exactRoutes;
+    tempRouter.prefixRoutes = http.prefixRoutes;
 
-    const allowedOrigins = routeSpec.allowedOrigins ?? this.allowedOrigins;
+    const allowedOrigins = routeSpec.allowedOrigins ?? defaultAllowedOrigins;
 
-    const routeSpecWithCors = this.createRouteSpecWithCors(
+    const routeSpecWithCors = createRouteSpecWithCors(
       routeSpec,
       allowedOrigins,
     );
@@ -72,139 +59,128 @@ export class CorsHttpRouter extends HttpRouter {
      * accordingly.
      */
     if ("path" in routeSpec) {
-      this.handleExactRoute(tempRouter, routeSpec, allowedOrigins);
+      handleExactRoute(tempRouter, routeSpec, allowedOrigins);
     } else {
-      this.handlePrefixRoute(tempRouter, routeSpec, allowedOrigins);
+      handlePrefixRoute(tempRouter, routeSpec, allowedOrigins);
     }
 
     /**
      * Copy the routes from the temporary router to the main router.
      */
-    this.mergeRoutes(tempRouter);
+    http.exactRoutes = new Map(tempRouter.exactRoutes);
+    http.prefixRoutes = new Map(tempRouter.prefixRoutes);
   };
 
+/**
+ * Handles exact route matching and adds OPTIONS handler.
+ * @param tempRouter Temporary router instance.
+ * @param routeSpec Route specification for exact matching.
+ */
+function handleExactRoute(
+  tempRouter: HttpRouter,
+  routeSpec: RouteSpecWithPath,
+  allowedOrigins: string[],
+): void {
   /**
-   * Handles exact route matching and adds OPTIONS handler.
-   * @param tempRouter Temporary router instance.
-   * @param routeSpec Route specification for exact matching.
+   * exactRoutes is defined as a Map<string, Map<string, PublicHttpAction>>
+   * where the KEY is the PATH and the VALUE is a map of methods and handlers
    */
-  private handleExactRoute(
-    tempRouter: HttpRouter,
-    routeSpec: RouteSpecWithPath,
-    allowedOrigins: string[],
-  ): void {
-    /**
-     * exactRoutes is defined as a Map<string, Map<string, PublicHttpAction>>
-     * where the KEY is the PATH and the VALUE is a map of methods and handlers
-     */
-    const currentMethodsForPath = tempRouter.exactRoutes.get(routeSpec.path);
-
-    /**
-     * createOptionsHandlerForMethods is a helper function that creates
-     * an OPTIONS handler for all registered HTTP methods for the given path
-     */
-    const optionsHandler = this.createOptionsHandlerForMethods(
-      Array.from(currentMethodsForPath?.keys() ?? []),
-      allowedOrigins,
-    );
-
-    /**
-     * Add the OPTIONS handler for the given path
-     */
-    currentMethodsForPath?.set("OPTIONS", optionsHandler);
-
-    /**
-     * Add the updated methods for the given path to the exactRoutes map
-     */
-    tempRouter.exactRoutes.set(routeSpec.path, new Map(currentMethodsForPath));
-  }
+  const currentMethodsForPath = tempRouter.exactRoutes.get(routeSpec.path);
 
   /**
-   * Handles prefix route matching and adds OPTIONS handler.
-   * @param tempRouter Temporary router instance.
-   * @param routeSpec Route specification for prefix matching.
+   * createOptionsHandlerForMethods is a helper function that creates
+   * an OPTIONS handler for all registered HTTP methods for the given path
    */
-  private handlePrefixRoute(
-    tempRouter: HttpRouter,
-    routeSpec: RouteSpecWithPathPrefix,
-    allowedOrigins: string[],
-  ): void {
-    /**
-     * prefixRoutes is structured differently than exactRoutes. It's defined as
-     * a Map<string, Map<string, PublicHttpAction>> where the KEY is the
-     * METHOD and the VALUE is a map of paths and handlers.
-     */
-    const currentMethods = tempRouter.prefixRoutes.keys();
-    const optionsHandler = this.createOptionsHandlerForMethods(
-      Array.from(currentMethods ?? []),
-      allowedOrigins,
-    );
-
-    /**
-     * Add the OPTIONS handler for the given path prefix
-     */
-    const optionsPrefixes =
-      tempRouter.prefixRoutes.get("OPTIONS") ||
-      new Map<string, PublicHttpAction>();
-    optionsPrefixes.set(routeSpec.pathPrefix, optionsHandler);
-
-    /**
-     * Add the updated methods for the given path to the prefixRoutes map
-     */
-    tempRouter.prefixRoutes.set("OPTIONS", optionsPrefixes);
-  }
+  const optionsHandler = createOptionsHandlerForMethods(
+    Array.from(currentMethodsForPath?.keys() ?? []),
+    allowedOrigins,
+  );
 
   /**
-   * Creates a new route specification with CORS support.
-   * @param routeSpec Original route specification.
-   * @returns Modified route specification with CORS handler.
+   * Add the OPTIONS handler for the given path
    */
-  private createRouteSpecWithCors(
-    routeSpec: RouteSpec,
-    allowedOrigins: string[],
-  ): RouteSpec {
-    const httpCorsHandler = handleCors({
-      originalHandler: routeSpec.handler,
-      allowedOrigins: allowedOrigins,
-      allowedMethods: [routeSpec.method],
-    });
-    return {
-      ...("path" in routeSpec
-        ? { path: routeSpec.path }
-        : { pathPrefix: routeSpec.pathPrefix }),
-      method: routeSpec.method,
-      handler: httpCorsHandler,
-    };
-
-    throw new Error("Invalid routeSpec");
-  }
+  currentMethodsForPath?.set("OPTIONS", optionsHandler);
 
   /**
-   * Creates an OPTIONS handler for the given HTTP methods.
-   * @param methods Array of HTTP methods to be allowed.
-   * @returns A CORS-enabled OPTIONS handler.
+   * Add the updated methods for the given path to the exactRoutes map
    */
-  private createOptionsHandlerForMethods(
-    methods: string[],
-    allowedOrigins: string[],
-  ): PublicHttpAction {
-    return handleCors({
-      allowedOrigins: allowedOrigins,
-      allowedMethods: methods,
-    });
-  }
-
-  /**
-   * Finalizes the routes by copying them from the temporary router.
-   * @param router Temporary router with updated routes.
-   */
-  private mergeRoutes(router: HttpRouter): void {
-    this.exactRoutes = new Map(router.exactRoutes);
-    this.prefixRoutes = new Map(router.prefixRoutes);
-  }
+  tempRouter.exactRoutes.set(routeSpec.path, new Map(currentMethodsForPath));
 }
 
-export default corsHttpRouter;
+/**
+ * Handles prefix route matching and adds OPTIONS handler.
+ * @param tempRouter Temporary router instance.
+ * @param routeSpec Route specification for prefix matching.
+ */
+function handlePrefixRoute(
+  tempRouter: HttpRouter,
+  routeSpec: RouteSpecWithPathPrefix,
+  allowedOrigins: string[],
+): void {
+  /**
+   * prefixRoutes is structured differently than exactRoutes. It's defined as
+   * a Map<string, Map<string, PublicHttpAction>> where the KEY is the
+   * METHOD and the VALUE is a map of paths and handlers.
+   */
+  const currentMethods = tempRouter.prefixRoutes.keys();
+  const optionsHandler = createOptionsHandlerForMethods(
+    Array.from(currentMethods ?? []),
+    allowedOrigins,
+  );
+
+  /**
+   * Add the OPTIONS handler for the given path prefix
+   */
+  const optionsPrefixes =
+    tempRouter.prefixRoutes.get("OPTIONS") ||
+    new Map<string, PublicHttpAction>();
+  optionsPrefixes.set(routeSpec.pathPrefix, optionsHandler);
+
+  /**
+   * Add the updated methods for the given path to the prefixRoutes map
+   */
+  tempRouter.prefixRoutes.set("OPTIONS", optionsPrefixes);
+}
+
+/**
+ * Creates a new route specification with CORS support.
+ * @param routeSpec Original route specification.
+ * @returns Modified route specification with CORS handler.
+ */
+function createRouteSpecWithCors(
+  routeSpec: RouteSpec,
+  allowedOrigins: string[],
+): RouteSpec {
+  const httpCorsHandler = handleCors({
+    originalHandler: routeSpec.handler,
+    allowedOrigins: allowedOrigins,
+    allowedMethods: [routeSpec.method],
+  });
+  return {
+    ...("path" in routeSpec
+      ? { path: routeSpec.path }
+      : { pathPrefix: routeSpec.pathPrefix }),
+    method: routeSpec.method,
+    handler: httpCorsHandler,
+  };
+}
+
+/**
+ * Creates an OPTIONS handler for the given HTTP methods.
+ * @param methods Array of HTTP methods to be allowed.
+ * @returns A CORS-enabled OPTIONS handler.
+ */
+function createOptionsHandlerForMethods(
+  methods: string[],
+  allowedOrigins: string[],
+): PublicHttpAction {
+  return handleCors({
+    allowedOrigins: allowedOrigins,
+    allowedMethods: methods,
+  });
+}
+
+export default routeWithCors;
 
 /**
  * handleCors() is a higher-order function that wraps a Convex HTTP action handler to add CORS support.
