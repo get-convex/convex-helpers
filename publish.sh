@@ -6,6 +6,7 @@ rm -rf packages/convex-helpers/node_modules
 npm i
 npm run clean
 npm run build
+npm i
 npm run lint
 npm run test
 git diff --exit-code || {
