@@ -26,8 +26,7 @@ popd >/dev/null
 cat <<EOF
 Test it:
   - Add some example usage to the outer convex-helpers repo.
-  - Install from another project via \`npm link\`.
-  - Run \`npm pack\` and install it elsewhere from the .tgz file.
+  - Run \`npm pack\` in /dist and install it elsewhere from the .tgz file.
 EOF
 echo "Latest versions:"
 npm view convex-helpers@latest version
