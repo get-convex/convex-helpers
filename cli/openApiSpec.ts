@@ -1,6 +1,7 @@
 import fs from 'fs'
 import { Command } from "commander";
 import { JSONValue } from 'convex/values'
+import chalk from 'chalk';
 
 export const openApiSpec = new Command("open-api-spec")
     .summary("Generate an OpenAPI spec from a Convex function definition")
@@ -16,8 +17,10 @@ export const openApiSpec = new Command("open-api-spec")
             process.exit(1);
         }
         const content = fs.readFileSync(filePath, 'utf-8');
-        const apiSpec = generateOpenApiSpec("instance-name", JSON.parse(content));
-        fs.writeFileSync("open-api.yaml", apiSpec, 'utf-8');
+        const outputPath = "open-api.yaml";
+        const apiSpec = generateOpenApiSpec(siteUrl, JSON.parse(content));
+        fs.writeFileSync(outputPath, apiSpec, 'utf-8');
+        console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
     });
 
 type Visibility = { kind: 'public' } | { kind: 'internal' }
@@ -56,7 +59,7 @@ export type ValidatorJSON =
 function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
     switch (validatorJson.type) {
         case 'null':
-            // kind of a hack
+            // Null only becomes explicitly supported in OpenAPI 3.1.0
             return 'type: string\nnullable: true'
         case 'number':
             return 'type: number'
@@ -69,8 +72,7 @@ function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
         case 'bytes':
             throw new Error('bytes unsupported')
         case 'any':
-            // TODO: real any type
-            return 'type: object'
+            return '{}'
         case 'literal':
             if (typeof validatorJson.value === 'string') {
                 return `type: string\nenum:\n  - "${validatorJson.value}"` as string
@@ -200,7 +202,7 @@ function generateEndpointSchemas(func: AnalyzedFunction) {
       properties:
         args:\n${reindent(
         generateSchemaFromValidator(func.args ?? { type: 'any' }),
-        4
+        5
     )}\n
     Response_${shortName}:
       type: object
@@ -211,7 +213,7 @@ function generateEndpointSchemas(func: AnalyzedFunction) {
             - "success"
         value:\n${reindent(
         generateSchemaFromValidator(func.output ?? { type: 'any' }),
-        4
+        5
     )}\n`
 }
 
@@ -222,7 +224,7 @@ export function generateOpenApiSpec(siteUrl: string, analyzeResult: AnalyzedFunc
       title: Convex App - OpenAPI 3.0
       version: 0.0.0
     servers:
-      - url: ${siteUrl}
+      - url: https://${siteUrl}
     tags:
       - name: query
       - name: mutation
