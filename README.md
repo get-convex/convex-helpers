@@ -23,6 +23,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
 | [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)
 | [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)
+| [HttpRouter with automatic CORS support](./packages/convex-helpers/README.md#cors)
 
 | In this directory for copy-pasting:
 | -----------------------------------
