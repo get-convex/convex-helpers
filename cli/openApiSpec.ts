@@ -1,23 +1,38 @@
 import fs from 'fs'
-import { Command } from "commander";
+import { execSync } from 'child_process';
+import { Command, Option } from "commander";
 import { JSONValue } from 'convex/values'
 import chalk from 'chalk';
 
 export const openApiSpec = new Command("open-api-spec")
     .summary("Generate an OpenAPI spec from a Convex function definition")
-    .argument("<fileName>", "The file name of the Convex function definition")
     .argument("<siteUrl>", "The site URL of the Convex instance")
-    .action((filePath, siteUrl) => {
-        if (!siteUrl || !filePath) {
-            console.error('Usage: npm run generate-open-api-spec <siteUrl> <filePath>');
+    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will retrieve the function spec from your configured convex instance")
+    .addOption(
+        new Option(
+            "--prod",
+            "Get the function spec for your configured project's prod deployment.",
+        )
+            .default(undefined)
+    )
+    .action((siteUrl, filePath, prod) => {
+        if (filePath && prod) {
+            console.error(`To use the prod flag, you can't provide a file path`);
             process.exit(1)
         }
-        if (!fs.existsSync(filePath)) {
+        let content: string;
+        if (filePath && !fs.existsSync(filePath)) {
             console.error(`File ${filePath} not found`);
             process.exit(1);
         }
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const outputPath = "open-api.yaml";
+        if (filePath) {
+            content = fs.readFileSync(filePath, 'utf-8');
+        } else {
+            const flags = prod ? '--prod' : '';
+            const output = execSync(`npx convex function-spec ${flags}`);
+            content = output.toString();
+        }
+        const outputPath = `open_api_spec${Date.now().valueOf()}.yaml`;
         const apiSpec = generateOpenApiSpec(siteUrl, JSON.parse(content));
         fs.writeFileSync(outputPath, apiSpec, 'utf-8');
         console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
@@ -25,11 +40,11 @@ export const openApiSpec = new Command("open-api-spec")
 
 type Visibility = { kind: 'public' } | { kind: 'internal' }
 
-type UdfType = 'Action' | 'Mutation' | 'Query' | 'HttpAction'
+type FunctionType = 'Action' | 'Mutation' | 'Query' | 'HttpAction'
 
 export type AnalyzedFunction = {
     identifier: string
-    functionType: UdfType
+    functionType: FunctionType
     visibility: Visibility
     args: ValidatorJSON | null
     output: ValidatorJSON | null
@@ -231,7 +246,9 @@ export function generateOpenApiSpec(siteUrl: string, analyzeResult: AnalyzedFunc
       - name: action
     paths:
     ${reindent(
+        // Skip http actions because they go to a different url and we don't have argument/return types
         analyzeResult
+            .filter((f) => f.functionType !== 'HttpAction')
             .map((f) => generateEndpointDef(f))
             .join('\n'),
         1
@@ -240,6 +257,7 @@ export function generateOpenApiSpec(siteUrl: string, analyzeResult: AnalyzedFunc
       schemas:
     ${reindent(
         analyzeResult
+            .filter((f) => f.functionType !== 'HttpAction')
             .map((f) => generateEndpointSchemas(f))
             .join('\n'),
         2

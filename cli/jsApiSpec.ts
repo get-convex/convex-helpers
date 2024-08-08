@@ -1,19 +1,37 @@
 import fs from 'fs'
-import { Command } from "commander";
+import { execSync } from 'child_process';
+import { Command, Option } from "commander";
 import { JSONValue } from 'convex/values'
 import { AnalyzedFunction } from './openApiSpec';
+import chalk from 'chalk';
 
 export const jsApiSpec = new Command("js-api-spec")
-    .summary("Generate OpenAPI spec from Convex function definition")
-    .argument("<fileName>", "The file name of the Convex function definition")
-    .action((filePath) => {
-        if (!fs.existsSync(filePath)) {
+    .summary("Generate a JavaScript API spec from a Convex function definition")
+    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will retrieve the function spec from your configured convex instance")
+    .addOption(
+        new Option(
+            "--prod",
+            "Get the function spec for your configured project's prod deployment.",
+        )
+            .default(undefined)
+    )
+    .action((filePath, prod) => {
+        let content: string;
+        if (filePath && !fs.existsSync(filePath)) {
             console.error(`File ${filePath} not found`);
             process.exit(1);
         }
-        const content = fs.readFileSync(filePath, 'utf-8');
+        if (filePath) {
+            content = fs.readFileSync(filePath, 'utf-8');
+        } else {
+            const flags = prod ? '--prod' : '';
+            const output = execSync(`npx convex function-spec ${flags}`);
+            content = output.toString();
+        }
+        const outputPath = "convex-api.ts";
         const apiSpec = generateApiSpec(JSON.parse(content));
-        fs.writeFileSync("api.ts", apiSpec, 'utf-8');
+        fs.writeFileSync(outputPath, apiSpec, 'utf-8');
+        console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
     });
 
 export type ObjectFieldType = { fieldType: ValidatorJSON; optional: boolean }
