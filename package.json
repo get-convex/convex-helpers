@@ -32,7 +32,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.15.3",
+    "@arethetypeswrong/cli": "0.15.4",
     "@edge-runtime/vm": "4.0.1",
     "@testing-library/react": "16.0.0",
     "@types/babel__core": "7.20.5",
