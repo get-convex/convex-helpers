@@ -35,6 +35,7 @@ import {
   ArgsArrayToObject,
 } from "convex/server";
 import { Mod, NoOp, Registration, splitArgs } from "./customFunctions.js";
+import { pick } from "../index.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
@@ -282,7 +283,10 @@ export function zCustomAction<
   >;
 }
 
-function customFnBuilder(builder: any, mod: any) {
+function customFnBuilder(
+  builder: (args: any) => any,
+  mod: Mod<any, any, any, any>,
+) {
   // Looking forward to when input / args / ... are optional
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
@@ -295,9 +299,12 @@ function customFnBuilder(builder: any, mod: any) {
           ...inputArgs,
         },
         handler: async (ctx: any, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
-          const parsed = z.object(fn.args).safeParse(rest);
+          const added = await inputMod(
+            ctx,
+            pick(allArgs, Object.keys(inputArgs)) as any,
+          );
+          const rawArgs = pick(allArgs, Object.keys(fn.args));
+          const parsed = z.object(fn.args).safeParse(rawArgs);
           if (!parsed.success) {
             throw new ConvexError({
               ZodError: JSON.parse(
@@ -327,8 +334,8 @@ function customFnBuilder(builder: any, mod: any) {
     const handler = fn.handler ?? fn;
     return builder({
       handler: async (ctx: any, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
+        const added = await inputMod(ctx, args);
+        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
       },
     });
   };
