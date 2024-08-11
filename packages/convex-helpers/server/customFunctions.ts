@@ -33,6 +33,7 @@ import {
   RegisteredQuery,
   ReturnValueForOptionalValidator,
 } from "convex/server";
+import { pick } from "../index.js";
 
 /**
  * A modifier for a query, mutation, or action.
@@ -160,11 +161,14 @@ export function customQuery<
         },
         returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
+          const added = await inputMod(
+            ctx,
+            pick(allArgs, Object.keys(inputArgs)) as any,
+          );
+          const args = pick(allArgs, Object.keys(fn.args));
           return await fn.handler(
             { ...ctx, ...added.ctx },
-            { ...rest, ...added.args },
+            { ...args, ...added.args },
           );
         },
       });
@@ -274,11 +278,14 @@ export function customMutation<
         },
         returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
+          const added = await inputMod(
+            ctx,
+            pick(allArgs, Object.keys(inputArgs)) as any,
+          );
+          const args = pick(allArgs, Object.keys(fn.args));
           return await fn.handler(
             { ...ctx, ...added.ctx },
-            { ...rest, ...added.args },
+            { ...args, ...added.args },
           );
         },
       });
@@ -392,11 +399,14 @@ export function customAction<
         },
         returns: fn.returns,
         handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
+          const added = await inputMod(
+            ctx,
+            pick(allArgs, Object.keys(inputArgs)) as any,
+          );
+          const args = pick(allArgs, Object.keys(fn.args));
           return await fn.handler(
             { ...ctx, ...added.ctx },
-            { ...rest, ...added.args },
+            { ...args, ...added.args },
           );
         },
       });
