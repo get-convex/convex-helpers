@@ -2,6 +2,9 @@
   "name": "convex-helpers-base",
   "private": "true",
   "description": "Home to [packages](./packages/) to complement the official convex package.",
+  "bin": {
+    "convex-helpers": "./dist/bin.cjs"
+  },
   "scripts": {
     "init": "convex dev --until-success",
     "dev": "npm-run-all --parallel dev:backend dev:frontend dev:helpers",
@@ -25,7 +28,7 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "classnames": "^2.3.2",
-    "convex": "^1.13.1",
+    "convex": "^1.14.0",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^18.0.0",
@@ -52,9 +55,5 @@
     "typescript": "5.5.4",
     "vite": "5.3.5",
     "vitest": "2.0.5"
-  },
-  "bin": {
-    "convex-helpers": "./dist/bin.cjs"
-  },
-  "build:bin": "esbuild src/cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/bin.cjs"
+  }
 }
