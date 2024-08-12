@@ -321,10 +321,10 @@ function customFnBuilder(
   builder: (args: any) => any,
   mod: Mod<any, any, any, any>,
 ) {
+  // Looking forward to when input / args / ... are optional
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
-    // Looking forward to when input / args / ... are optional
     const handler = fn.handler ?? fn;
     if ("args" in fn) {
       return builder({
