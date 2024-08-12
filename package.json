@@ -14,7 +14,7 @@
     "predev": "cd packages/convex-helpers && npm run build",
     "lint": "tsc --project tsconfig.test.json",
     "build:bin": "esbuild cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/bin.cjs",
-    "build": "cd packages/convex-helpers && node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
+    "build": "npm run build:bin && cd packages/convex-helpers && node generate-exports.mjs && mkdir -p dist && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
     "clean": "rm -rf packages/convex-helpers/dist",
     "test": "vitest run",
     "test:watch": "vitest",
