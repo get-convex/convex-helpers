@@ -360,38 +360,6 @@ function customFnBuilder(
 }
 
 /**
- *
- * @param splitArgsValidator The args that should be split out from the rest.
- *   As an object mapping arg names to validators (v.* from convex/values).
- * @param args The arguments to a function, including values to be split out.
- * @returns The args split into two objects: `split` and `rest` based on keys.
- */
-export function splitArgs<
-  SplitArgsValidator extends PropertyValidators,
-  Args extends Record<string, any>,
->(
-  splitArgsValidator: SplitArgsValidator,
-  args: Args & ObjectType<SplitArgsValidator>,
-): {
-  split: ObjectType<SplitArgsValidator>;
-  rest: { [k in Exclude<keyof Args, keyof SplitArgsValidator>]: Args[k] };
-} {
-  const rest: Record<string, any> = {};
-  const split: Record<string, any> = {};
-  for (const arg in args) {
-    if (arg in splitArgsValidator) {
-      split[arg] = args[arg];
-    } else {
-      rest[arg] = args[arg];
-    }
-  }
-  return { split, rest } as {
-    split: ObjectType<SplitArgsValidator>;
-    rest: Args;
-  };
-}
-
-/**
  * A Convex function (query, mutation, or action) to be registered for the API.
  * Convenience to specify the registration type based on function type.
  */

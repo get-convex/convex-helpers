@@ -34,7 +34,7 @@ import {
   DefaultFunctionArgs,
   ArgsArrayToObject,
 } from "convex/server";
-import { Mod, NoOp, Registration, splitArgs } from "./customFunctions.js";
+import { Mod, NoOp, Registration } from "./customFunctions.js";
 import { pick } from "../index.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
