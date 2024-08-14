@@ -36,6 +36,10 @@
       "types": "./react/cache/provider.d.ts",
       "default": "./react/cache/provider.js"
     },
+    "./server/corsHttpRouter": {
+      "types": "./server/corsHttpRouter.d.ts",
+      "default": "./server/corsHttpRouter.js"
+    },
     "./server/customFunctions": {
       "types": "./server/customFunctions.d.ts",
       "default": "./server/customFunctions.js"
