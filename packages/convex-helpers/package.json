@@ -93,6 +93,10 @@
       "default": "./server/*.js"
     }
   },
+  "scripts": {
+    "build": "node generate-exports.mjs && mkdir -p dist && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
+    "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'cd ../.. && npm run build' --initial"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/get-convex/convex-helpers.git",
