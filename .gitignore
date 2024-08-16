@@ -1,5 +1,4 @@
-# For this repo, let's not all share our convex projects
-convex.json
+.npmrc
 
 # Or our local env
 .env.local
