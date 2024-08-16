@@ -23,6 +23,11 @@ fi
 current=$(npm pkg get version | tr -d '"')
 popd >/dev/null
 
+function cleanup() {
+  git co package-lock.json packages/convex-helpers/package.json
+}
+trap cleanup EXIT
+
 cat <<EOF
 Test it:
   - Add some example usage to the outer convex-helpers repo.
@@ -65,5 +70,4 @@ if [ "$publish" = "y" ]; then
   git push
 else
   echo "Aborted."
-  git co package-lock.json packages/convex-helpers/package.json
 fi
