@@ -80,18 +80,6 @@
     "./server/zod": {
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"
-    },
-    "./react/*": {
-      "types": "./react/*.d.ts",
-      "default": "./react/*.js"
-    },
-    "./react/cache/*": {
-      "types": "./react/cache/*.d.ts",
-      "default": "./react/cache/*.js"
-    },
-    "./server/*": {
-      "types": "./server/*.d.ts",
-      "default": "./server/*.js"
     }
   },
   "scripts": {

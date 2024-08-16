@@ -58,12 +58,12 @@ function generateExports() {
   for (const entryPoint of entryPointFiles()) {
     obj[entryPointFromFile(entryPoint)] = generateExport(entryPoint);
   }
-  for (const entryPointDir of EntryPointDirectories) {
-    obj[`./${entryPointDir}/*`] = {
-      types: `./${entryPointDir}/*.d.ts`,
-      default: `./${entryPointDir}/*.js`,
-    };
-  }
+  // for (const entryPointDir of EntryPointDirectories) {
+  //   obj[`./${entryPointDir}/*`] = {
+  //     types: `./${entryPointDir}/*.d.ts`,
+  //     default: `./${entryPointDir}/*.js`,
+  //   };
+  // }
   return obj;
 }
 
