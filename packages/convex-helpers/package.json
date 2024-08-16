@@ -4,6 +4,7 @@
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
+    "./package.json": "./package.json",
     ".": {
       "types": "./index.d.ts",
       "default": "./index.js"

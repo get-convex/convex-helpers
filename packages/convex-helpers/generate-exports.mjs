@@ -52,7 +52,9 @@ function generateExport(source) {
 }
 
 function generateExports() {
-  const obj = {};
+  const obj = {
+    "./package.json": "./package.json",
+  };
   for (const entryPoint of entryPointFiles()) {
     obj[entryPointFromFile(entryPoint)] = generateExport(entryPoint);
   }
