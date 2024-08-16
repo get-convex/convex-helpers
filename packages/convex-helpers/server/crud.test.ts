@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { crud } from ".";
+import { internalCRUD } from "./crud.js";
 import {
   anyApi,
   ApiFromModules,
@@ -34,16 +34,9 @@ const internalMutation = internalMutationGeneric as MutationBuilder<
   "internal"
 >;
 
-export const { create, read, paginate, update, destroy } = crud(
-  // We could use the Table helper instead, but showing it explicitly here.
-  // E.g. Table("crud_example", ExampleFields)
-  {
-    name: CrudTable,
-    _id: v.id(CrudTable),
-    withoutSystemFields: ExampleFields,
-  },
-  internalQuery,
-  internalMutation,
+export const { create, read, paginate, update, destroy } = internalCRUD(
+  schema,
+  CrudTable,
 );
 
 const testApi: ApiFromModules<{

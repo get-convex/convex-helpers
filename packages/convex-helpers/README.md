@@ -14,7 +14,7 @@ Table of contents:
 - [Row-level security](#row-level-security)
 - [Zod validation](#zod-validation)
 - [Hono for HTTP endpoints](#hono-for-advanced-http-endpoint-definitions)
-- [CRUD](#crud-utilities)
+- [Internal CRUD API utility](#internal-crud-utility)
 - [Validator utilities](#validator-utilities)
 - [Filter db queries with JS](#filter)
 - [Manual pagination](#manual-pagination)
@@ -494,40 +494,55 @@ app.get("/", async (c) => {
 export default new HttpRouterWithHono(app);
 ```
 
-## CRUD utilities
+## Internal CRUD utility
 
 To generate a basic CRUD api for your tables, you can use this helper to define
 these functions for a given table:
 
-- `create`
-- `read`
-- `update`
-- `delete`
-- `paginate`
+```ts
+export const {
+  create,
+  read,
+  update,
+  delete,
+  paginate,
+} = internalCRUD(schema, "mytable");
+```
 
-**Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions)**
+These are intended to be used from actions, as they are
+[internal functions](https://docs.convex.dev/functions/internal-functions).
 
 Example:
 
 ```ts
+// in convex/schema.ts
+export default defineSchema({
+  users: {
+    name: v.string(),
+    age: v.number(),
+  },
+});
 
 // in convex/users.ts
-import { crud } from "convex-helpers/server";
-import { internalMutation, internalQuery } from "../convex/_generated/server";
+import { internalCRUD } from "convex-helpers/server/crud";
+import schema from "./schema";
 
-const Users = Table("users", {...});
+export const { read, update } = internalCRUD(schema, "users");
 
-export const { read, update } = crud(Users, internalQuery, internalMutation);
-
-// in convex/schema.ts
-import { Users } from "./users";
-export default defineSchema({users: Users.table});
-
-// in some file, in an action:
-const user = await ctx.runQuery(internal.users.read, { id: userId });
-
-await ctx.runMutation(internal.users.update, { status: "inactive" });
+// in some action:
+export const someAction = internalAction({
+  args: { id: v.id("users") },
+  handler: async (ctx, args) => {
+    const id = args.id;
+    // get a user by ID
+    const user = await ctx.runQuery(internal.users.read, { id });
+    // Update a field on a user document
+    await ctx.runMutation(internal.users.update, { id, patch: { age: 21 } });
+  },
+});
 ```
+
+To expose a public CRUD API, you should add some authorization to the functions.
 
 ## Validator utilities
 

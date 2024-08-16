@@ -36,6 +36,10 @@
       "types": "./react/cache/provider.d.ts",
       "default": "./react/cache/provider.js"
     },
+    "./server/crud": {
+      "types": "./server/crud.d.ts",
+      "default": "./server/crud.js"
+    },
     "./server/customFunctions": {
       "types": "./server/customFunctions.d.ts",
       "default": "./server/customFunctions.js"

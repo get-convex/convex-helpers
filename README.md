@@ -18,7 +18,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Row-level security](./packages/convex-helpers/README.md#row-level-security)
 | [Zod validation](./packages/convex-helpers/README.md#zod-validation)
 | [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)
-| [CRUD](./packages/convex-helpers/README.md#crud-utilities)
+| [Generate an internal CRUD API](./packages/convex-helpers/README.md#internal-crud-utility)
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
 | [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)
