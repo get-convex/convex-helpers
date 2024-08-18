@@ -1,10 +1,10 @@
 import { FC, useRef, useState } from "react";
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useQuery } from "convex-helpers/react/cache";
 import { api } from "../../convex/_generated/api";
 
 // Composing this with the tanstack-style useQuery:
 // import { makeUseQueryWithStatus } from "convex-helpers/react";
-// import { useQueries } from "convex-helpers/react/cache/hooks";
+// import { useQueries } from "convex-helpers/react/cache";
 // const useQuery= makeUseQueryWithStatus(useQueries);
 
 export const CacheExample: FC = () => {
