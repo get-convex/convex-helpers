@@ -13,6 +13,10 @@ git diff --exit-code || {
   echo "Uncommitted changes found. Commit or stash them before publishing."
   exit 1
 }
+function cleanup() {
+  git co package-lock.json packages/convex-helpers/package.json
+}
+trap cleanup EXIT
 
 pushd packages/convex-helpers >/dev/null
 if [ "$1" == "alpha" ]; then
@@ -22,11 +26,6 @@ else
 fi
 current=$(npm pkg get version | tr -d '"')
 popd >/dev/null
-
-function cleanup() {
-  git co package-lock.json packages/convex-helpers/package.json
-}
-trap cleanup EXIT
 
 cat <<EOF
 Test it:
