@@ -24,6 +24,10 @@
       "types": "./react.d.ts",
       "default": "./react.js"
     },
+    "./react/cache": {
+      "types": "./react/cache.d.ts",
+      "default": "./react/cache.js"
+    },
     "./react/sessions": {
       "types": "./react/sessions.d.ts",
       "default": "./react/sessions.js"
