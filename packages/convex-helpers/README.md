@@ -721,6 +721,7 @@ navigation changes, view changes, etc.
 
 Related files:
 
+- [cache.ts](./react/cache.ts) re-exports things so you can import from a single convenient location.
 - [provider.tsx](./react/cache/provider.tsx) contains `ConvexQueryCacheProvider`,
   a configurable cache provider you put in your react app's root.
 - [hooks.ts](./react/cache/hooks.ts) contains cache-enabled drop-in
@@ -731,9 +732,8 @@ inside `<ConvexProvider>` in your react component tree:
 
 ```jsx
 
-import { ConvexQueryCacheProvider } from "convex-helpers/react/cache/provider";
-
-//...
+import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
+// For Next.js, import from "convex-helpers/react/cache/provider"; instead
 
 export default function RootLayout({
   children,
@@ -766,9 +766,10 @@ Finally, you can utilize `useQuery` (and `useQueries`) just the same as
 their `convex/react` equivalents.
 
 ```jsx
-import { useQuery } from "convex-helpers/react/cache/hooks";
+import { useQuery } from "convex-helpers/react/cache";
+// For Next.js, import from "convex-helpers/react/cache/hooks"; instead
 
 // ...
 
-const users = useQuery(api.users.getAll);
+const users = useQuery(api.todos.getAll);
 ```
