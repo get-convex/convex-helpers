@@ -14,16 +14,12 @@ import { useContext, useEffect, useMemo } from "react";
 import { ConvexQueryCacheContext } from "./provider.js";
 import { convexToJson } from "convex/values";
 
-let uuid: () => string;
-try {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    uuid = crypto.randomUUID.bind(crypto);
-  }
-} catch (e) {
-  uuid = () =>
-    Math.random().toString(36).substring(2) +
-    Math.random().toString(36).substring(2);
-}
+const uuid =
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID.bind(crypto)
+    : () =>
+        Math.random().toString(36).substring(2) +
+        Math.random().toString(36).substring(2);
 
 /**
  * Load a variable number of reactive Convex queries, utilizing
