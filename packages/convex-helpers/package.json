@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.51-alpha.0",
+  "version": "0.1.51-alpha.4",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
@@ -23,6 +23,10 @@
     "./react": {
       "types": "./react.d.ts",
       "default": "./react.js"
+    },
+    "./react/cache": {
+      "types": "./react/cache.d.ts",
+      "default": "./react/cache.js"
     },
     "./react/sessions": {
       "types": "./react/sessions.d.ts",
