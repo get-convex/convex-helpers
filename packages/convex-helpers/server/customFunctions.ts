@@ -33,6 +33,7 @@ import {
   RegisteredQuery,
   ReturnValueForOptionalValidator,
 } from "convex/server";
+import { pick } from "../index.js";
 
 /**
  * A modifier for a query, mutation, or action.
@@ -148,44 +149,7 @@ export function customQuery<
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
-  function customQueryBuilder(fn: any): any {
-    // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? NoOp.input;
-    const inputArgs = mod.args ?? NoOp.args;
-    if ("args" in fn) {
-      return query({
-        args: {
-          ...fn.args,
-          ...inputArgs,
-        },
-        returns: fn.returns,
-        handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
-          return await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...rest, ...added.args },
-          );
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return query({
-      returns: fn.returns,
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customQueryBuilder as CustomBuilder<
+  return customFnBuilder(query, mod) as CustomBuilder<
     "query",
     ModArgsValidator,
     ModCtx,
@@ -262,44 +226,7 @@ export function customMutation<
     ModMadeArgs
   >,
 ) {
-  function customMutationBuilder(fn: any): any {
-    // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? NoOp.input;
-    const inputArgs = mod.args ?? NoOp.args;
-    if ("args" in fn) {
-      return mutation({
-        args: {
-          ...fn.args,
-          ...inputArgs,
-        },
-        returns: fn.returns,
-        handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
-          return await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...rest, ...added.args },
-          );
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return mutation({
-      returns: fn.returns,
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customMutationBuilder as CustomBuilder<
+  return customFnBuilder(mutation, mod) as CustomBuilder<
     "mutation",
     ModArgsValidator,
     ModCtx,
@@ -380,44 +307,7 @@ export function customAction<
   GenericActionCtx<DataModel>,
   Visibility
 > {
-  function customActionBuilder(fn: any): any {
-    // Looking forward to when input / args / ... are optional
-    const inputMod = mod.input ?? NoOp.input;
-    const inputArgs = mod.args ?? NoOp.args;
-    if ("args" in fn) {
-      return action({
-        args: {
-          ...fn.args,
-          ...inputArgs,
-        },
-        returns: fn.returns,
-        handler: async (ctx, allArgs: any) => {
-          const { split, rest } = splitArgs(inputArgs, allArgs);
-          const added = await inputMod(ctx, split);
-          return await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...rest, ...added.args },
-          );
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
-      throw new Error(
-        "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
-      );
-    }
-    const handler = fn.handler ?? fn;
-    return action({
-      returns: fn.returns,
-      handler: async (ctx, args: any) => {
-        const { ctx: modCtx, args: modArgs } = await inputMod(ctx, args);
-        return await handler({ ...ctx, ...modCtx }, { ...args, ...modArgs });
-      },
-    });
-  }
-
-  return customActionBuilder as CustomBuilder<
+  return customFnBuilder(action, mod) as CustomBuilder<
     "action",
     ModArgsValidator,
     ModCtx,
@@ -427,35 +317,45 @@ export function customAction<
   >;
 }
 
-/**
- *
- * @param splitArgsValidator The args that should be split out from the rest.
- *   As an object mapping arg names to validators (v.* from convex/values).
- * @param args The arguments to a function, including values to be split out.
- * @returns The args split into two objects: `split` and `rest` based on keys.
- */
-export function splitArgs<
-  SplitArgsValidator extends PropertyValidators,
-  Args extends Record<string, any>,
->(
-  splitArgsValidator: SplitArgsValidator,
-  args: Args & ObjectType<SplitArgsValidator>,
-): {
-  split: ObjectType<SplitArgsValidator>;
-  rest: { [k in Exclude<keyof Args, keyof SplitArgsValidator>]: Args[k] };
-} {
-  const rest: Record<string, any> = {};
-  const split: Record<string, any> = {};
-  for (const arg in args) {
-    if (arg in splitArgsValidator) {
-      split[arg] = args[arg];
-    } else {
-      rest[arg] = args[arg];
+function customFnBuilder(
+  builder: (args: any) => any,
+  mod: Mod<any, any, any, any>,
+) {
+  // Looking forward to when input / args / ... are optional
+  const inputMod = mod.input ?? NoOp.input;
+  const inputArgs = mod.args ?? NoOp.args;
+  return function customBuilder(fn: any): any {
+    const handler = fn.handler ?? fn;
+    if ("args" in fn) {
+      return builder({
+        args: {
+          ...fn.args,
+          ...inputArgs,
+        },
+        returns: fn.returns,
+        handler: async (ctx: any, allArgs: any) => {
+          const added = await inputMod(
+            ctx,
+            pick(allArgs, Object.keys(inputArgs)) as any,
+          );
+          const args = pick(allArgs, Object.keys(fn.args));
+          return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+        },
+      });
     }
-  }
-  return { split, rest } as {
-    split: ObjectType<SplitArgsValidator>;
-    rest: Args;
+    if (Object.keys(inputArgs).length > 0) {
+      throw new Error(
+        "If you're using a custom function with arguments for the input " +
+          "modifier, you must declare the arguments for the function too.",
+      );
+    }
+    return builder({
+      returns: fn.returns,
+      handler: async (ctx: any, args: any) => {
+        const added = await inputMod(ctx, args);
+        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+      },
+    });
   };
 }
 

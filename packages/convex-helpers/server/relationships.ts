@@ -14,6 +14,26 @@ import { GenericId } from "convex/values";
 import { asyncMap, nullThrows } from "../index.js";
 
 /**
+ * Gets a document by its ID. Throws if not found.
+ * @param ctx The database reader to use to get the document.
+ * @param id The id of the document to get.
+ * @returns The document with the given ID.
+ */
+export async function getOrThrow<
+  DataModel extends GenericDataModel,
+  Table extends TableNamesInDataModel<DataModel>,
+>(
+  ctx: { db: GenericDatabaseReader<DataModel> },
+  id: GenericId<Table>,
+): Promise<DocumentByName<DataModel, Table>> {
+  const doc = await ctx.db.get(id);
+  if (!doc) {
+    throw new Error(`Could not find id ${id}`);
+  }
+  return doc;
+}
+
+/**
  * getAll returns a list of Documents (or null) for the `Id`s passed in.
  *
  * Nulls are returned for documents not found.
@@ -46,7 +66,7 @@ export async function getAllOrThrow<
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
 ): Promise<DocumentByName<DataModel, TableName>[]> {
-  return await asyncMap(ids, async (id) => nullThrows(await db.get(id)));
+  return await asyncMap(ids, (id) => getOrThrow({ db }, id));
 }
 
 type UserIndexes<

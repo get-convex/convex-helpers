@@ -6,12 +6,17 @@ rm -rf packages/convex-helpers/node_modules
 npm i
 npm run clean
 npm run build
+npm i
 npm run lint
 npm run test
 git diff --exit-code || {
   echo "Uncommitted changes found. Commit or stash them before publishing."
   exit 1
 }
+function cleanup() {
+  git co package-lock.json packages/convex-helpers/package.json
+}
+trap cleanup EXIT
 
 pushd packages/convex-helpers >/dev/null
 if [ "$1" == "alpha" ]; then
@@ -25,8 +30,7 @@ popd >/dev/null
 cat <<EOF
 Test it:
   - Add some example usage to the outer convex-helpers repo.
-  - Install from another project via \`npm link\`.
-  - Run \`npm pack\` and install it elsewhere from the .tgz file.
+  - Run \`npm pack\` in /dist and install it elsewhere from the .tgz file.
 EOF
 echo "Latest versions:"
 npm view convex-helpers@latest version
@@ -65,5 +69,4 @@ if [ "$publish" = "y" ]; then
   git push
 else
   echo "Aborted."
-  git co package-lock.json packages/convex-helpers/package.json
 fi

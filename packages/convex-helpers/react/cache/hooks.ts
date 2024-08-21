@@ -2,6 +2,7 @@ import {
   ConvexProvider,
   OptionalRestArgsOrSkip,
   RequestForQueries,
+  useQueries as useQueriesCore,
 } from "convex/react";
 import {
   FunctionArgs,
@@ -9,9 +10,16 @@ import {
   FunctionReturnType,
   getFunctionName,
 } from "convex/server";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo } from "react";
 import { ConvexQueryCacheContext } from "./provider.js";
 import { convexToJson } from "convex/values";
+
+const uuid =
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID.bind(crypto)
+    : () =>
+        Math.random().toString(36).substring(2) +
+        Math.random().toString(36).substring(2);
 
 /**
  * Load a variable number of reactive Convex queries, utilizing
@@ -76,28 +84,16 @@ export function useQueries(
     );
   }
   const queryKeys: Record<string, string> = {};
-  const results: Record<string, any | undefined | Error> = {};
   for (const [key, { query, args }] of Object.entries(queries)) {
-    const queryKey = createQueryKey(query, args);
-    results[key] = registry.probe(queryKey);
-    queryKeys[key] = queryKey;
+    queryKeys[key] = createQueryKey(query, args);
   }
-
-  const [_, setValues] =
-    useState<Record<string, any | undefined | Error>>(results);
 
   useEffect(
     () => {
       const ids: string[] = [];
       for (const [key, { query, args }] of Object.entries(queries)) {
-        const id = crypto.randomUUID();
-        registry.start(id, queryKeys[key]!, query, args, (v) =>
-          setValues((old) => {
-            if (!(key in old)) return old; // We're no longer tracking this query
-            if (old[key] === v) return old; // No change
-            return { ...old, [key]: v };
-          }),
-        );
+        const id = uuid();
+        registry.start(id, queryKeys[key]!, query, args);
         ids.push(id);
       }
       return () => {
@@ -110,7 +106,8 @@ export function useQueries(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [registry, JSON.stringify(queryKeys)],
   );
-  return results;
+  const memoizedQueries = useMemo(() => queries, [JSON.stringify(queryKeys)]);
+  return useQueriesCore(memoizedQueries);
 }
 
 /**

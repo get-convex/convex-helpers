@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.49",
+  "version": "0.1.52",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "exports": {
@@ -16,9 +16,17 @@
       "types": "./validators.d.ts",
       "default": "./validators.js"
     },
+    "./server": {
+      "types": "./server.d.ts",
+      "default": "./server.js"
+    },
     "./react": {
-      "types": "./react/index.d.ts",
-      "default": "./react/index.js"
+      "types": "./react.d.ts",
+      "default": "./react.js"
+    },
+    "./react/cache": {
+      "types": "./react/cache.d.ts",
+      "default": "./react/cache.js"
     },
     "./react/sessions": {
       "types": "./react/sessions.d.ts",
@@ -43,10 +51,6 @@
     "./server/hono": {
       "types": "./server/hono.d.ts",
       "default": "./server/hono.js"
-    },
-    "./server": {
-      "types": "./server/index.d.ts",
-      "default": "./server/index.js"
     },
     "./server/migrations": {
       "types": "./server/migrations.d.ts",
@@ -79,7 +83,23 @@
     "./server/zod": {
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"
+    },
+    "./react/*": {
+      "types": "./react/*.d.ts",
+      "default": "./react/*.js"
+    },
+    "./react/cache/*": {
+      "types": "./react/cache/*.d.ts",
+      "default": "./react/cache/*.js"
+    },
+    "./server/*": {
+      "types": "./server/*.d.ts",
+      "default": "./server/*.js"
     }
+  },
+  "scripts": {
+    "build": "node generate-exports.mjs && mkdir -p dist && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
+    "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'cd ../.. && npm run build' --initial"
   },
   "repository": {
     "type": "git",
