@@ -28,7 +28,7 @@ export const jsApiSpec = new Command("js-api-spec")
             const output = execSync(`npx convex function-spec ${flags}`);
             content = output.toString();
         }
-        const outputPath = "convex-api.ts";
+        const outputPath = `convexApi${Date.now().valueOf()}.ts`;
         const apiSpec = generateApiSpec(JSON.parse(content));
         fs.writeFileSync(outputPath, apiSpec, 'utf-8');
         console.log(chalk.green('Wrote JavaScript API spec to ' + outputPath));

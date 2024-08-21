@@ -772,3 +772,36 @@ import { useQuery } from "convex-helpers/react/cache/hooks";
 
 const users = useQuery(api.users.getAll);
 ```
+
+## JavaScript API Generation
+
+Generate Convex API objects to use Convex with type-safety in separate repositories.
+Once in the Convex folder whose functions you want to make an API for, you can run
+
+```bash
+npx convex-helpers js-api-spec
+```
+
+By default, this connects to your Convex dev deployment, but you can pass in `--prod`
+to read from your production deployment.
+
+This command writes a `convexApi{msSinceEpoch}.ts` file that can be used in external repositories to
+use your Convex functions with type-safety. It includes your internal functions, but you
+can feel free to remove them.
+
+## Open API Spec Generation
+
+Generate an Open API spec to create a client in a language that Convex doesn't currently
+support or connect with tools like Retool. Once in the Convex folder whose functions you
+want to generate a specification for, you can run
+
+```bash
+npx convex-helpers open-api-spec
+```
+
+By default, this connects to your Convex dev deployment, but you can pass in `--prod`
+to read from your production deployment.
+
+This command writes a `convex-spec-{msSinceEpoch}.yaml` file that can be used in external repositories to
+use your Convex functions with type-safety. It includes your internal functions, but you
+can feel free to remove them.

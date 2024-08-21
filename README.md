@@ -23,6 +23,8 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
 | [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)
 | [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)
+| [TypeScript API Generator](./packages/convex-helpers/README.md#javascript-api-generation)
+| [OpenAPI Spec Generator](./packages/convex-helpers/README.md#open-api-spec-generation)
 
 | In this directory for copy-pasting:
 | -----------------------------------

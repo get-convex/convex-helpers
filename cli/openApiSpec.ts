@@ -31,7 +31,7 @@ export const openApiSpec = new Command("open-api-spec")
             const output = execSync(`npx convex function-spec ${flags}`);
             content = output.toString();
         }
-        const outputPath = `open_api_spec${Date.now().valueOf()}.yaml`;
+        const outputPath = `convex-spec-${Date.now().valueOf()}.yaml`;
         const apiSpec = generateOpenApiSpec(JSON.parse(content));
         fs.writeFileSync(outputPath, apiSpec, 'utf-8');
         console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
