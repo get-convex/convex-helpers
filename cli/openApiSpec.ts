@@ -1,12 +1,11 @@
 import fs from 'fs'
 import { execSync } from 'child_process';
 import { Command, Option } from "commander";
-import { JSONValue } from 'convex/values'
+import { ValidatorJSON } from 'convex/values'
 import chalk from 'chalk';
 
 export const openApiSpec = new Command("open-api-spec")
     .summary("Generate an OpenAPI spec from a Convex function definition")
-    .argument("<siteUrl>", "The site URL of the Convex instance")
     .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will retrieve the function spec from your configured convex instance")
     .addOption(
         new Option(
@@ -15,8 +14,8 @@ export const openApiSpec = new Command("open-api-spec")
         )
             .default(undefined)
     )
-    .action((siteUrl, filePath, prod) => {
-        if (filePath && prod) {
+    .action((filePath, options) => {
+        if (filePath && options.prod) {
             console.error(`To use the prod flag, you can't provide a file path`);
             process.exit(1)
         }
@@ -28,12 +27,12 @@ export const openApiSpec = new Command("open-api-spec")
         if (filePath) {
             content = fs.readFileSync(filePath, 'utf-8');
         } else {
-            const flags = prod ? '--prod' : '';
+            const flags = options.prod ? '--prod' : '';
             const output = execSync(`npx convex function-spec ${flags}`);
             content = output.toString();
         }
         const outputPath = `open_api_spec${Date.now().valueOf()}.yaml`;
-        const apiSpec = generateOpenApiSpec(siteUrl, JSON.parse(content));
+        const apiSpec = generateOpenApiSpec(JSON.parse(content));
         fs.writeFileSync(outputPath, apiSpec, 'utf-8');
         console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
     });
@@ -42,39 +41,23 @@ type Visibility = { kind: 'public' } | { kind: 'internal' }
 
 type FunctionType = 'Action' | 'Mutation' | 'Query' | 'HttpAction'
 
+export type FunctionSpec = {
+    url: string,
+    functions: AnalyzedFunction[]
+};
+
 export type AnalyzedFunction = {
     identifier: string
     functionType: FunctionType
     visibility: Visibility
     args: ValidatorJSON | null
-    output: ValidatorJSON | null
-}
-
-export type ObjectFieldType = { fieldType: ValidatorJSON; optional: boolean }
-export type ValidatorJSON =
-    | {
-        type: 'null'
-    }
-    | { type: 'number' }
-    | { type: 'bigint' }
-    | { type: 'boolean' }
-    | { type: 'string' }
-    | { type: 'bytes' }
-    | { type: 'any' }
-    | {
-        type: 'literal'
-        value: JSONValue
-    }
-    | { type: 'id'; tableName: string }
-    | { type: 'array'; value: ValidatorJSON }
-    | { type: 'record'; keys: ValidatorJSON; values: ObjectFieldType }
-    | { type: 'object'; value: Record<string, ObjectFieldType> }
-    | { type: 'union'; value: ValidatorJSON[] }
+    returns: ValidatorJSON | null
+};
 
 function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
     switch (validatorJson.type) {
         case 'null':
-            // Null only becomes explicitly supported in OpenAPI 3.1.0
+            // Necessary because null only becomes explicitly supported in OpenAPI 3.1.0
             return 'type: string\nnullable: true'
         case 'number':
             return 'type: number'
@@ -184,6 +167,7 @@ function generateEndpointDef(func: AnalyzedFunction) {
     return `
     /api/run/${urlPathName}:
       post:
+        summary: Calls a ${func.functionType.toLowerCase()} at the path ${func.identifier}
         tags: 
           - ${func.functionType.toLowerCase()}
         requestBody:
@@ -199,8 +183,8 @@ function generateEndpointDef(func: AnalyzedFunction) {
               application/json:
                 schema:
                   $ref: '#/components/schemas/Response_${shortName}'    
-          '500':
-            description: Successful operation
+          '400':
+            description: Failed operation
             content:
               application/json:
                 schema:
@@ -221,57 +205,66 @@ function generateEndpointSchemas(func: AnalyzedFunction) {
     )}\n
     Response_${shortName}:
       type: object
+      required:
+        - status
       properties:
-        status:
+        status: 
           type: string
           enum:
             - "success"
+            - "error"
+        errorMessage:
+          type: string
+        errorData:
+          type: object
         value:\n${reindent(
-        generateSchemaFromValidator(func.output ?? { type: 'any' }),
+        generateSchemaFromValidator(func.returns ?? { type: 'any' }),
         5
     )}\n`
 }
 
-export function generateOpenApiSpec(siteUrl: string, analyzeResult: AnalyzedFunction[]) {
+export function generateOpenApiSpec(functionSpec: FunctionSpec) {
     return `
-    openapi: 3.0.3
-    info:
-      title: Convex App - OpenAPI 3.0
-      version: 0.0.0
-    servers:
-      - url: https://${siteUrl}
-    tags:
-      - name: query
-      - name: mutation
-      - name: action
-    paths:
-    ${reindent(
+openapi: 3.0.3
+info:
+    title: Convex App - OpenAPI 3.0
+    version: 0.0.0
+servers:
+    - url: ${functionSpec.url}
+security:
+  - bearerAuth: []
+tags:
+    - name: query
+      description: Functions that read data
+    - name: mutation
+      description: Functions that write/update/delete data
+    - name: action
+      description: Functions that can make calls to external APIs
+paths:
+${reindent(
         // Skip http actions because they go to a different url and we don't have argument/return types
-        analyzeResult
+        functionSpec.functions
             .filter((f) => f.functionType !== 'HttpAction')
             .map((f) => generateEndpointDef(f))
             .join('\n'),
         1
     )}
-    components:
-      schemas:
-    ${reindent(
-        analyzeResult
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token of the format "Bearer {token}" for normal authentication and "Convex {token}" for admin tokens.
+  schemas:
+${reindent(
+        functionSpec.functions
             .filter((f) => f.functionType !== 'HttpAction')
             .map((f) => generateEndpointSchemas(f))
             .join('\n'),
-        2
+        1
     )}
-        FailedResponse:
-          type: object
-          properties:
-            status:
-              type: string
-              enum:
-                - "error"
-            errorMessage:
-              type: string
-            errorData:
-              type: object
-    `
+      FailedResponse:
+        type: object
+        properties: {}
+`
 }

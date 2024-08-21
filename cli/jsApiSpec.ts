@@ -1,8 +1,8 @@
 import fs from 'fs'
 import { execSync } from 'child_process';
 import { Command, Option } from "commander";
-import { JSONValue } from 'convex/values'
-import { AnalyzedFunction } from './openApiSpec';
+import { ValidatorJSON } from 'convex/values'
+import { AnalyzedFunction, FunctionSpec } from './openApiSpec';
 import chalk from 'chalk';
 
 export const jsApiSpec = new Command("js-api-spec")
@@ -31,29 +31,8 @@ export const jsApiSpec = new Command("js-api-spec")
         const outputPath = "convex-api.ts";
         const apiSpec = generateApiSpec(JSON.parse(content));
         fs.writeFileSync(outputPath, apiSpec, 'utf-8');
-        console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
+        console.log(chalk.green('Wrote JavaScript API spec to ' + outputPath));
     });
-
-export type ObjectFieldType = { fieldType: ValidatorJSON; optional: boolean }
-export type ValidatorJSON =
-    | {
-        type: 'null'
-    }
-    | { type: 'number' }
-    | { type: 'bigint' }
-    | { type: 'boolean' }
-    | { type: 'string' }
-    | { type: 'bytes' }
-    | { type: 'any' }
-    | {
-        type: 'literal'
-        value: JSONValue
-    }
-    | { type: 'id'; tableName: string }
-    | { type: 'array'; value: ValidatorJSON }
-    | { type: 'record'; keys: ValidatorJSON; values: ObjectFieldType }
-    | { type: 'object'; value: Record<string, ObjectFieldType> }
-    | { type: 'union'; value: ValidatorJSON[] }
 
 function generateArgsType(argsJson: ValidatorJSON): string {
     switch (argsJson.type) {
@@ -78,7 +57,7 @@ function generateArgsType(argsJson: ValidatorJSON): string {
                 return argsJson.value!.toString()
             }
         case 'id':
-            return `GenericId<"${argsJson.tableName}">`
+            return `Id<"${argsJson.tableName}">`
         case 'array':
             return `Array<${generateArgsType(argsJson.value)}>`
         case 'record':
@@ -108,9 +87,9 @@ function generateApiType(tree: Record<string, any>) {
     const isFunction = tree.functionType !== undefined;
     if (isFunction) {
         const output =
-            tree.output === null || tree.output === undefined
+            tree.returns === null || tree.returns === undefined
                 ? 'any'
-                : generateArgsType(tree.output);
+                : generateArgsType(tree.returns);
         return `FunctionReference<"${(tree.functionType as string).toLowerCase()}", "${tree.visibility.kind
             }", ${generateArgsType(tree.args)}, ${output}>`
     }
@@ -120,10 +99,10 @@ function generateApiType(tree: Record<string, any>) {
     return `{ ${members.join('\n')} }`
 }
 
-function generateApiSpec(analyzeResult: AnalyzedFunction[]) {
+function generateApiSpec(functionSpec: FunctionSpec) {
     const publicFunctionTree: Record<string, any> = {};
     const internalFunctionTree: Record<string, any> = {};
-    for (const fn of analyzeResult) {
+    for (const fn of functionSpec.functions) {
         const [modulePath, functionName] = fn.identifier.split(':');
         const withoutExtension = modulePath.slice(0, modulePath.length - 3);
         const pathParts = withoutExtension.split('/');
@@ -143,12 +122,12 @@ function generateApiSpec(analyzeResult: AnalyzedFunction[]) {
     const apiType = generateApiType(publicFunctionTree);
     const internalApiType = generateApiType(internalFunctionTree);
     return (`
-        import { FunctionReference, anyApi } from "convex/server"
-        import { GenericId as Id } from "convex/values"
+import { FunctionReference, anyApi } from "convex/server"
+import { GenericId as Id } from "convex/values"
         
-        export type PublicApiType = ${apiType}
-        export type InternalApiType = ${internalApiType}
-        export const api: PublicApiType = anyApi as unknown as PublicApiType;
-        export const internal: InternalApiType = anyApi as unknown as InternalApiType;
+export type PublicApiType = ${apiType}
+export type InternalApiType = ${internalApiType}
+export const api: PublicApiType = anyApi as unknown as PublicApiType;
+export const internal: InternalApiType = anyApi as unknown as InternalApiType;
         `);
 }
