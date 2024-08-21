@@ -2,7 +2,7 @@ import fs from 'fs';
 import * as ts from 'typescript';
 import { generateOpenApiSpec, openApiSpec } from './openApiSpec';
 import { execSync } from 'child_process';
-import { FUNCTIONS_JSON } from './functions.test';
+import { FUNCTIONS_JSON, OPEN_API_SPEC } from './functions.test';
 
 // If this test fails, it means the generated OpenAPI spec is no longer valid.
 test("generateValidSpec", async () => {
@@ -21,5 +21,5 @@ test("generateValidSpec", async () => {
 test("openApiSpecMatches", () => {
     const apiSpec = generateOpenApiSpec(JSON.parse(FUNCTIONS_JSON));
 
-    // expect(apiSpec).toEqual(openApiSpec);
+    expect(apiSpec).toEqual(OPEN_API_SPEC);
 })

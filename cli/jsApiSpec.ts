@@ -2,7 +2,7 @@ import fs from 'fs'
 import { execSync } from 'child_process';
 import { Command, Option } from "commander";
 import { ValidatorJSON } from 'convex/values'
-import { AnalyzedFunction, FunctionSpec } from './openApiSpec';
+import { FunctionSpec } from './openApiSpec';
 import chalk from 'chalk';
 
 export const jsApiSpec = new Command("js-api-spec")
@@ -99,7 +99,7 @@ function generateApiType(tree: Record<string, any>) {
     return `{ ${members.join('\n')} }`
 }
 
-function generateApiSpec(functionSpec: FunctionSpec) {
+export function generateApiSpec(functionSpec: FunctionSpec) {
     const publicFunctionTree: Record<string, any> = {};
     const internalFunctionTree: Record<string, any> = {};
     for (const fn of functionSpec.functions) {

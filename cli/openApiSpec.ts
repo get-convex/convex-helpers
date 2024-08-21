@@ -178,13 +178,19 @@ function generateEndpointDef(func: AnalyzedFunction) {
           required: true
         responses:
           '200':
-            description: Successful operation
+            description: Convex executed your request and returned a result
             content:
               application/json:
                 schema:
                   $ref: '#/components/schemas/Response_${shortName}'    
           '400':
             description: Failed operation
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/FailedResponse'
+          '500':
+            description: Convex Internal Error
             content:
               application/json:
                 schema:
