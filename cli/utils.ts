@@ -3,9 +3,9 @@ import { execSync } from 'child_process';
 import chalk from 'chalk';
 import { ValidatorJSON } from 'convex/values';
 
-type Visibility = { kind: 'public' } | { kind: 'internal' }
+type Visibility = { kind: 'public' } | { kind: 'internal' };
 
-type FunctionType = 'Action' | 'Mutation' | 'Query' | 'HttpAction'
+type FunctionType = 'Action' | 'Mutation' | 'Query' | 'HttpAction';
 
 export type FunctionSpec = {
     url: string,

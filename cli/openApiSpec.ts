@@ -7,7 +7,23 @@ import prettier from "prettier";
 
 export const openApiSpec = new Command("open-api-spec")
     .summary("Generate an OpenAPI spec from a Convex function definition")
-    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will retrieve the function spec from your configured convex instance")
+    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will \nretrieve the function spec from your configured convex deployment.\n"
+        + "The file name defaults to `convex-spec-{msSinceEpoch}`."
+    )
+    .addOption(
+        new Option(
+            "--outputFile <filename>",
+            "Specify the output file name for your spec.",
+        )
+            .default(undefined)
+    )
+    .addOption(
+        new Option(
+            "--public-only",
+            "Only include public functions from your Convex deployment.",
+        )
+            .default(false)
+    )
     .addOption(
         new Option(
             "--prod",
@@ -17,10 +33,10 @@ export const openApiSpec = new Command("open-api-spec")
     )
     .action(async (filePath, options) => {
         let content = getFunctionSpec(options.prod, filePath);
-        const outputPath = `convex-spec-${Date.now().valueOf()}.yaml`;
+        const outputPath = (options.outputFile ?? `convex-spec-${Date.now().valueOf()}`) + ".yaml";
 
         try {
-            const apiSpec = generateOpenApiSpec(JSON.parse(content));
+            const apiSpec = generateOpenApiSpec(JSON.parse(content), options.publicOnly);
             const formattedSpec = await prettier.format(apiSpec, { parser: 'yaml' });
             fs.writeFileSync(outputPath, formattedSpec, 'utf-8');
         } catch (e) {
@@ -206,7 +222,7 @@ function generateEndpointSchemas(func: AnalyzedFunction) {
     )}\n`
 }
 
-export function generateOpenApiSpec(functionSpec: FunctionSpec) {
+export function generateOpenApiSpec(functionSpec: FunctionSpec, publicOnly: boolean) {
     return `
 openapi: 3.0.3
 info:
@@ -228,6 +244,7 @@ ${reindent(
         // Skip http actions because they go to a different url and we don't have argument/return types
         functionSpec.functions
             .filter((f) => f.functionType !== 'HttpAction')
+            .filter((f) => !publicOnly || f.visibility.kind === "public")
             .map((f) => generateEndpointDef(f))
             .join('\n'),
         1

@@ -78,6 +78,9 @@ export const FUNCTIONS_JSON = `{
 export const JS_API = `
 import { FunctionReference, anyApi } from "convex/server"
 import { GenericId as Id } from "convex/values"
+
+export const api: PublicApiType = anyApi as unknown as PublicApiType;
+export const internal: InternalApiType = anyApi as unknown as InternalApiType;
         
 export type PublicApiType = { messages: { list: FunctionReference<"query", "public", Record<string, never>, Array<{ _creationTime: number,
 _id: Id<"messages">,
@@ -86,8 +89,6 @@ body: string, }>>
 send: FunctionReference<"mutation", "public", { author: string,
 body: string, }, null> } }
 export type InternalApiType = {  }
-export const api: PublicApiType = anyApi as unknown as PublicApiType;
-export const internal: InternalApiType = anyApi as unknown as InternalApiType;
         `;
 
 export const OPEN_API_SPEC = `
