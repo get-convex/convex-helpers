@@ -13,7 +13,7 @@
     "dev:helpers": "cd packages/convex-helpers && npm run dev",
     "predev": "npm run build",
     "lint": "tsc --project tsconfig.test.json",
-    "build:bin": "esbuild cli/index.ts --bundle --platform=node --format=cjs --outfile=dist/bin.cjs",
+    "build:bin": "esbuild cli/index.ts --bundle --platform=node --external:prettier --format=cjs --outfile=dist/bin.cjs",
     "build": "npm run build:bin && cd packages/convex-helpers && npm run build",
     "clean": "rm -rf packages/convex-helpers/dist",
     "pack": "cd packages/convex-helpers/dist && npm pack --pack-destination ../../..",

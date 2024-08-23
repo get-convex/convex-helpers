@@ -1,13 +1,13 @@
 import fs from 'fs'
-import { execSync } from 'child_process';
 import { Command, Option } from "commander";
 import { ValidatorJSON } from 'convex/values'
-import { FunctionSpec } from './openApiSpec';
 import chalk from 'chalk';
+import { FunctionSpec, getFunctionSpec } from './utils';
+import prettier from "prettier";
 
-export const jsApiSpec = new Command("js-api-spec")
+export const tsApiSpec = new Command("ts-api-spec")
     .summary("Generate a JavaScript API spec from a Convex function definition")
-    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will retrieve the function spec from your configured convex instance")
+    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will retrieve the function spec from your configured Convex deployment")
     .addOption(
         new Option(
             "--prod",
@@ -15,22 +15,23 @@ export const jsApiSpec = new Command("js-api-spec")
         )
             .default(undefined)
     )
-    .action((filePath, prod) => {
-        let content: string;
-        if (filePath && !fs.existsSync(filePath)) {
-            console.error(`File ${filePath} not found`);
+    .action(async (filePath, options) => {
+        console.log("filePath: ", filePath);
+        console.log("prod: ", options.prod);
+        let content = getFunctionSpec(options.prod, filePath);
+        const outputPath = `convexApi${Date.now().valueOf()}.ts`;
+
+        try {
+            const apiSpec = generateApiSpec(JSON.parse(content));
+            const formattedSpec = await prettier.format(apiSpec, {
+                parser: 'typescript'
+            });
+            fs.writeFileSync(outputPath, formattedSpec, 'utf-8');
+        } catch (e) {
+            console.error("Failed to generate TypeScript API spec: ", e);
             process.exit(1);
         }
-        if (filePath) {
-            content = fs.readFileSync(filePath, 'utf-8');
-        } else {
-            const flags = prod ? '--prod' : '';
-            const output = execSync(`npx convex function-spec ${flags}`);
-            content = output.toString();
-        }
-        const outputPath = `convexApi${Date.now().valueOf()}.ts`;
-        const apiSpec = generateApiSpec(JSON.parse(content));
-        fs.writeFileSync(outputPath, apiSpec, 'utf-8');
+
         console.log(chalk.green('Wrote JavaScript API spec to ' + outputPath));
     });
 

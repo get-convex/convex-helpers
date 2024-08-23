@@ -1,8 +1,9 @@
 import fs from 'fs'
-import { execSync } from 'child_process';
 import { Command, Option } from "commander";
 import { ValidatorJSON } from 'convex/values'
 import chalk from 'chalk';
+import { AnalyzedFunction, FunctionSpec, getFunctionSpec } from './utils';
+import prettier from "prettier";
 
 export const openApiSpec = new Command("open-api-spec")
     .summary("Generate an OpenAPI spec from a Convex function definition")
@@ -14,45 +15,21 @@ export const openApiSpec = new Command("open-api-spec")
         )
             .default(undefined)
     )
-    .action((filePath, options) => {
-        if (filePath && options.prod) {
-            console.error(`To use the prod flag, you can't provide a file path`);
-            process.exit(1)
-        }
-        let content: string;
-        if (filePath && !fs.existsSync(filePath)) {
-            console.error(`File ${filePath} not found`);
+    .action(async (filePath, options) => {
+        let content = getFunctionSpec(options.prod, filePath);
+        const outputPath = `convex-spec-${Date.now().valueOf()}.yaml`;
+
+        try {
+            const apiSpec = generateOpenApiSpec(JSON.parse(content));
+            const formattedSpec = await prettier.format(apiSpec, { parser: 'yaml' });
+            fs.writeFileSync(outputPath, formattedSpec, 'utf-8');
+        } catch (e) {
+            console.error("Failed to generate TypeScript API spec: ", e);
             process.exit(1);
         }
-        if (filePath) {
-            content = fs.readFileSync(filePath, 'utf-8');
-        } else {
-            const flags = options.prod ? '--prod' : '';
-            const output = execSync(`npx convex function-spec ${flags}`);
-            content = output.toString();
-        }
-        const outputPath = `convex-spec-${Date.now().valueOf()}.yaml`;
-        const apiSpec = generateOpenApiSpec(JSON.parse(content));
-        fs.writeFileSync(outputPath, apiSpec, 'utf-8');
+
         console.log(chalk.green('Wrote OpenAPI spec to ' + outputPath));
     });
-
-type Visibility = { kind: 'public' } | { kind: 'internal' }
-
-type FunctionType = 'Action' | 'Mutation' | 'Query' | 'HttpAction'
-
-export type FunctionSpec = {
-    url: string,
-    functions: AnalyzedFunction[]
-};
-
-export type AnalyzedFunction = {
-    identifier: string
-    functionType: FunctionType
-    visibility: Visibility
-    args: ValidatorJSON | null
-    returns: ValidatorJSON | null
-};
 
 function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
     switch (validatorJson.type) {
