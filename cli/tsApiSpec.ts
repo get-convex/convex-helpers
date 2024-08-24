@@ -6,13 +6,14 @@ import { FunctionSpec, getFunctionSpec } from './utils';
 import prettier from "prettier";
 
 export const tsApiSpec = new Command("ts-api-spec")
-    .summary("Generate a JavaScript API spec from a Convex function definition")
-    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will \nretrieve the function spec from your configured Convex deployment.\n"
-        + "The file name defaults to `convexApi{msSinceEpoch}`."
+    .summary("Generate a TypeScript API spec  similar to `convex/_generated/api.d.ts` from a Convex function definition.")
+    .addOption(new Option("--input-file <fileName>", "The file name of the Convex function definition. If this argument is not provided, we will "
+        + "\nretrieve the function spec from your configured Convex deployment.\n"
+        + "The file name defaults to `convexApi{msSinceEpoch}`.")
     )
     .addOption(
         new Option(
-            "--outputFile <filename>",
+            "--output-file <filename>",
             "Specify the output file name for your spec.",
         )
             .default(undefined)
@@ -26,17 +27,17 @@ export const tsApiSpec = new Command("ts-api-spec")
     )
     .addOption(
         new Option(
-            "--public-only",
-            "Only include public functions from your Convex deployment.",
+            "--include-internal",
+            "Include internal functions from your Convex deployment.",
         )
             .default(false)
     )
-    .action(async (filePath, options) => {
-        let content = getFunctionSpec(options.prod, filePath);
+    .action(async (options) => {
+        let content = getFunctionSpec(options.prod, options.inputFile);
         const outputPath = (options.outputFile ?? `convexApi${Date.now().valueOf()}`) + ".ts";
 
         try {
-            const apiSpec = generateApiSpec(JSON.parse(content), options.publicOnly);
+            const apiSpec = generateApiSpec(JSON.parse(content), options.includeInternal);
             const formattedSpec = await prettier.format(apiSpec, {
                 parser: 'typescript'
             });
@@ -114,7 +115,12 @@ function generateApiType(tree: Record<string, any>) {
     return `{ ${members.join('\n')} }`
 }
 
-export function generateApiSpec(functionSpec: FunctionSpec, publicOnly: boolean) {
+export function generateApiSpec(functionSpec: FunctionSpec, includeInternal: boolean) {
+    if (functionSpec.functions === undefined || functionSpec.url === undefined) {
+        console.error(chalk.red("Incorrect function spec provided. Confirm that you have Convex 1.15.0 or greater installed."));
+        process.exit(1);
+    }
+
     const publicFunctionTree: Record<string, any> = {};
     const internalFunctionTree: Record<string, any> = {};
     for (const fn of functionSpec.functions) {
@@ -135,7 +141,7 @@ export function generateApiSpec(functionSpec: FunctionSpec, publicOnly: boolean)
         treeNode[functionName] = fn;
     }
     const apiType = generateApiType(publicFunctionTree);
-    const internalApiType = generateApiType(publicOnly ? {} : internalFunctionTree);
+    const internalApiType = generateApiType(includeInternal ? internalFunctionTree : {});
     return (`
 import { FunctionReference, anyApi } from "convex/server"
 import { GenericId as Id } from "convex/values"

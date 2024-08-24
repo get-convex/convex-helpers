@@ -7,20 +7,21 @@ import prettier from "prettier";
 
 export const openApiSpec = new Command("open-api-spec")
     .summary("Generate an OpenAPI spec from a Convex function definition")
-    .argument("[filePath]", "The file name of the Convex function definition. If this argument is not provided, we will \nretrieve the function spec from your configured convex deployment.\n"
-        + "The file name defaults to `convex-spec-{msSinceEpoch}`."
+    .addOption(new Option("--input-file <fileName>", "The file name of the Convex function definition. If this argument is not provided, we will "
+        + "\nretrieve the function spec from your configured Convex deployment.\n"
+        + "The file name defaults to `convex-spec-{msSinceEpoch}`.")
     )
     .addOption(
         new Option(
-            "--outputFile <filename>",
+            "--output-file <filename>",
             "Specify the output file name for your spec.",
         )
             .default(undefined)
     )
     .addOption(
         new Option(
-            "--public-only",
-            "Only include public functions from your Convex deployment.",
+            "--include-internal",
+            "Include internal functions from your Convex deployment.",
         )
             .default(false)
     )
@@ -31,12 +32,12 @@ export const openApiSpec = new Command("open-api-spec")
         )
             .default(undefined)
     )
-    .action(async (filePath, options) => {
-        let content = getFunctionSpec(options.prod, filePath);
+    .action(async (options) => {
+        let content = getFunctionSpec(options.prod, options.inputFile);
         const outputPath = (options.outputFile ?? `convex-spec-${Date.now().valueOf()}`) + ".yaml";
 
         try {
-            const apiSpec = generateOpenApiSpec(JSON.parse(content), options.publicOnly);
+            const apiSpec = generateOpenApiSpec(JSON.parse(content), options.includeInternal);
             const formattedSpec = await prettier.format(apiSpec, { parser: 'yaml' });
             fs.writeFileSync(outputPath, formattedSpec, 'utf-8');
         } catch (e) {
@@ -222,7 +223,12 @@ function generateEndpointSchemas(func: AnalyzedFunction) {
     )}\n`
 }
 
-export function generateOpenApiSpec(functionSpec: FunctionSpec, publicOnly: boolean) {
+export function generateOpenApiSpec(functionSpec: FunctionSpec, includeInternal: boolean) {
+    if (functionSpec.functions === undefined || functionSpec.url === undefined) {
+        console.error(chalk.red("Incorrect function spec provided. Confirm that you have Convex 1.15.0 or greater installed."));
+        process.exit(1);
+    }
+
     return `
 openapi: 3.0.3
 info:
@@ -244,7 +250,7 @@ ${reindent(
         // Skip http actions because they go to a different url and we don't have argument/return types
         functionSpec.functions
             .filter((f) => f.functionType !== 'HttpAction')
-            .filter((f) => !publicOnly || f.visibility.kind === "public")
+            .filter((f) => includeInternal || f.visibility.kind === "public")
             .map((f) => generateEndpointDef(f))
             .join('\n'),
         1

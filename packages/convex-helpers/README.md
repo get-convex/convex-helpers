@@ -19,6 +19,8 @@ Table of contents:
 - [Filter db queries with JS](#filter)
 - [Manual pagination](#manual-pagination)
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
+- [TypeScript API Generator](typescript-api-generation)
+- [OpenAPI Spec Generator](open-api-spec-generation)
 
 ## Custom Functions
 
@@ -774,7 +776,7 @@ import { useQuery } from "convex-helpers/react/cache";
 const users = useQuery(api.todos.getAll);
 ```
 
-## JavaScript API Generation
+## TypeScript API Generation
 
 Generate Convex API objects to use Convex with type-safety in separate repositories.
 Once in the Convex folder whose functions you want to make an API for, you can run
