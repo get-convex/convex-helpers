@@ -3,7 +3,9 @@
   "version": "0.1.53-alpha.1",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
-  "bin": "./dist/bin.cjs",
+  "bin": {
+    "convex-helpers": "./dist/bin.cjs"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
