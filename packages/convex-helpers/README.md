@@ -19,8 +19,8 @@ Table of contents:
 - [Filter db queries with JS](#filter)
 - [Manual pagination](#manual-pagination)
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
-- [TypeScript API Generator](typescript-api-generation)
-- [OpenAPI Spec Generator](open-api-spec-generation)
+- [TypeScript API Generator](#typescript-api-generation)
+- [OpenAPI Spec Generator](#open-api-spec-generation)
 
 ## Custom Functions
 
