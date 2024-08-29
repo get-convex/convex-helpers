@@ -6,9 +6,9 @@ import { AnalyzedFunction, FunctionSpec, getFunctionSpec } from './utils';
 import prettier from "prettier";
 
 export const openApiSpec = new Command("open-api-spec")
-    .summary("Generate an OpenAPI spec from a Convex function definition")
-    .addOption(new Option("--input-file <fileName>", "The file name of the Convex function definition. If this argument is not provided, we will "
-        + "\nretrieve the function spec from your configured Convex deployment.\n"
+    .summary("Generate an OpenAPI spec from a Convex function definition.")
+    .addOption(new Option("--input-file <filename>", "The file name of the Convex function definition. If this argument is not provided, we will\n"
+        + "retrieve the function spec from your configured Convex deployment.\n"
         + "The file name defaults to `convex-spec-{msSinceEpoch}`.")
     )
     .addOption(
@@ -56,7 +56,7 @@ function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
         case 'number':
             return 'type: number'
         case 'bigint':
-            throw new Error('bigint unsupported')
+            return 'type: integer\nformat: int64'
         case 'boolean':
             return 'type: boolean'
         case 'string':
