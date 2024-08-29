@@ -782,7 +782,7 @@ Generate Convex API objects to use Convex with type-safety in separate repositor
 Once in the Convex folder whose functions you want to make an API for, you can run
 
 ```bash
-npx convex-helpers js-api-spec
+npx convex-helpers ts-api-spec
 ```
 
 By default, this connects to your Convex dev deployment, but you can pass in `--prod`
