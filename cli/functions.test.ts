@@ -71,6 +71,11 @@ export const FUNCTIONS_JSON = `{
         "visibility": {
           "kind": "public"
         }
+      },
+      {
+        "functionType": "HttpAction",
+        "method": "POST",
+        "path": "/getMessage"
       }
     ]
   }`;

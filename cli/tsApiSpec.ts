@@ -124,6 +124,10 @@ export function generateApiSpec(functionSpec: FunctionSpec, includeInternal: boo
     const publicFunctionTree: Record<string, any> = {};
     const internalFunctionTree: Record<string, any> = {};
     for (const fn of functionSpec.functions) {
+        // Skip http actions because they go to a different url and we don't have argument/return types
+        if (fn.functionType === 'HttpAction') {
+            continue;
+        }
         const [modulePath, functionName] = fn.identifier.split(':');
         const withoutExtension = modulePath.slice(0, modulePath.length - 3);
         const pathParts = withoutExtension.split('/');
