@@ -157,7 +157,7 @@ type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
  *
  * // Short messages by author, paginated.
  * return await filter(
- *  ctx.db.query("messages").withIndex("by_author, q=>q.eq("author", args.author)),
+ *  ctx.db.query("messages").withIndex("by_author", q=>q.eq("author", args.author)),
  *  async (message) => message.body.length < 10,
  * ).paginate(args.paginationOpts);
  *
@@ -169,7 +169,7 @@ type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
  *  async (message) => message.body.length < 10,
  * );
  * return await shortMessages
- *  .withIndex("by_author, q=>q.eq("author", args.author))
+ *  .withIndex("by_author", q=>q.eq("author", args.author))
  *  .paginate(args.paginationOpts);
  *
  * // Also works with `order()`, `take()`, `unique()`, and `first()`.
