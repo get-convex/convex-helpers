@@ -129,7 +129,7 @@ export function useQueries(
 export function useQuery<Query extends FunctionReference<"query">>(
   query: Query,
   ...queryArgs: OptionalRestArgsOrSkip<Query>
-): FunctionReturnType<Query> {
+): FunctionReturnType<Query> | undefined {
   const args = queryArgs[0] ?? {};
   // Unlike the regular useQuery implementation, we don't need to memoize
   // the params here, since the cached useQueries will handle that.
