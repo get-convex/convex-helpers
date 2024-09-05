@@ -44,7 +44,7 @@
     "@testing-library/react": "16.0.1",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.12",
-    "@types/node": "20.16.4",
+    "@types/node": "20.16.5",
     "@types/react": "18.3.5",
     "@types/react-dom": "18.3.0",
     "@vitejs/plugin-react": "4.3.1",
