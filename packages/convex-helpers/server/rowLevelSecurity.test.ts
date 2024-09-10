@@ -112,12 +112,4 @@ customMutation(
   customCtx((ctx) => ({ foo: "bar" })),
 ) satisfies typeof mutation;
 
-crud(
-  {
-    _id: v.id("foo"),
-    name: "foo",
-    withoutSystemFields: { bar: v.number() },
-  },
-  queryGeneric,
-  mutationWithRLS,
-);
+crud(schema, "users", queryGeneric, mutationWithRLS);

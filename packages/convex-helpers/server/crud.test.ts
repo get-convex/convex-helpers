@@ -36,15 +36,8 @@ const internalMutation = internalMutationGeneric as MutationBuilder<
 >;
 
 export const { create, read, paginate, update, destroy } = crud(
-  // We could use the Table helper instead, but showing it explicitly here.
-  // E.g. Table("crud_example", ExampleFields)
-  {
-    name: CrudTable,
-    _id: v.id(CrudTable),
-    withoutSystemFields: ExampleFields,
-  },
-  internalQuery,
-  internalMutation,
+  schema,
+  CrudTable,
 );
 
 const testApi: ApiFromModules<{
@@ -89,15 +82,7 @@ const customM = customMutation(
   customCtx((ctx) => ({})),
 );
 
-const customCrud = crud(
-  {
-    name: CrudTable,
-    _id: v.id(CrudTable),
-    withoutSystemFields: ExampleFields,
-  },
-  customQ,
-  customM,
-);
+const customCrud = crud(schema, CrudTable, customQ, customM);
 
 const customTestApi: ApiFromModules<{
   fns: {
