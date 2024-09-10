@@ -14,6 +14,9 @@ import {
   GenericValidator,
   ObjectType,
   PropertyValidators,
+  Validator,
+  asObjectValidator,
+  v,
 } from "convex/values";
 import {
   ActionBuilder,
@@ -328,10 +331,7 @@ function customFnBuilder(
     const handler = fn.handler ?? fn;
     if ("args" in fn) {
       return builder({
-        args: {
-          ...fn.args,
-          ...inputArgs,
-        },
+        args: addArgs(fn.args, inputArgs),
         returns: fn.returns,
         handler: async (ctx: any, allArgs: any) => {
           const added = await inputMod(
@@ -357,6 +357,28 @@ function customFnBuilder(
       },
     });
   };
+}
+
+// Adds args to a property validator or validator
+// Needs to call recursively in the case of unions.
+function addArgs(
+  validatorOrPropertyValidator: PropertyValidators | Validator<any, any, any>,
+  args: PropertyValidators,
+): Validator<any, any, any> {
+  if (Object.keys(args).length === 0) {
+    return asObjectValidator(validatorOrPropertyValidator);
+  }
+  const validator = asObjectValidator(validatorOrPropertyValidator);
+  switch (validator.kind) {
+    case "object":
+      return v.object({ ...validator.fields, ...args });
+    case "union":
+      return v.union(...validator.members.map((m) => addArgs(m, args)));
+    default:
+      throw new Error(
+        "Cannot add arguments to a validator that is not an object or union.",
+      );
+  }
 }
 
 /**
@@ -411,7 +433,7 @@ export type CustomBuilder<
   Visibility extends FunctionVisibility,
 > = {
   <
-    ArgsValidator extends PropertyValidators | void,
+    ArgsValidator extends PropertyValidators | void | Validator<any, any, any>,
     ReturnsValidator extends PropertyValidators | GenericValidator | void,
     ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> = any,
     OneOrZeroArgs extends
@@ -436,9 +458,11 @@ export type CustomBuilder<
     FuncType,
     Visibility,
     ArgsArrayToObject<
-      OneOrZeroArgs extends [infer A]
-        ? [Expand<A & ObjectType<ModArgsValidator>>]
-        : [ObjectType<ModArgsValidator>]
+      ModArgsValidator extends Record<string, never>
+        ? OneOrZeroArgs
+        : OneOrZeroArgs extends [infer A]
+          ? [Expand<A & ObjectType<ModArgsValidator>>]
+          : [ObjectType<ModArgsValidator>]
     >,
     ReturnValue
   >;
