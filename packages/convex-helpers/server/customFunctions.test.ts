@@ -1,5 +1,6 @@
 import { Equals, assert } from "..";
 import {
+  customAction,
   CustomCtx,
   customCtx,
   customMutation,
@@ -9,6 +10,8 @@ import { wrapDatabaseWriter } from "./rowLevelSecurity";
 import { SessionId, vSessionId } from "./sessions";
 import { convexTest } from "convex-test";
 import {
+  ActionBuilder,
+  actionGeneric,
   anyApi,
   DataModelFromSchemaDefinition,
   defineSchema,
@@ -23,7 +26,7 @@ import {
 } from "convex/server";
 import { v } from "convex/values";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { modules } from "./setup.test";
+import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
   users: defineTable({
@@ -34,6 +37,7 @@ type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 type DatabaseReader = GenericDatabaseReader<DataModel>;
 const query = queryGeneric as QueryBuilder<DataModel, "public">;
 const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
+const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
 const authenticatedQueryBuilder = customQuery(
   query,
@@ -113,6 +117,24 @@ async function getUserByTokenIdentifier(ctx: {
   if (!user) throw new Error("User not found");
   return user;
 }
+
+/**
+ * Testing that it conforms to query, mutation, action types when no args
+ * are added
+ */
+
+customQuery(
+  query,
+  customCtx((ctx) => ({ foo: "bar" })),
+) satisfies typeof query;
+customMutation(
+  mutation,
+  customCtx((ctx) => ({})),
+) satisfies typeof mutation;
+customAction(
+  action,
+  customCtx((ctx) => ({})),
+) satisfies typeof action;
 
 /**
  * Testing custom function modifications.
