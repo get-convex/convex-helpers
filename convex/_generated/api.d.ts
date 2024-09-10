@@ -23,6 +23,7 @@ import type * as migrationsExample from "../migrationsExample.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as retriesExample from "../retriesExample.js";
+import type * as rlsExample from "../rlsExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
   retriesExample: typeof retriesExample;
+  rlsExample: typeof rlsExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
 }>;
