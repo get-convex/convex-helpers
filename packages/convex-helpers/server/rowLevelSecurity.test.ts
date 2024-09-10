@@ -7,7 +7,6 @@ import {
   DataModelFromSchemaDefinition,
   defineSchema,
   defineTable,
-  GenericDatabaseReader,
   GenericDatabaseWriter,
 } from "convex/server";
 import { modules } from "./setup.test.js";
@@ -23,7 +22,6 @@ const schema = defineSchema({
 });
 
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
-type DatabaseReader = GenericDatabaseReader<DataModel>;
 type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 
 describe("row level security", () => {
@@ -76,7 +74,7 @@ describe("row level security", () => {
     const t = convexTest(schema, modules);
     const noteId = await t.run(async (ctx) => {
       const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
-      const bId = await ctx.db.insert("users", { tokenIdentifier: "Person B" });
+      await ctx.db.insert("users", { tokenIdentifier: "Person B" });
       return ctx.db.insert("notes", {
         note: "Hello from Person A",
         userId: aId,

@@ -7,12 +7,12 @@ import {
   anyApi,
   ApiFromModules,
 } from "convex/server";
-import { Equals, assert, omit } from "..";
+import { Equals, assert, omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
-import { modules } from "./setup.test";
-import { zCustomQuery, zid, zodToConvexFields } from "./zod";
-import { customCtx } from "./customFunctions";
+import { modules } from "./setup.test.js";
+import { zCustomQuery, zid, zodToConvexFields } from "./zod.js";
+import { customCtx } from "./customFunctions.js";
 import { v } from "convex/values";
 import { z } from "zod";
 

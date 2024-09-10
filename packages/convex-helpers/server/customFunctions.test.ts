@@ -1,13 +1,13 @@
-import { Equals, assert } from "..";
+import { Equals, assert } from "../index.js";
 import {
   customAction,
   CustomCtx,
   customCtx,
   customMutation,
   customQuery,
-} from "./customFunctions";
-import { wrapDatabaseWriter } from "./rowLevelSecurity";
-import { SessionId, vSessionId } from "./sessions";
+} from "./customFunctions.js";
+import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
+import { SessionId, vSessionId } from "./sessions.js";
 import { convexTest } from "convex-test";
 import {
   ActionBuilder,

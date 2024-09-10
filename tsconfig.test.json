@@ -1,7 +1,14 @@
 {
   "extends": "./packages/convex-helpers/tsconfig.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "noImplicitAny": false,
+    "noUnusedParameters": false,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
   },
-  "exclude": ["node_modules", "packages/convex-helpers/dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "packages/convex-helpers/dist"]
 }

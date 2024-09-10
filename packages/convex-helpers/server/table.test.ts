@@ -1,6 +1,6 @@
-import { assert, omit, pick, pruneNull } from "..";
-import { Table } from ".";
-import { partial } from "../validators";
+import { assert, omit, pick, pruneNull } from "../index.js";
+import { Table } from "../server.js";
+import { partial } from "../validators.js";
 import { convexTest } from "convex-test";
 import {
   anyApi,
@@ -14,7 +14,7 @@ import {
 } from "convex/server";
 import { v } from "convex/values";
 import { expect, test } from "vitest";
-import { modules } from "./setup.test";
+import { modules } from "./setup.test.js";
 
 // Define a table with system fields _id and _creationTime. This also returns
 // helpers for working with the table in validators. See:

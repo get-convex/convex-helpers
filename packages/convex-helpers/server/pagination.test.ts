@@ -1,6 +1,6 @@
 import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
-import { expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { IndexKey, getPage } from "./pagination.js";
 import { modules } from "./setup.test.js";
 import { GenericId, v } from "convex/values";
@@ -147,7 +147,7 @@ describe("manual pagination", () => {
       // Delete the first doc and refresh the first page.
       // It should return only 2 documents because the second page has the third
       // document already.
-      await ctx.db.delete(page0[0]._id as GenericId<"foo">);
+      await ctx.db.delete(page0[0]!._id as GenericId<"foo">);
       const { page: page0Refreshed } = await getPage(ctx, {
         table: "foo",
         index: "abc",
@@ -200,7 +200,7 @@ describe("manual pagination", () => {
       for (const doc of MANY_DOCS) {
         await ctx.db.insert("foo", doc);
       }
-      const { page: pageAt, indexKeys: indexKeysAt } = await getPage(ctx, {
+      const { page: pageAt } = await getPage(ctx, {
         table: "foo",
         index: "abc",
         schema,
