@@ -9,10 +9,10 @@ import {
   wrapDatabaseReader,
   wrapDatabaseWriter,
 } from "convex-helpers/server/rowLevelSecurity";
-import { mutation, query, QueryCtx } from "./_generated/server";
-import { DataModel } from "./_generated/dataModel";
-import schema from "./schema";
 import { v } from "convex/values";
+import { DataModel } from "./_generated/dataModel";
+import { mutation, query, QueryCtx } from "./_generated/server";
+import schema from "./schema";
 
 async function rlsRules(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();

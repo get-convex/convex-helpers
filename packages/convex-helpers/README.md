@@ -421,9 +421,60 @@ type ret =
 See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
 
 Use the [RowLevelSecurity](./server/rowLevelSecurity.ts) helper to define
-`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
-server-side function. Any access to `db` inside functions wrapped with these
+database wrappers to add row-level checks for a server-side function.
+Any access to `db` inside functions wrapped with these
 will check your access rules on read/insert/modify per-document.
+
+```ts
+import {
+  customCtx,
+  customMutation,
+  customQuery,
+} from "convex-helpers/server/customFunctions";
+import {
+  Rules,
+  wrapDatabaseReader,
+  wrapDatabaseWriter,
+} from "convex-helpers/server/rowLevelSecurity";
+import { DataModel } from "./_generated/dataModel";
+import { mutation, query, QueryCtx } from "./_generated/server";
+
+async function rlsRules(ctx: QueryCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  return {
+    users: {
+      read: async (_, user) => {
+        // Unauthenticated users can only read users over 18
+        if (!identity && user.age < 18) return false;
+        return true;
+      },
+      insert: async (_, user) => {
+        return true;
+      },
+      modify: async (_, user) => {
+        if (!identity)
+          throw new Error("Must be authenticated to modify a user");
+        // Users can only modify their own user
+        return user.tokenIdentifier === identity.tokenIdentifier;
+      },
+    },
+  } satisfies Rules<QueryCtx, DataModel>;
+}
+
+const queryWithRLS = customQuery(
+  query,
+  customCtx(async (ctx) => ({
+    db: wrapDatabaseReader(ctx, ctx.db, await rlsRules(ctx)),
+  })),
+);
+
+const mutationWithRLS = customMutation(
+  mutation,
+  customCtx(async (ctx) => ({
+    db: wrapDatabaseWriter(ctx, ctx.db, await rlsRules(ctx)),
+  })),
+);
+```
 
 ## Zod Validation
 
