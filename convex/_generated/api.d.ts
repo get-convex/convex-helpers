@@ -16,9 +16,6 @@ import type {
 import type * as addIt from "../addIt.js";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
-import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
-import type * as lib_withUser from "../lib/withUser.js";
-import type * as lib_withZod from "../lib/withZod.js";
 import type * as migrationsExample from "../migrationsExample.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
@@ -39,9 +36,6 @@ declare const fullApi: ApiFromModules<{
   addIt: typeof addIt;
   counter: typeof counter;
   http: typeof http;
-  "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
-  "lib/withUser": typeof lib_withUser;
-  "lib/withZod": typeof lib_withZod;
   migrationsExample: typeof migrationsExample;
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
