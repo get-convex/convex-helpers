@@ -558,28 +558,27 @@ these functions for a given table:
 - `delete`
 - `paginate`
 
-**Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions)**
+See the associated [Stack post](https://stack.convex.dev/crud-and-rest).
+**Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions) unless you add Row Level Security**
 
 Example:
 
 ```ts
-
 // in convex/users.ts
-import { crud } from "convex-helpers/server";
-import { internalMutation, internalQuery } from "../convex/_generated/server";
+import { crud } from "convex-helpers/server/crud";
+import schema from "./schema.js";
 
-const Users = Table("users", {...});
-
-export const { read, update } = crud(Users, internalQuery, internalMutation);
-
-// in convex/schema.ts
-import { Users } from "./users";
-export default defineSchema({users: Users.table});
+export const { create, read, update, destroy } = crud(schema, "users");
 
 // in some file, in an action:
 const user = await ctx.runQuery(internal.users.read, { id: userId });
 
-await ctx.runMutation(internal.users.update, { status: "inactive" });
+await ctx.runMutation(internal.users.update, {
+  id: userId,
+  patch: {
+    status: "inactive",
+  },
+});
 ```
 
 ## Validator utilities

@@ -2,6 +2,7 @@ import {
   defineTable,
   QueryBuilder,
   MutationBuilder,
+  GenericDataModel,
   WithoutSystemFields,
   DocumentByName,
   RegisteredMutation,
@@ -9,14 +10,8 @@ import {
   FunctionVisibility,
   paginationOptsValidator,
   PaginationResult,
-  SchemaDefinition,
-  GenericSchema,
-  TableNamesInDataModel,
-  DataModelFromSchemaDefinition,
-  internalQueryGeneric,
-  internalMutationGeneric,
 } from "convex/server";
-import { GenericId, Infer, Validator, v } from "convex/values";
+import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
 import { Expand } from "./index.js";
 import { partial } from "./validators.js";
 
@@ -102,73 +97,58 @@ export function deploymentName() {
  * ```ts
  * // in convex/users.ts
  * import { crud } from "convex-helpers/server";
- * import schema from "./schema";
+ * import { query, mutation } from "./convex/_generated/server";
  *
- * export const { create, read, update, destroy } = crud(schema, "users");
+ * const Users = Table("users", {
+ *  name: v.string(),
+ *  ///...
+ * });
+ *
+ * export const { create, read, paginate, update, destroy } =
+ *   crud(Users, query, mutation);
  * ```
  *
- * Then you can access the functions like `internal.users.create` from actions.
+ * Then from a client, you can access `api.users.create`.
  *
- * To expose these functions publicly, you can pass in custom query and
- * mutation arguments. Be careful what you expose publicly: you wouldn't want
- * any client to be able to delete users, for example.
- *
- * @param schema Your project's schema.
- * @param table The table name to create CRUD operations for.
+ * @deprecated Use `import { crud } from "convex-helpers/server/crud";` instead.
+ * @param table The table to create CRUD operations for.
+ * Of type returned from Table() in "convex-helpers/server".
  * @param query The query to use - use internalQuery or query from
  * "./convex/_generated/server" or a customQuery.
  * @param mutation The mutation to use - use internalMutation or mutation from
  * "./convex/_generated/server" or a customMutation.
  * @returns An object with create, read, update, and delete functions.
- * You must export these functions at the top level of your file to use them.
  */
 export function crud<
-  Schema extends GenericSchema,
-  TableName extends TableNamesInDataModel<
-    DataModelFromSchemaDefinition<SchemaDefinition<Schema, any>>
-  >,
-  QueryVisibility extends FunctionVisibility = "internal",
-  MutationVisibility extends FunctionVisibility = "internal",
+  Fields extends Record<string, Validator<any, any, any>>,
+  TableName extends string,
+  DataModel extends GenericDataModel,
+  QueryVisibility extends FunctionVisibility,
+  MutationVisibility extends FunctionVisibility,
 >(
-  schema: SchemaDefinition<Schema, any>,
-  table: TableName,
-  query: QueryBuilder<
-    DataModelFromSchemaDefinition<SchemaDefinition<Schema, any>>,
-    QueryVisibility
-  > = internalQueryGeneric as any,
-  mutation: MutationBuilder<
-    DataModelFromSchemaDefinition<SchemaDefinition<Schema, any>>,
-    MutationVisibility
-  > = internalMutationGeneric as any,
+  table: {
+    name: TableName;
+    _id: Validator<GenericId<TableName>>;
+    withoutSystemFields: Fields;
+  },
+  query: QueryBuilder<DataModel, QueryVisibility>,
+  mutation: MutationBuilder<DataModel, MutationVisibility>,
 ) {
-  type DataModel = DataModelFromSchemaDefinition<SchemaDefinition<Schema, any>>;
   const systemFields = {
-    _id: v.id(table),
+    _id: v.id(table.name),
     _creationTime: v.number(),
   };
-  const validator = schema.tables[table]?.validator;
-  if (!validator) {
-    throw new Error(
-      `Table ${table} not found in schema. Did you define it in defineSchema?`,
-    );
-  }
-  if (validator.kind !== "object") {
-    throw new Error(
-      `CRUD only supports simple tables ${table} is a ${validator.type}`,
-    );
-  }
-
   return {
     create: mutation({
       args: {
-        ...validator.fields,
+        ...table.withoutSystemFields,
         ...partial(systemFields),
       },
       handler: async (ctx, args) => {
         if ("_id" in args) delete args._id;
         if ("_creationTime" in args) delete args._creationTime;
         const id = await ctx.db.insert(
-          table,
+          table.name,
           args as unknown as WithoutSystemFields<
             DocumentByName<DataModel, TableName>
           >,
@@ -177,11 +157,11 @@ export function crud<
       },
     }) as RegisteredMutation<
       MutationVisibility,
-      WithoutSystemFields<DocumentByName<DataModel, TableName>>,
+      ObjectType<Fields>,
       Promise<DocumentByName<DataModel, TableName>>
     >,
     read: query({
-      args: { id: v.id(table) },
+      args: { id: table._id },
       handler: async (ctx, args) => {
         return await ctx.db.get(args.id);
       },
@@ -195,7 +175,7 @@ export function crud<
         paginationOpts: paginationOptsValidator,
       },
       handler: async (ctx, args) => {
-        return ctx.db.query(table).paginate(args.paginationOpts);
+        return ctx.db.query(table.name).paginate(args.paginationOpts);
       },
     }) as RegisteredQuery<
       QueryVisibility,
@@ -204,11 +184,11 @@ export function crud<
     >,
     update: mutation({
       args: {
-        id: v.id(table),
+        id: v.id(table.name),
         // this could be partial(table.withSystemFields) but keeping
         // the api less coupled to Table
         patch: v.object({
-          ...partial(validator.fields),
+          ...partial(table.withoutSystemFields),
           ...partial(systemFields),
         }),
       },
@@ -229,7 +209,7 @@ export function crud<
       Promise<void>
     >,
     destroy: mutation({
-      args: { id: v.id(table) },
+      args: { id: table._id },
       handler: async (ctx, args) => {
         const old = await ctx.db.get(args.id);
         if (old) {

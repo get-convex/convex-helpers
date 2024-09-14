@@ -1,4 +1,4 @@
-import { crud } from "convex-helpers/server";
+import { crud } from "convex-helpers/server/crud";
 import {
   customCtx,
   customMutation,

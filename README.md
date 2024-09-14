@@ -36,7 +36,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 ## 👉 `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers) 👈
 
-In the [packages/](./packages/) there's the [convex-helpers](./packages/convex-helpers/)
+In the [packages/ directory](./packages/) there's the [convex-helpers](./packages/convex-helpers/)
 directory. To use it in your own project:
 
 ```sh

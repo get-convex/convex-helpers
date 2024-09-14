@@ -14,7 +14,7 @@ import {
 } from "convex/server";
 import { modules } from "./setup.test.js";
 import { customCtx, customMutation } from "./customFunctions.js";
-import { crud } from "../server.js";
+import { crud } from "./crud.js";
 
 const schema = defineSchema({
   users: defineTable({

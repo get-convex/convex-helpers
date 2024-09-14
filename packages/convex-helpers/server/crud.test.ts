@@ -1,6 +1,6 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { crud } from "../server.js";
+import { crud } from "./crud.js";
 import {
   anyApi,
   ApiFromModules,
