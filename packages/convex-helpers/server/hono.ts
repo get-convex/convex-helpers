@@ -159,6 +159,11 @@ export class HttpRouterWithHono<
     // There might be multiple handlers for a route (in the case of middleware),
     // so choose the most specific one for the purposes of logging
     const handlersAndRoutes = match[0];
+
+    if (!handlersAndRoutes?.length) {
+      return [this._handler, normalizeMethod(method), path] as const;
+    }
+    
     const mostSpecificHandler =
       handlersAndRoutes[handlersAndRoutes.length - 1]![0][0];
     // On the first request let's populate a lookup from handler to info
