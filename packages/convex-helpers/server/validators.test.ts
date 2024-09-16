@@ -159,19 +159,19 @@ test("doc validator adds fields", async () => {
   if (unionDoc.kind !== "union") {
     throw new Error("Expected union");
   }
-  expect(unionDoc.members[0].kind).toBe("object");
-  if (unionDoc.members[0].kind !== "object") {
+  expect(unionDoc.members[0]!.kind).toBe("object");
+  if (unionDoc.members[0]!.kind !== "object") {
     throw new Error("Expected object");
   }
-  expect(unionDoc.members[0].fields.foo).toBeDefined();
-  expect(unionDoc.members[0].fields._id).toBeDefined();
-  expect(unionDoc.members[0].fields._creationTime).toBeDefined();
-  if (unionDoc.members[1].kind !== "object") {
+  expect(unionDoc.members[0]!.fields.foo).toBeDefined();
+  expect(unionDoc.members[0]!.fields._id).toBeDefined();
+  expect(unionDoc.members[0]!.fields._creationTime).toBeDefined();
+  if (unionDoc.members[1]!.kind !== "object") {
     throw new Error("Expected object");
   }
-  expect(unionDoc.members[1].fields.bar).toBeDefined();
-  expect(unionDoc.members[1].fields._id).toBeDefined();
-  expect(unionDoc.members[1].fields._creationTime).toBeDefined();
+  expect(unionDoc.members[1]!.fields.bar).toBeDefined();
+  expect(unionDoc.members[1]!.fields._id).toBeDefined();
+  expect(unionDoc.members[1]!.fields._creationTime).toBeDefined();
 });
 
 test("validators preserve things when they're set", async () => {
