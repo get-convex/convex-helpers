@@ -421,9 +421,60 @@ type ret =
 See the [Stack post on row-level security](https://stack.convex.dev/row-level-security)
 
 Use the [RowLevelSecurity](./server/rowLevelSecurity.ts) helper to define
-`withQueryRLS` and `withMutationRLS` wrappers to add row-level checks for a
-server-side function. Any access to `db` inside functions wrapped with these
+database wrappers to add row-level checks for a server-side function.
+Any access to `db` inside functions wrapped with these
 will check your access rules on read/insert/modify per-document.
+
+```ts
+import {
+  customCtx,
+  customMutation,
+  customQuery,
+} from "convex-helpers/server/customFunctions";
+import {
+  Rules,
+  wrapDatabaseReader,
+  wrapDatabaseWriter,
+} from "convex-helpers/server/rowLevelSecurity";
+import { DataModel } from "./_generated/dataModel";
+import { mutation, query, QueryCtx } from "./_generated/server";
+
+async function rlsRules(ctx: QueryCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  return {
+    users: {
+      read: async (_, user) => {
+        // Unauthenticated users can only read users over 18
+        if (!identity && user.age < 18) return false;
+        return true;
+      },
+      insert: async (_, user) => {
+        return true;
+      },
+      modify: async (_, user) => {
+        if (!identity)
+          throw new Error("Must be authenticated to modify a user");
+        // Users can only modify their own user
+        return user.tokenIdentifier === identity.tokenIdentifier;
+      },
+    },
+  } satisfies Rules<QueryCtx, DataModel>;
+}
+
+const queryWithRLS = customQuery(
+  query,
+  customCtx(async (ctx) => ({
+    db: wrapDatabaseReader(ctx, ctx.db, await rlsRules(ctx)),
+  })),
+);
+
+const mutationWithRLS = customMutation(
+  mutation,
+  customCtx(async (ctx) => ({
+    db: wrapDatabaseWriter(ctx, ctx.db, await rlsRules(ctx)),
+  })),
+);
+```
 
 ## Zod Validation
 
@@ -507,28 +558,27 @@ these functions for a given table:
 - `delete`
 - `paginate`
 
-**Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions)**
+See the associated [Stack post](https://stack.convex.dev/crud-and-rest).
+**Note: I recommend only doing this for prototyping or [internal functions](https://docs.convex.dev/functions/internal-functions) unless you add Row Level Security**
 
 Example:
 
 ```ts
-
 // in convex/users.ts
-import { crud } from "convex-helpers/server";
-import { internalMutation, internalQuery } from "../convex/_generated/server";
+import { crud } from "convex-helpers/server/crud";
+import schema from "./schema.js";
 
-const Users = Table("users", {...});
-
-export const { read, update } = crud(Users, internalQuery, internalMutation);
-
-// in convex/schema.ts
-import { Users } from "./users";
-export default defineSchema({users: Users.table});
+export const { create, read, update, destroy } = crud(schema, "users");
 
 // in some file, in an action:
 const user = await ctx.runQuery(internal.users.read, { id: userId });
 
-await ctx.runMutation(internal.users.update, { status: "inactive" });
+await ctx.runMutation(internal.users.update, {
+  id: userId,
+  patch: {
+    status: "inactive",
+  },
+});
 ```
 
 ## Validator utilities

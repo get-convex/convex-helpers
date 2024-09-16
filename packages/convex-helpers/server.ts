@@ -110,6 +110,7 @@ export function deploymentName() {
  *
  * Then from a client, you can access `api.users.create`.
  *
+ * @deprecated Use `import { crud } from "convex-helpers/server/crud";` instead.
  * @param table The table to create CRUD operations for.
  * Of type returned from Table() in "convex-helpers/server".
  * @param query The query to use - use internalQuery or query from

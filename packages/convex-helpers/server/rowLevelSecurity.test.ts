@@ -7,10 +7,14 @@ import {
   DataModelFromSchemaDefinition,
   defineSchema,
   defineTable,
-  GenericDatabaseReader,
   GenericDatabaseWriter,
+  MutationBuilder,
+  mutationGeneric,
+  queryGeneric,
 } from "convex/server";
 import { modules } from "./setup.test.js";
+import { customCtx, customMutation } from "./customFunctions.js";
+import { crud } from "./crud.js";
 
 const schema = defineSchema({
   users: defineTable({
@@ -23,26 +27,25 @@ const schema = defineSchema({
 });
 
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
-type DatabaseReader = GenericDatabaseReader<DataModel>;
 type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 
-describe("row level security", () => {
-  const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
-    const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
-    if (!tokenIdentifier) throw new Error("Unauthenticated");
-    return {
-      ...ctx,
-      db: wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
-        notes: {
-          read: async ({ tokenIdentifier }, doc) => {
-            const author = await ctx.db.get(doc.userId);
-            return tokenIdentifier === author?.tokenIdentifier;
-          },
+const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
+  const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+  if (!tokenIdentifier) throw new Error("Unauthenticated");
+  return {
+    ...ctx,
+    db: wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
+      notes: {
+        read: async ({ tokenIdentifier }, doc) => {
+          const author = await ctx.db.get(doc.userId);
+          return tokenIdentifier === author?.tokenIdentifier;
         },
-      }),
-    };
+      },
+    }),
   };
+};
 
+describe("row level security", () => {
   test("can only read own notes", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
@@ -76,7 +79,7 @@ describe("row level security", () => {
     const t = convexTest(schema, modules);
     const noteId = await t.run(async (ctx) => {
       const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
-      const bId = await ctx.db.insert("users", { tokenIdentifier: "Person B" });
+      await ctx.db.insert("users", { tokenIdentifier: "Person B" });
       return ctx.db.insert("notes", {
         note: "Hello from Person A",
         userId: aId,
@@ -96,3 +99,17 @@ describe("row level security", () => {
     });
   });
 });
+
+const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
+
+const mutationWithRLS = customMutation(
+  mutation,
+  customCtx((ctx) => withRLS(ctx)),
+);
+
+customMutation(
+  mutationWithRLS,
+  customCtx((ctx) => ({ foo: "bar" })),
+) satisfies typeof mutation;
+
+crud(schema, "users", queryGeneric, mutationWithRLS);

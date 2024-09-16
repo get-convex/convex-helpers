@@ -1,6 +1,8 @@
 import {
   GenericValidator,
+  ObjectType,
   PropertyValidators,
+  VObject,
   VOptional,
   VString,
   VUnion,
@@ -8,6 +10,11 @@ import {
   v,
 } from "convex/values";
 import { Expand } from "./index.js";
+import {
+  DataModelFromSchemaDefinition,
+  SchemaDefinition,
+  TableNamesInDataModel,
+} from "convex/server";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -106,6 +113,10 @@ export const systemFields = <TableName extends string>(
   _creationTime: v.number(),
 });
 
+export type SystemFields<TableName extends string> = ReturnType<
+  typeof systemFields<TableName>
+>;
+
 /**
  * Utility to add system fields to an object with fields mapping to validators.
  * e.g. withSystemFields("users", { name: v.string() }) would return:
@@ -127,6 +138,55 @@ export const withSystemFields = <
     ...fields,
     ...system,
   } as Expand<T & typeof system>;
+};
+
+export type AddFieldsToValidator<
+  V extends Validator<any, any, any>,
+  Fields extends PropertyValidators,
+> =
+  V extends VObject<infer T, infer F, infer O>
+    ? VObject<Expand<T & ObjectType<Fields>>, Expand<F & Fields>, O>
+    : Validator<
+        Expand<V["type"] & ObjectType<Fields>>,
+        V["isOptional"],
+        V["fieldPaths"] &
+          {
+            [Property in keyof Fields & string]:
+              | `${Property}.${Fields[Property]["fieldPaths"]}`
+              | Property;
+          }[keyof Fields & string] &
+          string
+      >;
+
+export const doc = <
+  Schema extends SchemaDefinition<any, boolean>,
+  TableName extends TableNamesInDataModel<
+    DataModelFromSchemaDefinition<Schema>
+  >,
+>(
+  schema: Schema,
+  tableName: TableName,
+): AddFieldsToValidator<
+  (typeof schema)["tables"][TableName]["validator"],
+  SystemFields<TableName>
+> => {
+  function addSystemFields<V extends Validator<any, any, any>>(
+    validator: V,
+  ): any {
+    if (validator.kind === "object") {
+      return v.object({
+        ...validator.fields,
+        ...systemFields(tableName),
+      });
+    }
+    if (validator.kind !== "union") {
+      throw new Error(
+        "Only object and union validators are supported for documents",
+      );
+    }
+    return v.union(...validator.members.map(addSystemFields));
+  }
+  return addSystemFields(schema.tables[tableName].validator);
 };
 
 /**

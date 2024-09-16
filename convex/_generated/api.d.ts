@@ -16,13 +16,11 @@ import type {
 import type * as addIt from "../addIt.js";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
-import type * as lib_rowLevelSecurity from "../lib/rowLevelSecurity.js";
-import type * as lib_withUser from "../lib/withUser.js";
-import type * as lib_withZod from "../lib/withZod.js";
 import type * as migrationsExample from "../migrationsExample.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as retriesExample from "../retriesExample.js";
+import type * as rlsExample from "../rlsExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 
@@ -38,13 +36,11 @@ declare const fullApi: ApiFromModules<{
   addIt: typeof addIt;
   counter: typeof counter;
   http: typeof http;
-  "lib/rowLevelSecurity": typeof lib_rowLevelSecurity;
-  "lib/withUser": typeof lib_withUser;
-  "lib/withZod": typeof lib_withZod;
   migrationsExample: typeof migrationsExample;
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
   retriesExample: typeof retriesExample;
+  rlsExample: typeof rlsExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
 }>;
