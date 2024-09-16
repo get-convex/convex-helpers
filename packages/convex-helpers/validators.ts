@@ -1,6 +1,8 @@
 import {
   GenericValidator,
+  ObjectType,
   PropertyValidators,
+  VObject,
   VOptional,
   VString,
   VUnion,
@@ -10,9 +12,6 @@ import {
 import { Expand } from "./index.js";
 import {
   DataModelFromSchemaDefinition,
-  DocumentByName,
-  FieldPaths,
-  NamedTableInfo,
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
@@ -114,6 +113,10 @@ export const systemFields = <TableName extends string>(
   _creationTime: v.number(),
 });
 
+export type SystemFields<TableName extends string> = ReturnType<
+  typeof systemFields<TableName>
+>;
+
 /**
  * Utility to add system fields to an object with fields mapping to validators.
  * e.g. withSystemFields("users", { name: v.string() }) would return:
@@ -137,6 +140,24 @@ export const withSystemFields = <
   } as Expand<T & typeof system>;
 };
 
+export type AddFieldsToValidator<
+  V extends Validator<any, any, any>,
+  Fields extends PropertyValidators,
+> =
+  V extends VObject<infer T, infer F, infer O>
+    ? VObject<Expand<T & ObjectType<Fields>>, Expand<F & Fields>, O>
+    : Validator<
+        Expand<V["type"] & ObjectType<Fields>>,
+        V["isOptional"],
+        V["fieldPaths"] &
+          {
+            [Property in keyof Fields & string]:
+              | `${Property}.${Fields[Property]["fieldPaths"]}`
+              | Property;
+          }[keyof Fields & string] &
+          string
+      >;
+
 export const doc = <
   Schema extends SchemaDefinition<any, boolean>,
   TableName extends TableNamesInDataModel<
@@ -145,24 +166,27 @@ export const doc = <
 >(
   schema: Schema,
   tableName: TableName,
-): Validator<
-  DocumentByName<DataModelFromSchemaDefinition<Schema>, TableName>,
-  "required",
-  FieldPaths<NamedTableInfo<DataModelFromSchemaDefinition<Schema>, TableName>>
+): AddFieldsToValidator<
+  (typeof schema)["tables"][TableName]["validator"],
+  SystemFields<TableName>
 > => {
-  const validator = schema.tables[tableName].validator;
-  if (validator.kind === "object") {
-    return v.object({
-      ...validator.fields,
-      ...systemFields(tableName),
-    });
+  function addSystemFields<V extends Validator<any, any, any>>(
+    validator: V,
+  ): any {
+    if (validator.kind === "object") {
+      return v.object({
+        ...validator.fields,
+        ...systemFields(tableName),
+      });
+    }
+    if (validator.kind !== "union") {
+      throw new Error(
+        "Only object and union validators are supported for documents",
+      );
+    }
+    return v.union(...validator.members.map(addSystemFields));
   }
-  if (validator.kind !== "union") {
-    throw new Error(
-      "Only object and union validators are supported for documents",
-    );
-  }
-  return v.union(...validator.members.map(doc));
+  return addSystemFields(schema.tables[tableName].validator);
 };
 
 /**

@@ -1,4 +1,4 @@
-import { assert, Equals } from "..";
+import { assert, Equals } from "../index.js";
 import {
   any,
   array,
@@ -6,6 +6,7 @@ import {
   boolean,
   brandedString,
   deprecated,
+  doc,
   id,
   literal as is,
   literals,
@@ -18,18 +19,22 @@ import {
   pretend,
   pretendRequired,
   string,
-} from "../validators";
+} from "../validators.js";
 import { convexTest } from "convex-test";
 import {
   anyApi,
   ApiFromModules,
+  DataModelFromSchemaDefinition,
   defineSchema,
   defineTable,
+  internalMutationGeneric,
   internalQueryGeneric,
+  MutationBuilder,
 } from "convex/server";
 import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
+import { getOrThrow } from "convex-helpers/server/relationships";
 
 export const testLiterals = internalQueryGeneric({
   args: {
@@ -110,13 +115,64 @@ const schema = defineSchema({
     tokenIdentifier: string,
   }),
   kitchenSink: defineTable(ExampleFields),
+  unionTable: defineTable(or(object({ foo: string }), object({ bar: number }))),
+});
+
+const internalMutation = internalMutationGeneric as MutationBuilder<
+  DataModelFromSchemaDefinition<typeof schema>,
+  "internal"
+>;
+
+export const toDoc = internalMutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const kid = await ctx.db.insert("kitchenSink", valid);
+    const uid = await ctx.db.insert("unionTable", { foo: "" });
+
+    return {
+      sink: await getOrThrow(ctx, kid),
+      union: await getOrThrow(ctx, uid),
+    };
+  },
+  returns: object({
+    sink: doc(schema, "kitchenSink"),
+    union: doc(schema, "unionTable"),
+  }),
 });
 
 const testApi: ApiFromModules<{
   fns: {
     echo: typeof echo;
+    toDoc: typeof toDoc;
   };
 }>["fns"] = anyApi["validators.test"] as any;
+
+test("doc validator adds fields", async () => {
+  const t = convexTest(schema, modules);
+  await t.mutation(testApi.toDoc, {});
+  const userDoc = doc(schema, "users");
+  expect(userDoc.fields.tokenIdentifier).toBeDefined();
+  expect(userDoc.fields._id).toBeDefined();
+  expect(userDoc.fields._creationTime).toBeDefined();
+  const unionDoc = doc(schema, "unionTable");
+  expect(unionDoc.kind).toBe("union");
+  if (unionDoc.kind !== "union") {
+    throw new Error("Expected union");
+  }
+  expect(unionDoc.members[0].kind).toBe("object");
+  if (unionDoc.members[0].kind !== "object") {
+    throw new Error("Expected object");
+  }
+  expect(unionDoc.members[0].fields.foo).toBeDefined();
+  expect(unionDoc.members[0].fields._id).toBeDefined();
+  expect(unionDoc.members[0].fields._creationTime).toBeDefined();
+  if (unionDoc.members[1].kind !== "object") {
+    throw new Error("Expected object");
+  }
+  expect(unionDoc.members[1].fields.bar).toBeDefined();
+  expect(unionDoc.members[1].fields._id).toBeDefined();
+  expect(unionDoc.members[1].fields._creationTime).toBeDefined();
+});
 
 test("validators preserve things when they're set", async () => {
   const t = convexTest(schema, modules);
