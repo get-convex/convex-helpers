@@ -310,11 +310,18 @@ export function makeMigration<
           }
           if (args.dryRun) {
             // Throwing an error rolls back the transaction
-            console.debug({
-              before: page[0],
-              after: page[0] && (await ctx.db.get(page[0]!._id as any)),
-              state,
-            });
+            for (const before of page) {
+              const after = await ctx.db.get(page[0]!._id as any);
+              if (JSON.stringify(before) === JSON.stringify(after)) {
+                continue;
+              }
+              console.debug({
+                before: before,
+                after,
+                state,
+              });
+              break;
+            }
             throw new Error("Dry run - rolling back transaction.");
           }
         } else {
