@@ -35,6 +35,8 @@ import {
   makeFunctionReference,
   MutationBuilder,
   NamedTableInfo,
+  OrderedQuery,
+  QueryInitializer,
   RegisteredMutation,
   Scheduler,
   SchemaDefinition,
@@ -203,6 +205,7 @@ export function makeMigration<
   >({
     table,
     migrateOne,
+    customRange,
     batchSize: functionDefaultBatchSize,
   }: {
     table: TableName;
@@ -213,6 +216,9 @@ export function makeMigration<
       | void
       | Partial<DocumentByName<DataModel, TableName>>
       | Promise<Partial<DocumentByName<DataModel, TableName>> | void>;
+    customRange?: (
+      q: QueryInitializer<NamedTableInfo<DataModel, TableName>>,
+    ) => OrderedQuery<NamedTableInfo<DataModel, TableName>>;
     batchSize?: number;
   }) {
     const defaultBatchSize =
@@ -287,9 +293,12 @@ export function makeMigration<
             args.dryRun && args.cursor !== undefined
               ? args.cursor
               : state.cursor;
-          const { continueCursor, page, isDone } = await ctx.db
-            .query(table)
-            .paginate({ cursor, numItems });
+          const q = ctx.db.query(table);
+          const range = customRange ? customRange(q) : q;
+          const { continueCursor, page, isDone } = await range.paginate({
+            cursor,
+            numItems,
+          });
           for (const doc of page) {
             try {
               const next = await migrateOne(ctx, doc);
