@@ -1,44 +1,54 @@
-import { customMutation } from "convex-helpers/server/customFunctions";
-import { DataModel } from "./_generated/dataModel";
-import { MutationCtx, query, mutation as rawMutation, internalMutation as rawInternalMutation } from "./_generated/server";
-import { modTriggers } from "convex-helpers/server/triggers";
+import { customMutation, Mod } from "convex-helpers/server/customFunctions";
+import { DataModel, Doc, Id } from "./_generated/dataModel";
+import { MutationCtx, query, mutation as rawMutation, internalMutation as rawInternalMutation, DatabaseReader } from "./_generated/server";
+import { Triggers } from "convex-helpers/server/triggers";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
-const counterModTriggers = modTriggers<DataModel, MutationCtx>({
-  counter_table: [{
-    f: async (ctx, change) => {
-      if (change.type === "insert") {
-        console.log("Counter created", change.newDoc);
-      }
-      if (change.newDoc && change.newDoc.counter % 10 !== 0) {
-        // Round up to the nearest multiple of 10, one at a time.
-        // This demonstrates that triggers can trigger themselves.
-        await ctx.db.patch(change.newDoc._id, { counter: change.newDoc.counter + 1 });
-      }
-    },
-    lock: false,
-  }, {
-    f: async (ctx, change) => {
-      const note = await ctx.db.query("notes").first();
-      let noteId = note?._id;
-      let noteText = note?.note ?? "";
-      if (!note) {
-        noteId = await ctx.db.insert("notes", { session: "", note: "" });
-      }
-      if (change.newDoc?.counter ?? 0 % 2) {
-        const note1 = await ctx.db.query("notes").first();
-      }
-      await ctx.db.patch(noteId!, { note: `${noteText},${change.newDoc?.counter}` });
-    },
-    lock: true,
-  }],
+const triggers = new Triggers<DataModel, MutationCtx>();
+
+// Call logCounterChange async after the mutation completes.
+let scheduledJobId: Id<"_scheduled_functions"> | null = null;
+triggers.register("counter_table", async (ctx, change) => {
+  if (scheduledJobId !== null) {
+    await ctx.scheduler.cancel(scheduledJobId);
+  }
+  if (change.newDoc) {
+    console.log("scheduling logCounterChange", change.newDoc.counter);
+    scheduledJobId = await ctx.scheduler.runAfter(
+      0,
+      internal.triggersExample.logCounterChange,
+      { name: change.newDoc.name, counter: change.newDoc.counter },
+    );
+  }
 });
-const mutation = customMutation(rawMutation, counterModTriggers);
-const internalMutation = customMutation(rawInternalMutation, counterModTriggers);
+
+triggers.register("counter_table", async (ctx, change) => {
+  if (change.operation === "insert") {
+    console.log("Counter created", change.newDoc);
+  }
+  if (change.newDoc && change.newDoc.counter % 10 !== 0) {
+    // Round up to the nearest multiple of 10, one at a time.
+    // This demonstrates that triggers can trigger themselves.
+    console.log("Incrementing counter to", change.newDoc.counter + 1);
+    await ctx.db.patch(change.newDoc._id, { counter: change.newDoc.counter + 1 });
+  }
+});
+
+const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+const internalMutation = customMutation(rawInternalMutation, triggers.customFunctionWrapper());
 
 export const getCounters = query({
   args: {},
   handler: async ({ db }) => {
     return await db.query("counter_table").collect();
+  },
+});
+
+export const logCounterChange = internalMutation({
+  args: { name: v.string(), counter: v.number() },
+  handler: async (_ctx, { name, counter }) => {
+    console.log(`Counter ${name} changed to ${counter}`);
   },
 });
 
