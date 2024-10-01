@@ -16,6 +16,20 @@ const counterModTriggers = modTriggers<DataModel, MutationCtx>({
       }
     },
     lock: false,
+  }, {
+    f: async (ctx, change) => {
+      const note = await ctx.db.query("notes").first();
+      let noteId = note?._id;
+      let noteText = note?.note ?? "";
+      if (!note) {
+        noteId = await ctx.db.insert("notes", { session: "", note: "" });
+      }
+      if (change.newDoc?.counter ?? 0 % 2) {
+        const note1 = await ctx.db.query("notes").first();
+      }
+      await ctx.db.patch(noteId!, { note: `${noteText},${change.newDoc?.counter}` });
+    },
+    lock: true,
   }],
 });
 const mutation = customMutation(rawMutation, counterModTriggers);
@@ -42,7 +56,11 @@ export const incrementCounter = mutation({
     if (!firstCounter) {
       throw new Error("No counters");
     }
-    return await db.patch(firstCounter._id, { counter: firstCounter.counter + 1 });
+    await Promise.all([
+      db.patch(firstCounter._id, { counter: firstCounter.counter + 1 }),
+      db.patch(firstCounter._id, { counter: firstCounter.counter + 2 }),
+      db.patch(firstCounter._id, { counter: firstCounter.counter + 3 }),
+    ]);
   },
 });
 

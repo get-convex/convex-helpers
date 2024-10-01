@@ -21,11 +21,16 @@ export type Trigger<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel>,
 > = {
+  /**
+   * This function will be called when a document in the table changes.
+   * Multiple triggers on the same change will run concurrently.
+   */
   f: (ctx: Ctx, change: Change<DocumentByName<DataModel, TableName>>) => Promise<void>;
   /**
    * If `lock` is `true`, the trigger will be called atomically with the db change,
-   * relative to other db changes and locked triggers.
-   * It can call no other triggers recursively; if it tries, the function will deadlock.
+   * relative to other db changes and their locked triggers.
+   * With lock=true, the trigger cannot call triggers recursively; if it tries,
+   * the function will deadlock.
    * Use this when consistency is paramount, like when updating denormalized data
    * where the operations don't commute.
    * 
@@ -46,69 +51,58 @@ export type Triggers<Ctx, DataModel extends GenericDataModel> = {
   [TableName in TableNamesInDataModel<DataModel>]?: Trigger<Ctx, DataModel, TableName>[];
 }
 
-// This is the field for storing locks on a `ctx`, which allows the locks to be
-// reentrant.
-const locks = Symbol("_locks_in_ctx_stack");
-
-// These are the locks that are actively being held.
-// They are stored on a global so they are shared between all instances of
-// `DatabaseWriterWithTriggers`.
-const activeLocks: Promise<void>[] = [];
-
 export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel> implements GenericDatabaseWriter<DataModel> {
-  private ctx: Ctx & { [locks]: Promise<void>[] };
   constructor(
-    ctx: Ctx,
+    private ctx: Ctx,
     private innerDb: GenericDatabaseWriter<DataModel>,
     private triggers: Triggers<Ctx, DataModel>,
   ) {
     this.system = innerDb.system;
-    this.ctx = { [locks]: [], ...ctx };
   }
 
   async insert<TableName extends TableNamesInDataModel<DataModel>>(table: TableName, value: WithoutSystemFields<DocumentByName<DataModel, TableName>>): Promise<GenericId<TableName>> {
-    return await this._execThenTrigger(async () => {
-      if (!this.triggers[table]) {
-        return [await this.innerDb.insert(table, value), null, null];
-      }
+    if (!this.triggers[table]) {
+      return await this.innerDb.insert(table, value);
+    }
+    return await this._execThenTrigger(table, async () => {
       const id = await this.innerDb.insert(table, value);
       const newDoc = (await this.innerDb.get(id))!;
-      return [id, table, { type: "create", oldDoc: null, newDoc }];
+      return [id, { type: "create", oldDoc: null, newDoc }];
     });
   }
   async patch<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>, value: Partial<DocumentByName<DataModel, TableName>>): Promise<void> {
-    return await this._execThenTrigger(async () => {
-      const tableName = this._tableNameFromId(id);
-      if (!tableName) {
-        return [await this.innerDb.patch(id, value), null, null];
-      }
+    const tableName = this._tableNameFromId(id);
+    if (!tableName) {
+      return await this.innerDb.patch(id, value);
+    }
+    return await this._execThenTrigger(tableName, async () => {
       const oldDoc = await this.innerDb.get(id);
       await this.innerDb.patch(id, value);
       const newDoc = (await this.innerDb.get(id))!;
-      return [undefined, tableName, { type: "update", oldDoc, newDoc }];
+      return [undefined, { type: "update", oldDoc, newDoc }];
     });
   }
   async replace<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>, value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>): Promise<void> {
-    return await this._execThenTrigger(async () => {
-      const tableName = this._tableNameFromId(id);
-      if (!tableName) {
-        return [await this.innerDb.replace(id, value), null, null];
-      }
+    const tableName = this._tableNameFromId(id);
+    if (!tableName) {
+      return await this.innerDb.replace(id, value);
+    }
+    return await this._execThenTrigger(tableName, async () => {
       const oldDoc = await this.innerDb.get(id);
       await this.innerDb.replace(id, value);
       const newDoc = (await this.innerDb.get(id))!;
-      return [undefined, tableName, { type: "update", oldDoc, newDoc }];
+      return [undefined, { type: "update", oldDoc, newDoc }];
     });
   }
   async delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
-    return await this._execThenTrigger(async () => {
-      const tableName = this._tableNameFromId(id);
-      if (!tableName) {
-        return [await this.innerDb.delete(id), null, null];
-      }
+    const tableName = this._tableNameFromId(id);
+    if (!tableName) {
+      return await this.innerDb.delete(id);
+    }
+    return await this._execThenTrigger(tableName, async () => {
       const oldDoc = await this.innerDb.get(id);
       await this.innerDb.delete(id);
-      return [undefined, tableName, { type: "delete", oldDoc, newDoc: null }];
+      return [undefined, { type: "delete", oldDoc, newDoc: null }];
     });
   }
 
@@ -121,36 +115,43 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
     }
     return null;
   }
+
+  // This is the lock that is actively being held.
+  // It's intentionally not stored globally so if you wrap a db twice, it doesn't deadlock.
+  private activeLock: Promise<void> | null = null;
+
   async _execThenTrigger<R, TableName extends TableNamesInDataModel<DataModel>>(
-    f: () => Promise<[R, null | TableName, null | Change<DocumentByName<DataModel, TableName>>]>,
+    tableName: TableName,
+    f: () => Promise<[R, Change<DocumentByName<DataModel, TableName>>]>,
   ): Promise<R> {
-    while (activeLocks.length > 0 && this.ctx[locks][this.ctx[locks].length-1] !== activeLocks[activeLocks.length-1]) {
-      await activeLocks[activeLocks.length-1];
+    while (this.activeLock !== null) {
+      await this.activeLock;
     }
-    // Either there are no active locks or we are reentering recursively.
+    // It's unlocked so we lock it for the write.
     const [lock, unlock] = newLock();
-    activeLocks.push(lock);
-    const recurrentCtx = { ...this.ctx, db: this, [locks]: [...this.ctx[locks], lock] };
+    this.activeLock = lock;
+    const recurrentCtx = { ...this.ctx, db: this };
+    let result: R;
+    let change: Change<DocumentByName<DataModel, TableName>> | null = null;
     try {
-      const [result, tableName, change] = await f();
-      if (change === null || tableName === null) {
-        return result;
-      }
-      for (const trigger of this.triggers[tableName]!) {
-        await trigger.f(recurrentCtx, change);
-      }
-      return result;
+      [result, change] = await f();
+      await Promise.all(this.triggers[tableName]!.filter(
+        (trigger) => trigger.lock
+      ).map(
+        (trigger) => trigger.f(recurrentCtx, change!)
+      ));
     } finally {
-      if (activeLocks[activeLocks.length-1] !== lock) {
-        // This should never happen because locks are popped off the stack in
-        // a `finally` block.
-        throw new Error("Locks were not properly managed.");
-      }
-      // This `pop` is actually releasing the lock.
-      activeLocks.pop();
+      // This is actually releasing the lock.
+      this.activeLock = null;
       // Resolve the promise to wake up any waiters.
       unlock();
     }
+    await Promise.all(this.triggers[tableName]!.filter(
+      (trigger) => !trigger.lock
+    ).map(
+      (trigger) => trigger.f(recurrentCtx, change!)
+    ));
+    return result;
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
