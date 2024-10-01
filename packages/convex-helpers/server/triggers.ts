@@ -25,7 +25,7 @@ export type Trigger<
    * This function will be called when a document in the table changes.
    * Multiple triggers on the same change will run concurrently.
    */
-  f: (ctx: Ctx, change: Change<DocumentByName<DataModel, TableName>>) => Promise<void>;
+  f: (ctx: Ctx, change: Change<DataModel, TableName>) => Promise<void>;
   /**
    * If `lock` is `true`, the trigger will be called atomically with the db change,
    * relative to other db changes and their locked triggers.
@@ -41,10 +41,14 @@ export type Trigger<
   lock?: boolean;
 };
 
-export type Change<D> = {
-  type: "create" | "update" | "delete";
-  oldDoc: D | null;
-  newDoc: D | null;
+export type Change<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+> = {
+  id: GenericId<TableName>;
+  type: "insert" | "update" | "delete";
+  oldDoc: DocumentByName<DataModel, TableName> | null;
+  newDoc: DocumentByName<DataModel, TableName> | null;
 };
 
 export type Triggers<Ctx, DataModel extends GenericDataModel> = {
@@ -67,7 +71,7 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
     return await this._execThenTrigger(table, async () => {
       const id = await this.innerDb.insert(table, value);
       const newDoc = (await this.innerDb.get(id))!;
-      return [id, { type: "create", oldDoc: null, newDoc }];
+      return [id, { type: "insert", id, oldDoc: null, newDoc }];
     });
   }
   async patch<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>, value: Partial<DocumentByName<DataModel, TableName>>): Promise<void> {
@@ -79,7 +83,7 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
       const oldDoc = await this.innerDb.get(id);
       await this.innerDb.patch(id, value);
       const newDoc = (await this.innerDb.get(id))!;
-      return [undefined, { type: "update", oldDoc, newDoc }];
+      return [undefined, { type: "update", id, oldDoc, newDoc }];
     });
   }
   async replace<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>, value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>): Promise<void> {
@@ -91,7 +95,7 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
       const oldDoc = await this.innerDb.get(id);
       await this.innerDb.replace(id, value);
       const newDoc = (await this.innerDb.get(id))!;
-      return [undefined, { type: "update", oldDoc, newDoc }];
+      return [undefined, { type: "update", id, oldDoc, newDoc }];
     });
   }
   async delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
@@ -102,7 +106,7 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
     return await this._execThenTrigger(tableName, async () => {
       const oldDoc = await this.innerDb.get(id);
       await this.innerDb.delete(id);
-      return [undefined, { type: "delete", oldDoc, newDoc: null }];
+      return [undefined, { type: "delete", id, oldDoc, newDoc: null }];
     });
   }
 
@@ -122,7 +126,7 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
 
   async _execThenTrigger<R, TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
-    f: () => Promise<[R, Change<DocumentByName<DataModel, TableName>>]>,
+    f: () => Promise<[R, Change<DataModel, TableName>]>,
   ): Promise<R> {
     while (this.activeLock !== null) {
       await this.activeLock;
@@ -132,7 +136,7 @@ export class DatabaseWriterWithTriggers<Ctx, DataModel extends GenericDataModel>
     this.activeLock = lock;
     const recurrentCtx = { ...this.ctx, db: this };
     let result: R;
-    let change: Change<DocumentByName<DataModel, TableName>> | null = null;
+    let change: Change<DataModel, TableName> | null = null;
     try {
       [result, change] = await f();
       await Promise.all(this.triggers[tableName]!.filter(

@@ -6,7 +6,7 @@ import { modTriggers } from "convex-helpers/server/triggers";
 const counterModTriggers = modTriggers<DataModel, MutationCtx>({
   counter_table: [{
     f: async (ctx, change) => {
-      if (change.type === "create") {
+      if (change.type === "insert") {
         console.log("Counter created", change.newDoc);
       }
       if (change.newDoc && change.newDoc.counter % 10 !== 0) {
