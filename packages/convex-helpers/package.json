@@ -87,6 +87,10 @@
       "types": "./server/sessions.d.ts",
       "default": "./server/sessions.js"
     },
+    "./server/triggers": {
+      "types": "./server/triggers.d.ts",
+      "default": "./server/triggers.js"
+    },
     "./server/zod": {
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"

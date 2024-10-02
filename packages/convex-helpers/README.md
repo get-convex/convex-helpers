@@ -858,3 +858,130 @@ to read from your production deployment.
 This command writes a `convex-spec-{msSinceEpoch}.yaml` file that can be used in external repositories to
 use your Convex functions with type-safety. It includes your internal functions, but you
 can feel free to remove them.
+
+## Triggers
+
+Register trigger functions to run whenever data in a table changes via
+`ctx.db.insert`, `ctx.db.patch`, `ctx.db.replace`, or `ctx.db.delete`. The
+functions run in the same transaction as the mutation, atomically with the data
+change.
+
+Triggers pair with [custom functions](#custom-functions) to hook into each
+Convex mutation defined. Here's an example of using triggers to do four things:
+
+- Attach a computed `fullName` field to every user.
+- Keep a denormalized count of all users.
+- After the mutation, send the new user info to Clerk.
+- When a user is deleted, delete their messages (cascading deletes).
+
+```ts
+import { mutation as rawMutation } from "./_generated/server";
+import { DataModel } from "./_generated/dataModel";
+import { Triggers } from "convex-helpers/server/triggers";
+
+const triggers = new Triggers<DataModel>();
+
+triggers.register("users", async (ctx, change) => {
+  if (change.newDoc) {
+    const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
+    if (fullName === "The Balrog") { // abort the mutation if document is invalid
+      throw new Error("you shall not pass");
+    }
+    // Update denormalized field.
+    if (change.newDoc.fullName !== fullName) { // watch out for recursion
+      await ctx.db.patch(change.id, { fullName });
+    }
+  }
+});
+
+triggers.register("users", async (ctx, change) => {
+  // Note writing the count to a single document increases write contention.
+  // There are more scalable methods if you need high write throughput.
+  const countDoc = (await ctx.db.query("userCount").unique())!;
+  if (change.operation === "insert") {
+    await ctx.db.patch(countDoc._id, { count: countDoc.count + 1 });
+  } else if (change.operation === "delete") {
+    await ctx.db.patch(countDoc._id, { count: countDoc.count - 1 });
+  }
+});
+
+// Even if a user is modified multiple times in a single mutation,
+// `internal.users.updateClerkUser` runs once.
+const scheduled: Record<Id<"users">, Id<"_scheduled_functions">> = {};
+triggers.register("users", async (ctx, change) => {
+  if (scheduled[change.id]) {
+    await ctx.scheduler.cancel(scheduled[change.id]);
+  }
+  scheduled[change.id] = await ctx.scheduler.runAfter(
+    0,
+    internal.users.updateClerkUser,
+    { user: change.newDoc },
+  );
+});
+
+// Cascade deletes.
+triggers.register("users", async (ctx, change) => {
+  // Using relationships.ts helpers for succinctness.
+  await asyncMap(
+    await getManyFrom(ctx.db, "messages", "owner", change.id),
+    (message) => ctx.db.delete(message._id),
+  );
+});
+
+// Use `mutation` to define all mutations, and the triggers will get called.
+export const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+```
+
+Now that you have redefined `mutation`, add an
+[eslint rule](https://stack.convex.dev/eslint-setup#no-restricted-imports) to
+forbid using the raw mutation wrappers which don't call your triggers.
+
+### What can you do with triggers?
+
+- Denormalize computed fields onto the same table or into a different table.
+  - Such fields can be indexed for more efficient lookup.
+- By default, triggers will trigger more triggers.
+  - This can be useful to ensure denormalized fields stay consistent, no matter
+    where they are modified.
+  - Watch out for infinite loops of triggers.
+  - Use `ctx.innerDb` to perform writes without triggering more triggers.
+- Use global variables to coordinate across trigger invocations, e.g. to batch
+  or debounce or single-flight async processing.
+- Combine with other custom functions that can pre-fetch data, like fetching the
+  authorized user at the start of the mutation.
+- Throw errors, which can prevent the write by aborting the mutation.
+  - Validate constraints and internal consistency.
+  - Check row-level-security rules to validate the write is authorized.
+- Components like
+  [Aggregate](https://www.npmjs.com/package/@convex-dev/aggregate) can define
+  triggers by exposing a method like `TableAggregate.trigger()` that returns a
+  `Trigger<Ctx, DataModel, TableName>`. This "attaches" the component to a
+  table.
+
+### Trigger semantics
+
+- The `change` argument tells you exactly how the document changed via a single
+  `ctx.db.insert`, `ctx.db.patch`, `ctx.db.replace`, or `ctx.db.delete`.
+  If these functions are called in parallel with `Promise.all`, they will be 
+  serialized as if they happened sequentially.
+- A database write is executed atomically with all of its triggers, so you can
+  update a denormalized field in a trigger without worrying about parallel
+  writes getting in the way.
+- If a write kicks off recursive triggers, they are executed with a queue,
+  i.e. breadth-first-search order.
+- If a trigger function throws an error, it will be thrown from the database
+  write (e.g. `ctx.db.insert`) that caused the trigger.
+  - If a trigger's error is caught, the database write can still be committed.
+  - To maximize fairness and consistency, all triggers still run, even if an
+    earlier trigger threw an error. The first trigger that throws an error will
+    have its error rethrown; other errors are `console.error` logged.
+
+> Warning: Triggers only run through `mutation`s and `internalMutation`s when
+> wrapped with `customFunction`s.
+>
+> If you forget to use the wrapper, the triggers won't run (use
+> [eslint rules](https://stack.convex.dev/eslint-setup#no-restricted-imports)).
+>
+> If you edit data in the Convex dashboard, the triggers won't run.
+>
+> If you upload data through `npx convex import`, the triggers won't run.

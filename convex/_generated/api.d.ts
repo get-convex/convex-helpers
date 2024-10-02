@@ -1,3 +1,5 @@
+/* prettier-ignore-start */
+
 /* eslint-disable */
 /**
  * Generated `api` utility.
@@ -23,6 +25,7 @@ import type * as retriesExample from "../retriesExample.js";
 import type * as rlsExample from "../rlsExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
+import type * as triggersExample from "../triggersExample.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -43,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   rlsExample: typeof rlsExample;
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
+  triggersExample: typeof triggersExample;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
@@ -52,3 +56,5 @@ export declare const internal: FilterApi<
   typeof fullApi,
   FunctionReference<any, "internal">
 >;
+
+/* prettier-ignore-end */

@@ -29,6 +29,7 @@ export default defineSchema({
     // Index for updating presence data
     .index("user_room", ["user", "room"]),
   counter_table: defineTable({ name: v.string(), counter: v.number() }),
+  sum_table: defineTable({ sum: v.number() }),
   notes: defineTable({ session: v.string(), note: v.string() }),
   migrations: migrationsTable,
 });
