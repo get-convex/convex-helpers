@@ -69,13 +69,12 @@ export class Triggers<
   }
 
   customFunctionWrapper(): Mod<Ctx, {}, {innerDb: GenericDatabaseWriter<DataModel>}, {}> {
-    const triggers = this;
     return {
       args: {},
-      input(ctx: Ctx) {
+      input: (ctx: Ctx) => {
         const innerDb = ctx.db;
         return { ctx: {
-          db: new DatabaseWriterWithTriggers(ctx, innerDb, triggers),
+          db: new DatabaseWriterWithTriggers(ctx, innerDb, this),
           innerDb,
         }, args: {} };
       },
@@ -87,7 +86,15 @@ class Lock {
   promise: Promise<void> | null = null;
   resolve: (() => void) | null = null;
 
-  async lock(): Promise<(() => void)> {
+  async withLock<R>(f: () => Promise<R>): Promise<R> {
+    const unlock = await this._lock();
+    try {
+      return await f();
+    } finally {
+      unlock();
+    }
+  }
+  async _lock(): Promise<(() => void)> {
     while (this.promise !== null) {
       await this.promise;
     }
@@ -202,8 +209,7 @@ export class DatabaseWriterWithTriggers<
     tableName: TableName,
     f: () => Promise<[R, Change<DataModel, TableName>]>,
   ): Promise<R> {
-    const unlock = await innerWriteLock.lock();
-    try {
+    return await innerWriteLock.withLock(async () => {
       const [result, change] = await f();
       const recursiveCtx = { ...this.ctx, db: new DatabaseWriterWithTriggers(
         this.ctx,
@@ -217,9 +223,7 @@ export class DatabaseWriterWithTriggers<
         });
       }
       return result;
-    } finally {
-      unlock();
-    }
+    });
   }
 
   async _execThenTrigger<R, TableName extends TableNamesInDataModel<DataModel>>(
@@ -229,8 +233,7 @@ export class DatabaseWriterWithTriggers<
     if (this.isWithinTrigger) {
       return await this._queueTriggers(tableName, f);
     }
-    const unlock = await outerWriteLock.lock();
-    try {
+    return await outerWriteLock.withLock(async () => {
       const result = await this._queueTriggers(tableName, f);
       let e: unknown | null = null;
       while (triggerQueue.length > 0) {
@@ -249,9 +252,7 @@ export class DatabaseWriterWithTriggers<
         throw e;
       }
       return result;
-    } finally {
-      unlock();
-    }
+    });
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
