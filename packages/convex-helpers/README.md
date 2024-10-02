@@ -861,11 +861,10 @@ can feel free to remove them.
 
 ## Triggers
 
-Register trigger function to run whenever data in a table changes. The functions
-run in the same transaction as the mutation, atomically with the data change.
-
-Use triggers to keep denormalized data up-to-date, schedule async follow-up
-work, or throw errors if the write is unauthorized.
+Register trigger functions to run whenever data in a table changes via
+`ctx.db.insert`, `ctx.db.patch`, `ctx.db.replace`, or `ctx.db.delete`. The
+functions run in the same transaction as the mutation, atomically with the data
+change.
 
 Triggers pair with [custom functions](#custom-functions) to hook into each
 Convex mutation defined. Here's an example of using triggers to do four things:
