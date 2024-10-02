@@ -903,8 +903,8 @@ Trigger features:
   - Use `ctx.innerDb` to perform writes without triggering more triggers.
 - The `change` argument tells you exactly how the document changed via a single
   `ctx.db.insert`, `ctx.db.patch`, `ctx.db.replace`, or `ctx.db.delete`.
-  If these functions are called in parallel, they will be serialized as if they
-  happened sequentially.
+  If these functions are called in parallel with `Promise.all`, they will be 
+  serialized as if they happened sequentially.
 - A database write is executed atomically with all of its triggers, so you can
   update a denormalized field in a trigger without worrying about parallel
   invocations getting in the way. For recursive triggers, they are executed with
@@ -913,10 +913,10 @@ Trigger features:
   or debounce or single-flight async processing.
 - If a trigger function throws an error, it will be thrown from the database
   write (e.g. `ctx.db.insert`) that caused the trigger.
-  - If a trigger's error is caught, the database write can still go through. To
-    maximize fairness and consistency, all triggers still run, even if an
+  - If a trigger's error is caught, the database write can still be committed.
+    To maximize fairness and consistency, all triggers still run, even if an
     earlier trigger threw an error. The first trigger that throws an error will
-    have its error rethrown; other error are `console.error` logged.
+    have its error rethrown; other errors are `console.error` logged.
 - Components like
   [Aggregate](https://www.npmjs.com/package/@convex-dev/aggregate) can register
   triggers by exposing a method like `TableAggregate.trigger()` that returns a
