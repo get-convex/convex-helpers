@@ -885,9 +885,10 @@ const triggers = new Triggers<DataModel>();
 triggers.register("users", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
-    if (fullName.length > 100) { // abort the mutation if name is too long
-      throw new Error("name is too long");
+    if (fullName === "The Balrog") { // abort the mutation if document is invalid
+      throw new Error("you shall not pass");
     }
+    // Update denormalized field.
     if (change.newDoc.fullName !== fullName) { // watch out for recursion
       await ctx.db.patch(change.id, { fullName });
     }
@@ -953,7 +954,7 @@ forbid using the raw mutation wrappers which don't call your triggers.
   - Validate constraints and internal consistency.
   - Check row-level-security rules to validate the write is authorized.
 - Components like
-  [Aggregate](https://www.npmjs.com/package/@convex-dev/aggregate) can register
+  [Aggregate](https://www.npmjs.com/package/@convex-dev/aggregate) can define
   triggers by exposing a method like `TableAggregate.trigger()` that returns a
   `Trigger<Ctx, DataModel, TableName>`. This "attaches" the component to a
   table.
