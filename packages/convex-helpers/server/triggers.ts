@@ -66,10 +66,45 @@ export class Triggers<
   }
 }
 
-const activeLocks: Promise<void>[] = [];
-function last<T>(arr: T[]): T | null {
-  return arr[arr.length - 1] ?? null;
+class Lock {
+  promise: Promise<void> | null = null;
+  resolve: (() => void) | null = null;
+
+  async lock(): Promise<(() => void)> {
+    while (this.promise !== null) {
+      await this.promise;
+    }
+    [this.promise, this.resolve] = newLock();
+    return () => {
+      this.promise = null;
+      this.resolve?.();
+    };
+  }
 }
+
+/**
+ * Locking semantics:
+ * - Database writes to tables with triggers are serialized with
+ *   `innerWriteLock` so we can calculate the `change` object without
+ *   interference from parallel writes.
+ * - When the application (not a trigger) calls `insert`, `patch`, or `replace`,
+ *   it will acquire the outer write lock and hold it while doing the write
+ *   operation and all subsequent triggers, including recursive triggers.
+ *   - This ensures atomicity in the simple case where a trigger doesn't call
+ *     other triggers recursively.
+ * - Recursive triggers are queued up, so they are executed in the same order
+ *   as the database writes were. At a high level, this is a BFS traversal of
+ *   the trigger graph.
+ * - Note when there are multiple triggers, they can't be executed atomically
+ *   with the writes that caused them, from the perspective of the other
+ *   triggers. So if one trigger is making sure denormalized data is
+ *   consistent, another trigger could see the data in an inconsistent state.
+ *   To avoid such problems, triggers should be resilient to such
+ *   inconsistencies or the trigger graph should be kept simple.
+ */
+let innerWriteLock = new Lock();
+let outerWriteLock = new Lock();
+const triggerQueue: (() => Promise<void>)[] = [];
 
 export class DatabaseWriterWithTriggers<
   DataModel extends GenericDataModel,
@@ -79,7 +114,7 @@ export class DatabaseWriterWithTriggers<
     private ctx: Ctx,
     private innerDb: GenericDatabaseWriter<DataModel>,
     private triggers: Triggers<DataModel, Ctx>,
-    private reentrantLock: Promise<void> | null = null,
+    private isWithinTrigger: boolean = false,
   ) {
     this.system = innerDb.system;
   }
@@ -139,28 +174,45 @@ export class DatabaseWriterWithTriggers<
     }
     return null;
   }
-  async _execThenTrigger<R, TableName extends TableNamesInDataModel<DataModel>>(
+  async _queueTriggers<R, TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     f: () => Promise<[R, Change<DataModel, TableName>]>,
   ): Promise<R> {
-    while (activeLocks.length > 0 && last(activeLocks) !== this.reentrantLock) {
-      await last(activeLocks);
-    }
-    // It's unlocked so we lock it for the write.
-    const [lock, unlock] = newLock();
-    activeLocks.push(lock);
+    const unlock = await innerWriteLock.lock();
     try {
+      const [result, change] = await f();
       const recursiveCtx = { ...this.ctx, db: new DatabaseWriterWithTriggers(
         this.ctx,
         this.innerDb,
         this.triggers,
-        lock,
+        true,
       ), innerDb: this.innerDb };
-      const [result, change] = await f();
-      let e: unknown | null = null;
       for (const trigger of this.triggers.registered[tableName]!) {
-        try {
+        triggerQueue.push(async () => {
           await trigger(recursiveCtx, change);
+        });
+      }
+      return result;
+    } finally {
+      unlock();
+    }
+  }
+
+  async _execThenTrigger<R, TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+    f: () => Promise<[R, Change<DataModel, TableName>]>,
+  ): Promise<R> {
+    if (this.isWithinTrigger) {
+      return await this._queueTriggers(tableName, f);
+    }
+    const unlock = await outerWriteLock.lock();
+    try {
+      const result = await this._queueTriggers(tableName, f);
+      let e: unknown | null = null;
+      while (triggerQueue.length > 0) {
+        const trigger = triggerQueue.shift()!;
+        try {
+          await trigger();
         } catch (err) {
           if (!e) {
             e = err;
@@ -172,9 +224,6 @@ export class DatabaseWriterWithTriggers<
       }
       return result;
     } finally {
-      // This is actually releasing the lock.
-      activeLocks.pop();
-      // Resolve the promise to wake up any waiters.
       unlock();
     }
   }

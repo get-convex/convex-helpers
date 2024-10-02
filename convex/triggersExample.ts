@@ -7,6 +7,18 @@ import { internal } from "./_generated/api";
 
 const triggers = new Triggers<DataModel, MutationCtx>();
 
+triggers.register("counter_table", async (ctx, change) => {
+  if (change.operation === "insert") {
+    console.log("Counter created", change.newDoc);
+  }
+  if (change.newDoc && change.newDoc.counter % 10 !== 0) {
+    // Round up to the nearest multiple of 10, one at a time.
+    // This demonstrates that triggers can trigger themselves.
+    console.log("Incrementing counter to", change.newDoc.counter + 1);
+    await ctx.db.patch(change.newDoc._id, { counter: change.newDoc.counter + 1 });
+  }
+});
+
 // Call logCounterChange async after the mutation completes.
 let scheduledJobId: Id<"_scheduled_functions"> | null = null;
 triggers.register("counter_table", async (ctx, change) => {
@@ -20,18 +32,6 @@ triggers.register("counter_table", async (ctx, change) => {
       internal.triggersExample.logCounterChange,
       { name: change.newDoc.name, counter: change.newDoc.counter },
     );
-  }
-});
-
-triggers.register("counter_table", async (ctx, change) => {
-  if (change.operation === "insert") {
-    console.log("Counter created", change.newDoc);
-  }
-  if (change.newDoc && change.newDoc.counter % 10 !== 0) {
-    // Round up to the nearest multiple of 10, one at a time.
-    // This demonstrates that triggers can trigger themselves.
-    console.log("Incrementing counter to", change.newDoc.counter + 1);
-    await ctx.db.patch(change.newDoc._id, { counter: change.newDoc.counter + 1 });
   }
 });
 
