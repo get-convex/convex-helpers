@@ -907,12 +907,12 @@ triggers.register("users", async (ctx, change) => {
 
 // Even if a user is modified multiple times in a single mutation,
 // `internal.users.updateClerkUser` runs once.
-let lastScheduled: Id<"_scheduled_functions"> | null = null;
+const scheduled: Record<Id<"users">, Id<"_scheduled_functions">> = {};
 triggers.register("users", async (ctx, change) => {
-  if (lastScheduled) {
-    await ctx.scheduler.cancel(lastScheduled);
+  if (scheduled[change.id]) {
+    await ctx.scheduler.cancel(scheduled[change.id]);
   }
-  lastScheduled = await ctx.scheduler.runAfter(
+  scheduled[change.id] = await ctx.scheduler.runAfter(
     0,
     internal.users.updateClerkUser,
     { user: change.newDoc },
