@@ -889,6 +889,43 @@ triggers.register("users", async (ctx, change) => {
 export const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
 ```
 
-Now that you have redefined `mutation`, add an eslint rule like
-[this](https://stack.convex.dev/eslint-setup#no-restricted-imports) to forbid
+Now that you have redefined `mutation`, add an
+[eslint rule](https://stack.convex.dev/eslint-setup#no-restricted-imports) to forbid
 using the raw mutation wrappers which don't call your triggers.
+
+Trigger features:
+
+- Combine with other custom functions that can pre-fetch data like the
+  authorized user at the start of the mutation.
+- By default, triggers can trigger more triggers.
+  - This can be useful to ensure denormalized fields stay consistent, although
+    you need to watch out for infinite loops of triggers.
+  - Use `ctx.innerDb` to perform writes without triggering more triggers.
+- The `change` argument tells you exactly how the document changed via a single
+  `ctx.db.insert`, `ctx.db.patch`, `ctx.db.replace`, or `ctx.db.delete`.
+  If these functions are called in parallel, they will be serialized as if they
+  happened sequentially.
+- A database write is executed atomically with all of its triggers, so you can
+  update a denormalized field in a trigger without worrying about parallel
+  invocations getting in the way. For recursive triggers, they are executed with
+  a queue, i.e. breadth-first-search order.
+- Use global variables to coordinate across trigger invocations, e.g. to batch
+  or debounce or single-flight async processing.
+- If a trigger function throws an error, it will be thrown from the database
+  write (e.g. `ctx.db.insert`) that caused the trigger.
+  - If a trigger's error is caught, the database write can still go through. To
+    maximize fairness and consistency, all triggers still run, even if an
+    earlier trigger threw an error. The first trigger that throws an error will
+    have its error rethrown; other error are `console.error` logged.
+- Components like
+  [Aggregate](https://www.npmjs.com/package/@convex-dev/aggregate) can register
+  triggers by exposing a method like `TableAggregate.trigger()` that returns a
+  `Trigger<Ctx, DataModel, TableName>`. This "attaches" the component to a
+  table.
+
+> Warning: Triggers only run through `mutation`s and `internalMutation`s when
+> wrapped with `customFunction`s. If you forget to use the wrapper, the triggers
+> won't run (use
+> [eslint rules](https://stack.convex.dev/eslint-setup#no-restricted-imports)).
+> If you edit data in the Convex dashboard, the triggers won't run.
+> If you upload data through `npx convex import`, the triggers won't run.

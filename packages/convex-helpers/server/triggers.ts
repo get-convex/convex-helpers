@@ -238,7 +238,9 @@ export class DatabaseWriterWithTriggers<
         try {
           await trigger();
         } catch (err) {
-          if (!e) {
+          if (e) {
+            console.error(err);
+          } else {
             e = err;
           }
         }
