@@ -1,4 +1,4 @@
-import { customMutation, Mod } from "convex-helpers/server/customFunctions";
+import { customCtx, customMutation, Mod } from "convex-helpers/server/customFunctions";
 import { DataModel, Doc, Id } from "./_generated/dataModel";
 import { MutationCtx, query, mutation as rawMutation, internalMutation as rawInternalMutation, DatabaseReader } from "./_generated/server";
 import { Triggers } from "convex-helpers/server/triggers";
@@ -74,4 +74,34 @@ export const incrementCounter = mutation({
   },
 });
 
+/// Example of using triggers to implement the write side of row-level security,
+/// with a precomputed value `viewer` passed in to every trigger through the ctx.
 
+const triggersWithRLS = new Triggers<DataModel, MutationCtx & { viewer: string | null }>();
+
+triggersWithRLS.register("users", async (ctx, change) => {
+  const oldTokenIdentifier = change?.oldDoc?.tokenIdentifier;
+  if (oldTokenIdentifier && oldTokenIdentifier !== ctx.viewer) {
+    throw new Error(`You can only modify your own user`);
+  }
+  const newTokenIdentifier = change?.oldDoc?.tokenIdentifier;
+  if (newTokenIdentifier && newTokenIdentifier !== ctx.viewer) {
+    throw new Error(`You can only modify your own user`);
+  }
+});
+
+const mutationWithRLS = customMutation(rawMutation, customCtx(async (ctx) => {
+  const viewer = (await ctx.auth.getUserIdentity())?.tokenIdentifier ?? null;
+  return (await triggersWithRLS.customFunctionWrapper().input({ ...ctx, viewer }, {})).ctx;
+}));
+
+export const updateName = mutationWithRLS({
+  // Note: it's generally a bad idea to pass your own user's ID
+  // instead, you should just pull the user from the auth context
+  // but this is just an example to show that this is safe, since the RLS rules
+  // will prevent you from modifying other users.
+  args: { name: v.string(), userId: v.id("users") },
+  handler: async (ctx, { name, userId }) => {
+    await ctx.db.patch(userId, { name });
+  },
+});

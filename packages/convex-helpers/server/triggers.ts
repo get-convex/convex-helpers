@@ -33,6 +33,23 @@ export type Change<
   newDoc: null;
 });
 
+/**
+ * Construct Triggers to register functions that run whenever a table changes.
+ * Sample usage:
+ * 
+ * ```
+ * import { mutation as rawMutation } from "./_generated/server";
+ * import { DataModel } from "./_generated/dataModel";
+ * import { Triggers } from "convex-helpers/server/triggers";
+ * 
+ * const triggers = new Triggers<DataModel>();
+ * triggers.register("myTableName", async (ctx, change) => {
+ *   console.log("Table changed", change);
+ * });
+ * // Use `mutation` to define all mutations, and the triggers will get called.
+ * export const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+ * ```
+ */
 export class Triggers<
   DataModel extends GenericDataModel,
   Ctx extends { db: GenericDatabaseWriter<DataModel> } = GenericMutationCtx<DataModel>,
@@ -74,11 +91,18 @@ class Lock {
     while (this.promise !== null) {
       await this.promise;
     }
-    [this.promise, this.resolve] = newLock();
+    [this.promise, this.resolve] = this._newLock();
     return () => {
       this.promise = null;
       this.resolve?.();
     };
+  }
+  _newLock(): [Promise<void>, () => void] {
+    let resolve: () => void;
+    const promise = new Promise<void>((r) => {
+      resolve = r;
+    });
+    return [promise, () => resolve()];
   }
 }
 
@@ -238,12 +262,4 @@ export class DatabaseWriterWithTriggers<
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(tableName: TableName, id: string): GenericId<TableName> | null {
     return this.innerDb.normalizeId(tableName, id);
   }
-}
-
-function newLock(): [Promise<void>, () => void] {
-  let resolve: () => void;
-  const promise = new Promise<void>((r) => {
-    resolve = r;
-  });
-  return [promise, () => resolve()];
 }
