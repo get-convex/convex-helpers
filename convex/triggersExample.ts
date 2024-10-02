@@ -7,6 +7,8 @@ import { internal } from "./_generated/api";
 
 const triggers = new Triggers<DataModel, MutationCtx>();
 
+// Example of a trigger that rounds up every counter to a multiple of 10,
+// demonstrating that triggers can trigger themselves.
 triggers.register("counter_table", async (ctx, change) => {
   if (change.operation === "insert") {
     console.log("Counter created", change.newDoc);
@@ -32,6 +34,22 @@ triggers.register("counter_table", async (ctx, change) => {
       internal.triggersExample.logCounterChange,
       { name: change.newDoc.name, counter: change.newDoc.counter },
     );
+  }
+});
+
+// Track denormalized sum of all counters.
+triggers.register("counter_table", async (ctx, change) => {
+  const sum = await ctx.db.query("sum_table").first();
+  if (!sum) {
+    await ctx.db.insert("sum_table", { sum: 0 });
+  }
+  const sumDoc = (await ctx.db.query("sum_table").first())!;
+  if (change.operation === "insert") {
+    await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum + change.newDoc.counter });
+  } else if (change.operation === "update") {
+    await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum + change.newDoc.counter - change.oldDoc.counter });
+  } else if (change.operation === "delete") {
+    await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum - change.oldDoc.counter });
   }
 });
 

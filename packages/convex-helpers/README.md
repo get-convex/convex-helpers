@@ -858,3 +858,37 @@ to read from your production deployment.
 This command writes a `convex-spec-{msSinceEpoch}.yaml` file that can be used in external repositories to
 use your Convex functions with type-safety. It includes your internal functions, but you
 can feel free to remove them.
+
+## Triggers
+
+Register trigger function to run whenever data in a table changes. The functions
+run in the same transaction as the mutation, atomically with the data change.
+
+Use triggers to keep denormalized data up-to-date, schedule async follow-up
+work, or throw errors if the write is unauthorized.
+
+Triggers pair with [custom functions](#custom-functions) to hook into each
+Convex mutation define. For example, here's how you can keep a basic
+denormalized count of users:
+
+```ts
+import { mutation as rawMutation } from "./_generated/server";
+import { DataModel } from "./_generated/dataModel";
+import { Triggers } from "convex-helpers/server/triggers";
+
+const triggers = new Triggers<DataModel>();
+triggers.register("users", async (ctx, change) => {
+  const countDoc = (await ctx.db.query("userCount").unique())!;
+  if (change.operation === "insert") {
+    await ctx.db.patch(countDoc._id, { count: countDoc.count + 1 });
+  } else if (change.operation === "delete") {
+    await ctx.db.patch(countDoc._id, { count: countDoc.count - 1 });
+  }
+});
+// Use `mutation` to define all mutations, and the triggers will get called.
+export const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+```
+
+Now that you have redefined `mutation`, add an eslint rule like
+[this](https://stack.convex.dev/eslint-setup#no-restricted-imports) to forbid
+using the raw mutation wrappers which don't call your triggers.

@@ -25,6 +25,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)
 | [TypeScript API Generator](./packages/convex-helpers/README.md#typescript-api-generation)
 | [OpenAPI Spec Generator](./packages/convex-helpers/README.md#open-api-spec-generation)
+| [Triggers](./packages/convex-helpers/README.md#triggers)
 
 | In this directory for copy-pasting:
 | -----------------------------------
