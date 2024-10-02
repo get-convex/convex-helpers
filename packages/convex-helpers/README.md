@@ -977,8 +977,11 @@ forbid using the raw mutation wrappers which don't call your triggers.
     have its error rethrown; other errors are `console.error` logged.
 
 > Warning: Triggers only run through `mutation`s and `internalMutation`s when
-> wrapped with `customFunction`s. If you forget to use the wrapper, the triggers
-> won't run (use
+> wrapped with `customFunction`s.
+>
+> If you forget to use the wrapper, the triggers won't run (use
 > [eslint rules](https://stack.convex.dev/eslint-setup#no-restricted-imports)).
+>
 > If you edit data in the Convex dashboard, the triggers won't run.
+>
 > If you upload data through `npx convex import`, the triggers won't run.
