@@ -966,12 +966,13 @@ forbid using the raw mutation wrappers which don't call your triggers.
   serialized as if they happened sequentially.
 - A database write is executed atomically with all of its triggers, so you can
   update a denormalized field in a trigger without worrying about parallel
-  invocations getting in the way. For recursive triggers, they are executed with
+  writes getting in the way.
+- If there are multiple triggers or recursive triggers, they are executed with
   a queue, i.e. breadth-first-search order.
 - If a trigger function throws an error, it will be thrown from the database
   write (e.g. `ctx.db.insert`) that caused the trigger.
   - If a trigger's error is caught, the database write can still be committed.
-    To maximize fairness and consistency, all triggers still run, even if an
+  - To maximize fairness and consistency, all triggers still run, even if an
     earlier trigger threw an error. The first trigger that throws an error will
     have its error rethrown; other errors are `console.error` logged.
 
