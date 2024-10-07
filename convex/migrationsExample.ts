@@ -19,6 +19,10 @@ export const increment = migration({
   migrateOne: (ctx, doc) => ({
     counter: doc.counter + 1,
   }),
+  customRange: (q) =>
+    q.withIndex("by_creation_time", (q) =>
+      q.lt("_creationTime", Date.now() - 1_000_000),
+    ),
 });
 
 export const cleanUpBrokenRefs = migration({
@@ -52,7 +56,7 @@ const standardMigrations = [
 export const status = internalQuery(
   async (ctx): Promise<MigrationStatus<"migrations">[]> => {
     return await getStatus(ctx, { migrationTable: "migrations" });
-  }
+  },
 );
 
 export const cancel = internalMutation({
