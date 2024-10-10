@@ -878,7 +878,10 @@ Convex mutation defined. Here's an example of using triggers to do four things:
 import { mutation as rawMutation } from "./_generated/server";
 import { DataModel } from "./_generated/dataModel";
 import { Triggers } from "convex-helpers/server/triggers";
-import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
+import {
+  customCtx,
+  customMutation,
+} from "convex-helpers/server/customFunctions";
 
 const triggers = new Triggers<DataModel>();
 

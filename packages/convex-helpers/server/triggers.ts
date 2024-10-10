@@ -1,4 +1,14 @@
-import { DocumentByName, GenericDatabaseWriter, GenericDataModel, GenericMutationCtx, NamedTableInfo, QueryInitializer, TableNamesInDataModel, WithOptionalSystemFields, WithoutSystemFields } from "convex/server";
+import {
+  DocumentByName,
+  GenericDatabaseWriter,
+  GenericDataModel,
+  GenericMutationCtx,
+  NamedTableInfo,
+  QueryInitializer,
+  TableNamesInDataModel,
+  WithOptionalSystemFields,
+  WithoutSystemFields,
+} from "convex/server";
 import { GenericId } from "convex/values";
 
 /**
@@ -18,30 +28,34 @@ export type Change<
   TableName extends TableNamesInDataModel<DataModel>,
 > = {
   id: GenericId<TableName>;
-} & ({
-  operation: "insert";
-  oldDoc: null
-  newDoc: DocumentByName<DataModel, TableName>;
-} | {
-  operation: "update";
-  oldDoc: DocumentByName<DataModel, TableName>;
-  newDoc: DocumentByName<DataModel, TableName>;
-} | {
-  operation: "delete";
-  oldDoc: DocumentByName<DataModel, TableName>;
-  newDoc: null;
-});
+} & (
+  | {
+      operation: "insert";
+      oldDoc: null;
+      newDoc: DocumentByName<DataModel, TableName>;
+    }
+  | {
+      operation: "update";
+      oldDoc: DocumentByName<DataModel, TableName>;
+      newDoc: DocumentByName<DataModel, TableName>;
+    }
+  | {
+      operation: "delete";
+      oldDoc: DocumentByName<DataModel, TableName>;
+      newDoc: null;
+    }
+);
 
 /**
  * Construct Triggers to register functions that run whenever a table changes.
  * Sample usage:
- * 
+ *
  * ```
  * import { mutation as rawMutation } from "./_generated/server";
  * import { DataModel } from "./_generated/dataModel";
  * import { Triggers } from "convex-helpers/server/triggers";
  * import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
- * 
+ *
  * const triggers = new Triggers<DataModel>();
  * triggers.register("myTableName", async (ctx, change) => {
  *   console.log("Table changed", change);
@@ -53,12 +67,18 @@ export type Change<
  */
 export class Triggers<
   DataModel extends GenericDataModel,
-  Ctx extends { db: GenericDatabaseWriter<DataModel> } = GenericMutationCtx<DataModel>,
+  Ctx extends {
+    db: GenericDatabaseWriter<DataModel>;
+  } = GenericMutationCtx<DataModel>,
 > {
   registered: {
-    [TableName in TableNamesInDataModel<DataModel>]?: Trigger<Ctx, DataModel, TableName>[];
+    [TableName in TableNamesInDataModel<DataModel>]?: Trigger<
+      Ctx,
+      DataModel,
+      TableName
+    >[];
   } = {};
-  
+
   register<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     trigger: Trigger<Ctx, DataModel, TableName>,
@@ -69,7 +89,7 @@ export class Triggers<
     this.registered[tableName]!.push(trigger);
   }
 
-  wrapDB = (ctx: Ctx): Ctx => {
+  wrapDB = <C extends Ctx>(ctx: C): C => {
     return { ...ctx, db: new DatabaseWriterWithTriggers(ctx, ctx.db, this) };
   };
 }
@@ -86,7 +106,7 @@ class Lock {
       unlock();
     }
   }
-  async _lock(): Promise<(() => void)> {
+  async _lock(): Promise<() => void> {
     while (this.promise !== null) {
       await this.promise;
     }
@@ -131,8 +151,11 @@ const triggerQueue: (() => Promise<void>)[] = [];
 
 export class DatabaseWriterWithTriggers<
   DataModel extends GenericDataModel,
-  Ctx extends { db: GenericDatabaseWriter<DataModel> } = GenericMutationCtx<DataModel>,
-> implements GenericDatabaseWriter<DataModel> {
+  Ctx extends {
+    db: GenericDatabaseWriter<DataModel>;
+  } = GenericMutationCtx<DataModel>,
+> implements GenericDatabaseWriter<DataModel>
+{
   constructor(
     private ctx: Ctx,
     private innerDb: GenericDatabaseWriter<DataModel>,
@@ -142,7 +165,10 @@ export class DatabaseWriterWithTriggers<
     this.system = innerDb.system;
   }
 
-  async insert<TableName extends TableNamesInDataModel<DataModel>>(table: TableName, value: WithoutSystemFields<DocumentByName<DataModel, TableName>>): Promise<GenericId<TableName>> {
+  async insert<TableName extends TableNamesInDataModel<DataModel>>(
+    table: TableName,
+    value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<GenericId<TableName>> {
     if (!this.triggers.registered[table]) {
       return await this.innerDb.insert(table, value);
     }
@@ -152,7 +178,10 @@ export class DatabaseWriterWithTriggers<
       return [id, { operation: "insert", id, oldDoc: null, newDoc }];
     });
   }
-  async patch<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>, value: Partial<DocumentByName<DataModel, TableName>>): Promise<void> {
+  async patch<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: Partial<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
     const tableName = this._tableNameFromId(id);
     if (!tableName) {
       return await this.innerDb.patch(id, value);
@@ -164,7 +193,10 @@ export class DatabaseWriterWithTriggers<
       return [undefined, { operation: "update", id, oldDoc, newDoc }];
     });
   }
-  async replace<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>, value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>): Promise<void> {
+  async replace<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
     const tableName = this._tableNameFromId(id);
     if (!tableName) {
       return await this.innerDb.replace(id, value);
@@ -189,9 +221,16 @@ export class DatabaseWriterWithTriggers<
   }
 
   // Helper methods.
-  _tableNameFromId<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>): TableName | null {
+  _tableNameFromId<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+  ): TableName | null {
     for (const tableName of Object.keys(this.triggers.registered)) {
-      if (this.innerDb.normalizeId(tableName as TableNamesInDataModel<DataModel>, id)) {
+      if (
+        this.innerDb.normalizeId(
+          tableName as TableNamesInDataModel<DataModel>,
+          id,
+        )
+      ) {
         return tableName as TableName;
       }
     }
@@ -203,12 +242,16 @@ export class DatabaseWriterWithTriggers<
   ): Promise<R> {
     return await innerWriteLock.withLock(async () => {
       const [result, change] = await f();
-      const recursiveCtx = { ...this.ctx, db: new DatabaseWriterWithTriggers(
-        this.ctx,
-        this.innerDb,
-        this.triggers,
-        true,
-      ), innerDb: this.innerDb };
+      const recursiveCtx = {
+        ...this.ctx,
+        db: new DatabaseWriterWithTriggers(
+          this.ctx,
+          this.innerDb,
+          this.triggers,
+          true,
+        ),
+        innerDb: this.innerDb,
+      };
       for (const trigger of this.triggers.registered[tableName]!) {
         triggerQueue.push(async () => {
           await trigger(recursiveCtx, change);
@@ -248,13 +291,20 @@ export class DatabaseWriterWithTriggers<
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
-  get<TableName extends TableNamesInDataModel<DataModel>>(id: GenericId<TableName>): Promise<DocumentByName<DataModel, TableName> | null> {
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null> {
     return this.innerDb.get(id);
   }
-  query<TableName extends TableNamesInDataModel<DataModel>>(tableName: TableName): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
+  query<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+  ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
     return this.innerDb.query(tableName);
   }
-  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(tableName: TableName, id: string): GenericId<TableName> | null {
+  normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+    id: string,
+  ): GenericId<TableName> | null {
     return this.innerDb.normalizeId(tableName, id);
   }
 }

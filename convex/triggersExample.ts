@@ -25,7 +25,9 @@ triggers.register("counter_table", async (ctx, change) => {
     // Round up to the nearest multiple of 10, one at a time.
     // This demonstrates that triggers can trigger themselves.
     console.log("Incrementing counter to", change.newDoc.counter + 1);
-    await ctx.db.patch(change.newDoc._id, { counter: change.newDoc.counter + 1 });
+    await ctx.db.patch(change.newDoc._id, {
+      counter: change.newDoc.counter + 1,
+    });
   }
 });
 
@@ -55,7 +57,9 @@ triggers.register("counter_table", async (ctx, change) => {
   if (change.operation === "insert") {
     await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum + change.newDoc.counter });
   } else if (change.operation === "update") {
-    await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum + change.newDoc.counter - change.oldDoc.counter });
+    await ctx.db.patch(sumDoc._id, {
+      sum: sumDoc.sum + change.newDoc.counter - change.oldDoc.counter,
+    });
   } else if (change.operation === "delete") {
     await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum - change.oldDoc.counter });
   }
@@ -106,7 +110,10 @@ export const incrementCounter = mutation({
 /// Example of using triggers to implement the write side of row-level security,
 /// with a precomputed value `viewer` passed in to every trigger through the ctx.
 
-const triggersWithRLS = new Triggers<DataModel, MutationCtx & { viewer: string | null }>();
+const triggersWithRLS = new Triggers<
+  DataModel,
+  MutationCtx & { viewer: string | null }
+>();
 
 triggersWithRLS.register("users", async (ctx, change) => {
   const oldTokenIdentifier = change?.oldDoc?.tokenIdentifier;
@@ -123,7 +130,9 @@ const mutationWithRLS = customMutation(
   rawMutation,
   customCtx(async (ctx) => {
     const viewer = (await ctx.auth.getUserIdentity())?.tokenIdentifier ?? null;
-    return triggersWithRLS.wrapDB({ ...ctx, viewer });
+    // Note: you can add more things to the ctx than the registered triggers
+    // require, and the types will flow through.
+    return triggersWithRLS.wrapDB({ ...ctx, viewer, foo: "bar" });
   }),
 );
 
@@ -134,6 +143,8 @@ export const updateName = mutationWithRLS({
   // will prevent you from modifying other users.
   args: { name: v.string(), userId: v.id("users") },
   handler: async (ctx, { name, userId }) => {
+    // The extra type from above still comes through
+    console.log(ctx.foo);
     await ctx.db.patch(userId, { name });
   },
 });
