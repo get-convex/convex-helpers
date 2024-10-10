@@ -14,7 +14,7 @@ git diff --exit-code || {
   exit 1
 }
 function cleanup() {
-  git co -- :/package-lock.json :/packages/convex-helpers/package.json
+  git co -- :/packages/convex-helpers/package.json
 }
 trap cleanup EXIT
 
@@ -61,7 +61,7 @@ if [ "$publish" = "y" ]; then
     npm publish
   fi
   popd >/dev/null
-  git add package.json package-lock.json packages/convex-helpers/package.json
+  git add package.json packages/convex-helpers/package.json
   # If there's nothing to commit, continue
   git commit -m "npm $version" || true
   git tag "npm/$version"
