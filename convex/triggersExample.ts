@@ -71,13 +71,6 @@ export const internalMutation = customMutation(
   customCtx(triggers.wrapDB),
 );
 
-export const getCounters = query({
-  args: {},
-  handler: async ({ db }) => {
-    return await db.query("counter_table").collect();
-  },
-});
-
 export const logCounterChange = internalMutation({
   args: { name: v.string(), counter: v.number() },
   handler: async (_ctx, { name, counter }) => {
@@ -85,14 +78,9 @@ export const logCounterChange = internalMutation({
   },
 });
 
-export const createCounter = internalMutation({
-  args: {},
-  handler: async ({ db }) => {
-    return await db.insert("counter_table", { name: "foo", counter: 0 });
-  },
-});
-
-export const incrementCounter = mutation({
+// This checks that many triggers happening in parallel won't race with each
+// other. whatever the value ends up being, that will be the change to the sum.
+export const incrementCounterRace = mutation({
   args: {},
   handler: async ({ db }) => {
     const firstCounter = await db.query("counter_table").first();
@@ -104,6 +92,13 @@ export const incrementCounter = mutation({
       db.patch(firstCounter._id, { counter: firstCounter.counter + 2 }),
       db.patch(firstCounter._id, { counter: firstCounter.counter + 3 }),
     ]);
+  },
+});
+
+export const getSum = query({
+  args: {},
+  handler: async (ctx, args) => {
+    return ctx.db.query("sum_table").first();
   },
 });
 

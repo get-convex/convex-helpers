@@ -1,15 +1,26 @@
-import { action, mutation, query } from "./_generated/server";
+import { action, query } from "./_generated/server";
+// Using mutation from triggersExample so any changes will run triggers
+import { mutation } from "./triggersExample";
 import { v } from "convex/values";
 
-export const getCounter = query(
-  async (ctx, { counterName }: { counterName: string }): Promise<number> => {
+export const getCounter = query({
+  args: { counterName: v.string() },
+  returns: v.number(),
+  handler: async (ctx, { counterName }) => {
     const counterDoc = await ctx.db
       .query("counter_table")
       .filter((q) => q.eq(q.field("name"), counterName))
       .first();
     return counterDoc === null ? 0 : counterDoc.counter;
   },
-);
+});
+
+export const getCounters = query({
+  args: {},
+  handler: async ({ db }) => {
+    return db.query("counter_table").collect();
+  },
+});
 
 export const getCounterOrThrow = query(
   async (ctx, { counterName }: { counterName: string }): Promise<number> => {

@@ -6,9 +6,11 @@ import {
   startMigration,
   startMigrationsSerially,
 } from "convex-helpers/server/migrations";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+// Importing from triggers so any changes here will run triggers
+import { internalMutation } from "./triggersExample";
 
 const migration = makeMigration(internalMutation, {
   migrationTable: "migrations",
