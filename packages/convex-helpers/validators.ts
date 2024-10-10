@@ -190,6 +190,63 @@ export const doc = <
 };
 
 /**
+ * Creates a validator with a type-safe `.id(table)` and a new `.doc(table)`.
+ * Can be used instead of `v` for function arugments & return validators.
+ * However, it cannot be used as part of defining a schema, since it would be
+ * circular.
+ * ```ts
+ * import schema from "./schema";
+ * export const vv = typedV(schema);
+ *
+ * export const myQuery = query({
+ *   args: { docId: vv.id("mytable") },
+ *   returns: vv.doc("mytable"),
+ *   handler: (ctx, args) => ctx.db.get(args.docId),
+ * })
+ *
+ * @param schema Typically from `import schema from "./schema"`.
+ * @returns A validator like `v` with type-safe `v.id` and a new `v.doc`
+ */
+export function typedV<Schema extends SchemaDefinition<any, boolean>>(
+  schema: Schema,
+) {
+  return {
+    ...v,
+    /**
+     * Similar to v.id but is type-safe on the table name.
+     * @param tableName A table named in your schema.
+     * @returns A validator for an ID to the named table.
+     */
+    id: <
+      TableName extends TableNamesInDataModel<
+        DataModelFromSchemaDefinition<Schema>
+      >,
+    >(
+      tableName: TableName,
+    ) => v.id(tableName),
+    /**
+     * Generates a validator for a document, including system fields.
+     * To be used in validators when passing a full document in or out of a
+     * function.
+     * @param tableName A table named in your schema.
+     * @returns A validator that matches the schema validator, adding _id and
+     * _creationTime. If the validator was a union, it will update all documents
+     * recursively, but will currently lose the VUnion-specific type.
+     */
+    doc: <
+      TableName extends TableNamesInDataModel<
+        DataModelFromSchemaDefinition<Schema>
+      >,
+    >(
+      tableName: TableName,
+    ): AddFieldsToValidator<
+      (typeof schema)["tables"][TableName]["validator"],
+      SystemFields<TableName>
+    > => doc(schema, tableName),
+  };
+}
+
+/**
  * A string validator that is a branded string type.
  *
  * Read more at https://stack.convex.dev/using-branded-types-in-validators

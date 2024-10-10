@@ -19,6 +19,7 @@ import {
   pretend,
   pretendRequired,
   string,
+  typedV,
 } from "../validators.js";
 import { convexTest } from "convex-test";
 import {
@@ -30,11 +31,13 @@ import {
   internalMutationGeneric,
   internalQueryGeneric,
   MutationBuilder,
+  QueryBuilder,
 } from "convex/server";
 import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
+import { kitchenSink } from "convex-helpers/server/zod.test";
 
 export const testLiterals = internalQueryGeneric({
   args: {
@@ -122,6 +125,10 @@ const internalMutation = internalMutationGeneric as MutationBuilder<
   DataModelFromSchemaDefinition<typeof schema>,
   "internal"
 >;
+const internalQuery = internalQueryGeneric as QueryBuilder<
+  DataModelFromSchemaDefinition<typeof schema>,
+  "internal"
+>;
 
 export const toDoc = internalMutation({
   args: {},
@@ -140,12 +147,47 @@ export const toDoc = internalMutation({
   }),
 });
 
+const vv = typedV(schema);
+
+export const getSink = internalQuery({
+  args: { docId: vv.id("kitchenSink") },
+  returns: nullable(vv.doc("kitchenSink")),
+  handler: (ctx, args) => ctx.db.get(args.docId),
+});
+
+export const getUnion = internalQuery({
+  args: { docId: vv.id("unionTable") },
+  returns: nullable(vv.doc("unionTable")),
+  handler: (ctx, args) => ctx.db.get(args.docId),
+});
+
 const testApi: ApiFromModules<{
   fns: {
     echo: typeof echo;
     toDoc: typeof toDoc;
+    getSink: typeof getSink;
+    getUnion: typeof getUnion;
   };
 }>["fns"] = anyApi["validators.test"] as any;
+
+test("vv generates the right types for objects", async () => {
+  const t = convexTest(schema, modules);
+  const docId = await t.run((ctx) => ctx.db.insert("kitchenSink", valid));
+  const doc = await t.query(testApi.getSink, { docId });
+  expect(doc).toBeDefined();
+  expect(doc!._creationTime).toBeTypeOf("number");
+});
+
+test("vv generates the right types for unions", async () => {
+  const t = convexTest(schema, modules);
+  const docId = await t.run((ctx) =>
+    ctx.db.insert("unionTable", { foo: "foo" }),
+  );
+  const doc = await t.query(testApi.getUnion, { docId });
+  expect(doc).toBeDefined();
+  expect(doc!._creationTime).toBeTypeOf("number");
+  expect(doc!["foo"]).toBeDefined();
+});
 
 test("doc validator adds fields", async () => {
   const t = convexTest(schema, modules);
