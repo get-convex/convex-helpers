@@ -869,10 +869,10 @@ change.
 Triggers pair with [custom functions](#custom-functions) to hook into each
 Convex mutation defined. Here's an example of using triggers to do four things:
 
-- Attach a computed `fullName` field to every user.
-- Keep a denormalized count of all users.
-- After the mutation, send the new user info to Clerk.
-- When a user is deleted, delete their messages (cascading deletes).
+1. Attach a computed `fullName` field to every user.
+2. Keep a denormalized count of all users.
+3. After the mutation, send the new user info to Clerk.
+4. When a user is deleted, delete their messages (cascading deletes).
 
 ```ts
 import { mutation as rawMutation } from "./_generated/server";
@@ -881,19 +881,22 @@ import { Triggers } from "convex-helpers/server/triggers";
 
 const triggers = new Triggers<DataModel>();
 
+// 1. Attach a computed `fullName` field to every user.
 triggers.register("users", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
-    if (fullName === "The Balrog") { // abort the mutation if document is invalid
+    // Abort the mutation if document is invalid.
+    if (fullName === "The Balrog") {
       throw new Error("you shall not pass");
     }
-    // Update denormalized field.
-    if (change.newDoc.fullName !== fullName) { // watch out for recursion
+    // Update denormalized field. Check first to avoid recursion
+    if (change.newDoc.fullName !== fullName) {
       await ctx.db.patch(change.id, { fullName });
     }
   }
 });
 
+// 2. Keep a denormalized count of all users.
 triggers.register("users", async (ctx, change) => {
   // Note writing the count to a single document increases write contention.
   // There are more scalable methods if you need high write throughput.
@@ -905,6 +908,7 @@ triggers.register("users", async (ctx, change) => {
   }
 });
 
+// 3. After the mutation, send the new user info to Clerk.
 // Even if a user is modified multiple times in a single mutation,
 // `internal.users.updateClerkUser` runs once.
 const scheduled: Record<Id<"users">, Id<"_scheduled_functions">> = {};
@@ -919,7 +923,7 @@ triggers.register("users", async (ctx, change) => {
   );
 });
 
-// Cascade deletes.
+// 4. When a user is deleted, delete their messages (cascading deletes).
 triggers.register("users", async (ctx, change) => {
   // Using relationships.ts helpers for succinctness.
   await asyncMap(
