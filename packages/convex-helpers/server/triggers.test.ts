@@ -35,10 +35,7 @@ triggers.register("users", async (ctx, change) => {
   }
 });
 
-export const mutation = customMutation(
-  rawMutation,
-  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
-);
+const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 
 export const createUser = mutation({
   args: { firstName: v.string(), lastName: v.string() },

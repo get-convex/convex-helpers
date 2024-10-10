@@ -934,10 +934,7 @@ triggers.register("users", async (ctx, change) => {
 });
 
 // Use `mutation` to define all mutations, and the triggers will get called.
-export const mutation = customMutation(
-  rawMutation,
-  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
-);
+export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 ```
 
 Now that you have redefined `mutation`, add an

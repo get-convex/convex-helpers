@@ -46,11 +46,9 @@ export type Change<
  * triggers.register("myTableName", async (ctx, change) => {
  *   console.log("Table changed", change);
  * });
+ *
  * // Use `mutation` to define all mutations, and the triggers will get called.
- * export const mutation = customMutation(
- *   rawMutation,
- *   customCtx(ctx => ({ db: triggers.dbWrapper(ctx) })),
- * );
+ * export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
  * ```
  */
 export class Triggers<
@@ -71,9 +69,9 @@ export class Triggers<
     this.registered[tableName]!.push(trigger);
   }
 
-  dbWrapper(ctx: Ctx): GenericDatabaseWriter<DataModel> {
-    return new DatabaseWriterWithTriggers(ctx, ctx.db, this);
-  }
+  wrapDB = (ctx: Ctx): Ctx => {
+    return { ...ctx, db: new DatabaseWriterWithTriggers(ctx, ctx.db, this) };
+  };
 }
 
 class Lock {

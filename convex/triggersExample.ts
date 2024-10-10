@@ -61,13 +61,10 @@ triggers.register("counter_table", async (ctx, change) => {
   }
 });
 
-const mutation = customMutation(
-  rawMutation,
-  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
-);
-const internalMutation = customMutation(
+export const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
+export const internalMutation = customMutation(
   rawInternalMutation,
-  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
+  customCtx(triggers.wrapDB),
 );
 
 export const getCounters = query({
@@ -126,8 +123,7 @@ const mutationWithRLS = customMutation(
   rawMutation,
   customCtx(async (ctx) => {
     const viewer = (await ctx.auth.getUserIdentity())?.tokenIdentifier ?? null;
-    const db = triggersWithRLS.dbWrapper({ ...ctx, viewer });
-    return { viewer, db };
+    return triggersWithRLS.wrapDB({ ...ctx, viewer });
   }),
 );
 
