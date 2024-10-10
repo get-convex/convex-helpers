@@ -1,6 +1,14 @@
-import { customCtx, customMutation, Mod } from "convex-helpers/server/customFunctions";
-import { DataModel, Doc, Id } from "./_generated/dataModel";
-import { MutationCtx, query, mutation as rawMutation, internalMutation as rawInternalMutation, DatabaseReader } from "./_generated/server";
+import {
+  customCtx,
+  customMutation,
+} from "convex-helpers/server/customFunctions";
+import { DataModel, Id } from "./_generated/dataModel";
+import {
+  MutationCtx,
+  query,
+  mutation as rawMutation,
+  internalMutation as rawInternalMutation,
+} from "./_generated/server";
 import { Triggers } from "convex-helpers/server/triggers";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
@@ -53,8 +61,14 @@ triggers.register("counter_table", async (ctx, change) => {
   }
 });
 
-const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
-const internalMutation = customMutation(rawInternalMutation, triggers.customFunctionWrapper());
+const mutation = customMutation(
+  rawMutation,
+  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
+);
+const internalMutation = customMutation(
+  rawInternalMutation,
+  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
+);
 
 export const getCounters = query({
   args: {},
@@ -108,10 +122,14 @@ triggersWithRLS.register("users", async (ctx, change) => {
   }
 });
 
-const mutationWithRLS = customMutation(rawMutation, customCtx(async (ctx) => {
-  const viewer = (await ctx.auth.getUserIdentity())?.tokenIdentifier ?? null;
-  return (await triggersWithRLS.customFunctionWrapper().input({ ...ctx, viewer }, {})).ctx;
-}));
+const mutationWithRLS = customMutation(
+  rawMutation,
+  customCtx(async (ctx) => {
+    const viewer = (await ctx.auth.getUserIdentity())?.tokenIdentifier ?? null;
+    const db = triggersWithRLS.dbWrapper({ ...ctx, viewer });
+    return { viewer, db };
+  }),
+);
 
 export const updateName = mutationWithRLS({
   // Note: it's generally a bad idea to pass your own user's ID

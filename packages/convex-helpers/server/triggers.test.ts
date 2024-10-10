@@ -1,6 +1,4 @@
-import {
-  customMutation,
-} from "./customFunctions.js";
+import { customCtx, customMutation } from "./customFunctions.js";
 import { Triggers } from "./triggers.js";
 import { convexTest } from "convex-test";
 import {
@@ -37,7 +35,10 @@ triggers.register("users", async (ctx, change) => {
   }
 });
 
-const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+export const mutation = customMutation(
+  rawMutation,
+  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
+);
 
 export const createUser = mutation({
   args: { firstName: v.string(), lastName: v.string() },
@@ -47,7 +48,7 @@ export const createUser = mutation({
       lastName: args.lastName,
       fullName: "",
     });
-  }
+  },
 });
 
 const testApi: ApiFromModules<{

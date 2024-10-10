@@ -1,6 +1,5 @@
 import { DocumentByName, GenericDatabaseWriter, GenericDataModel, GenericMutationCtx, NamedTableInfo, QueryInitializer, TableNamesInDataModel, WithOptionalSystemFields, WithoutSystemFields } from "convex/server";
 import { GenericId } from "convex/values";
-import { Mod } from "./customFunctions.js";
 
 /**
  * This function will be called when a document in the table changes.
@@ -41,13 +40,17 @@ export type Change<
  * import { mutation as rawMutation } from "./_generated/server";
  * import { DataModel } from "./_generated/dataModel";
  * import { Triggers } from "convex-helpers/server/triggers";
+ * import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
  * 
  * const triggers = new Triggers<DataModel>();
  * triggers.register("myTableName", async (ctx, change) => {
  *   console.log("Table changed", change);
  * });
  * // Use `mutation` to define all mutations, and the triggers will get called.
- * export const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+ * export const mutation = customMutation(
+ *   rawMutation,
+ *   customCtx(ctx => ({ db: triggers.dbWrapper(ctx) })),
+ * );
  * ```
  */
 export class Triggers<
@@ -68,17 +71,8 @@ export class Triggers<
     this.registered[tableName]!.push(trigger);
   }
 
-  customFunctionWrapper(): Mod<Ctx, {}, {innerDb: GenericDatabaseWriter<DataModel>}, {}> {
-    return {
-      args: {},
-      input: (ctx: Ctx) => {
-        const innerDb = ctx.db;
-        return { ctx: {
-          db: new DatabaseWriterWithTriggers(ctx, innerDb, this),
-          innerDb,
-        }, args: {} };
-      },
-    };
+  dbWrapper(ctx: Ctx): GenericDatabaseWriter<DataModel> {
+    return new DatabaseWriterWithTriggers(ctx, ctx.db, this);
   }
 }
 

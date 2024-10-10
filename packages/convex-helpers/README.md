@@ -878,6 +878,7 @@ Convex mutation defined. Here's an example of using triggers to do four things:
 import { mutation as rawMutation } from "./_generated/server";
 import { DataModel } from "./_generated/dataModel";
 import { Triggers } from "convex-helpers/server/triggers";
+import { customCtx, customMutation } from "convex-helpers/server/customFunctions";
 
 const triggers = new Triggers<DataModel>();
 
@@ -933,7 +934,10 @@ triggers.register("users", async (ctx, change) => {
 });
 
 // Use `mutation` to define all mutations, and the triggers will get called.
-export const mutation = customMutation(rawMutation, triggers.customFunctionWrapper());
+export const mutation = customMutation(
+  rawMutation,
+  customCtx((ctx) => ({ db: triggers.dbWrapper(ctx) })),
+);
 ```
 
 Now that you have redefined `mutation`, add an
@@ -966,7 +970,7 @@ forbid using the raw mutation wrappers which don't call your triggers.
 
 - The `change` argument tells you exactly how the document changed via a single
   `ctx.db.insert`, `ctx.db.patch`, `ctx.db.replace`, or `ctx.db.delete`.
-  If these functions are called in parallel with `Promise.all`, they will be 
+  If these functions are called in parallel with `Promise.all`, they will be
   serialized as if they happened sequentially.
 - A database write is executed atomically with all of its triggers, so you can
   update a denormalized field in a trigger without worrying about parallel
