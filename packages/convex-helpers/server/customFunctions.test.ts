@@ -320,6 +320,35 @@ const never: never = null as never;
 queryMatches(badRedefine, { b: 3, a: never }, { argsA: "" }); // !!!
 
 /**
+ * Nested custom functions
+ * Ensure they add and remove ctx and args as expected when compounded.
+ */
+const inner = customQuery(
+  query,
+  customCtx(() => ({ inner: "inner" })),
+);
+const outerAdder = customQuery(inner, {
+  args: { outer: v.string() },
+  input: async (_ctx, args) => ({ ctx: { outer: args.outer }, args }),
+});
+export const outerAdds = outerAdder({
+  args: { a: v.string() },
+  handler: async (ctx, args) => {
+    return { ctxInner: ctx["inner"], ctxOuter: ctx.outer, ...args };
+  },
+});
+export const outerRemover = customQuery(inner, {
+  args: { outer: v.string() },
+  input: async (_ctx, args) => ({ ctx: { inner: undefined }, args: {} }),
+});
+export const outerRemoves = outerRemover({
+  args: { a: v.string() },
+  handler: async (ctx, args) => {
+    return { ctxInner: ctx["inner"], ctxOuter: ctx["outer"], ...args };
+  },
+});
+
+/**
  * Test helpers
  */
 function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
@@ -346,6 +375,8 @@ const testApi: ApiFromModules<{
     redefine: typeof redefine;
     badRedefine: typeof badRedefine;
     create: typeof create;
+    outerAdds: typeof outerAdds;
+    outerRemoves: typeof outerRemoves;
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -488,6 +519,28 @@ describe("custom functions", () => {
       // Note: argsA is still "foo" because the custom function takes precedent.
       // Ideally this would throw instead, or refuse to let you re-define args.
       argsA: "foo",
+    });
+  });
+});
+
+describe("nested custom functions", () => {
+  test("add args and ctx", async () => {
+    const t = convexTest(schema, modules);
+    expect(
+      await t.query(testApi.outerAdds, { a: "hi", outer: "outer" }),
+    ).toMatchObject({
+      ctxInner: "inner",
+      ctxOuter: "outer",
+      a: "hi",
+      outer: "outer",
+    });
+  });
+  test("remove args", async () => {
+    const t = convexTest(schema, modules);
+    expect(
+      await t.query(testApi.outerRemoves, { a: "hi", outer: "bye" }),
+    ).toMatchObject({
+      a: "hi",
     });
   });
 });

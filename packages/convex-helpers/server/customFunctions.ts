@@ -36,7 +36,7 @@ import {
   RegisteredQuery,
   ReturnValueForOptionalValidator,
 } from "convex/server";
-import { pick } from "../index.js";
+import { omit, pick } from "../index.js";
 
 /**
  * A modifier for a query, mutation, or action.
@@ -338,7 +338,7 @@ function customFnBuilder(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
           );
-          const args = pick(allArgs, Object.keys(fn.args));
+          const args = omit(allArgs, Object.keys(inputArgs));
           return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
         },
       });
