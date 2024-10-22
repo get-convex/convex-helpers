@@ -6,6 +6,7 @@ Table of contents:
 
 - [Custom Functions](#custom-functions)
 - [Relationship helpers](#relationship-helpers)
+- [Triggers](#triggers)
 - [Action retry wrapper](#action-retries)
 - [Stateful migrations](#stateful-migrations)
 - [Rate limiting](#rate-limiting)
@@ -105,6 +106,9 @@ Use helper functions to retry a Convex action until it succeeds.
 An action should only be retried if it is safe to do so, i.e., if it's
 idempotent or doesn't have any unsafe side effects.
 
+**Note**: this is now an [`action-retrier` component](https://www.convex.dev/components/retrier).
+I recommend using that (`npm i @convex-dev/action-retrier`).
+
 See the [Stack post on retrying actions](https://stack.convex.dev/retry-actions)
 
 Example:
@@ -130,6 +134,10 @@ Example:
 A helper to define and run migrations. You can persist the migration state to a
 table so you can query the status, or use it without persistence.
 
+Note: there is now a [migration component](https://www.convex.dev/components/migrations)
+for you to use instead of this approach. The component has the benefit of not
+needing to add any tables to your schema. (`npm i @convex-dev/migrations`)
+
 See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
 and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
 
@@ -143,6 +151,8 @@ export default defineSchema({
   // other tables...
 });
 ```
+
+You can pick any table name for this, but it should match `migrationTable` used below.
 
 In `convex/migrations.ts` (or wherever you want to define them):
 
@@ -206,6 +216,9 @@ npx convex run migrations --prod
 ## Rate limiting
 
 Configure and use rate limits to avoid product abuse.
+
+**Note**: this is now a [`rate-limiter` component](https://www.convex.dev/components/rate-limiter) I recommend you use instead.
+
 See the associated Stack post for details:
 
 https://stack.convex.dev/rate-limiting
