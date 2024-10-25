@@ -13,7 +13,7 @@ import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { zCustomQuery, zid, zodToConvexFields } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import { v } from "convex/values";
+import { v, VString } from "convex/values";
 import { z } from "zod";
 
 // This is an example of how to make a version of `zid` that
@@ -312,7 +312,7 @@ test("zod kitchen sink", async () => {
     effect: "effect",
     optional: undefined,
     nullable: null,
-    branded: "branded",
+    branded: "branded" as string & z.BRAND<"branded">,
     default: undefined,
     readonly: { a: "1", b: 2 },
     pipeline: 0,
@@ -555,7 +555,7 @@ assert(
       bi: v.int64(),
       bool: v.boolean(),
       literal: v.literal("hi"),
-      branded: v.string(),
+      branded: v.string() as VString<string & z.BRAND<"branded">>,
     },
   ),
 );
