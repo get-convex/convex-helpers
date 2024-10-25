@@ -36,6 +36,7 @@ import {
 } from "convex/server";
 import { Mod, NoOp, Registration } from "./customFunctions.js";
 import { pick } from "../index.js";
+import { brandedString } from "../validators.js"
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
@@ -570,11 +571,8 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                   ConvexValidatorFromZod<Inner>["fieldPaths"]
                                                 >
                                               : never
-                                          : Z extends z.ZodBranded<
-                                                infer Inner,
-                                                any
-                                              >
-                                            ? ConvexValidatorFromZod<Inner>
+                                          : Z extends z.ZodBranded<z.ZodString, infer Brand>
+                                            ? VString<string & { _: Brand }>
                                             : Z extends z.ZodDefault<
                                                   infer Inner
                                                 > // Treat like optional
@@ -693,7 +691,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
         v.null(),
       ) as unknown as ConvexValidatorFromZod<Z>;
     case "ZodBranded":
-      return zodToConvex((zod as any).unwrap()) as ConvexValidatorFromZod<Z>;
+      return brandedString(zod._def.brand) as ConvexValidatorFromZod<Z>;
     case "ZodDefault":
       const withDefault = zodToConvex(zod._def.innerType);
       if (withDefault.isOptional === "optional") {
