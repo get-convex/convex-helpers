@@ -1,6 +1,8 @@
 import {
   GenericValidator,
+  Infer,
   PropertyValidators,
+  VArray,
   VOptional,
   VString,
   VUnion,
@@ -212,3 +214,25 @@ export const pretend = <T extends GenericValidator>(_typeToImmitate: T): T =>
 export const pretendRequired = <T extends Validator<any, "required", any>>(
   optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
+
+/**
+ * Create a validator that checks each value is one of the tuple types, but
+ * types as a tuple.
+ * This is not as safe as checking that each member is the correct type for its
+ * index, but is useful when you're willing to assume the data is in the right
+ * order.
+ * @param members The validators for each member of the tuple. e.g.
+ * `pretendTuple(v.string(), v.number())`
+ * @returns A validator that checks each value is one of the tuple types,
+ * but typechecks as a tuple.
+ */
+export const pretendTuple = <M extends Validator<any, "required", any>[]>(
+  ...members: M
+): VArray<
+  {
+    [K in keyof M]: Infer<M[K]>;
+  },
+  VUnion<Infer<M[number]>, M>
+> => {
+  return v.array(v.union(...members)) as any;
+};
