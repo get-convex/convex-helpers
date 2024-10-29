@@ -521,6 +521,13 @@ describe("custom functions", () => {
       argsA: "foo",
     });
   });
+
+  test("still validates args", async () => {
+    const t = convexTest(schema, modules);
+    expect(() => t.query(testApi.redefine, { a: 3 as any })).rejects.toThrow(
+      "Validator error: Expected `string`",
+    );
+  });
 });
 
 describe("nested custom functions", () => {
@@ -542,5 +549,12 @@ describe("nested custom functions", () => {
     ).toMatchObject({
       a: "hi",
     });
+  });
+
+  test("still validates args", async () => {
+    const t = convexTest(schema, modules);
+    expect(() =>
+      t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
+    ).rejects.toThrow("Validator error: Expected `string`");
   });
 });
