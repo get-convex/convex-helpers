@@ -494,7 +494,7 @@ const mutationWithRLS = customMutation(
 Convex has argument validation, but if you prefer the [Zod](https://zod.dev)
 features for validating arguments, this is for you!
 
-See the [Stack post on Zod validation](https://stack.convex.dev/wrappers-as-middleware-zod-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
+See the [Stack post on Zod validation](https://stack.convex.dev/typescript-zod-function-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
 
 Example:
 
