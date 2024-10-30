@@ -38,7 +38,6 @@ export function getFunctionSpec(prod?: boolean, filePathOpt?: string) {
             const flags = prod ? "--prod" : "";
             execSync(`npx convex function-spec ${flags} > ${filePath}`).toString();
         } catch (e) {
-            console.log(e);
             console.error(chalk.red("\nError retrieving function spec from your Convex deployment. " +
                 "Confirm that you \nare running this command from within a Convex project.\n"));
             process.exit(1);
