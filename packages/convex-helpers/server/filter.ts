@@ -25,7 +25,7 @@ import {
   SearchIndexes,
 } from "convex/server";
 
-async function asyncFilter<T>(
+export async function asyncFilter<T>(
   arr: T[],
   predicate: (d: T) => Promise<boolean> | boolean
 ): Promise<T[]> {
