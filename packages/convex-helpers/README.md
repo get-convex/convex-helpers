@@ -764,7 +764,7 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
 });
 ```
 
-### `getPageOfQuery`
+### `getPageOfQuery`: manual pagination with familiar syntax
 
 In addition to `getPage`, convex-helpers provides a function
 `getPageOfQuery`. This function has syntax and interface similar to the
