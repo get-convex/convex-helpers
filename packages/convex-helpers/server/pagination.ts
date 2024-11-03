@@ -388,7 +388,6 @@ export async function getPageNonReactive<
   }
   const schema = options?.schema;
   const fakeRange = range(new FakeDb(schema) as any) as any as FakeDbQueryWithOrder;
-  console.log(fakeRange.constructor.name);
   const evaluatedRange = fakeRange.finish() as PageRequest<DataModel, T>;
   let startIndexKey = evaluatedRange.startIndexKey;
   let startInclusive = evaluatedRange.startInclusive;

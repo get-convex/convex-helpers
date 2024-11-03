@@ -1,4 +1,4 @@
-import { defineTable, defineSchema, GenericDocument, DataModelFromSchemaDefinition, GenericDataModel, GenericDatabaseReader, GenericDatabaseWriter, GenericMutationCtx } from "convex/server";
+import { defineTable, defineSchema, GenericDocument, DataModelFromSchemaDefinition } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { IndexKey, getPage, getPageNonReactive } from "./pagination.js";
@@ -346,6 +346,43 @@ describe("getPageNonReactive", () => {
       expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 5, c: 1 },
         { a: 1, b: 4, c: 2 },
+        { a: 1, b: 4, c: 1 },
+      ]);
+      expect(result2.isDone).toBe(true);
+    });
+  });
+
+  test("paginated index range desc", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 6, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
+      const result1 = await getPageNonReactive<DataModel, "foo">(
+        ctx,
+        (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
+        {
+          schema,
+          opts: { cursor: null, numItems: 2 },
+        },
+      );
+      expect(result1.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 5, c: 1 },
+        { a: 1, b: 4, c: 2 },
+      ]);
+      expect(result1.isDone).toBe(false);
+
+      const result2 = await getPageNonReactive<DataModel, "foo">(
+        ctx,
+        (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
+        {
+          schema,
+          opts: { cursor: result1.continueCursor, numItems: 2 },
+        },
+      );
+      expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 1 },
       ]);
       expect(result2.isDone).toBe(true);
