@@ -771,7 +771,8 @@ In addition to `getPage`, convex-helpers provides a function
 built-in `.paginate`, to make it easy to switch.
 
 It runs on top of `getPage`, so it provides the benefits of being callable
-multiple times from a query, or within a Convex component.
+multiple times from a query, or within a Convex component. On the other hand,
+it provides less control over the index ranges being queried.
 
 The interface is so similar to `.paginate` that you can use it with
 `usePaginatedQuery`. **However**, doing so will result in non-reactive pages.
@@ -781,7 +782,7 @@ https://stack.convex.dev/fully-reactive-pagination.
 
 `getPageOfQuery` is especially useful when you cannot use `.paginate` and you
 are not in a reactive query. For example, if you're running a migration,
-it's running in a mutation or action and it doesn't need reactivity. You can run
+it's running in a mutation and it doesn't need reactivity. You can run
 multiple migrations at once or run a migration within a Convex component using
 `getPageOfQuery`.
 
