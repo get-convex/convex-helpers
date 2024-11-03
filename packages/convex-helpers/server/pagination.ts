@@ -334,11 +334,11 @@ const END_CURSOR = "endcursor";
  *  .order("desc")
  *  .paginate(opts)
  *
- * await getPageNonReactive(
+ * await getPageOfQuery(
  *   ctx,
  *   db=>db.query(table).withIndex(index, q=>q.eq(field, value)).order("desc"),
+ *   opts,
  *   {
- *     opts,
  *     filter: async (doc) => doc[field1] !== value1,
  *     schema,
  *   },
@@ -347,43 +347,46 @@ const END_CURSOR = "endcursor";
  * 
  * Differences:
  * 
- * - getPageNonReactive does not pin the end of the page; it always
- *   returns a fixed number of documents (before applying the optional filter).
- *   Thus it should not be used in a reactive query.
- *   [This article](https://stack.convex.dev/fully-reactive-pagination) describes
- *   the benefits of reactive pagination that `paginate` provides but
- *   `getPageNonReactive` does not.
- * - getPageNonReactive can be called multiple times in a query or mutation,
+ * - getPageOfQuery does not automatically pin the end of the page for when
+ *   the query reruns. To pin the end of the page, you can use the `endCursor`
+ *   option. This does not happen automatically.
+ * - getPageOfQuery can be called multiple times in a query or mutation,
  *   and within Convex components.
  * - Cursors are not encrypted.
  * 
+ * @argument paginationOpts.cursor Where to start the page. This should come from
+ * `continueCursor` in the previous page.
+ * @argument paginationOpts.endCursor Where to end the page. This should from from
+ * `continueCursor` in the *current* page.
+ * NOTE: `endCursor` is not automatically populated. If you want reactive
+ * pagination, a la
+ * [this article](https://stack.convex.dev/fully-reactive-pagination),
+ * you need to rerun the query with `endCursor` provided.
+ * If not provided, the page will end when it reaches `options.opts.numItems`.
  * @argument options.filter The filter is optional, and it's a post-filter
  * like the convex-helpers `filter()`, so a sparse predicate may result
  * in small or empty pages.
+ * See [this article](https://stack.convex.dev/complex-filters-in-convex)
  * @argument options.schema If you use an index that is not by_creation_time
  * or by_id, you need to provide the schema.
  */
-export async function getPageNonReactive<
+export async function getPageOfQuery<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 >(
   ctx: { db: GenericDatabaseReader<DataModel> },
   range: (db: GenericDatabaseReader<DataModel>) => OrderedQuery<NamedTableInfo<DataModel, T>>,
+  paginationOpts: PaginationOptions & { endCursor?: string | null },
   options?: {
-    opts?: PaginationOptions,
     filter?: (doc: DocumentByName<DataModel, T>) => Promise<boolean>,
     schema?: SchemaDefinition<any, boolean>,
   },
 ): Promise<PaginationResult<DocumentByName<DataModel, T>>> {
-  const opts = options?.opts ?? {
-    cursor: null,
-    numItems: 100,
-  };
-  if (opts.cursor === "endcursor") {
+  if (paginationOpts.cursor === END_CURSOR) {
     return {
       page: [],
       isDone: true,
-      continueCursor: "endcursor",
+      continueCursor: END_CURSOR,
     };
   }
   const schema = options?.schema;
@@ -391,9 +394,17 @@ export async function getPageNonReactive<
   const evaluatedRange = fakeRange.finish() as PageRequest<DataModel, T>;
   let startIndexKey = evaluatedRange.startIndexKey;
   let startInclusive = evaluatedRange.startInclusive;
-  if (opts.cursor !== null) {
-    startIndexKey = jsonToConvex(JSON.parse(opts.cursor)) as IndexKey;
+  if (paginationOpts.cursor !== null) {
+    startIndexKey = jsonToConvex(JSON.parse(paginationOpts.cursor)) as IndexKey;
     startInclusive = false;
+  }
+  let endIndexKey = evaluatedRange.endIndexKey;
+  let endInclusive = evaluatedRange.endInclusive;
+  let absoluteMaxRows: number | undefined = paginationOpts.numItems;
+  if (paginationOpts.endCursor && paginationOpts.endCursor !== END_CURSOR) {
+    endIndexKey = jsonToConvex(JSON.parse(paginationOpts.endCursor)) as IndexKey;
+    endInclusive = true;
+    absoluteMaxRows = undefined;
   }
   const {
     page, hasMore, indexKeys,
@@ -401,17 +412,24 @@ export async function getPageNonReactive<
     ...evaluatedRange,
     startIndexKey,
     startInclusive,
+    endIndexKey,
+    endInclusive,
     schema,
-    absoluteMaxRows: opts.numItems,
+    targetMaxRows: paginationOpts.numItems,
+    absoluteMaxRows,
   });
   const filteredPage = options?.filter ? await asyncFilter(page, options.filter) : page;
   let continueCursor = END_CURSOR;
-  if (indexKeys.length > 0 && hasMore) {
+  let isDone = !hasMore;
+  if (paginationOpts.endCursor && paginationOpts.endCursor !== END_CURSOR) {
+    continueCursor = paginationOpts.endCursor;
+    isDone = false;
+  } else if (indexKeys.length > 0 && hasMore) {
     continueCursor = JSON.stringify(convexToJson(indexKeys[indexKeys.length - 1] as Value));
   }
   return {
     page: filteredPage,
-    isDone: !hasMore,
+    isDone,
     continueCursor,
   };
 }

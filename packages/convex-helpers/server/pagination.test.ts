@@ -1,7 +1,7 @@
 import { defineTable, defineSchema, GenericDocument, DataModelFromSchemaDefinition } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { IndexKey, getPage, getPageNonReactive } from "./pagination.js";
+import { IndexKey, getPage, getPageOfQuery } from "./pagination.js";
 import { modules } from "./setup.test.js";
 import { GenericId, v } from "convex/values";
 
@@ -246,16 +246,17 @@ describe("manual pagination", () => {
   });
 });
 
-describe("getPageNonReactive", () => {
+describe("getPageOfQuery", () => {
   test("full table scan", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      const result1 = await getPageNonReactive(
+      const result1 = await getPageOfQuery(
         ctx,
         (db) => db.query("foo"),
+        { numItems: 100, cursor: null },
       );
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
@@ -273,10 +274,10 @@ describe("getPageNonReactive", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      const result1 = await getPageNonReactive(
+      const result1 = await getPageOfQuery(
         ctx,
         (db) => db.query("foo"),
-        { opts: { numItems: 2, cursor: null } },
+        { numItems: 2, cursor: null },
       );
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
@@ -284,10 +285,10 @@ describe("getPageNonReactive", () => {
       ]);
       expect(result1.isDone).toBe(false);
       
-      const result2 = await getPageNonReactive(
+      const result2 = await getPageOfQuery(
         ctx,
         (db) => db.query("foo"),
-        { opts: { numItems: 2, cursor: result1.continueCursor } },
+        { numItems: 2, cursor: result1.continueCursor },
       );
       expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 5 },
@@ -302,11 +303,11 @@ describe("getPageNonReactive", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      const result1 = await getPageNonReactive(
+      const result1 = await getPageOfQuery(
         ctx,
         (db) => db.query("foo"),
+        { numItems: 2, cursor: null },
         {
-          opts: { numItems: 2, cursor: null },
           filter: async (doc) => doc.c !== 4,
         },
       );
@@ -325,9 +326,10 @@ describe("getPageNonReactive", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result1 = await getPageNonReactive<DataModel, "foo">(
+      const result1 = await getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
+        { cursor: null, numItems: 100 },
         { schema },
       );
       expect(result1.page.map(stripSystemFields)).toEqual([
@@ -338,9 +340,10 @@ describe("getPageNonReactive", () => {
       expect(result1.isDone).toBe(true);
 
       // Descending.
-      const result2 = await getPageNonReactive<DataModel, "foo">(
+      const result2 = await getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
+        { cursor: null, numItems: 100 },
         { schema },
       );
       expect(result2.page.map(stripSystemFields)).toEqual([
@@ -360,12 +363,12 @@ describe("getPageNonReactive", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result1 = await getPageNonReactive<DataModel, "foo">(
+      const result1 = await getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
+        { cursor: null, numItems: 2 },
         {
           schema,
-          opts: { cursor: null, numItems: 2 },
         },
       );
       expect(result1.page.map(stripSystemFields)).toEqual([
@@ -374,12 +377,12 @@ describe("getPageNonReactive", () => {
       ]);
       expect(result1.isDone).toBe(false);
 
-      const result2 = await getPageNonReactive<DataModel, "foo">(
+      const result2 = await getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
+        { cursor: result1.continueCursor, numItems: 2 },
         {
           schema,
-          opts: { cursor: result1.continueCursor, numItems: 2 },
         },
       );
       expect(result2.page.map(stripSystemFields)).toEqual([
@@ -392,26 +395,86 @@ describe("getPageNonReactive", () => {
   test("invalid index range", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await expect(getPageNonReactive<DataModel, "foo">(
+      await expect(getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => q.gt("c" as any, 3)),
+        { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use gt on field 'c'");
-      await expect(getPageNonReactive<DataModel, "foo">(
+      await expect(getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).eq("c" as any, 3)),
+        { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use eq on field 'c'");
-      await expect(getPageNonReactive<DataModel, "foo">(
+      await expect(getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => (q.gt("a", 1) as any).gt("b", 3)),
+        { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use gt on field 'b'");
-      await expect(getPageNonReactive<DataModel, "foo">(
+      await expect(getPageOfQuery<DataModel, "foo">(
         ctx,
         (db) => db.query("foo").withIndex("abc", q => (q.gt("a", 1).lt("a", 3) as any).eq("b", 3)),
+        { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use eq on field 'b'");
+    });
+  });
+
+  test("endCursor", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 6, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
+      const result1 = await getPageOfQuery<DataModel, "foo">(
+        ctx,
+        (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
+        { cursor: null, numItems: 2 },
+        { schema },
+      );
+      expect(result1.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 4, c: 1 },
+        { a: 1, b: 4, c: 3 },
+      ]);
+      expect(result1.isDone).toBe(false);
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
+      const result2 = await getPageOfQuery<DataModel, "foo">(
+        ctx,
+        (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
+        { cursor: null, endCursor: result1.continueCursor, numItems: 2 },
+        { schema },
+      );
+      expect(result2.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 4, c: 1 },
+        { a: 1, b: 4, c: 2 },
+        { a: 1, b: 4, c: 3 },
+      ]);
+      expect(result2.isDone).toBe(false);
+      expect(result1.continueCursor).toStrictEqual(result2.continueCursor);
+      const result3 = await getPageOfQuery<DataModel, "foo">(
+        ctx,
+        (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
+        { cursor: result2.continueCursor, numItems: 2 },
+        { schema },
+      );
+      expect(result3.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 5, c: 1 },
+      ]);
+      expect(result3.isDone).toBe(true);
+      const result4 = await getPageOfQuery<DataModel, "foo">(
+        ctx,
+        (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
+        { cursor: result2.continueCursor, endCursor: result3.continueCursor, numItems: 2 },
+        { schema },
+      );
+      expect(result4.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 5, c: 1 },
+      ]);
+      expect(result4.isDone).toBe(true);
     });
   });
 });

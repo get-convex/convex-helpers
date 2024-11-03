@@ -764,6 +764,93 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
 });
 ```
 
+### `getPageOfQuery`
+
+In addition to `getPage`, convex-helpers provides a function
+`getPageOfQuery`. This function has syntax and interface similar to the
+built-in `.paginate`, to make it easy to switch.
+
+It runs on top of `getPage`, so it provides the benefits of being callable
+multiple times from a query, or within a Convex component.
+
+The interface is so similar to `.paginate` that you can use it with
+`usePaginatedQuery`. **However**, doing so will result in non-reactive pages.
+Keeping pages contiguous requires rerunning queries and passing through an
+`endCursor` option. For more info on these edge-cases, see
+https://stack.convex.dev/fully-reactive-pagination.
+
+`getPageOfQuery` is especially useful when you cannot use `.paginate` and you
+are not in a reactive query. For example, if you're running a migration,
+it's running in a mutation or action and it doesn't need reactivity. You can run
+multiple migrations at once or run a migration within a Convex component using
+`getPageOfQuery`.
+
+As a basic example, suppose you have this query:
+
+```ts
+export const list = query({
+  args: { opts: paginationOptsValidator },
+  handler: async (ctx, { opts }) => {
+    return await ctx.db.query("messages").paginate(opts);
+  },
+});
+```
+
+It has the same behavior as this query, except that in this one the pages might
+not stay contiguous as items are added and removed from the list and the query
+updates reactively:
+
+```ts
+import { getPageOfQuery } from "convex-helpers/server/pagination";
+export const list = query({
+  args: { opts: paginationOptsValidator },
+  handler: async (ctx, { opts }) => {
+    return await getPageOfQuery(
+      ctx,
+      (db) => db.query("messages"),
+      opts,
+    );
+  },
+});
+```
+
+You can order by an index, restrict the pagination to a range of the index,
+and change the order to "desc", same as you would with a regular query.
+
+```ts
+import { getPageOfQuery } from "convex-helpers/server/pagination";
+import schema from "./schema";
+export const list = query({
+  args: { opts: paginationOptsValidator, author: v.id("users") },
+  handler: async (ctx, { opts, author }) => {
+    return await getPageOfQuery(
+      ctx,
+      (db) => db.query("messages").withIndex("by_author", q=>q.eq("author", author)).order("desc"),
+      opts,
+      { schema },
+    );
+  },
+});
+```
+
+And for convenience there's an equivalent of the [filter helper](#filter).
+
+```ts
+import { getPageOfQuery } from "convex-helpers/server/pagination";
+import schema from "./schema";
+export const list = query({
+  args: { opts: paginationOptsValidator, author: v.id("users") },
+  handler: async (ctx, { opts, author }) => {
+    return await getPageOfQuery(
+      ctx,
+      (db) => db.query("messages"),
+      opts,
+      { filter: async (message) => !message.isArchived },
+    );
+  },
+});
+```
+
 ## Query Caching
 
 Utilize a query cache implementation which persists subscriptions to the
