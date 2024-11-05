@@ -347,9 +347,11 @@ const END_CURSOR = "endcursor";
  * 
  * Differences:
  * 
- * - getPageOfQuery does not automatically pin the end of the page for when
- *   the query reruns. To pin the end of the page, you can use the `endCursor`
- *   option. This does not happen automatically.
+ * - getPageOfQuery does not automatically track the end of the page for when
+ *   the query reruns. The standard `paginate` call will record the end of the page,
+ *   so a client can have seamless reactive pagination. To pin the end of the page,
+ *   you can use the `endCursor` option. This does not happen automatically.
+ *   Read more [here](https://stack.convex.dev/pagination#stitching-the-pages-together)
  * - getPageOfQuery can be called multiple times in a query or mutation,
  *   and within Convex components.
  * - Cursors are not encrypted.
