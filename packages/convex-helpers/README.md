@@ -764,11 +764,11 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
 });
 ```
 
-### `getPageOfQuery`: manual pagination with familiar syntax
+### `paginator`: manual pagination with familiar syntax
 
 In addition to `getPage`, convex-helpers provides a function
-`getPageOfQuery`. This function has syntax and interface similar to the
-built-in `.paginate`, to make it easy to switch.
+`paginator`. This function has syntax and interface similar to the
+built-in Convex query builder, to make it easy to switch.
 
 It runs on top of `getPage`, so it provides the benefits of being callable
 multiple times from a query, or within a Convex component. On the other hand,
@@ -780,11 +780,11 @@ Keeping pages contiguous requires rerunning queries and passing through an
 `endCursor` option. For more info on these edge-cases, see
 https://stack.convex.dev/fully-reactive-pagination.
 
-`getPageOfQuery` is especially useful when you cannot use `.paginate` and you
-are not in a reactive query. For example, if you're running a migration,
+`paginator` is especially useful when you cannot use the built-in `.paginate`
+and you are not in a reactive query. For example, if you're running a migration,
 it's running in a mutation and it doesn't need reactivity. You can run
 multiple migrations at once or run a migration within a Convex component using
-`getPageOfQuery`.
+`paginator`.
 
 As a basic example, suppose you have this query:
 
@@ -802,15 +802,13 @@ not stay contiguous as items are added and removed from the list and the query
 updates reactively:
 
 ```ts
-import { getPageOfQuery } from "convex-helpers/server/pagination";
+import { paginator } from "convex-helpers/server/pagination";
+import schema from "./schema";
+
 export const list = query({
   args: { opts: paginationOptsValidator },
   handler: async (ctx, { opts }) => {
-    return await getPageOfQuery(
-      ctx,
-      (db) => db.query("messages"),
-      opts,
-    );
+    return await paginator(ctx.db, schema).query("messages").paginate(opts);
   },
 });
 ```
@@ -819,35 +817,17 @@ You can order by an index, restrict the pagination to a range of the index,
 and change the order to "desc", same as you would with a regular query.
 
 ```ts
-import { getPageOfQuery } from "convex-helpers/server/pagination";
+import { paginator } from "convex-helpers/server/pagination";
 import schema from "./schema";
+
 export const list = query({
   args: { opts: paginationOptsValidator, author: v.id("users") },
   handler: async (ctx, { opts, author }) => {
-    return await getPageOfQuery(
-      ctx,
-      (db) => db.query("messages").withIndex("by_author", q=>q.eq("author", author)).order("desc"),
-      opts,
-      { schema },
-    );
-  },
-});
-```
-
-And for convenience there's an equivalent of the [filter helper](#filter).
-
-```ts
-import { getPageOfQuery } from "convex-helpers/server/pagination";
-import schema from "./schema";
-export const list = query({
-  args: { opts: paginationOptsValidator, author: v.id("users") },
-  handler: async (ctx, { opts, author }) => {
-    return await getPageOfQuery(
-      ctx,
-      (db) => db.query("messages"),
-      opts,
-      { filter: async (message) => !message.isArchived },
-    );
+    return await paginator(ctx.db, schema)
+      .query("messages")
+      .withIndex("by_author", q=>q.eq("author", author))
+      .order("desc")
+      .paginate(opts);
   },
 });
 ```
