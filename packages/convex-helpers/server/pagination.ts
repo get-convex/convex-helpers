@@ -328,14 +328,14 @@ const END_CURSOR = "endcursor";
  * These two queries are roughly equivalent:
  * 
  * ```ts
- * await ctx.db.query(table)
+ * await db.query(table)
  *  .withIndex(index, q=>q.eq(field, value))
  *  .filter(q=>q.neq(q.field(field1), value1))
  *  .order("desc")
  *  .paginate(opts)
  *
  * await getPageOfQuery(
- *   ctx,
+ *   db,
  *   db=>db.query(table).withIndex(index, q=>q.eq(field, value)).order("desc"),
  *   opts,
  *   {
@@ -373,9 +373,10 @@ const END_CURSOR = "endcursor";
 export async function getPageOfQuery<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
+  DB extends GenericDatabaseReader<DataModel>,
 >(
-  ctx: { db: GenericDatabaseReader<DataModel> },
-  range: (db: GenericDatabaseReader<DataModel>) => OrderedQuery<NamedTableInfo<DataModel, T>>,
+  db: DB,
+  range: (db: DB) => OrderedQuery<NamedTableInfo<DataModel, T>>,
   paginationOpts: PaginationOptions & { endCursor?: string | null },
   options?: {
     filter?: (doc: DocumentByName<DataModel, T>) => Promise<boolean>,
@@ -408,7 +409,7 @@ export async function getPageOfQuery<
   }
   const {
     page, hasMore, indexKeys,
-  } = await getPage(ctx, {
+  } = await getPage({ db }, {
     ...evaluatedRange,
     startIndexKey,
     startInclusive,

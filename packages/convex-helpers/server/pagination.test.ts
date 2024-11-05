@@ -254,7 +254,7 @@ describe("getPageOfQuery", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
       const result1 = await getPageOfQuery(
-        ctx,
+        ctx.db,
         (db) => db.query("foo"),
         { numItems: 100, cursor: null },
       );
@@ -275,7 +275,7 @@ describe("getPageOfQuery", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
       const result1 = await getPageOfQuery(
-        ctx,
+        ctx.db,
         (db) => db.query("foo"),
         { numItems: 2, cursor: null },
       );
@@ -286,7 +286,7 @@ describe("getPageOfQuery", () => {
       expect(result1.isDone).toBe(false);
       
       const result2 = await getPageOfQuery(
-        ctx,
+        ctx.db,
         (db) => db.query("foo"),
         { numItems: 2, cursor: result1.continueCursor },
       );
@@ -304,7 +304,7 @@ describe("getPageOfQuery", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
       const result1 = await getPageOfQuery(
-        ctx,
+        ctx.db,
         (db) => db.query("foo"),
         { numItems: 2, cursor: null },
         {
@@ -326,8 +326,8 @@ describe("getPageOfQuery", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result1 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result1 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
         { cursor: null, numItems: 100 },
         { schema },
@@ -340,8 +340,8 @@ describe("getPageOfQuery", () => {
       expect(result1.isDone).toBe(true);
 
       // Descending.
-      const result2 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result2 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
         { cursor: null, numItems: 100 },
         { schema },
@@ -363,8 +363,8 @@ describe("getPageOfQuery", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result1 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result1 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
         { cursor: null, numItems: 2 },
         {
@@ -377,8 +377,8 @@ describe("getPageOfQuery", () => {
       ]);
       expect(result1.isDone).toBe(false);
 
-      const result2 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result2 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"),
         { cursor: result1.continueCursor, numItems: 2 },
         {
@@ -395,26 +395,26 @@ describe("getPageOfQuery", () => {
   test("invalid index range", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await expect(getPageOfQuery<DataModel, "foo">(
-        ctx,
+      await expect(getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.gt("c" as any, 3)),
         { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use gt on field 'c'");
-      await expect(getPageOfQuery<DataModel, "foo">(
-        ctx,
+      await expect(getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).eq("c" as any, 3)),
         { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use eq on field 'c'");
-      await expect(getPageOfQuery<DataModel, "foo">(
-        ctx,
+      await expect(getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => (q.gt("a", 1) as any).gt("b", 3)),
         { cursor: null, numItems: 100 },
         { schema },
       )).rejects.toThrow("Cannot use gt on field 'b'");
-      await expect(getPageOfQuery<DataModel, "foo">(
-        ctx,
+      await expect(getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => (q.gt("a", 1).lt("a", 3) as any).eq("b", 3)),
         { cursor: null, numItems: 100 },
         { schema },
@@ -430,8 +430,8 @@ describe("getPageOfQuery", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
-      const result1 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result1 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
         { cursor: null, numItems: 2 },
         { schema },
@@ -442,8 +442,8 @@ describe("getPageOfQuery", () => {
       ]);
       expect(result1.isDone).toBe(false);
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result2 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result2 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
         { cursor: null, endCursor: result1.continueCursor, numItems: 2 },
         { schema },
@@ -455,8 +455,8 @@ describe("getPageOfQuery", () => {
       ]);
       expect(result2.isDone).toBe(false);
       expect(result1.continueCursor).toStrictEqual(result2.continueCursor);
-      const result3 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result3 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
         { cursor: result2.continueCursor, numItems: 2 },
         { schema },
@@ -465,8 +465,8 @@ describe("getPageOfQuery", () => {
         { a: 1, b: 5, c: 1 },
       ]);
       expect(result3.isDone).toBe(true);
-      const result4 = await getPageOfQuery<DataModel, "foo">(
-        ctx,
+      const result4 = await getPageOfQuery(
+        ctx.db,
         (db) => db.query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)),
         { cursor: result2.continueCursor, endCursor: result3.continueCursor, numItems: 2 },
         { schema },
