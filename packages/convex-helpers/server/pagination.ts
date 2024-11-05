@@ -537,7 +537,7 @@ class FakeQuery {
   }
   gte(field: string, value: Value) {
     if (!this.canLowerBound(field)) {
-      throw new Error(`Cannot use gt on field '${field}'`);
+      throw new Error(`Cannot use gte on field '${field}'`);
     }
     this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
     this.lowerBoundIndexKey.push(value);
