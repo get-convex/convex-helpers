@@ -365,10 +365,6 @@ const END_CURSOR = "endcursor";
  * `continueCursor` in the previous page.
  * @argument opts.endCursor Where to end the page. This should from from
  * `continueCursor` in the *current* page.
- * NOTE: `endCursor` is not automatically populated. If you want reactive
- * pagination, a la
- * [this article](https://stack.convex.dev/fully-reactive-pagination),
- * you need to rerun the query with `endCursor` provided.
  * If not provided, the page will end when it reaches `options.opts.numItems`.
  * @argument options.schema If you use an index that is not by_creation_time
  * or by_id, you need to provide the schema.
