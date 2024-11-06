@@ -777,6 +777,64 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
 });
 ```
 
+### `paginator`: manual pagination with familiar syntax
+
+In addition to `getPage`, convex-helpers provides a function
+`paginator` as an alternative to the built-in `db.query.paginate`.
+
+- The built-in `.paginate` is currently limited to one call per query, which allows
+  it to track the page's "end cursor" for contiguous reactive pagination client-side.
+- `paginator` can be called multiple times from a query,
+  but does not subscribe the query to the end cursor automatically.
+
+The syntax and interface for `paginator` is so similar to `.paginate` that it is
+nearly a drop-in replacement and can even be used with `usePaginatedQuery`.
+This makes it more suitable for non-reactive pagination usecases,
+such as iterating data in a mutation. Note: it supports `withIndex` but not `filter`.
+
+For more information on reactive pagination and end cursors, see
+https://stack.convex.dev/fully-reactive-pagination
+and
+https://stack.convex.dev/pagination
+
+As a basic example, consider replacing this query with `paginator`.
+It has the same behavior, except that the pages might not stay contiguous as
+items are added and removed from the list and the query updates reactively.
+
+```ts
+import { paginator } from "convex-helpers/server/pagination";
+import schema from "./schema";
+
+export const list = query({
+  args: { opts: paginationOptsValidator },
+  handler: async (ctx, { opts }) => {
+    // BEFORE:
+    return await ctx.db.query("messages").paginate(opts);
+    // AFTER:
+    return await paginator(ctx.db, schema).query("messages").paginate(opts);
+  },
+});
+```
+
+You can order by an index, restrict the pagination to a range of the index,
+and change the order to "desc", same as you would with a regular query.
+
+```ts
+import { paginator } from "convex-helpers/server/pagination";
+import schema from "./schema";
+
+export const list = query({
+  args: { opts: paginationOptsValidator, author: v.id("users") },
+  handler: async (ctx, { opts, author }) => {
+    return await paginator(ctx.db, schema)
+      .query("messages")
+      .withIndex("by_author", q=>q.eq("author", author))
+      .order("desc")
+      .paginate(opts);
+  },
+});
+```
+
 ## Query Caching
 
 Utilize a query cache implementation which persists subscriptions to the
