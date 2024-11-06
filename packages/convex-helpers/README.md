@@ -784,8 +784,6 @@ https://stack.convex.dev/fully-reactive-pagination
 and
 https://stack.convex.dev/pagination
 
-**However**, the pages may not stay contiguous.
-
 As a basic example, consider replacing this query with `paginator`.
 It has the same behavior, except that the pages might not stay contiguous as
 items are added and removed from the list and the query updates reactively.
@@ -803,6 +801,7 @@ export const list = query({
     return await paginator(ctx.db, schema).query("messages").paginate(opts);
   },
 });
+```
 
 You can order by an index, restrict the pagination to a range of the index,
 and change the order to "desc", same as you would with a regular query.

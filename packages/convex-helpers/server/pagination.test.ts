@@ -1,4 +1,4 @@
-import { defineTable, defineSchema, GenericDocument, DataModelFromSchemaDefinition } from "convex/server";
+import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { IndexKey, getPage, paginator } from "./pagination.js";
@@ -12,8 +12,6 @@ const schema = defineSchema({
     c: v.number(),
   }).index("abc", ["a", "b", "c"]),
 });
-
-type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 
 function stripSystemFields(doc: GenericDocument) {
   const { _id, _creationTime, ...rest } = doc;
