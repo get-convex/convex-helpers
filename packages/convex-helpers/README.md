@@ -786,20 +786,9 @@ https://stack.convex.dev/pagination
 
 **However**, the pages may not stay contiguous.
 
-As a basic example, suppose you have this query:
-
-```ts
-export const list = query({
-  args: { opts: paginationOptsValidator },
-  handler: async (ctx, { opts }) => {
-    return await ctx.db.query("messages").paginate(opts);
-  },
-});
-```
-
-It has the same behavior as this query, except that in this one the pages might
-not stay contiguous as items are added and removed from the list and the query
-updates reactively:
+As a basic example, consider replacing this query with `paginator`.
+It has the same behavior, except that the pages might not stay contiguous as
+items are added and removed from the list and the query updates reactively.
 
 ```ts
 import { paginator } from "convex-helpers/server/pagination";
@@ -808,10 +797,12 @@ import schema from "./schema";
 export const list = query({
   args: { opts: paginationOptsValidator },
   handler: async (ctx, { opts }) => {
+    // BEFORE:
+    return await ctx.db.query("messages").paginate(opts);
+    // AFTER:
     return await paginator(ctx.db, schema).query("messages").paginate(opts);
   },
 });
-```
 
 You can order by an index, restrict the pagination to a range of the index,
 and change the order to "desc", same as you would with a regular query.
