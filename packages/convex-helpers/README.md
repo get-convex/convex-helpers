@@ -767,24 +767,24 @@ const { page, indexKeys, hasMore } = await getPage(ctx, {
 ### `paginator`: manual pagination with familiar syntax
 
 In addition to `getPage`, convex-helpers provides a function
-`paginator`. This function has syntax and interface similar to the
-built-in Convex query builder, to make it easy to switch.
+`paginator` as an alternative to the built-in `db.query.paginate`.
 
-It runs on top of `getPage`, so it provides the benefits of being callable
-multiple times from a query, or within a Convex component. On the other hand,
-it provides less control over the index ranges being queried.
+- The built-in `.paginate` is currently limited to one call per query, which allows
+  it to track the page's "end cursor" for contiguous reactive pagination client-side.
+- `paginator` can be called multiple times from a query,
+  but does not subscribe the query to the end cursor automatically.
 
-The interface is so similar to `.paginate` that you can use it with
-`usePaginatedQuery`. **However**, doing so will result in non-reactive pages.
-Keeping pages contiguous requires rerunning queries and passing through an
-`endCursor` option. For more info on these edge-cases, see
-https://stack.convex.dev/fully-reactive-pagination.
+The syntax and interface for `paginator` is so similar to `.paginate` that it is
+nearly a drop-in replacement and can even be used with `usePaginatedQuery`.
+This makes it more suitable for non-reactive pagination usecases,
+such as iterating data in a mutation. Note: it supports `withIndex` but not `filter`.
 
-`paginator` is especially useful when you cannot use the built-in `.paginate`
-and you are not in a reactive query. For example, if you're running a migration,
-it's running in a mutation and it doesn't need reactivity. You can run
-multiple migrations at once or run a migration within a Convex component using
-`paginator`.
+For more information on reactive pagination and end cursors, see
+https://stack.convex.dev/fully-reactive-pagination
+and
+https://stack.convex.dev/pagination
+
+**However**, the pages may not stay contiguous.
 
 As a basic example, suppose you have this query:
 
