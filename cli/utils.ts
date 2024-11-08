@@ -1,7 +1,9 @@
 import fs from "fs";
-import { execSync } from "child_process";
+import { execSync, spawnSync } from "child_process";
 import chalk from "chalk";
 import { ValidatorJSON } from "convex/values";
+import path from "path";
+import os from "os";
 
 type Visibility = { kind: "public" } | { kind: "internal" };
 
@@ -33,12 +35,23 @@ export function getFunctionSpec(prod?: boolean, filePath?: string) {
   if (filePath) {
     content = fs.readFileSync(filePath, "utf-8");
   } else {
-    const flags = prod ? "--prod" : "";
-    let output: string;
+    const tempFile = path.join(os.tmpdir(), `function-spec-${Date.now()}.json`);
+
     try {
-      output = execSync(`npx convex function-spec ${flags}`, {
-        maxBuffer: 1024 * 1024 * 10 /* 10 MB */,
-      }).toString();
+      const outputFd = fs.openSync(tempFile, "w");
+      const flags = prod ? ["--prod"] : [];
+      const result = spawnSync("npx", ["convex", "function-spec", ...flags], {
+        stdio: ["inherit", outputFd, "pipe"],
+        encoding: "utf-8",
+      });
+
+      fs.closeSync(outputFd);
+
+      if (result.status !== 0) {
+        throw new Error(result.stderr || "Failed without error message");
+      }
+
+      content = fs.readFileSync(tempFile, "utf-8");
     } catch (e) {
       console.error(
         chalk.red(
@@ -47,8 +60,18 @@ export function getFunctionSpec(prod?: boolean, filePath?: string) {
         ),
       );
       process.exit(1);
+    } finally {
+      try {
+        fs.unlinkSync(tempFile);
+      } catch (error) {
+        console.warn(
+          chalk.yellow(
+            `Warning: Failed to delete temporary file ${filePath}:`,
+            error instanceof Error ? error.message : "Unknown error",
+          ),
+        );
+      }
     }
-    content = output.toString();
   }
 
   return content;
