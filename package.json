@@ -3,7 +3,7 @@
   "private": "true",
   "description": "Home to [packages](./packages/) to complement the official convex package.",
   "bin": {
-    "convex-helpers": "./dist/bin.cjs"
+    "convex-helpers": "./packages/convex-helpers/dist/bin.cjs"
   },
   "scripts": {
     "init": "convex dev --until-success",

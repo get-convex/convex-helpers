@@ -7,7 +7,7 @@ import { FUNCTIONS_JSON, OPEN_API_SPEC } from './functions.test';
 // If this test fails, it means you changed the generated OpenAPI spec. Confirm that these changes are
 // intentional by looking at the diff and update the string we compare against.
 test("openApiSpecMatches", () => {
-    const apiSpec = generateOpenApiSpec(JSON.parse(FUNCTIONS_JSON));
+    const apiSpec = generateOpenApiSpec(JSON.parse(FUNCTIONS_JSON), true);
 
     expect(apiSpec, "The generated spec has changed. Confirm that these changes are intentional\
          by looking at the diff and update the comparison string if necessary.").toEqual(OPEN_API_SPEC);
@@ -15,7 +15,7 @@ test("openApiSpecMatches", () => {
 
 // If this test fails, it means the generated OpenAPI spec is no longer valid.
 test("generateValidSpec", async () => {
-    const apiSpec = generateOpenApiSpec(JSON.parse(FUNCTIONS_JSON));
+    const apiSpec = generateOpenApiSpec(JSON.parse(FUNCTIONS_JSON), true);
 
     const testFileName = "openApiSpec.test.yaml";
     fs.writeFileSync(testFileName, apiSpec, 'utf-8');
