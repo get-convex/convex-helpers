@@ -38,7 +38,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.16.4",
+    "@arethetypeswrong/cli": "0.17.0",
     "@edge-runtime/vm": "4.0.4",
     "@testing-library/react": "16.0.1",
     "@types/babel__core": "7.20.5",
