@@ -75,11 +75,7 @@ export type RateLimitError = {
 export function isRateLimitError(
   error: unknown,
 ): error is { data: RateLimitError } {
-  return (
-    error instanceof ConvexError &&
-    "kind" in error.data &&
-    error.data.kind === "RateLimited"
-  );
+  return error instanceof ConvexError && error.data["kind"] === "RateLimited";
 }
 
 /**

@@ -8,8 +8,11 @@ import {
   rateLimit,
   resetRateLimit,
   RateLimitConfig,
+  isRateLimitError,
+  RateLimitError,
 } from "./rateLimit.js";
 import { modules } from "./setup.test.js";
+import { ConvexError } from "convex/values";
 
 const schema = defineSchema({
   foo: defineTable({}),
@@ -19,6 +22,19 @@ const schema = defineSchema({
 const Second = 1_000;
 const Minute = 60 * Second;
 const Hour = 60 * Minute;
+
+test("isRateLimitError", () => {
+  expect(
+    isRateLimitError(
+      new ConvexError({
+        kind: "RateLimited",
+        name: "foo",
+        retryAt: 1,
+      } as RateLimitError),
+    ),
+  ).toBe(true);
+  expect(isRateLimitError(new ConvexError({ kind: "foo" }))).toBe(false);
+});
 
 describe.each(["token bucket", "fixed window"] as const)(
   "rateLimit %s",
