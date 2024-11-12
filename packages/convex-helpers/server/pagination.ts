@@ -599,7 +599,7 @@ export class OrderedPaginatorQuery<
   }
 }
 
-class PaginatorIndexRange {
+export class PaginatorIndexRange {
   private hasSuffix = false;
   public lowerBoundIndexKey: IndexKey | undefined = undefined;
   public lowerBoundInclusive: boolean = true;
