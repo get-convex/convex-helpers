@@ -13,7 +13,7 @@ import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { zCustomQuery, zid, zodToConvexFields } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import { v } from "convex/values";
+import { v, VString } from "convex/values";
 import { z } from "zod";
 
 // This is an example of how to make a version of `zid` that
@@ -37,6 +37,10 @@ export const kitchenSinkValidator = {
   array: z.array(z.string()),
   object: z.object({ a: z.string(), b: z.number() }),
   objectWithOptional: z.object({ a: z.string(), b: z.number().optional() }),
+  record: z.record(
+    z.union([z.string(), zid("users")]),
+    z.union([z.number(), z.string()]),
+  ),
   union: z.union([z.string(), z.number()]),
   discriminatedUnion: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("a"), a: z.string() }),
@@ -303,6 +307,7 @@ test("zod kitchen sink", async () => {
     array: ["1", "2"],
     object: { a: "1", b: 2 },
     objectWithOptional: { a: "1" },
+    record: { a: 1 },
     union: 1,
     discriminatedUnion: { kind: "a" as const, a: "1" },
     literal: "hi" as const,
@@ -312,7 +317,7 @@ test("zod kitchen sink", async () => {
     effect: "effect",
     optional: undefined,
     nullable: null,
-    branded: "branded",
+    branded: "branded" as string & z.BRAND<"branded">,
     default: undefined,
     readonly: { a: "1", b: 2 },
     pipeline: 0,
@@ -397,6 +402,16 @@ test("zod kitchen sink", async () => {
         },
         optional: false,
       },
+      objectWithOptional: {
+        fieldType: {
+          type: "object",
+          value: {
+            a: { fieldType: { type: "string" }, optional: false },
+            b: { fieldType: { type: "number" }, optional: true },
+          },
+        },
+        optional: false,
+      },
       optional: {
         fieldType: {
           type: "object",
@@ -417,6 +432,21 @@ test("zod kitchen sink", async () => {
           },
         },
         optional: false,
+      },
+      record: {
+        fieldType: {
+          keys: {
+            type: "union",
+            value: [{ type: "string" }, { tableName: "users", type: "id" }],
+          },
+          type: "record",
+          values: {
+            fieldType: {
+              type: "union",
+              value: [{ type: "number" }, { type: "string" }],
+            },
+          },
+        },
       },
       tuple: {
         fieldType: {
@@ -535,6 +565,7 @@ assert(
       nan: z.nan(),
       optional: z.number().optional(),
       optional2: z.optional(z.number()),
+      record: z.record(z.string(), z.number()),
       default: z.number().default(0),
       nullable: z.number().nullable(),
       null: z.null(),
@@ -549,13 +580,14 @@ assert(
       nan: v.number(),
       optional: v.optional(v.number()),
       optional2: v.optional(v.number()),
+      record: v.record(v.string(), v.number()),
       default: v.optional(v.number()),
       nullable: v.union(v.number(), v.null()),
       null: v.null(),
       bi: v.int64(),
       bool: v.boolean(),
       literal: v.literal("hi"),
-      branded: v.string(),
+      branded: v.string() as VString<string & z.BRAND<"branded">>,
     },
   ),
 );
