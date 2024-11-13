@@ -14,7 +14,7 @@ git diff --exit-code || {
   exit 1
 }
 function cleanup() {
-  git co -- :/packages/convex-helpers/package.json
+  git checkout -- :/packages/convex-helpers/package.json
 }
 trap cleanup EXIT
 

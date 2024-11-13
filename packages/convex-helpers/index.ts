@@ -12,7 +12,8 @@ export async function asyncMap<FromType, ToType>(
 ): Promise<ToType[]> {
   const promises: Promise<ToType>[] = [];
   let index = 0;
-  for (const item of await list) {
+  list = await list;
+  for (const item of list) {
     promises.push(asyncTransform(item, index));
     index += 1;
   }

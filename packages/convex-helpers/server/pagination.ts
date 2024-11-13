@@ -1,10 +1,20 @@
-import { Value, convexToJson } from "convex/values";
+import { Value, convexToJson, jsonToConvex } from "convex/values";
 import {
+  DataModelFromSchemaDefinition,
+  DocumentByInfo,
   DocumentByName,
   GenericDataModel,
   GenericDatabaseReader,
   IndexNames,
+  IndexRange,
+  IndexRangeBuilder,
+  NamedIndex,
   NamedTableInfo,
+  OrderedQuery,
+  PaginationOptions,
+  PaginationResult,
+  Query,
+  QueryInitializer,
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
@@ -313,4 +323,350 @@ function getIndexKey<
     key.push(obj);
   }
   return key;
+}
+
+const END_CURSOR = "endcursor";
+
+/**
+ * Simpified version of `getPage` that you can use for one-off queries that
+ * don't need to be reactive.
+ *
+ * These two queries are roughly equivalent:
+ *
+ * ```ts
+ * await db.query(table)
+ *  .withIndex(index, q=>q.eq(field, value))
+ *  .order("desc")
+ *  .paginate(opts)
+ *
+ * await paginator(db, schema)
+ *   .query(table)
+ *   .withIndex(index, q=>q.eq(field, value))
+ *   .order("desc")
+ *   .paginate(opts)
+ * ```
+ * 
+ * Differences:
+ *
+ * - `paginator` does not automatically track the end of the page for when
+ *   the query reruns. The standard `paginate` call will record the end of the page,
+ *   so a client can have seamless reactive pagination. To pin the end of the page,
+ *   you can use the `endCursor` option. This does not happen automatically.
+ *   Read more [here](https://stack.convex.dev/pagination#stitching-the-pages-together)
+ * - `paginator` can be called multiple times in a query or mutation,
+ *   and within Convex components.
+ * - Cursors are not encrypted.
+ * - `.filter()` and the `filter()` convex-helper are not supported.
+ *   Filter the returned `page` in TypeScript instead.
+ * - System tables like _storage and _scheduled_functions are not supported.
+ * - Having a schema is required.
+ * 
+ * @argument opts.cursor Where to start the page. This should come from
+ * `continueCursor` in the previous page.
+ * @argument opts.endCursor Where to end the page. This should from from
+ * `continueCursor` in the *current* page.
+ * If not provided, the page will end when it reaches `options.opts.numItems`.
+ * @argument options.schema If you use an index that is not by_creation_time
+ * or by_id, you need to provide the schema.
+ */
+export function paginator<
+  Schema extends SchemaDefinition<any, boolean>,
+>(
+  db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
+  schema: Schema,
+): PaginatorDatabaseReader<DataModelFromSchemaDefinition<Schema>> {
+  return new PaginatorDatabaseReader(db, schema);
+}
+
+export class PaginatorDatabaseReader<DataModel extends GenericDataModel>
+  implements GenericDatabaseReader<DataModel> {
+
+  // TODO: support system tables
+  public system: any = null;
+
+  constructor(
+    public db: GenericDatabaseReader<DataModel>,
+    public schema: SchemaDefinition<any, boolean>,
+  ) {}
+
+  query<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName,
+  ): PaginatorQueryInitializer<DataModel, TableName> {
+    return new PaginatorQueryInitializer(this, tableName);
+  }
+  get(_id: any): any {
+    throw new Error("get() not supported for `paginator`");
+  }
+  normalizeId(_tableName: any, _id: any): any {
+    throw new Error("normalizeId() not supported for `paginator`.");
+  }
+}
+
+export class PaginatorQueryInitializer<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> implements QueryInitializer<NamedTableInfo<DataModel, T>> {
+  constructor(
+    public parent: PaginatorDatabaseReader<DataModel>,
+    public table: T,
+  ) {}
+  fullTableScan(): PaginatorQuery<DataModel, T> {
+    return this.withIndex("by_creation_time");
+  }
+  withIndex<IndexName extends IndexNames<NamedTableInfo<DataModel, T>>>(
+    indexName: IndexName,
+    indexRange?: (
+      q: IndexRangeBuilder<
+        DocumentByInfo<NamedTableInfo<DataModel, T>>,
+        NamedIndex<NamedTableInfo<DataModel, T>, IndexName>
+      >,
+    ) => IndexRange,
+  ): PaginatorQuery<DataModel, T> {
+    const indexFields = getIndexFields<DataModel, T>({
+      table: this.table,
+      index: indexName,
+      schema: this.parent.schema,
+    });
+    const q = new PaginatorIndexRange(indexFields);
+    if (indexRange) {
+      indexRange(q as any);
+    }
+    return new PaginatorQuery(this, indexName, q);
+  }
+  withSearchIndex(_indexName: any, _searchFilter: any): any {
+    throw new Error("Cannot paginate withSearchIndex");
+  }
+  order(order: "asc" | "desc"): OrderedPaginatorQuery<DataModel, T> {
+    return this.fullTableScan().order(order);
+  }
+  paginate(opts: PaginationOptions & { endCursor?: string | null }): Promise<PaginationResult<DocumentByInfo<NamedTableInfo<DataModel, T>>>> {
+    return this.fullTableScan().paginate(opts);
+  }
+  filter(_predicate: any): any {
+    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+  }
+  collect(): any {
+    throw new Error(".collect() not supported for `paginator`. Use .paginate() instead.");
+  }
+  first(): any {
+    throw new Error(".first() not supported for `paginator`. Use .paginate() instead.");
+  }
+  unique(): any {
+    throw new Error(".unique() not supported for `paginator`. Use .paginate() instead.");
+  }
+  take(_n: number): any {
+    throw new Error(".take() not supported for `paginator`. Use .paginate() instead.");
+  }
+  [Symbol.asyncIterator](): any {
+    throw new Error("[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.");
+  }
+}
+
+export class PaginatorQuery<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> implements Query<NamedTableInfo<DataModel, T>> {
+  constructor(
+    public parent: PaginatorQueryInitializer<DataModel, T>,
+    public index: IndexNames<NamedTableInfo<DataModel, T>>,
+    public q: PaginatorIndexRange,
+  ) {}
+  order(order: "asc" | "desc") {
+    return new OrderedPaginatorQuery(this, order);
+  }
+  paginate(opts: PaginationOptions & { endCursor?: string | null }): Promise<PaginationResult<DocumentByInfo<NamedTableInfo<DataModel, T>>>> {
+    return this.order("asc").paginate(opts);
+  }
+  filter(_predicate: any): this {
+    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+  }
+  collect(): any {
+    throw new Error(".collect() not supported for `paginator`. Use .paginate() instead.");
+  }
+  first(): any {
+    throw new Error(".first() not supported for `paginator`. Use .paginate() instead.");
+  }
+  unique(): any {
+    throw new Error(".unique() not supported for `paginator`. Use .paginate() instead.");
+  }
+  take(_n: number): any {
+    throw new Error(".take() not supported for `paginator`. Use .paginate() instead.");
+  }
+  [Symbol.asyncIterator](): any {
+    throw new Error("[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.");
+  }
+}
+
+export class OrderedPaginatorQuery<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> implements OrderedQuery<NamedTableInfo<DataModel, T>> {
+  public startIndexKey: IndexKey | undefined;
+  public startInclusive: boolean;
+  public endIndexKey: IndexKey | undefined;
+  public endInclusive: boolean;
+  constructor(
+    public parent: PaginatorQuery<DataModel, T>,
+    public order: "asc" | "desc",
+  ) {
+    this.startIndexKey = order === "asc" ? parent.q.lowerBoundIndexKey : parent.q.upperBoundIndexKey;
+    this.endIndexKey = order === "asc" ? parent.q.upperBoundIndexKey : parent.q.lowerBoundIndexKey;
+    this.startInclusive = order === "asc" ? parent.q.lowerBoundInclusive : parent.q.upperBoundInclusive;
+    this.endInclusive = order === "asc" ? parent.q.upperBoundInclusive : parent.q.lowerBoundInclusive;
+  }
+  async paginate(opts: PaginationOptions & { endCursor?: string | null }): Promise<PaginationResult<DocumentByName<DataModel, T>>> {
+    if (opts.cursor === END_CURSOR) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: END_CURSOR,
+      };
+    }
+    const schema = this.parent.parent.parent.schema;
+    let startIndexKey = this.startIndexKey;
+    let startInclusive = this.startInclusive;
+    if (opts.cursor !== null) {
+      startIndexKey = jsonToConvex(JSON.parse(opts.cursor)) as IndexKey;
+      startInclusive = false;
+    }
+    let endIndexKey = this.endIndexKey;
+    let endInclusive = this.endInclusive;
+    let absoluteMaxRows: number | undefined = opts.numItems;
+    if (opts.endCursor && opts.endCursor !== END_CURSOR) {
+      endIndexKey = jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey;
+      endInclusive = true;
+      absoluteMaxRows = undefined;
+    }
+    const {
+      page, hasMore, indexKeys,
+    } = await getPage({ db: this.parent.parent.parent.db }, {
+      table: this.parent.parent.table,
+      startIndexKey,
+      startInclusive,
+      endIndexKey,
+      endInclusive,
+      targetMaxRows: opts.numItems,
+      absoluteMaxRows,
+      order: this.order,
+      index: this.parent.index,
+      schema,
+      indexFields: this.parent.q.indexFields,
+    });
+    let continueCursor = END_CURSOR;
+    let isDone = !hasMore;
+    if (opts.endCursor && opts.endCursor !== END_CURSOR) {
+      continueCursor = opts.endCursor;
+      isDone = false;
+    } else if (indexKeys.length > 0 && hasMore) {
+      continueCursor = JSON.stringify(convexToJson(indexKeys[indexKeys.length - 1] as Value));
+    }
+    return {
+      page,
+      isDone,
+      continueCursor,
+    };
+  }
+  filter(_predicate: any): any {
+    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+  }
+  collect(): any {
+    throw new Error(".collect() not supported for `paginator`. Use .paginate() instead.");
+  }
+  first(): any {
+    throw new Error(".first() not supported for `paginator`. Use .paginate() instead.");
+  }
+  unique(): any {
+    throw new Error(".unique() not supported for `paginator`. Use .paginate() instead.");
+  }
+  take(_n: number): any {
+    throw new Error(".take() not supported for `paginator`. Use .paginate() instead.");
+  }
+  [Symbol.asyncIterator](): any {
+    throw new Error("[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.");
+  }
+}
+
+class PaginatorIndexRange {
+  private hasSuffix = false;
+  public lowerBoundIndexKey: IndexKey | undefined = undefined;
+  public lowerBoundInclusive: boolean = true;
+  public upperBoundIndexKey: IndexKey | undefined = undefined;
+  public upperBoundInclusive: boolean = true;
+  constructor(
+    public indexFields: string[],
+  ) {}
+  eq(field: string, value: Value) {
+    if (!this.canLowerBound(field) || !this.canUpperBound(field)) {
+      throw new Error(`Cannot use eq on field '${field}'`);
+    }
+    this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
+    this.lowerBoundIndexKey.push(value);
+    this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
+    this.upperBoundIndexKey.push(value);
+    return this;
+  }
+  lt(field: string, value: Value) {
+    if (!this.canUpperBound(field)) {
+      throw new Error(`Cannot use lt on field '${field}'`);
+    }
+    this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
+    this.upperBoundIndexKey.push(value);
+    this.upperBoundInclusive = false;
+    this.hasSuffix = true;
+    return this;
+  }
+  lte(field: string, value: Value) {
+    if (!this.canUpperBound(field)) {
+      throw new Error(`Cannot use lte on field '${field}'`);
+    }
+    this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
+    this.upperBoundIndexKey.push(value);
+    this.hasSuffix = true;
+    return this;
+  }
+  gt(field: string, value: Value) {
+    if (!this.canLowerBound(field)) {
+      throw new Error(`Cannot use gt on field '${field}'`);
+    }
+    this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
+    this.lowerBoundIndexKey.push(value);
+    this.lowerBoundInclusive = false;
+    this.hasSuffix = true;
+    return this;
+  }
+  gte(field: string, value: Value) {
+    if (!this.canLowerBound(field)) {
+      throw new Error(`Cannot use gte on field '${field}'`);
+    }
+    this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
+    this.lowerBoundIndexKey.push(value);
+    this.hasSuffix = true;
+    return this;
+  }
+  private canLowerBound(field: string) {
+    const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
+    const currentUpperBoundLength = this.upperBoundIndexKey?.length ?? 0;
+    if (currentLowerBoundLength > currentUpperBoundLength) {
+      // Already have a lower bound.
+      return false;
+    }
+    if (currentLowerBoundLength === currentUpperBoundLength && this.hasSuffix) {
+      // Already have a lower bound and an upper bound.
+      return false;
+    }
+    return currentLowerBoundLength < this.indexFields.length && this.indexFields[currentLowerBoundLength] === field;
+  }
+  private canUpperBound(field: string) {
+    const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
+    const currentUpperBoundLength = this.upperBoundIndexKey?.length ?? 0;
+    if (currentUpperBoundLength > currentLowerBoundLength) {
+      // Already have an upper bound.
+      return false;
+    }
+    if (currentLowerBoundLength === currentUpperBoundLength && this.hasSuffix) {
+      // Already have a lower bound and an upper bound.
+      return false;
+    }
+    return currentUpperBoundLength < this.indexFields.length && this.indexFields[currentUpperBoundLength] === field;
+  }
 }
