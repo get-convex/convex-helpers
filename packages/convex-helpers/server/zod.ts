@@ -571,10 +571,15 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                   ConvexValidatorFromZod<Inner>["fieldPaths"]
                                                 >
                                               : never
-                                          : Z extends z.ZodBranded<
-                                                infer Inner,
-                                                infer Brand
-                                              >
+                                          : Z extends
+                                                | z.ZodBranded<
+                                                    infer Inner,
+                                                    infer Brand
+                                                  >
+                                                | ZodBrandedInputAndOutput<
+                                                    infer Inner,
+                                                    infer Brand
+                                                  >
                                             ? Inner extends z.ZodString
                                               ? VString<string & z.BRAND<Brand>>
                                               : Inner extends z.ZodNumber
@@ -822,3 +827,33 @@ export const withSystemFields = <
 ) => {
   return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
 };
+
+// This is a copy of zod's ZodBranded which also brands the input.
+export class ZodBrandedInputAndOutput<
+  T extends z.ZodTypeAny,
+  B extends string | number | symbol,
+> extends z.ZodType<
+  T["_output"] & z.BRAND<B>,
+  z.ZodBrandedDef<T>,
+  T["_input"] & z.BRAND<B>
+> {
+  _parse(input: z.ParseInput) {
+    const { ctx } = this._processInputParams(input);
+    const data = ctx.data;
+    return this._def.type._parse({
+      data,
+      path: ctx.path,
+      parent: ctx,
+    });
+  }
+  unwrap() {
+    return this._def.type;
+  }
+}
+
+export function zBrand<
+  T extends z.ZodTypeAny,
+  B extends string | number | symbol,
+>(validator: T, brand?: B): ZodBrandedInputAndOutput<T, B> {
+  return validator.brand(brand);
+}

@@ -11,7 +11,7 @@ import { Equals, assert, omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { zCustomQuery, zid, zodToConvexFields } from "./zod.js";
+import { zBrand, zCustomQuery, zid, zodToConvexFields } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
 import { v, VString } from "convex/values";
 import { z } from "zod";
@@ -58,7 +58,8 @@ export const kitchenSinkValidator = {
   nullableOptional: z.nullable(z.string().optional()),
   optionalNullable: z.nullable(z.string()).optional(),
   nullable: z.nullable(z.string()),
-  branded: z.string().brand("branded"),
+  // z.string().brand("branded") also works, but zBrand also brands the input
+  branded: zBrand(z.string(), "branded"),
   default: z.string().default("default"),
   readonly: z.object({ a: z.string(), b: z.number() }).readonly(),
   pipeline: z.number().pipe(z.coerce.string()),
@@ -646,6 +647,26 @@ assert(
     },
   ),
 );
+// Validate that our double-branded type is correct.
+assert(
+  sameType(
+    zodToConvexFields({
+      branded2: zBrand(z.string(), "branded2"),
+    }),
+    {
+      branded2: v.string() as VString<string & z.BRAND<"branded2">>,
+    },
+  ),
+);
+const s = zBrand(z.string(), "brand");
+const n = zBrand(z.number(), "brand");
+const i = zBrand(z.bigint(), "brand");
+assert(true as Equals<z.input<typeof s>, string & z.BRAND<"brand">>);
+assert(true as Equals<z.output<typeof s>, string & z.BRAND<"brand">>);
+assert(true as Equals<z.input<typeof n>, number & z.BRAND<"brand">>);
+assert(true as Equals<z.output<typeof n>, number & z.BRAND<"brand">>);
+assert(true as Equals<z.input<typeof i>, bigint & z.BRAND<"brand">>);
+assert(true as Equals<z.output<typeof i>, bigint & z.BRAND<"brand">>);
 
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
