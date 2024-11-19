@@ -90,7 +90,15 @@ export class Triggers<
   }
 
   wrapDB = <C extends Ctx>(ctx: C): C => {
-    return { ...ctx, db: new DatabaseWriterWithTriggers(ctx, ctx.db, this) };
+    return { ...ctx, db: new DatabaseWriterWithTriggers(
+      ctx,
+      ctx.db,
+      this,
+      new Lock(),
+      new Lock(),
+      [],
+      false,
+    ) };
   };
 }
 
@@ -145,9 +153,6 @@ class Lock {
  *   To avoid such problems, triggers should be resilient to such
  *   inconsistencies or the trigger graph should be kept simple.
  */
-let innerWriteLock = new Lock();
-let outerWriteLock = new Lock();
-const triggerQueue: (() => Promise<void>)[] = [];
 
 export class DatabaseWriterWithTriggers<
   DataModel extends GenericDataModel,
@@ -160,7 +165,10 @@ export class DatabaseWriterWithTriggers<
     private ctx: Ctx,
     private innerDb: GenericDatabaseWriter<DataModel>,
     private triggers: Triggers<DataModel, Ctx>,
-    private isWithinTrigger: boolean = false,
+    private innerWriteLock: Lock,
+    private outerWriteLock: Lock,
+    private triggerQueue: (() => Promise<void>)[],
+    private isWithinTrigger: boolean,
   ) {
     this.system = innerDb.system;
   }
@@ -240,7 +248,7 @@ export class DatabaseWriterWithTriggers<
     tableName: TableName,
     f: () => Promise<[R, Change<DataModel, TableName>]>,
   ): Promise<R> {
-    return await innerWriteLock.withLock(async () => {
+    return await this.innerWriteLock.withLock(async () => {
       const [result, change] = await f();
       const recursiveCtx = {
         ...this.ctx,
@@ -248,12 +256,15 @@ export class DatabaseWriterWithTriggers<
           this.ctx,
           this.innerDb,
           this.triggers,
+          this.innerWriteLock,
+          this.outerWriteLock,
+          this.triggerQueue,
           true,
         ),
         innerDb: this.innerDb,
       };
       for (const trigger of this.triggers.registered[tableName]!) {
-        triggerQueue.push(async () => {
+        this.triggerQueue.push(async () => {
           await trigger(recursiveCtx, change);
         });
       }
@@ -268,11 +279,11 @@ export class DatabaseWriterWithTriggers<
     if (this.isWithinTrigger) {
       return await this._queueTriggers(tableName, f);
     }
-    return await outerWriteLock.withLock(async () => {
+    return await this.outerWriteLock.withLock(async () => {
       const result = await this._queueTriggers(tableName, f);
       let e: unknown | null = null;
-      while (triggerQueue.length > 0) {
-        const trigger = triggerQueue.shift()!;
+      while (this.triggerQueue.length > 0) {
+        const trigger = this.triggerQueue.shift()!;
         try {
           await trigger();
         } catch (err) {
