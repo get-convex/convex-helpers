@@ -48,9 +48,20 @@ export const createUser = mutation({
   },
 });
 
+export const incorrectMutationCallingOtherMutation = mutation({
+  args: { firstName: v.string(), lastName: v.string() },
+  handler: async (ctx, args) => {
+    // createUser is a mutation so you aren't supposed to call it like this.
+    // But if you happen to do it anyway, we should throw an informative error.
+    const id = await createUser(ctx, args);
+    return id;
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     createUser: typeof createUser;
+    incorrectMutationCallingOtherMutation: typeof incorrectMutationCallingOtherMutation;
   };
 }>["fns"] = anyApi["triggers.test"] as any;
 
@@ -64,4 +75,21 @@ test("trigger denormalizes field", async () => {
     const user = await ctx.db.get(userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
+});
+
+test("incorrect mutation calling other mutation", async () => {
+  const t = convexTest(schema, modules);
+  await expect(t.mutation(testApi.incorrectMutationCallingOtherMutation, {
+    firstName: "John",
+      lastName: "Doe",
+    }),
+  ).rejects.toThrow(
+    new RegExp(
+      `Triggers\\.wrapDB called multiple times in a single mutation\\.\\s+` +
+        `Not allowed due to potential deadlock\\.\\s+` +
+        `Call it once in a single \`customMutation\`\\.\\s+` +
+        `Do not call mutations directly as functions\\.\\s+` +
+        `See https:\\/\\/docs\\.convex\\.dev\\/production\\/best-practices\\/#use-helper-functions-to-write-shared-code`,
+    ),
+  );
 });
