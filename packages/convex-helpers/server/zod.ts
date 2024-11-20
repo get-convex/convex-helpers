@@ -851,6 +851,17 @@ export class ZodBrandedInputAndOutput<
   }
 }
 
+/**
+ * Add a brand to a zod validator. Used like `zBrand(z.string(), "MyBrand")`.
+ * Compared to zod's `.brand`, this also brands the input type, so if you use
+ * the branded validator as an argument to a function, the input type will also
+ * be branded. The normal `.brand` only brands the output type, so only the type
+ * returned by validation would be branded.
+ *
+ * @param validator A zod validator - generally a string, number, or bigint
+ * @param brand A string, number, or symbol to brand the validator with
+ * @returns A zod validator that brands both the input and output types.
+ */
 export function zBrand<
   T extends z.ZodTypeAny,
   B extends string | number | symbol,
