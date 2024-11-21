@@ -18,7 +18,7 @@ import {
   asObjectValidator,
   v,
 } from "convex/values";
-import {
+import type {
   ActionBuilder,
   ArgsArrayForOptionalValidator,
   ArgsArrayToObject,
@@ -329,33 +329,46 @@ function customFnBuilder(
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
     const handler = fn.handler ?? fn;
-    if ("args" in fn) {
-      return builder({
-        args: addArgs(fn.args, inputArgs),
-        returns: fn.returns,
-        handler: async (ctx: any, allArgs: any) => {
-          const added = await inputMod(
-            ctx,
-            pick(allArgs, Object.keys(inputArgs)) as any,
-          );
-          const args = omit(allArgs, Object.keys(inputArgs));
-          return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
-        },
-      });
-    }
-    if (Object.keys(inputArgs).length > 0) {
+    if (Object.keys(inputArgs).length > 0 && !("args" in fn)) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
           "modifier, you must declare the arguments for the function too.",
       );
     }
-    return builder({
-      returns: fn.returns,
-      handler: async (ctx: any, args: any) => {
-        const added = await inputMod(ctx, args);
-        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
-      },
-    });
+
+    const registered =
+      "args" in fn
+        ? builder({
+            args: addArgs(fn.args, inputArgs),
+            returns: fn.returns,
+            handler: async (ctx: any, allArgs: any) => {
+              const added = await inputMod(
+                ctx,
+                pick(allArgs, Object.keys(inputArgs)) as any,
+              );
+              const args = omit(allArgs, Object.keys(inputArgs));
+              return handler(
+                { ...ctx, ...added.ctx },
+                { ...args, ...added.args },
+              );
+            },
+          })
+        : builder({
+            returns: fn.returns,
+            handler: async (ctx: any, args: any) => {
+              const added = await inputMod(ctx, args);
+              return handler(
+                { ...ctx, ...added.ctx },
+                { ...args, ...added.args },
+              );
+            },
+          });
+    registered["handler"] = handler;
+    return registered;
+    // for (const key in registered) {
+    //   handler[key] = registered[key];
+    // }
+    // return handler;
   };
 }
 
@@ -465,7 +478,12 @@ export type CustomBuilder<
           : [ObjectType<ModArgsValidator>]
     >,
     ReturnValue
-  >;
+  > & {
+    handler: (
+      ctx: Overwrite<InputCtx, ModCtx>,
+      ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
+    ) => ReturnValue;
+  };
 };
 
 export type CustomCtx<Builder> =

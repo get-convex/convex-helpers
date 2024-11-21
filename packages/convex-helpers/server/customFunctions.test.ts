@@ -528,6 +528,15 @@ describe("custom functions", () => {
       t.query(testApi.redefine, { a: 3 as any }),
     ).rejects.toThrow("Validator error: Expected `string`");
   });
+
+  test("inner handler is callable", async () => {
+    const t = convexTest(schema, modules);
+    expect(
+      await t.run(async (ctx) => add.handler(ctx, { a: "hi" })),
+    ).toMatchObject({
+      argsA: "hi",
+    });
+  });
 });
 
 describe("nested custom functions", () => {
