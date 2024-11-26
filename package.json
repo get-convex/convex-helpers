@@ -47,7 +47,7 @@
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
     "@vitejs/plugin-react": "4.3.4",
-    "@vitest/coverage-v8": "2.1.5",
+    "@vitest/coverage-v8": "2.1.6",
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.34",
     "eslint": "9.15.0",
@@ -55,6 +55,6 @@
     "npm-run-all2": "7.0.1",
     "typescript": "5.7.2",
     "vite": "5.4.11",
-    "vitest": "2.1.5"
+    "vitest": "2.1.6"
   }
 }
