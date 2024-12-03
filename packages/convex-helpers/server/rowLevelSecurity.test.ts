@@ -87,7 +87,7 @@ describe("row level security", () => {
     });
     const asA = t.withIdentity({ tokenIdentifier: "Person A" });
     const asB = t.withIdentity({ tokenIdentifier: "Person B" });
-    expect(() =>
+    await expect(() =>
       asB.run(async (ctx) => {
         const rls = await withRLS(ctx);
         return rls.db.delete(noteId);

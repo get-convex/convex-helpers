@@ -545,7 +545,7 @@ describe("zod functions", () => {
 
   test("bad redefinition", async () => {
     const t = convexTest(schema, modules);
-    expect(() =>
+    await expect(() =>
       t.query(testApi.badRedefine, {
         a: "foo" as never,
         b: 0,

@@ -153,18 +153,18 @@ test("validators allow things when they're unset", async () => {
 
 test("validators disallow things when they're wrong", async () => {
   const t = convexTest(schema, modules);
-  expect(async () => {
+  await expect(async () => {
     await t.query(testApi.echo, {} as ExampleFields);
   }).rejects.toThrowError("Validator error");
   // extra field
-  expect(async () => {
+  await expect(async () => {
     await t.query(testApi.echo, {
       ...valid,
       unknown: 3,
     } as ExampleFields);
   }).rejects.toThrowError("Validator error");
   // pretend required shouldn't allow other types
-  expect(async () => {
+  await expect(async () => {
     await t.query(testApi.echo, {
       ...valid,
       maybeNotSetYet: true as unknown as string,

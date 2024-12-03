@@ -82,7 +82,7 @@ describe.each(["token bucket", "fixed window"] as const)(
 
     test("consume too much", async () => {
       const t = convexTest(schema, modules);
-      expect(() =>
+      await expect(() =>
         t.run(async (ctx) => {
           await rateLimit(ctx, {
             name: "simple",
@@ -220,7 +220,7 @@ describe.each(["token bucket", "fixed window"] as const)(
 
     test("consume too much reserved", async () => {
       const t = convexTest(schema, modules);
-      expect(() =>
+      await expect(() =>
         t.run(async (ctx) => {
           await rateLimit(ctx, {
             name: "simple",
@@ -242,7 +242,7 @@ describe.each(["token bucket", "fixed window"] as const)(
       const { rateLimit } = defineRateLimits({
         simple: { kind, rate: 1, period: Second },
       });
-      expect(() =>
+      await expect(() =>
         t.run(async (ctx) => {
           await rateLimit(ctx, { name: "simple" });
           await rateLimit(ctx, { name: "simple", throws: true });
