@@ -104,12 +104,15 @@ export class HttpRouterWithHono<
    * @returns - an array of [path, method, endpoint] tuples.
    */
   override getRoutes = () => {
-    const convexRoutes: [string, RoutableMethod, (...args: any) => any][] = [];
+    const convexRoutes: [string, RoutableMethod, PublicHttpAction][] = [];
 
     // Likely a better way to do this, but hono will have multiple handlers with the same
     // name (i.e. for middleware), so de-duplicate so we don't show multiple routes in the dashboard.
     const seen = new Set();
     this._app.routes.forEach((route) => {
+      const handler: PublicHttpAction = route.handler as any;
+      handler.isHttp = true;
+
       // Hono uses "ALL" in its router, which is not supported by the Convex router.
       // Expand this into a route for every routable method supported by Convex.
       if (route.method === "ALL") {
@@ -117,7 +120,7 @@ export class HttpRouterWithHono<
           const name = `${method} ${route.path}`;
           if (!seen.has(name)) {
             seen.add(name);
-            convexRoutes.push([route.path, method, route.handler]);
+            convexRoutes.push([route.path, method, handler]);
           }
         }
       } else {
@@ -127,7 +130,7 @@ export class HttpRouterWithHono<
           convexRoutes.push([
             route.path,
             route.method as RoutableMethod,
-            route.handler,
+            handler,
           ]);
         }
       }
