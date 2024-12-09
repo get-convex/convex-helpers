@@ -388,10 +388,10 @@ test("custom function with user auth", async () => {
   const authed = t.withIdentity({ tokenIdentifier: "foo" });
 
   // Make sure the custom function is protected by auth.
-  expect(() => t.query(testApi.getSomething, { foo: "foo" })).rejects.toThrow(
+  await expect(() => t.query(testApi.getSomething, { foo: "foo" })).rejects.toThrow(
     "Unauthenticated",
   );
-  expect(() =>
+  await expect(() =>
     t
       .withIdentity({ tokenIdentifier: "bar" })
       .query(testApi.getSomething, { foo: "foo" }),
@@ -407,13 +407,13 @@ test("custom function with user auth", async () => {
     tokenIdentifier: "foo",
     sessionId: "bar" as SessionId,
   });
-  expect(() =>
+  await expect(() =>
     authed.mutation(testApi.create, {
       tokenIdentifier: "bar",
       sessionId: "bar" as SessionId,
     }),
   ).rejects.toThrow("insert access not allowed");
-  expect(() =>
+  await expect(() =>
     authed.mutation(testApi.create, {
       tokenIdentifier: "bar",
       sessionId: "" as SessionId,
@@ -436,7 +436,7 @@ describe("custom functions with api auth", () => {
       apiKey,
       tokenIdentifier: "bar",
     });
-    expect(() =>
+    await expect(() =>
       t.mutation(testApi.fnCalledFromMyBackend, {
         apiKey: "",
         tokenIdentifier: "bar",
@@ -524,7 +524,7 @@ describe("custom functions", () => {
 
   test("still validates args", async () => {
     const t = convexTest(schema, modules);
-    expect(() => t.query(testApi.redefine, { a: 3 as any })).rejects.toThrow(
+    await expect(() => t.query(testApi.redefine, { a: 3 as any })).rejects.toThrow(
       "Validator error: Expected `string`",
     );
   });
@@ -553,7 +553,7 @@ describe("nested custom functions", () => {
 
   test("still validates args", async () => {
     const t = convexTest(schema, modules);
-    expect(() =>
+    await expect(() =>
       t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
     ).rejects.toThrow("Validator error: Expected `string`");
   });
