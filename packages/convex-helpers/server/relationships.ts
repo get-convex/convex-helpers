@@ -48,7 +48,7 @@ export async function getAll<
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
 ): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
-  return asyncMap(ids, db.get);
+  return asyncMap(ids, (id) => db.get(id));
 }
 
 /**
