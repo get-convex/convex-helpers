@@ -110,7 +110,9 @@ export class HttpRouterWithHono<
     // name (i.e. for middleware), so de-duplicate so we don't show multiple routes in the dashboard.
     const seen = new Set();
     this._app.routes.forEach((route) => {
-      const handler: PublicHttpAction = route.handler as any;
+      // The (internal) field _handler on PublicHttpAction is used to look up the function's line number.
+      const handler = route.handler as any;
+      handler._handler = route.handler;
       handler.isHttp = true;
 
       // Hono uses "ALL" in its router, which is not supported by the Convex router.
