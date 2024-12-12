@@ -46,7 +46,7 @@
     "@vitest/coverage-v8": "2.1.8",
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.34",
-    "eslint": "9.15.0",
+    "eslint": "9.16.0",
     "jsdom": "25.0.1",
     "npm-run-all2": "7.0.1",
     "typescript": "5.7.2",
