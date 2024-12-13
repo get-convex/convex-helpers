@@ -23,10 +23,49 @@ import {
   RouteSpecWithPathPrefix,
 } from "convex/server";
 
-type CorsConfig = {
-  allowedOrigins?: string[];
-  allowedHeaders?: string[];
+export const DEFAULT_EXPOSED_HEADERS = [
+  // For Range requests
+  "Content-Range",
+  "Accept-Ranges",
+];
+
+export type CorsConfig = {
+  /**
+   * Whether to allow credentials in the request.
+   * When true, the request can include cookies.
+   * @default false
+   */
   allowCredentials?: boolean;
+  /**
+   * An array of allowed origins: what domains are allowed to make requests.
+   * For example, ["https://example.com"] would only allow requests from
+   * https://example.com.
+   * You can also use wildcards to allow all subdomains of a given domain.
+   * E.g. ["*.example.com"] would allow requests from:
+   * - https://subdomain.example.com
+   * - https://example.com
+   * @default ["*"]
+   */
+  allowedOrigins?: string[];
+  /**
+   * An array of allowed headers: what headers are allowed to be sent in
+   * the request.
+   * @default ["Content-Type"]
+   */
+  allowedHeaders?: string[];
+  /**
+   * An array of exposed headers: what headers are allowed to be sent in
+   * the response.
+   * Note: if you pass in an empty array, it will not expose any headers.
+   * If you want to extend the default exposed headers, you can do so by
+   * passing in [...DEFAULT_EXPOSED_HEADERS, ...yourHeaders].
+   * @default {@link DEFAULT_EXPOSED_HEADERS}
+   */
+  exposedHeaders?: string[];
+  /**
+   * The maximum age of the preflight request in seconds.
+   * @default 86400 (1 day)
+   */
   browserCacheMaxAge?: number;
 };
 
@@ -40,10 +79,11 @@ type RouteSpecWithCors = RouteSpec & CorsConfig;
 export const corsRouter = (
   http: HttpRouter,
   {
+    allowCredentials: defaultAllowCredentials,
     allowedOrigins: defaultAllowedOrigins,
     allowedHeaders: defaultAllowedHeaders,
+    exposedHeaders: defaultExposedHeaders,
     browserCacheMaxAge: defaultBrowserCacheMaxAge,
-    allowCredentials: defaultAllowCredentials,
   }: CorsConfig,
 ) => ({
   route: (routeSpec: RouteSpecWithCors): void => {
@@ -54,6 +94,7 @@ export const corsRouter = (
     const config = {
       allowedOrigins: routeSpec.allowedOrigins ?? defaultAllowedOrigins,
       allowedHeaders: routeSpec.allowedHeaders ?? defaultAllowedHeaders,
+      exposedHeaders: routeSpec.exposedHeaders ?? defaultExposedHeaders,
       browserCacheMaxAge:
         routeSpec.browserCacheMaxAge ?? defaultBrowserCacheMaxAge,
       allowCredentials: routeSpec.allowCredentials ?? defaultAllowCredentials,
@@ -212,6 +253,7 @@ const handleCors = ({
   allowedMethods = ["OPTIONS"],
   allowedOrigins = ["*"],
   allowedHeaders = ["Content-Type"],
+  exposedHeaders = DEFAULT_EXPOSED_HEADERS,
   allowCredentials = false,
   browserCacheMaxAge = SECONDS_IN_A_DAY,
 }: {
@@ -240,31 +282,39 @@ const handleCors = ({
     : [...filteredMethods].join(", ");
 
   /**
-   * Format origins correctly
-   * E.g. "https://example1.com, https://example2.com"
-   */
-  const allowOrigins = allowedOrigins.join(", ");
-
-  /**
    * Build up the set of CORS headers
    */
-  const preflightOnlyHeaders: Record<string, string> = {
-    "Access-Control-Allow-Methods": allowMethods,
-    "Access-Control-Allow-Headers": allowedHeaders.join(", "),
-    "Access-Control-Max-Age": browserCacheMaxAge.toString(),
-  };
-
   const commonHeaders: Record<string, string> = {
-    "Access-Control-Allow-Origin": allowOrigins,
+    Vary: "Origin",
   };
   if (allowCredentials) {
     commonHeaders["Access-Control-Allow-Credentials"] = "true";
   }
+  if (exposedHeaders.length > 0) {
+    commonHeaders["Access-Control-Expose-Headers"] = exposedHeaders.join(", ");
+  }
 
-  if (allowCredentials && allowOrigins.includes("*")) {
-    throw new Error(
-      "Cannot allow credentials if the origin is '*' (wildcard).",
-    );
+  // Helper function to check if origin is allowed (including wildcard subdomain matching)
+  function isAllowedOrigin(requestOrigin: string): boolean {
+    return allowedOrigins.some((allowed) => {
+      if (allowed === "*") return true;
+      if (allowed === requestOrigin) return true;
+      if (allowed.startsWith("*.")) {
+        const wildcardDomain = allowed.slice(1); // ".bar.com"
+        const rootDomain = allowed.slice(2); // "bar.com"
+        try {
+          const url = new URL(requestOrigin);
+          return (
+            url.protocol === "https:" &&
+            (url.hostname.endsWith(wildcardDomain) ||
+              url.hostname === rootDomain)
+          );
+        } catch {
+          return false; // Invalid URL format
+        }
+      }
+      return false;
+    });
   }
 
   /**
@@ -272,13 +322,37 @@ const handleCors = ({
    */
   return httpActionGeneric(
     async (ctx: GenericActionCtx<any>, request: Request) => {
+      const requestOrigin = request.headers.get("Origin");
+
+      // Handle origin matching
+      let allowOrigins: string | null = null;
+      if (allowedOrigins.includes("*") && !allowCredentials) {
+        allowOrigins = "*";
+      } else if (requestOrigin) {
+        // Check if the request origin matches any of the allowed origins
+        // (including wildcard subdomain matching if configured)
+        if (isAllowedOrigin(requestOrigin)) {
+          allowOrigins = requestOrigin;
+        }
+      }
+
+      if (!allowOrigins) {
+        // Origin not allowed
+        return new Response(null, { status: 403 });
+      }
       /**
        * OPTIONS has no handler and just returns headers
        */
       if (request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
-          headers: new Headers({ ...commonHeaders, ...preflightOnlyHeaders }),
+          headers: new Headers({
+            ...commonHeaders,
+            "Access-Control-Allow-Origin": allowOrigins,
+            "Access-Control-Allow-Methods": allowMethods,
+            "Access-Control-Allow-Headers": allowedHeaders.join(", "),
+            "Access-Control-Max-Age": browserCacheMaxAge.toString(),
+          }),
         });
       }
 
@@ -298,6 +372,7 @@ const handleCors = ({
        * Second, get a copy of the original response's headers
        */
       const newHeaders = new Headers(originalResponse.headers);
+      newHeaders.set("Access-Control-Allow-Origin", allowOrigins);
 
       /**
        * Third, add or update our CORS headers

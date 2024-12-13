@@ -240,6 +240,9 @@ describe("corsRouter fetch routes", () => {
     const t = testWithHttp();
     const response = await t.fetch("/specialRouteOnlyForThisOrigin", {
       method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
@@ -253,6 +256,9 @@ describe("corsRouter fetch routes", () => {
     const t = testWithHttp();
     const response = await t.fetch("/specialRouteOnlyForThisOrigin", {
       method: "OPTIONS",
+      headers: {
+        origin: "http://localhost:3000",
+      },
     });
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
