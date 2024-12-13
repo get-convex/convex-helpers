@@ -272,4 +272,75 @@ describe("corsRouter fetch routes", () => {
     const response = await t.fetch("/nonexistent", { method: "GET" });
     expect(response.status).toBe(404);
   });
+
+  test("Route with allowedHeaders", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/allowedHeaders", { method: "OPTIONS" });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
+      "X-Custom-Header",
+    );
+  });
+
+  test("Route with default exposedHeaders", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/fact", { method: "GET" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Expose-Headers")).toBe(
+      "Content-Range, Accept-Ranges",
+    );
+  });
+
+  test("Route with exposedHeaders", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/exposedHeaders", { method: "GET" });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Expose-Headers")).toBe(
+      "X-Custom-Header",
+    );
+  });
+
+  test("Route with browserCacheMaxAge", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/browserCacheMaxAge", {
+      method: "OPTIONS",
+    });
+    expect(response.status).toBe(204);
+    expect(response.headers.get("Access-Control-Max-Age")).toBe("60");
+  });
+
+  test("Route with allowCredentials", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/allowCredentials", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe(
+      "true",
+    );
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  test("Route with allowCredentials with specific origin", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/allowCredentialsWithOrigin", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
+    const badResponse = await t.fetch("/allowCredentialsWithOrigin", {
+      method: "GET",
+    });
+    expect(badResponse.status).toBe(403);
+  });
 });

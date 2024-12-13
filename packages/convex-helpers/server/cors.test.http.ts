@@ -115,4 +115,55 @@ http.route({
   }),
 });
 
+/**
+ * Test that allowed headers are correctly set.
+ */
+cors.route({
+  path: "/allowedHeaders",
+  method: "GET",
+  handler: everythingHandler,
+  allowedHeaders: ["X-Custom-Header"],
+});
+
+/**
+ * Test that the exposed headers are correctly set.
+ */
+cors.route({
+  path: "/exposedHeaders",
+  method: "GET",
+  handler: everythingHandler,
+  exposedHeaders: ["X-Custom-Header"],
+});
+
+/**
+ * Test that the browser cache max age is correctly set.
+ */
+cors.route({
+  path: "/browserCacheMaxAge",
+  method: "GET",
+  handler: everythingHandler,
+  browserCacheMaxAge: 60,
+});
+
+/**
+ * Test that allow credentials works with *.
+ */
+cors.route({
+  path: "/allowCredentials",
+  method: "GET",
+  handler: everythingHandler,
+  allowCredentials: true,
+});
+
+/**
+ * Test that allow credentials works with a specific origin.
+ */
+cors.route({
+  path: "/allowCredentialsWithOrigin",
+  method: "GET",
+  handler: everythingHandler,
+  allowCredentials: true,
+  allowedOrigins: ["http://localhost:3000"],
+});
+
 export default http;
