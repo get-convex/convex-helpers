@@ -129,20 +129,20 @@ export function generateApiSpec(functionSpec: FunctionSpec, includeInternal: boo
             continue;
         }
         const [modulePath, functionName] = fn.identifier.split(':');
-        const withoutExtension = modulePath.slice(0, modulePath.length - 3);
-        const pathParts = withoutExtension.split('/');
+        const withoutExtension = modulePath!.slice(0, modulePath!.length - 3);
+        const pathParts = withoutExtension!.split('/');
         let treeNode =
             fn.visibility.kind === "internal"
                 ? internalFunctionTree
                 : publicFunctionTree;
         for (let i = 0; i < pathParts.length; i += 1) {
-            const pathPart = pathParts[i];
+            const pathPart = pathParts[i]!;
             if (treeNode[pathPart] === undefined) {
                 treeNode[pathPart] = {};
             }
             treeNode = treeNode[pathPart];
         }
-        treeNode[functionName] = fn;
+        treeNode[functionName!] = fn;
     }
     const apiType = generateApiType(publicFunctionTree);
     const internalApiType = generateApiType(includeInternal ? internalFunctionTree : {});

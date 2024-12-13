@@ -1,5 +1,5 @@
 import fs from "fs";
-import { execSync, spawnSync } from "child_process";
+import { spawnSync } from "child_process";
 import chalk from "chalk";
 import { ValidatorJSON } from "convex/values";
 import path from "path";
