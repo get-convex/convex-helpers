@@ -160,7 +160,7 @@ describe("corsRouter fetch routes", () => {
       throw new Error("No http module found");
     }
     const http = httpModule.replace("cors.test.http", "http");
-    const modulesWithHttp = { ...modules, [http]: modules[httpModule] };
+    const modulesWithHttp = { ...modules, [http]: modules[httpModule]! };
     delete modulesWithHttp[httpModule];
     return convexTest(defineSchema({}), modulesWithHttp);
   };
