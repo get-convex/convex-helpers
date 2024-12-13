@@ -1,9 +1,17 @@
-import { HttpRouter } from "convex/server";
-import { corsRouter } from "../packages/convex-helpers/server/corsHttpRouter";
-import { httpAction } from "./_generated/server";
+/**
+ * This file is used to define the HTTP routes for the cors.test.ts file.
+ * It does not contain any tests, but the .test path both excludes it from the
+ * generated API spec and indicates its intent.
+ */
+import { HttpRouter, httpActionGeneric } from "convex/server";
+import { corsRouter } from "./cors.js";
 
-const everythingHandler = httpAction(async () => {
-  return new Response(JSON.stringify([{ fact: "Hello, world!" }]));
+const everythingHandler = httpActionGeneric(async () => {
+  return new Response(JSON.stringify([{ fact: "Hello, world!" }]), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 });
 
 const http = new HttpRouter();
@@ -74,7 +82,7 @@ corsRoute({
 corsRoute({
   path: "/specialRouteOnlyForThisOrigin",
   method: "GET",
-  handler: httpAction(async () => {
+  handler: httpActionGeneric(async () => {
     return new Response(
       JSON.stringify({ message: "Custom allowed origins! Wow!" }),
       {
@@ -94,7 +102,7 @@ corsRoute({
 http.route({
   path: "/routeWithoutCors",
   method: "GET",
-  handler: httpAction(async () => {
+  handler: httpActionGeneric(async () => {
     return new Response(
       JSON.stringify({ message: "No CORS allowed here, pal." }),
       {
@@ -107,5 +115,4 @@ http.route({
   }),
 });
 
-// Convex expects the router to be the default export of `convex/http.js`.
 export default http;

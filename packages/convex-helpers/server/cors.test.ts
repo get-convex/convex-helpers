@@ -1,15 +1,125 @@
+import { describe, test, expect, vi } from "vitest";
+import { corsRouter } from "./cors";
+import { defineSchema, httpActionGeneric, HttpRouter } from "convex/server";
+import { modules } from "./setup.test.js";
 import { convexTest } from "convex-test";
-import { expect, test, describe, beforeAll, afterAll } from "vitest";
 
-beforeAll(() => {
-  //setup
+describe("corsRouter internals", () => {
+  test("configures exact routes correctly", () => {
+    const http = new HttpRouter();
+    const corsRoute = corsRouter(http, {
+      allowedOrigins: ["https://example.com"],
+    });
+    const handler = vi.fn();
+
+    corsRoute({
+      path: "/test",
+      method: "GET",
+      handler: httpActionGeneric(handler),
+    });
+
+    const routeMap = http.exactRoutes.get("/test");
+    expect(routeMap).toBeDefined();
+    expect(routeMap?.has("GET")).toBe(true);
+    expect(routeMap?.has("OPTIONS")).toBe(true);
+  });
+
+  test("configures prefix routes correctly", () => {
+    const http = new HttpRouter();
+    const corsRoute = corsRouter(http, {
+      allowedOrigins: ["https://example.com"],
+    });
+    const handler = vi.fn();
+
+    corsRoute({
+      pathPrefix: "/test/",
+      method: "POST",
+      handler: httpActionGeneric(handler),
+    });
+
+    const postRoutes = http.prefixRoutes.get("POST");
+    expect(postRoutes).toBeDefined();
+    expect(postRoutes?.has("/test/")).toBe(true);
+
+    const optionsRoutes = http.prefixRoutes.get("OPTIONS");
+    expect(optionsRoutes).toBeDefined();
+    expect(optionsRoutes?.has("/test/")).toBe(true);
+  });
+
+  test("handles multiple methods for the same path", () => {
+    const http = new HttpRouter();
+    const corsRoute = corsRouter(http, {
+      allowedOrigins: ["https://example.com"],
+    });
+    const handlerGet = vi.fn();
+    const handlerPost = vi.fn();
+
+    corsRoute({
+      path: "/test",
+      method: "GET",
+      handler: httpActionGeneric(handlerGet),
+    });
+
+    corsRoute({
+      path: "/test",
+      method: "POST",
+      handler: httpActionGeneric(handlerPost),
+    });
+
+    const routeMap = http.exactRoutes.get("/test");
+    expect(routeMap).toBeDefined();
+    expect(routeMap?.has("GET")).toBe(true);
+    expect(routeMap?.has("POST")).toBe(true);
+    expect(routeMap?.has("OPTIONS")).toBe(true);
+  });
+
+  test("adds CORS headers to handlers", () => {
+    const http = new HttpRouter();
+    const corsRoute = corsRouter(http, {
+      allowedOrigins: ["https://example.com"],
+    });
+    const handler = vi.fn();
+
+    corsRoute({
+      path: "/test",
+      method: "GET",
+      handler: httpActionGeneric(handler),
+    });
+
+    const routeMap = http.exactRoutes.get("/test");
+    const corsHandler = routeMap?.get("GET");
+
+    expect(corsHandler).toBeDefined();
+  });
+
+  test("configures OPTIONS handler with correct allowed methods", () => {
+    const http = new HttpRouter();
+    const corsRoute = corsRouter(http, {
+      allowedOrigins: ["https://example.com"],
+    });
+    const handlerGet = vi.fn();
+    const handlerPost = vi.fn();
+
+    corsRoute({
+      path: "/test",
+      method: "GET",
+      handler: httpActionGeneric(handlerGet),
+    });
+
+    corsRoute({
+      path: "/test",
+      method: "POST",
+      handler: httpActionGeneric(handlerPost),
+    });
+
+    const routeMap = http.exactRoutes.get("/test");
+    const optionsHandler = routeMap?.get("OPTIONS");
+
+    expect(optionsHandler).toBeDefined();
+  });
 });
 
-afterAll(() => {
-  //teardown
-});
-
-describe("HTTP routes", () => {
+describe("corsRouter fetch routes", () => {
   const expectedHeaders = ({ method }: { method: string }) => {
     return {
       "access-control-allow-headers": "Content-Type",
@@ -37,9 +147,23 @@ describe("HTTP routes", () => {
       expectedHeaders({ method })["content-type"],
     );
   };
-
+  const testWithHttp = () => {
+    // We define http routes in ./cors.test.http.ts
+    // But convex expects them to be in convex/http.ts
+    // So we need to find the http module and replace the path
+    const httpModule = Object.keys(modules).find((k) =>
+      k.includes("cors.test.http"),
+    );
+    if (!httpModule) {
+      throw new Error("No http module found");
+    }
+    const http = httpModule.replace("cors.test.http", "http");
+    const modulesWithHttp = { ...modules, [http]: modules[httpModule] };
+    delete modulesWithHttp[httpModule];
+    return convexTest(defineSchema({}), modulesWithHttp);
+  };
   test("GET /fact", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/fact", { method: "GET" });
     expect(response.status).toBe(200);
     verifyHeaders("GET", response.headers);
@@ -52,7 +176,7 @@ describe("HTTP routes", () => {
   });
 
   test("POST /fact", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/fact", {
       method: "POST",
     });
@@ -66,7 +190,7 @@ describe("HTTP routes", () => {
   });
 
   test("GET /dynamicFact/123", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/dynamicFact/123", { method: "GET" });
     expect(response.status).toBe(200);
     verifyHeaders("GET", response.headers);
@@ -79,7 +203,7 @@ describe("HTTP routes", () => {
   });
 
   test("PATCH /dynamicFact/123", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/dynamicFact/123", { method: "PATCH" });
     expect(response.status).toBe(200);
     verifyHeaders("PATCH", response.headers);
@@ -92,7 +216,7 @@ describe("HTTP routes", () => {
   });
 
   test("OPTIONS /fact (CORS preflight)", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/fact", { method: "OPTIONS" });
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
@@ -111,7 +235,7 @@ describe("HTTP routes", () => {
   });
 
   test("Route with custom allowedOrigins", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/specialRouteOnlyForThisOrigin", {
       method: "GET",
     });
@@ -124,7 +248,7 @@ describe("HTTP routes", () => {
   });
 
   test("OPTIONS for route with custom allowedOrigins", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/specialRouteOnlyForThisOrigin", {
       method: "OPTIONS",
     });
@@ -136,7 +260,7 @@ describe("HTTP routes", () => {
   });
 
   test("Non-existent route", async () => {
-    const t = convexTest();
+    const t = testWithHttp();
     const response = await t.fetch("/nonexistent", { method: "GET" });
     expect(response.status).toBe(404);
   });

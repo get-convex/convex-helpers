@@ -43,9 +43,9 @@
       "types": "./react/cache/provider.d.ts",
       "default": "./react/cache/provider.js"
     },
-    "./server/corsHttpRouter": {
-      "types": "./server/corsHttpRouter.d.ts",
-      "default": "./server/corsHttpRouter.js"
+    "./server/cors": {
+      "types": "./server/cors.d.ts",
+      "default": "./server/cors.js"
     },
     "./server/crud": {
       "types": "./server/crud.d.ts",

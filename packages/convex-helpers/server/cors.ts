@@ -48,19 +48,28 @@ export const corsRouter =
 
     const allowedOrigins = routeSpec.allowedOrigins ?? defaultAllowedOrigins;
 
-    const routeSpecWithCors = createRouteSpecWithCors(
-      routeSpec,
-      allowedOrigins,
-    );
-    tempRouter.route(routeSpecWithCors);
-
+    const httpCorsHandler = handleCors({
+      originalHandler: routeSpec.handler,
+      allowedOrigins: allowedOrigins,
+      allowedMethods: [routeSpec.method],
+    });
     /**
      * Figure out what kind of route we're adding: exact or prefix and handle
      * accordingly.
      */
     if ("path" in routeSpec) {
+      tempRouter.route({
+        path: routeSpec.path,
+        method: routeSpec.method,
+        handler: httpCorsHandler,
+      });
       handleExactRoute(tempRouter, routeSpec, allowedOrigins);
     } else {
+      tempRouter.route({
+        pathPrefix: routeSpec.pathPrefix,
+        method: routeSpec.method,
+        handler: httpCorsHandler,
+      });
       handlePrefixRoute(tempRouter, routeSpec, allowedOrigins);
     }
 
@@ -143,29 +152,6 @@ function handlePrefixRoute(
 }
 
 /**
- * Creates a new route specification with CORS support.
- * @param routeSpec Original route specification.
- * @returns Modified route specification with CORS handler.
- */
-function createRouteSpecWithCors(
-  routeSpec: RouteSpec,
-  allowedOrigins: string[],
-): RouteSpec {
-  const httpCorsHandler = handleCors({
-    originalHandler: routeSpec.handler,
-    allowedOrigins: allowedOrigins,
-    allowedMethods: [routeSpec.method],
-  });
-  return {
-    ...("path" in routeSpec
-      ? { path: routeSpec.path }
-      : { pathPrefix: routeSpec.pathPrefix }),
-    method: routeSpec.method,
-    handler: httpCorsHandler,
-  };
-}
-
-/**
  * Creates an OPTIONS handler for the given HTTP methods.
  * @param methods Array of HTTP methods to be allowed.
  * @returns A CORS-enabled OPTIONS handler.
@@ -180,7 +166,7 @@ function createOptionsHandlerForMethods(
   });
 }
 
-export default routeWithCors;
+export default corsRouter;
 
 /**
  * handleCors() is a higher-order function that wraps a Convex HTTP action handler to add CORS support.
