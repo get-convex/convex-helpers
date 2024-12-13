@@ -1071,7 +1071,7 @@ forbid using the raw mutation wrappers which don't call your triggers.
 
 Add CORS support to your Convex httpAction routes by registering a
 handler for OPTIONS preflight requests and returning the appropriate headers.
-Supports configuring allowed origins, methods, and headers.
+Supports configuring allowed origins, allowed headers, exposed headers, allowing credentials, and browser cache max age, both for the entire router and per route overrides.
 
 Here's a snippet from our `http.ts` file demonstrating how to use the `corsHttpRouter`:
 
@@ -1084,11 +1084,9 @@ import { httpAction } from "./_generated/api";
 const http = httpRouter();
 
 // Your CORS router:
-const corsRoute = corsRouter(http, {
-  allowedOrigins: ["http://localhost:3000"], // or '*' to allow all
-});
+const cors = corsRouter(http);
 
-corsRoute({
+cors.route({
   path: "/foo",
   method: "GET",
   handler: httpAction(async () => {
@@ -1096,14 +1094,14 @@ corsRoute({
   }),
 });
 
-corsRoute({
+cors.route({
   path: "/foo",
   // You can register multiple methods for the same path
   method: "POST",
   handler: httpAction(async () => {
     return new Response("ok");
   }),
-  // You can provide optional allowedOrigins per route
+  // You can provide configuration per route
   allowedOrigins: ["http://localhost:8080"],
 });
 
