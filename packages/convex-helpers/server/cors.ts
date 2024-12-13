@@ -32,7 +32,7 @@ export const DEFAULT_EXPOSED_HEADERS = [
 export type CorsConfig = {
   /**
    * Whether to allow credentials in the request.
-   * When true, the request can include cookies.
+   * When true, the request can include cookies and authentication headers.
    * @default false
    */
   allowCredentials?: boolean;
