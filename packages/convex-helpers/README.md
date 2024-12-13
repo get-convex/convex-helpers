@@ -1113,4 +1113,6 @@ http.route({
     return new Response("ok");
   }),
 });
+// Export http (or corsRouter.http)
+export default http;
 ```
