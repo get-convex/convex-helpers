@@ -28,11 +28,11 @@ type RouteSpecWithCors = RouteSpec & {
 };
 
 /**
- * Factory function to create a new CorsHttpRouter instance.
+ * Factory function to create a router that adds CORS support to routes.
  * @param allowedOrigins An array of allowed origins for CORS.
- * @returns A function like http.route that adds cors as well.
+ * @returns A function to use instead of http.route when you want CORS.
  */
-export const routeWithCors =
+export const corsRouter =
   (
     http: HttpRouter,
     {

@@ -1,5 +1,5 @@
 import { HttpRouter } from "convex/server";
-import { routeWithCors } from "../packages/convex-helpers/server/corsHttpRouter";
+import { corsRouter } from "../packages/convex-helpers/server/corsHttpRouter";
 import { httpAction } from "./_generated/server";
 
 const everythingHandler = httpAction(async () => {
@@ -7,7 +7,7 @@ const everythingHandler = httpAction(async () => {
 });
 
 const http = new HttpRouter();
-const corsRoute = routeWithCors(http, {
+const corsRoute = corsRouter(http, {
   allowedOrigins: ["*"],
 });
 
