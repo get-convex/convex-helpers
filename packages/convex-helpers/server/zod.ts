@@ -495,7 +495,7 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                             ? VUnion<
                                 ConvexValidatorFromZod<T[number]>["type"],
                                 {
-                                  [Index in keyof T]: ConvexValidatorFromZod<
+                                  -readonly [Index in keyof T]: ConvexValidatorFromZod<
                                     T[Index]
                                   >;
                                 },
