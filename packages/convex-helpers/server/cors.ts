@@ -32,16 +32,15 @@ type RouteSpecWithCors = RouteSpec & {
  * @param allowedOrigins An array of allowed origins for CORS.
  * @returns A function to use instead of http.route when you want CORS.
  */
-export const corsRouter =
-  (
+export const corsRouter = (
     http: HttpRouter,
     {
       allowedOrigins: defaultAllowedOrigins,
     }: {
       allowedOrigins: string[];
     },
-  ) =>
-  (routeSpec: RouteSpecWithCors): void => {
+) => ({
+  route: (routeSpec: RouteSpecWithCors): void => {
     const tempRouter = httpRouter();
     tempRouter.exactRoutes = http.exactRoutes;
     tempRouter.prefixRoutes = http.prefixRoutes;
@@ -78,7 +77,8 @@ export const corsRouter =
      */
     http.exactRoutes = new Map(tempRouter.exactRoutes);
     http.prefixRoutes = new Map(tempRouter.prefixRoutes);
-  };
+  },
+});
 
 /**
  * Handles exact route matching and adds OPTIONS handler.

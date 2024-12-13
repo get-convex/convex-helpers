@@ -7,12 +7,12 @@ import { convexTest } from "convex-test";
 describe("corsRouter internals", () => {
   test("configures exact routes correctly", () => {
     const http = new HttpRouter();
-    const corsRoute = corsRouter(http, {
+    const cors = corsRouter(http, {
       allowedOrigins: ["https://example.com"],
     });
     const handler = vi.fn();
 
-    corsRoute({
+    cors.route({
       path: "/test",
       method: "GET",
       handler: httpActionGeneric(handler),
@@ -26,12 +26,12 @@ describe("corsRouter internals", () => {
 
   test("configures prefix routes correctly", () => {
     const http = new HttpRouter();
-    const corsRoute = corsRouter(http, {
+    const cors = corsRouter(http, {
       allowedOrigins: ["https://example.com"],
     });
     const handler = vi.fn();
 
-    corsRoute({
+    cors.route({
       pathPrefix: "/test/",
       method: "POST",
       handler: httpActionGeneric(handler),
@@ -48,19 +48,19 @@ describe("corsRouter internals", () => {
 
   test("handles multiple methods for the same path", () => {
     const http = new HttpRouter();
-    const corsRoute = corsRouter(http, {
+    const cors = corsRouter(http, {
       allowedOrigins: ["https://example.com"],
     });
     const handlerGet = vi.fn();
     const handlerPost = vi.fn();
 
-    corsRoute({
+    cors.route({
       path: "/test",
       method: "GET",
       handler: httpActionGeneric(handlerGet),
     });
 
-    corsRoute({
+    cors.route({
       path: "/test",
       method: "POST",
       handler: httpActionGeneric(handlerPost),
@@ -75,12 +75,12 @@ describe("corsRouter internals", () => {
 
   test("adds CORS headers to handlers", () => {
     const http = new HttpRouter();
-    const corsRoute = corsRouter(http, {
+    const cors = corsRouter(http, {
       allowedOrigins: ["https://example.com"],
     });
     const handler = vi.fn();
 
-    corsRoute({
+    cors.route({
       path: "/test",
       method: "GET",
       handler: httpActionGeneric(handler),
@@ -94,19 +94,19 @@ describe("corsRouter internals", () => {
 
   test("configures OPTIONS handler with correct allowed methods", () => {
     const http = new HttpRouter();
-    const corsRoute = corsRouter(http, {
+    const cors = corsRouter(http, {
       allowedOrigins: ["https://example.com"],
     });
     const handlerGet = vi.fn();
     const handlerPost = vi.fn();
 
-    corsRoute({
+    cors.route({
       path: "/test",
       method: "GET",
       handler: httpActionGeneric(handlerGet),
     });
 
-    corsRoute({
+    cors.route({
       path: "/test",
       method: "POST",
       handler: httpActionGeneric(handlerPost),

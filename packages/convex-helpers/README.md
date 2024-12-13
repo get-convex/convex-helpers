@@ -1077,7 +1077,7 @@ Here's a snippet from our `http.ts` file demonstrating how to use the `corsHttpR
 
 ```typescript
 import { corsRouter } from "convex-helpers/server/cors";
-import { HttpRouter } from "convex/server";
+import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/api";
 
 // Your standard Convex http router:
@@ -1089,7 +1089,7 @@ const corsRoute = corsRouter(http, {
 });
 
 corsRoute({
-  path: "/fact",
+  path: "/foo",
   method: "GET",
   handler: httpAction(async () => {
     return new Response("ok");
@@ -1097,7 +1097,7 @@ corsRoute({
 });
 
 corsRoute({
-  path: "/fact",
+  path: "/foo",
   // You can register multiple methods for the same path
   method: "POST",
   handler: httpAction(async () => {
@@ -1109,7 +1109,7 @@ corsRoute({
 
 // Non-CORS routes still work, provided they're on different paths.
 http.route({
-  path: "/nocors/fact",
+  path: "/notcors",
   method: "GET",
   handler: httpAction(async () => {
     return new Response("ok");

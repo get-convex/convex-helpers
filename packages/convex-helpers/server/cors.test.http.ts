@@ -3,7 +3,7 @@
  * It does not contain any tests, but the .test path both excludes it from the
  * generated API spec and indicates its intent.
  */
-import { HttpRouter, httpActionGeneric } from "convex/server";
+import { httpRouter, httpActionGeneric } from "convex/server";
 import { corsRouter } from "./cors.js";
 
 const everythingHandler = httpActionGeneric(async () => {
@@ -14,33 +14,33 @@ const everythingHandler = httpActionGeneric(async () => {
   });
 });
 
-const http = new HttpRouter();
-const corsRoute = corsRouter(http, {
+const http = httpRouter();
+const cors = corsRouter(http, {
   allowedOrigins: ["*"],
 });
 
 /**
  * Exact routes will match /fact exactly
  */
-corsRoute({
+cors.route({
   path: "/fact",
   method: "GET",
   handler: everythingHandler,
 });
 
-corsRoute({
+cors.route({
   path: "/fact",
   method: "POST",
   handler: everythingHandler,
 });
 
-corsRoute({
+cors.route({
   path: "/fact",
   method: "PATCH",
   handler: everythingHandler,
 });
 
-corsRoute({
+cors.route({
   path: "/fact",
   method: "DELETE",
   handler: everythingHandler,
@@ -64,13 +64,13 @@ http.route({
 /**
  * Prefix routes will match /dynamicFact/123 and /dynamicFact/456 etc.
  */
-corsRoute({
+cors.route({
   pathPrefix: "/dynamicFact/",
   method: "GET",
   handler: everythingHandler,
 });
 
-corsRoute({
+cors.route({
   pathPrefix: "/dynamicFact/",
   method: "PATCH",
   handler: everythingHandler,
@@ -79,7 +79,7 @@ corsRoute({
 /**
  * Per-path "allowedOrigins" will override the default "allowedOrigins" for that route
  */
-corsRoute({
+cors.route({
   path: "/specialRouteOnlyForThisOrigin",
   method: "GET",
   handler: httpActionGeneric(async () => {
