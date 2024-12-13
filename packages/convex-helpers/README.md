@@ -22,6 +22,7 @@ Table of contents:
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
 - [TypeScript API Generator](#typescript-api-generation)
 - [OpenAPI Spec Generator](#open-api-spec-generation)
+- [CORS support for HttpRouter](#cors-support-for-httprouter)
 
 ## Custom Functions
 
@@ -828,7 +829,7 @@ export const list = query({
   handler: async (ctx, { opts, author }) => {
     return await paginator(ctx.db, schema)
       .query("messages")
-      .withIndex("by_author", q=>q.eq("author", author))
+      .withIndex("by_author", (q) => q.eq("author", author))
       .order("desc")
       .paginate(opts);
   },
@@ -1064,3 +1065,52 @@ forbid using the raw mutation wrappers which don't call your triggers.
 > If you edit data in the Convex dashboard, the triggers won't run.
 >
 > If you upload data through `npx convex import`, the triggers won't run.
+> const users = useQuery(api.users.getAll);
+
+## CORS support for HttpRouter
+
+Add CORS support to your Convex httpAction routes by registering a
+handler for OPTIONS preflight requests and returning the appropriate headers.
+Supports configuring allowed origins, allowed headers, exposed headers, allowing credentials, and browser cache max age, both for the entire router and per route overrides.
+
+Here's a snippet from our `http.ts` file demonstrating how to use the `corsHttpRouter`:
+
+```typescript
+import { corsRouter } from "convex-helpers/server/cors";
+import { httpRouter } from "convex/server";
+import { httpAction } from "./_generated/api";
+
+// Your standard Convex http router:
+const http = httpRouter();
+
+// Your CORS router:
+const cors = corsRouter(http);
+
+cors.route({
+  path: "/foo",
+  method: "GET",
+  handler: httpAction(async () => {
+    return new Response("ok");
+  }),
+});
+
+cors.route({
+  path: "/foo",
+  // You can register multiple methods for the same path
+  method: "POST",
+  handler: httpAction(async () => {
+    return new Response("ok");
+  }),
+  // You can provide configuration per route
+  allowedOrigins: ["http://localhost:8080"],
+});
+
+// Non-CORS routes still work, provided they're on different paths.
+http.route({
+  path: "/notcors",
+  method: "GET",
+  handler: httpAction(async () => {
+    return new Response("ok");
+  }),
+});
+```
