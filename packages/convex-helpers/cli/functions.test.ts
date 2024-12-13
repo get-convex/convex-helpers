@@ -86,7 +86,7 @@ import { GenericId as Id } from "convex/values"
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
 export const internal: InternalApiType = anyApi as unknown as InternalApiType;
-        
+
 export type PublicApiType = { messages: { list: FunctionReference<"query", "public", Record<string, never>, Array<{ _creationTime: number,
 _id: Id<"messages">,
 author: string,
@@ -94,7 +94,7 @@ body: string, }>>
 send: FunctionReference<"mutation", "public", { author: string,
 body: string, }, null> } }
 export type InternalApiType = {  }
-        `;
+`;
 
 export const OPEN_API_SPEC = `
 openapi: 3.0.3
@@ -117,7 +117,7 @@ paths:
       /api/run/messages/list:
         post:
           summary: Calls a query at the path messages.js:list
-          tags: 
+          tags:
             - query
           requestBody:
             content:
@@ -131,7 +131,7 @@ paths:
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/Response_messages.list'    
+                    $ref: '#/components/schemas/Response_messages.list'
             '400':
               description: Failed operation
               content:
@@ -149,7 +149,7 @@ paths:
       /api/run/messages/send:
         post:
           summary: Calls a mutation at the path messages.js:send
-          tags: 
+          tags:
             - mutation
           requestBody:
             content:
@@ -163,7 +163,7 @@ paths:
               content:
                 application/json:
                   schema:
-                    $ref: '#/components/schemas/Response_messages.send'    
+                    $ref: '#/components/schemas/Response_messages.send'
             '400':
               description: Failed operation
               content:
@@ -199,7 +199,7 @@ components:
         required:
           - status
         properties:
-          status: 
+          status:
             type: string
             enum:
               - "success"
@@ -250,7 +250,7 @@ components:
         required:
           - status
         properties:
-          status: 
+          status:
             type: string
             enum:
               - "success"

@@ -2,7 +2,7 @@ import fs from 'fs'
 import { Command, Option } from "commander";
 import { ValidatorJSON } from 'convex/values'
 import chalk from 'chalk';
-import { FunctionSpec, getFunctionSpec } from './utils';
+import { FunctionSpec, getFunctionSpec } from './utils.js';
 import prettier from "prettier";
 
 export const tsApiSpec = new Command("ts-api-spec")
@@ -152,8 +152,8 @@ import { GenericId as Id } from "convex/values"
 
 export const api: PublicApiType = anyApi as unknown as PublicApiType;
 export const internal: InternalApiType = anyApi as unknown as InternalApiType;
-        
+
 export type PublicApiType = ${apiType}
 export type InternalApiType = ${internalApiType}
-        `);
+`);
 }
