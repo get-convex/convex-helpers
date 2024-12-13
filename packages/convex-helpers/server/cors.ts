@@ -23,9 +23,13 @@ import {
   RouteSpecWithPathPrefix,
 } from "convex/server";
 
-type RouteSpecWithCors = RouteSpec & {
+type CorsConfig = {
   allowedOrigins?: string[];
+  allowedHeaders?: string[];
+  browserCacheMaxAge?: number;
 };
+
+type RouteSpecWithCors = RouteSpec & CorsConfig;
 
 /**
  * Factory function to create a router that adds CORS support to routes.
@@ -33,24 +37,29 @@ type RouteSpecWithCors = RouteSpec & {
  * @returns A function to use instead of http.route when you want CORS.
  */
 export const corsRouter = (
-    http: HttpRouter,
-    {
-      allowedOrigins: defaultAllowedOrigins,
-    }: {
-      allowedOrigins: string[];
-    },
+  http: HttpRouter,
+  {
+    allowedOrigins: defaultAllowedOrigins,
+    allowedHeaders: defaultAllowedHeaders,
+    browserCacheMaxAge: defaultBrowserCacheMaxAge,
+  }: CorsConfig,
 ) => ({
   route: (routeSpec: RouteSpecWithCors): void => {
     const tempRouter = httpRouter();
     tempRouter.exactRoutes = http.exactRoutes;
     tempRouter.prefixRoutes = http.prefixRoutes;
 
-    const allowedOrigins = routeSpec.allowedOrigins ?? defaultAllowedOrigins;
+    const config = {
+      allowedOrigins: routeSpec.allowedOrigins ?? defaultAllowedOrigins,
+      allowedHeaders: routeSpec.allowedHeaders ?? defaultAllowedHeaders,
+      browserCacheMaxAge:
+        routeSpec.browserCacheMaxAge ?? defaultBrowserCacheMaxAge,
+    };
 
     const httpCorsHandler = handleCors({
       originalHandler: routeSpec.handler,
-      allowedOrigins: allowedOrigins,
       allowedMethods: [routeSpec.method],
+      ...config,
     });
     /**
      * Figure out what kind of route we're adding: exact or prefix and handle
@@ -62,14 +71,14 @@ export const corsRouter = (
         method: routeSpec.method,
         handler: httpCorsHandler,
       });
-      handleExactRoute(tempRouter, routeSpec, allowedOrigins);
+      handleExactRoute(tempRouter, routeSpec, config);
     } else {
       tempRouter.route({
         pathPrefix: routeSpec.pathPrefix,
         method: routeSpec.method,
         handler: httpCorsHandler,
       });
-      handlePrefixRoute(tempRouter, routeSpec, allowedOrigins);
+      handlePrefixRoute(tempRouter, routeSpec, config);
     }
 
     /**
@@ -88,7 +97,7 @@ export const corsRouter = (
 function handleExactRoute(
   tempRouter: HttpRouter,
   routeSpec: RouteSpecWithPath,
-  allowedOrigins: string[],
+  config: CorsConfig,
 ): void {
   /**
    * exactRoutes is defined as a Map<string, Map<string, PublicHttpAction>>
@@ -102,7 +111,7 @@ function handleExactRoute(
    */
   const optionsHandler = createOptionsHandlerForMethods(
     Array.from(currentMethodsForPath?.keys() ?? []),
-    allowedOrigins,
+    config,
   );
 
   /**
@@ -124,7 +133,7 @@ function handleExactRoute(
 function handlePrefixRoute(
   tempRouter: HttpRouter,
   routeSpec: RouteSpecWithPathPrefix,
-  allowedOrigins: string[],
+  config: CorsConfig,
 ): void {
   /**
    * prefixRoutes is structured differently than exactRoutes. It's defined as
@@ -134,7 +143,7 @@ function handlePrefixRoute(
   const currentMethods = tempRouter.prefixRoutes.keys();
   const optionsHandler = createOptionsHandlerForMethods(
     Array.from(currentMethods ?? []),
-    allowedOrigins,
+    config,
   );
 
   /**
@@ -158,10 +167,10 @@ function handlePrefixRoute(
  */
 function createOptionsHandlerForMethods(
   methods: string[],
-  allowedOrigins: string[],
+  config: CorsConfig,
 ): PublicHttpAction {
   return handleCors({
-    allowedOrigins: allowedOrigins,
+    ...config,
     allowedMethods: methods,
   });
 }
@@ -195,22 +204,16 @@ const SECONDS_IN_A_DAY = 60 * 60 * 24;
  * - "null" (allow requests from data URLs or local files)
  */
 
-const defaultCorsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Max-Age": SECONDS_IN_A_DAY.toString(),
-};
-
 const handleCors = ({
   originalHandler,
   allowedMethods = ["OPTIONS"],
   allowedOrigins = ["*"],
+  allowedHeaders = ["Content-Type"],
+  browserCacheMaxAge = SECONDS_IN_A_DAY,
 }: {
   originalHandler?: PublicHttpAction;
   allowedMethods?: string[];
-  allowedOrigins?: string[];
-}) => {
+} & CorsConfig) => {
   const uniqueMethods = Array.from(
     new Set(
       allowedMethods.map((method) => method.toUpperCase() as RoutableMethod),
@@ -242,16 +245,17 @@ const handleCors = ({
    * Build up the set of CORS headers
    */
   const corsHeaders = {
-    ...defaultCorsHeaders,
     "Access-Control-Allow-Methods": allowMethods,
     "Access-Control-Allow-Origin": allowOrigins,
+    "Access-Control-Allow-Headers": allowedHeaders.join(", "),
+    "Access-Control-Max-Age": browserCacheMaxAge.toString(),
   };
 
   /**
    * Return our modified HTTP action
    */
   return httpActionGeneric(
-    async (_: GenericActionCtx<any>, request: Request) => {
+    async (ctx: GenericActionCtx<any>, request: Request) => {
       /**
        * OPTIONS has no handler and just returns headers
        */
@@ -272,7 +276,7 @@ const handleCors = ({
       /**
        * First, execute the original handler
        */
-      const originalResponse = await originalHandler(_, request);
+      const originalResponse = await originalHandler(ctx, request);
 
       /**
        * Second, get a copy of the original response's headers
