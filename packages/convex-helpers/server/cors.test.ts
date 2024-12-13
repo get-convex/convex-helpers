@@ -131,17 +131,19 @@ describe("corsRouter fetch routes", () => {
   };
 
   const verifyHeaders = (method: string, headers: Headers) => {
-    expect(headers.get("access-control-allow-headers")).toBe(
-      expectedHeaders({ method })["access-control-allow-headers"],
-    );
-    expect(headers.get("access-control-allow-methods")).toBe(
-      expectedHeaders({ method })["access-control-allow-methods"],
-    );
+    if (method === "OPTIONS") {
+      expect(headers.get("access-control-allow-headers")).toBe(
+        expectedHeaders({ method })["access-control-allow-headers"],
+      );
+      expect(headers.get("access-control-allow-methods")).toBe(
+        expectedHeaders({ method })["access-control-allow-methods"],
+      );
+      expect(headers.get("access-control-max-age")).toBe(
+        expectedHeaders({ method })["access-control-max-age"],
+      );
+    }
     expect(headers.get("access-control-allow-origin")).toBe(
       expectedHeaders({ method })["access-control-allow-origin"],
-    );
-    expect(headers.get("access-control-max-age")).toBe(
-      expectedHeaders({ method })["access-control-max-age"],
     );
     expect(headers.get("content-type")).toBe(
       expectedHeaders({ method })["content-type"],

@@ -26,6 +26,7 @@ import {
 type CorsConfig = {
   allowedOrigins?: string[];
   allowedHeaders?: string[];
+  allowCredentials?: boolean;
   browserCacheMaxAge?: number;
 };
 
@@ -42,6 +43,7 @@ export const corsRouter = (
     allowedOrigins: defaultAllowedOrigins,
     allowedHeaders: defaultAllowedHeaders,
     browserCacheMaxAge: defaultBrowserCacheMaxAge,
+    allowCredentials: defaultAllowCredentials,
   }: CorsConfig,
 ) => ({
   route: (routeSpec: RouteSpecWithCors): void => {
@@ -54,6 +56,7 @@ export const corsRouter = (
       allowedHeaders: routeSpec.allowedHeaders ?? defaultAllowedHeaders,
       browserCacheMaxAge:
         routeSpec.browserCacheMaxAge ?? defaultBrowserCacheMaxAge,
+      allowCredentials: routeSpec.allowCredentials ?? defaultAllowCredentials,
     };
 
     const httpCorsHandler = handleCors({
@@ -209,6 +212,7 @@ const handleCors = ({
   allowedMethods = ["OPTIONS"],
   allowedOrigins = ["*"],
   allowedHeaders = ["Content-Type"],
+  allowCredentials = false,
   browserCacheMaxAge = SECONDS_IN_A_DAY,
 }: {
   originalHandler?: PublicHttpAction;
@@ -244,12 +248,24 @@ const handleCors = ({
   /**
    * Build up the set of CORS headers
    */
-  const corsHeaders = {
+  const preflightOnlyHeaders: Record<string, string> = {
     "Access-Control-Allow-Methods": allowMethods,
-    "Access-Control-Allow-Origin": allowOrigins,
     "Access-Control-Allow-Headers": allowedHeaders.join(", "),
     "Access-Control-Max-Age": browserCacheMaxAge.toString(),
   };
+
+  const commonHeaders: Record<string, string> = {
+    "Access-Control-Allow-Origin": allowOrigins,
+  };
+  if (allowCredentials) {
+    commonHeaders["Access-Control-Allow-Credentials"] = "true";
+  }
+
+  if (allowCredentials && allowOrigins.includes("*")) {
+    throw new Error(
+      "Cannot allow credentials if the origin is '*' (wildcard).",
+    );
+  }
 
   /**
    * Return our modified HTTP action
@@ -262,7 +278,7 @@ const handleCors = ({
       if (request.method === "OPTIONS") {
         return new Response(null, {
           status: 204,
-          headers: new Headers(corsHeaders),
+          headers: new Headers({ ...commonHeaders, ...preflightOnlyHeaders }),
         });
       }
 
@@ -286,7 +302,7 @@ const handleCors = ({
       /**
        * Third, add or update our CORS headers
        */
-      Object.entries(corsHeaders).forEach(([key, value]) => {
+      Object.entries(commonHeaders).forEach(([key, value]) => {
         newHeaders.set(key, value);
       });
 
