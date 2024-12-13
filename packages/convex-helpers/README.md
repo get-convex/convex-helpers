@@ -1076,68 +1076,43 @@ Supports configuring allowed origins, methods, and headers.
 Here's a snippet from our `http.ts` file demonstrating how to use the `corsHttpRouter`:
 
 ```typescript
-import { getFact } from "./myHttpApi";
-import { corsHttpRouter } from "./helpers/corsHttpRouter";
+import { corsRouter } from "convex-helpers/server/cors";
+import { HttpRouter } from "convex/server";
+import { httpAction } from "./_generated/api";
 
 // Your standard Convex http router:
-// const router = httpRouter();
+const http = httpRouter();
 
 // Your CORS router:
-const router = corsHttpRouter({
+const corsRoute = corsRouter(http, {
   allowedOrigins: ["http://localhost:3000"], // or '*' to allow all
 });
 
-/**
- * CORS routes
- */
-http.corsRoute({
+corsRoute({
   path: "/fact",
-  method: "GET",
-  handler: getFact,
-});
-
-http.corsRoute({
-  path: "/fact",
-  method: "POST",
-  handler: getFact,
-});
-
-/**
- * Non-CORS routes
- */
-http.route({
-  path: "/nocors/fact",
-  method: "GET",
-  handler: getFact,
-});
-
-http.route({
-  path: "/nocors/fact",
-  method: "POST",
-  handler: getFact,
-});
-```
-
-You can provide optional allowedOrigins per route:
-
-```typescript
-/**
- * Per-path "allowedOrigins" will override the default "allowedOrigins" for that route
- */
-http.corsRoute({
-  path: "/specialRouteOnlyForThisOrigin",
   method: "GET",
   handler: httpAction(async () => {
-    return new Response(
-      JSON.stringify({ message: "Custom allowed origins! Wow!" }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    return new Response("ok");
   }),
-  allowedOrigins: ["http://localhost:3000"],
+});
+
+corsRoute({
+  path: "/fact",
+  // You can register multiple methods for the same path
+  method: "POST",
+  handler: httpAction(async () => {
+    return new Response("ok");
+  }),
+  // You can provide optional allowedOrigins per route
+  allowedOrigins: ["http://localhost:8080"],
+});
+
+// Non-CORS routes still work, provided they're on different paths.
+http.route({
+  path: "/nocors/fact",
+  method: "GET",
+  handler: httpAction(async () => {
+    return new Response("ok");
+  }),
 });
 ```
