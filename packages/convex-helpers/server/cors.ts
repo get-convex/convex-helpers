@@ -76,28 +76,16 @@ type RouteSpecWithCors = RouteSpec & CorsConfig;
  * @param allowedOrigins An array of allowed origins for CORS.
  * @returns A function to use instead of http.route when you want CORS.
  */
-export const corsRouter = (
-  http: HttpRouter,
-  {
-    allowCredentials: defaultAllowCredentials,
-    allowedOrigins: defaultAllowedOrigins,
-    allowedHeaders: defaultAllowedHeaders,
-    exposedHeaders: defaultExposedHeaders,
-    browserCacheMaxAge: defaultBrowserCacheMaxAge,
-  }: CorsConfig,
-) => ({
+export const corsRouter = (http: HttpRouter, corsConfig?: CorsConfig) => ({
+  http,
   route: (routeSpec: RouteSpecWithCors): void => {
     const tempRouter = httpRouter();
     tempRouter.exactRoutes = http.exactRoutes;
     tempRouter.prefixRoutes = http.prefixRoutes;
 
     const config = {
-      allowedOrigins: routeSpec.allowedOrigins ?? defaultAllowedOrigins,
-      allowedHeaders: routeSpec.allowedHeaders ?? defaultAllowedHeaders,
-      exposedHeaders: routeSpec.exposedHeaders ?? defaultExposedHeaders,
-      browserCacheMaxAge:
-        routeSpec.browserCacheMaxAge ?? defaultBrowserCacheMaxAge,
-      allowCredentials: routeSpec.allowCredentials ?? defaultAllowCredentials,
+      ...corsConfig,
+      ...routeSpec,
     };
 
     const httpCorsHandler = handleCors({
