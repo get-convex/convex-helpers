@@ -24,13 +24,13 @@
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.14.1",
+    "convex": "^1.17.0",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "usehooks-ts": "^3.1.0",
-    "zod": "^3.23.8"
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.17.1",

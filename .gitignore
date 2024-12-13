@@ -109,6 +109,3 @@ dist
 .tern-port
 tsconfig.tsbuildinfo
 convex-local-backend*
-
-# We are publishing a library, so it needs to work with all latest versions
-package-lock.json
