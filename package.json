@@ -35,7 +35,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.17.1",
     "@edge-runtime/vm": "5.0.0",
-    "@redocly/cli": "1.26.0",
+    "@redocly/cli": "1.26.1",
     "@testing-library/react": "16.1.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.14",
