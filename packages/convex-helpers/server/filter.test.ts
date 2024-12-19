@@ -55,4 +55,25 @@ test("filter", async () => {
     { name: "8" },
     { name: "9" },
   ]);
+
+  // Check that ordering works, before or after the filter.
+  const withOrder = await t.run((ctx) =>
+    filter(ctx.db.query("tableA").order("desc"), (c) => c.count > 5).collect(),
+  );
+  expect(withOrder).toMatchObject([
+    { count: 9 },
+    { count: 8 },
+    { count: 7 },
+    { count: 6 },
+  ]);
+
+  const withOrderAfter = await t.run((ctx) =>
+    filter(ctx.db.query("tableA"), (c) => c.count > 5).order("desc").collect(),
+  );
+  expect(withOrderAfter).toMatchObject([
+    { count: 9 },
+    { count: 8 },
+    { count: 7 },
+    { count: 6 },
+  ]);
 });
