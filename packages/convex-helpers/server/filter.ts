@@ -139,7 +139,7 @@ export type Predicate<T extends GenericTableInfo> = (
   doc: DocumentByInfo<T>,
 ) => Promise<boolean> | boolean;
 
-type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
+type QueryTableInfo<Q> = Q extends OrderedQuery<infer T> ? T : never;
 
 /**
  * Applies a filter to a database query, just like `.filter((q) => ...)` but
@@ -183,9 +183,12 @@ type QueryTableInfo<Q> = Q extends Query<infer T> ? T : never;
  *  from the query pipeline.
  * @returns A new query with the filter applied.
  */
-export function filter<Q extends Query<GenericTableInfo>>(
+export function filter<Q extends OrderedQuery<GenericTableInfo>>(
   query: Q,
   predicate: Predicate<QueryTableInfo<Q>>,
 ): Q {
-  return new QueryWithFilter(query, predicate) as any as Q;
+  return new QueryWithFilter<QueryTableInfo<Q>>(
+    query as unknown as OrderedQuery<QueryTableInfo<Q>>,
+    predicate,
+  ) as any as Q;
 }
