@@ -50,7 +50,7 @@
     "jsdom": "25.0.1",
     "npm-run-all2": "7.0.2",
     "typescript": "5.7.2",
-    "vite": "6.0.6",
+    "vite": "6.0.7",
     "vitest": "2.1.8"
   }
 }
