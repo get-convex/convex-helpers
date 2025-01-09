@@ -47,7 +47,7 @@
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.35",
     "eslint": "9.17.0",
-    "jsdom": "25.0.1",
+    "jsdom": "26.0.0",
     "npm-run-all2": "7.0.2",
     "typescript": "5.7.2",
     "vite": "6.0.7",
