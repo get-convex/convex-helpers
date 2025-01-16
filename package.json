@@ -36,7 +36,7 @@
     "@arethetypeswrong/cli": "0.17.3",
     "@edge-runtime/vm": "5.0.0",
     "@redocly/cli": "1.27.2",
-    "@testing-library/react": "16.1.0",
+    "@testing-library/react": "16.2.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.14",
     "@types/node": "22.10.7",
