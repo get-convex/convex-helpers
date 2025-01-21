@@ -138,7 +138,7 @@
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "devDependencies": {
     "chalk": "5.4.1",
-    "commander": "13.0.0"
+    "commander": "13.1.0"
   },
   "peerDependencies": {
     "convex": "^1.13.0",
