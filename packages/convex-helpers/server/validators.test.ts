@@ -37,7 +37,6 @@ import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
-import { kitchenSink } from "convex-helpers/server/zod.test";
 
 export const testLiterals = internalQueryGeneric({
   args: {
