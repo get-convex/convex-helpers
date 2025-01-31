@@ -1,6 +1,8 @@
 import {
   GenericValidator,
+  ObjectType,
   PropertyValidators,
+  VObject,
   VOptional,
   VString,
   VUnion,
@@ -8,6 +10,11 @@ import {
   v,
 } from "convex/values";
 import { Expand } from "./index.js";
+import {
+  DataModelFromSchemaDefinition,
+  SchemaDefinition,
+  TableNamesInDataModel,
+} from "convex/server";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -106,6 +113,10 @@ export const systemFields = <TableName extends string>(
   _creationTime: v.number(),
 });
 
+export type SystemFields<TableName extends string> = ReturnType<
+  typeof systemFields<TableName>
+>;
+
 /**
  * Utility to add system fields to an object with fields mapping to validators.
  * e.g. withSystemFields("users", { name: v.string() }) would return:
@@ -128,6 +139,112 @@ export const withSystemFields = <
     ...system,
   } as Expand<T & typeof system>;
 };
+
+export type AddFieldsToValidator<
+  V extends Validator<any, any, any>,
+  Fields extends PropertyValidators,
+> =
+  V extends VObject<infer T, infer F, infer O>
+    ? VObject<Expand<T & ObjectType<Fields>>, Expand<F & Fields>, O>
+    : Validator<
+        Expand<V["type"] & ObjectType<Fields>>,
+        V["isOptional"],
+        V["fieldPaths"] &
+          {
+            [Property in keyof Fields & string]:
+              | `${Property}.${Fields[Property]["fieldPaths"]}`
+              | Property;
+          }[keyof Fields & string] &
+          string
+      >;
+
+export const doc = <
+  Schema extends SchemaDefinition<any, boolean>,
+  TableName extends TableNamesInDataModel<
+    DataModelFromSchemaDefinition<Schema>
+  >,
+>(
+  schema: Schema,
+  tableName: TableName,
+): AddFieldsToValidator<
+  (typeof schema)["tables"][TableName]["validator"],
+  SystemFields<TableName>
+> => {
+  function addSystemFields<V extends Validator<any, any, any>>(
+    validator: V,
+  ): any {
+    if (validator.kind === "object") {
+      return v.object({
+        ...validator.fields,
+        ...systemFields(tableName),
+      });
+    }
+    if (validator.kind !== "union") {
+      throw new Error(
+        "Only object and union validators are supported for documents",
+      );
+    }
+    return v.union(...validator.members.map(addSystemFields));
+  }
+  return addSystemFields(schema.tables[tableName].validator);
+};
+
+/**
+ * Creates a validator with a type-safe `.id(table)` and a new `.doc(table)`.
+ * Can be used instead of `v` for function arugments & return validators.
+ * However, it cannot be used as part of defining a schema, since it would be
+ * circular.
+ * ```ts
+ * import schema from "./schema";
+ * export const vv = typedV(schema);
+ *
+ * export const myQuery = query({
+ *   args: { docId: vv.id("mytable") },
+ *   returns: vv.doc("mytable"),
+ *   handler: (ctx, args) => ctx.db.get(args.docId),
+ * })
+ *
+ * @param schema Typically from `import schema from "./schema"`.
+ * @returns A validator like `v` with type-safe `v.id` and a new `v.doc`
+ */
+export function typedV<Schema extends SchemaDefinition<any, boolean>>(
+  schema: Schema,
+) {
+  return {
+    ...v,
+    /**
+     * Similar to v.id but is type-safe on the table name.
+     * @param tableName A table named in your schema.
+     * @returns A validator for an ID to the named table.
+     */
+    id: <
+      TableName extends TableNamesInDataModel<
+        DataModelFromSchemaDefinition<Schema>
+      >,
+    >(
+      tableName: TableName,
+    ) => v.id(tableName),
+    /**
+     * Generates a validator for a document, including system fields.
+     * To be used in validators when passing a full document in or out of a
+     * function.
+     * @param tableName A table named in your schema.
+     * @returns A validator that matches the schema validator, adding _id and
+     * _creationTime. If the validator was a union, it will update all documents
+     * recursively, but will currently lose the VUnion-specific type.
+     */
+    doc: <
+      TableName extends TableNamesInDataModel<
+        DataModelFromSchemaDefinition<Schema>
+      >,
+    >(
+      tableName: TableName,
+    ): AddFieldsToValidator<
+      (typeof schema)["tables"][TableName]["validator"],
+      SystemFields<TableName>
+    > => doc(schema, tableName),
+  };
+}
 
 /**
  * A string validator that is a branded string type.
