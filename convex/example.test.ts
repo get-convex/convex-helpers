@@ -17,6 +17,7 @@ describe("testingExample", () => {
     if (process.env.CI) {
       // Skip in CI environment since it requires a Convex deployment
       return;
+    }
     expect(await t.query(api.counter.getCounter, { counterName: "foo" })).toBe(
       0,
     );
