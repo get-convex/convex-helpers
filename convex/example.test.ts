@@ -13,11 +13,7 @@ describe("testingExample", () => {
     await t.close();
   });
 
-  test("counter", async () => {
-    if (process.env.CI) {
-      // Skip in CI environment since it requires a Convex deployment
-      return;
-    }
+  (process.env.CI ? test.skip : test)("counter", async () => {
     expect(await t.query(api.counter.getCounter, { counterName: "foo" })).toBe(
       0,
     );
