@@ -115,7 +115,10 @@
   "scripts": {
     "build:bin": "esbuild ./cli/index.ts --bundle --platform=node --external:prettier --format=cjs --outfile=dist/bin.cjs",
     "build": "node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && cd dist/ && rm **/*.test.* && rm -r server/_generated && tsc",
-    "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'cd ../.. && npm run build' --initial"
+    "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'cd ../.. && npm run build' --initial",
+    "test": "vitest",
+    "test:debug": "vitest --inspect-brk --no-file-parallelism",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text"
   },
   "repository": {
     "type": "git",
@@ -138,7 +141,10 @@
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "devDependencies": {
     "chalk": "5.4.1",
-    "commander": "13.1.0"
+    "commander": "13.1.0",
+    "@vitest/coverage-v8": "^2.0.5",
+    "convex-test": "^0.0.30",
+    "vitest": "^2.0.5"
   },
   "peerDependencies": {
     "convex": "^1.13.0",
