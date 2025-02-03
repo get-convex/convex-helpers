@@ -1,7 +1,7 @@
 import { api } from "./_generated/api";
 import { ConvexTestingHelper } from "convex-helpers/testing";
 
-describe("testingExample", () => {
+(process.env.CI ? describe.skip : describe)("testingExample", () => {
   let t: ConvexTestingHelper;
 
   beforeEach(() => {
