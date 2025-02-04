@@ -167,7 +167,7 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
 ): FunctionReturnType<Query> | undefined {
   const [sessionId] = useSessionId();
   const skip = args[0] === "skip" || !sessionId;
-  const originalArgs = args[0] === "skip" ? {} : args[0] ?? {};
+  const originalArgs = args[0] === "skip" ? {} : (args[0] ?? {});
 
   const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
 
@@ -256,7 +256,7 @@ export function useSessionId(): readonly [
   if (!ctx.ssrFriendly && ctx.sessionId === undefined) {
     throw new Error("Session ID invalid. Clear your storage?");
   }
-  return [ctx.sessionId!, ctx.refreshSessionId, ctx.sessionIdPromise] as const;
+  return [ctx.sessionId, ctx.refreshSessionId, ctx.sessionIdPromise] as const;
 }
 
 /**
