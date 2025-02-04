@@ -600,20 +600,23 @@ await ctx.runMutation(internal.users.update, {
 When using validators for defining database schema or function arguments,
 these validators help:
 
-1. Add a `Table` utility that defines a table and keeps references to the fields
-   to avoid re-defining validators. To learn more about sharing validators, read
-   [this article](https://stack.convex.dev/argument-validation-without-repetition),
-   an extension of [this article](https://stack.convex.dev/types-cookbook).
-2. Add utilties for `partial`, `pick` and `omit` to match the TypeScript type
-   utilities.
-3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
-   field, and `brandedString`. To learn more about branded strings see
+1. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
+   field, a `partial` object, and `brandedString`.
+   To learn more about branded strings see
    [this article](https://stack.convex.dev/using-branded-types-in-validators).
+2. A `validate` function validates a value against a validator. Warning:
+   this does not validate that the value of v.id is an ID for the given table.
+3. Add utilties for `partial`, `pick` and `omit` to match the TypeScript type
+   utilities.
 4. Add a `doc(schema, "tableName")` helper to validate a document with system
    fields included.
 5. Add a `typedV(schema)` helper that is a `v` replacement that also has:
    - `doc("tableName")` that works like `doc` above.
    - `id("tableName")` that is typed to tables in your schema.
+6. Add a `Table` utility that defines a table and keeps references to the fields
+   to avoid re-defining validators. To learn more about sharing validators, read
+   [this article](https://stack.convex.dev/argument-validation-without-repetition),
+   an extension of [this article](https://stack.convex.dev/types-cookbook).
 
 Example:
 
@@ -666,6 +669,9 @@ const balanceAndEmail = pick(vv.doc("accounts").fields, ["balance", "email"]);
 
 // A validator for all the fields except balance.
 const accountWithoutBalance = omit(vv.doc("accounts").fields, ["balance"]);
+
+// Validate against a validator. Can optionally throw on error.
+validate(balanceAndEmail, { balance: 123n, email: "test@example.com" });
 ```
 
 ## Filter
