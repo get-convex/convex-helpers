@@ -96,7 +96,7 @@ export const null_ = v.null();
 /** Re-export values from v without having to do v.* */
 export const { id, object, array, bytes, literal, optional, union } = v;
 /** ArrayBuffer validator. */
-export const arrayBuffer = bytes;
+export const arrayBuffer = bytes();
 
 /**
  * Utility to get the validators for fields associated with a table.
@@ -329,3 +329,200 @@ export const pretend = <T extends GenericValidator>(_typeToImmitate: T): T =>
 export const pretendRequired = <T extends Validator<any, "required", any>>(
   optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
+
+class ValidationError extends Error {
+  constructor(
+    public expected: string,
+    public got: string,
+    public path?: string,
+  ) {
+    const message = `Validator error${path ? ` for ${path}` : ""}: Expected \`${expected}\`, got \`${got}\``;
+    super(message);
+    this.name = "ValidationError";
+  }
+}
+
+/**
+ * Validate a value against a validator.
+ *
+ * WARNING: This does not validate that v.id is an ID for the given table.
+ * It only validates that the ID is a string. Function `args`, `returns` and
+ * schema definitions will validate that the ID is an ID for the given table.
+ *
+ * @param validator The validator to validate against.
+ * @param value The value to validate.
+ * @returns Whether the value is valid against the validator.
+ */
+export function validate<T extends Validator<any, any, any>>(
+  validator: T,
+  value: unknown,
+  opts?: {
+    throwOnError?: boolean;
+    pathPrefix?: string;
+  },
+): value is T["type"] {
+  let valid = true;
+  let expected: string = validator.kind;
+  if (value === undefined) {
+    if (validator.isOptional !== "optional") {
+      valid = false;
+    }
+  } else {
+    switch (validator.kind) {
+      case "null": {
+        if (value !== null) {
+          valid = false;
+        }
+        break;
+      }
+      case "float64": {
+        if (typeof value !== "number") {
+          expected = "number";
+          valid = false;
+        }
+        break;
+      }
+      case "int64": {
+        if (typeof value !== "bigint") {
+          expected = "bigint";
+          valid = false;
+        }
+        break;
+      }
+      case "boolean": {
+        if (typeof value !== "boolean") {
+          valid = false;
+        }
+        break;
+      }
+      case "string": {
+        if (typeof value !== "string") {
+          valid = false;
+        }
+        break;
+      }
+      case "bytes": {
+        if (!(value instanceof ArrayBuffer)) {
+          valid = false;
+        }
+        break;
+      }
+      case "any": {
+        break;
+      }
+      case "literal": {
+        if (value !== validator.value) {
+          valid = false;
+        }
+        break;
+      }
+      case "id": {
+        if (typeof value !== "string") {
+          valid = false;
+        }
+        break;
+      }
+      case "array": {
+        if (!Array.isArray(value)) {
+          valid = false;
+          break;
+        }
+        for (const [index, v] of value.entries()) {
+          const path = `${opts?.pathPrefix ?? ""}[${index}]`;
+          valid = validate(validator.element, v, { ...opts, pathPrefix: path });
+          if (!valid) {
+            expected = validator.element.kind;
+            break;
+          }
+        }
+        break;
+      }
+      case "object": {
+        if (typeof value !== "object" || value === null) {
+          valid = false;
+          break;
+        }
+        const prototype = Object.getPrototypeOf(value);
+        const isSimple =
+          prototype === null ||
+          prototype === Object.prototype ||
+          // Objects generated from other contexts (e.g. across Node.js `vm` modules) will not satisfy the previous
+          // conditions but are still simple objects.
+          prototype?.constructor?.name === "Object";
+
+        if (!isSimple) {
+          expected =
+            prototype?.constructor?.name ?? typeof prototype ?? "object";
+          valid = false;
+          break;
+        }
+        for (const [k, fieldValidator] of Object.entries(validator.fields)) {
+          valid = validate(fieldValidator, (value as any)[k], {
+            ...opts,
+            pathPrefix: appendPath(opts, k),
+          });
+          if (!valid) {
+            break;
+          }
+        }
+        for (const k of Object.keys(value)) {
+          if (validator.fields[k] === undefined) {
+            if (opts?.throwOnError) {
+              throw new ValidationError(
+                "nothing",
+                typeof (value as any)[k],
+                appendPath(opts, k),
+              );
+            }
+            valid = false;
+            break;
+          }
+        }
+        break;
+      }
+      case "union": {
+        valid = false;
+        for (const member of validator.members) {
+          if (validate(member, value, opts)) {
+            valid = true;
+            break;
+          }
+        }
+        break;
+      }
+      case "record": {
+        if (typeof value !== "object" || value === null) {
+          valid = false;
+          break;
+        }
+        for (const [k, fieldValue] of Object.entries(value)) {
+          valid = validate(validator.key, k, {
+            ...opts,
+            pathPrefix: appendPath(opts, k),
+          });
+          if (!valid) {
+            expected = validator.key.kind;
+            break;
+          }
+          valid = validate(validator.value, fieldValue, {
+            ...opts,
+            pathPrefix: appendPath(opts, k),
+          });
+          if (!valid) {
+            expected = validator.value.kind;
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  if (!valid && opts?.throwOnError) {
+    throw new ValidationError(expected, typeof value, opts?.pathPrefix);
+  }
+  return valid;
+}
+
+function appendPath(opts: { pathPrefix?: string } | undefined, path: string) {
+  return opts?.pathPrefix ? `${opts.pathPrefix}.${path}` : path;
+}
