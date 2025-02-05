@@ -330,7 +330,7 @@ export const pretendRequired = <T extends Validator<any, "required", any>>(
   optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
 
-class ValidationError extends Error {
+export class ValidationError extends Error {
   constructor(
     public expected: string,
     public got: string,

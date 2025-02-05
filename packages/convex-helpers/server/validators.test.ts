@@ -21,6 +21,7 @@ import {
   pretendRequired,
   string,
   typedV,
+  ValidationError,
 } from "../validators.js";
 import { convexTest } from "convex-test";
 import {
@@ -398,6 +399,56 @@ describe("validate", () => {
       fail("Should have thrown");
     } catch (e: any) {
       expect(e.message).toContain("user.details.name");
+    }
+  });
+
+  test("includes path for nested objects", () => {
+    const complexValidator = object({
+      user: object({
+        details: object({
+          name: string,
+        }),
+      }),
+    });
+    expect(
+      validate(complexValidator, { user: { details: { name: "Alice" } } }),
+    ).toBe(true);
+    expect(
+      validate(complexValidator, { user: { details: { name: 123 } } }),
+    ).toBe(false);
+    try {
+      validate(
+        complexValidator,
+        { user: { details: { name: 123 } } },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toContain("user.details.name");
+    }
+  });
+
+  test("includes path for nested arrays", () => {
+    const complexValidator = object({
+      user: object({
+        details: array(string),
+      }),
+    });
+    expect(
+      validate(complexValidator, { user: { details: ["a", "b", "c"] } }),
+    ).toBe(true);
+    expect(validate(complexValidator, { user: { details: [1, 2, 3] } })).toBe(
+      false,
+    );
+    try {
+      validate(
+        complexValidator,
+        { user: { details: ["a", 3] } },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toContain("user.details[1]");
     }
   });
 
