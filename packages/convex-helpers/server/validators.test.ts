@@ -2,6 +2,7 @@ import { assert, Equals } from "../index.js";
 import {
   any,
   array,
+  arrayBuffer,
   bigint,
   boolean,
   brandedString,
@@ -20,6 +21,7 @@ import {
   pretendRequired,
   string,
   typedV,
+  ValidationError,
 } from "../validators.js";
 import { convexTest } from "convex-test";
 import {
@@ -37,6 +39,7 @@ import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
+import { validate } from "../validators.js";
 
 export const testLiterals = internalQueryGeneric({
   args: {
@@ -267,4 +270,199 @@ test("validators disallow things when they're wrong", async () => {
       maybeNotSetYet: true as unknown as string,
     } as ExampleFields);
   }).rejects.toThrowError("Validator error");
+});
+
+describe("validate", () => {
+  test("validates primitive validators", () => {
+    // String
+    expect(validate(string, "hello")).toBe(true);
+    expect(validate(string, 123)).toBe(false);
+    expect(validate(string, null)).toBe(false);
+
+    // Number
+    expect(validate(number, 123)).toBe(true);
+    expect(validate(number, "123")).toBe(false);
+    expect(validate(number, null)).toBe(false);
+
+    // Boolean
+    expect(validate(boolean, true)).toBe(true);
+    expect(validate(boolean, false)).toBe(true);
+    expect(validate(boolean, "true")).toBe(false);
+    expect(validate(boolean, 1)).toBe(false);
+
+    // Null
+    expect(validate(null_, null)).toBe(true);
+    expect(validate(null_, undefined)).toBe(false);
+    expect(validate(null_, false)).toBe(false);
+
+    // BigInt/Int64
+    expect(validate(bigint, 123n)).toBe(true);
+    expect(validate(bigint, 123)).toBe(false);
+    expect(validate(bigint, "123")).toBe(false);
+  });
+
+  test("validates array validator", () => {
+    const arrayOfStrings = array(string);
+    expect(validate(arrayOfStrings, ["a", "b", "c"])).toBe(true);
+    expect(validate(arrayOfStrings, [])).toBe(true);
+    expect(validate(arrayOfStrings, ["a", 1, "c"])).toBe(false);
+    expect(validate(arrayOfStrings, null)).toBe(false);
+    expect(validate(arrayOfStrings, "not an array")).toBe(false);
+  });
+
+  test("validates object validator", () => {
+    const personValidator = object({
+      name: string,
+      age: number,
+      optional: optional(string),
+    });
+
+    expect(validate(personValidator, { name: "Alice", age: 30 })).toBe(true);
+    expect(
+      validate(personValidator, { name: "Bob", age: 25, optional: "test" }),
+    ).toBe(true);
+    expect(validate(personValidator, { name: "Charlie", age: "30" })).toBe(
+      false,
+    );
+    expect(validate(personValidator, { name: "Dave" })).toBe(false);
+    expect(validate(personValidator, null)).toBe(false);
+    expect(
+      validate(personValidator, { name: "Eve", age: 20, extra: "field" }),
+    ).toBe(false);
+  });
+
+  test("validates union validator", () => {
+    const unionValidator = or(string, number, object({ type: is("test") }));
+
+    expect(validate(unionValidator, "string")).toBe(true);
+    expect(validate(unionValidator, 123)).toBe(true);
+    expect(validate(unionValidator, { type: "test" })).toBe(true);
+    expect(validate(unionValidator, { type: "wrong" })).toBe(false);
+    expect(validate(unionValidator, true)).toBe(false);
+    expect(validate(unionValidator, null)).toBe(false);
+  });
+
+  test("validates literal validator", () => {
+    const literalValidator = is("specific");
+    expect(validate(literalValidator, "specific")).toBe(true);
+    expect(validate(literalValidator, "other")).toBe(false);
+    expect(validate(literalValidator, null)).toBe(false);
+  });
+
+  test("validates optional values", () => {
+    const optionalString = optional(string);
+    expect(validate(optionalString, "value")).toBe(true);
+    expect(validate(optionalString, undefined)).toBe(true);
+    expect(validate(optionalString, null)).toBe(false);
+    expect(validate(optionalString, 123)).toBe(false);
+  });
+
+  test("throws validation errors when configured", () => {
+    expect(() => validate(string, 123, { throw: true })).toThrow(
+      "Validator error",
+    );
+
+    expect(() =>
+      validate(object({ name: string }), { name: 123 }, { throw: true }),
+    ).toThrow("Validator error");
+
+    expect(() =>
+      validate(
+        object({ name: string }),
+        { name: "valid", extra: true },
+        { throw: true },
+      ),
+    ).toThrow("Validator error");
+  });
+
+  test("includes path in error messages", () => {
+    const complexValidator = object({
+      user: object({
+        details: object({
+          name: string,
+        }),
+      }),
+    });
+
+    try {
+      validate(
+        complexValidator,
+        {
+          user: {
+            details: {
+              name: 123,
+            },
+          },
+        },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toContain("user.details.name");
+    }
+  });
+
+  test("includes path for nested objects", () => {
+    const complexValidator = object({
+      user: object({
+        details: object({
+          name: string,
+        }),
+      }),
+    });
+    expect(
+      validate(complexValidator, { user: { details: { name: "Alice" } } }),
+    ).toBe(true);
+    expect(
+      validate(complexValidator, { user: { details: { name: 123 } } }),
+    ).toBe(false);
+    try {
+      validate(
+        complexValidator,
+        { user: { details: { name: 123 } } },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toContain("user.details.name");
+    }
+  });
+
+  test("includes path for nested arrays", () => {
+    const complexValidator = object({
+      user: object({
+        details: array(string),
+      }),
+    });
+    expect(
+      validate(complexValidator, { user: { details: ["a", "b", "c"] } }),
+    ).toBe(true);
+    expect(validate(complexValidator, { user: { details: [1, 2, 3] } })).toBe(
+      false,
+    );
+    try {
+      validate(
+        complexValidator,
+        { user: { details: ["a", 3] } },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toContain("user.details[1]");
+    }
+  });
+
+  test("validates bytes/ArrayBuffer", () => {
+    const buffer = new ArrayBuffer(8);
+    expect(validate(arrayBuffer, buffer)).toBe(true);
+    expect(validate(arrayBuffer, new Uint8Array(8))).toBe(false);
+    expect(validate(arrayBuffer, "binary")).toBe(false);
+  });
+
+  test("validates any", () => {
+    expect(validate(any, "anything")).toBe(true);
+    expect(validate(any, 123)).toBe(true);
+    expect(validate(any, null)).toBe(true);
+    expect(validate(any, { complex: "object" })).toBe(true);
+  });
 });
