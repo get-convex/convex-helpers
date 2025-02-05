@@ -604,8 +604,8 @@ these validators help:
    field, a `partial` object, and `brandedString`.
    To learn more about branded strings see
    [this article](https://stack.convex.dev/using-branded-types-in-validators).
-2. A `validate` function validates a value against a validator. Warning:
-   this does not validate that the value of v.id is an ID for the given table.
+2. A `validate(validator, data)` function validates a value against a validator.
+   Warning: this does not validate that the value of v.id is an ID for the given table.
 3. Add utilties for `partial`, `pick` and `omit` to match the TypeScript type
    utilities.
 4. Add a `doc(schema, "tableName")` helper to validate a document with system
@@ -672,6 +672,8 @@ const accountWithoutBalance = omit(vv.doc("accounts").fields, ["balance"]);
 
 // Validate against a validator. Can optionally throw on error.
 validate(balanceAndEmail, { balance: 123n, email: "test@example.com" });
+// Warning: this only validates that `accountId` is a string.
+validate(vv.id("accounts"), accountId);
 ```
 
 ## Filter
