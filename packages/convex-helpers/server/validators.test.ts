@@ -357,19 +357,19 @@ describe("validate", () => {
   });
 
   test("throws validation errors when configured", () => {
-    expect(() => validate(string, 123, { throwOnError: true })).toThrow(
+    expect(() => validate(string, 123, { throw: true })).toThrow(
       "Validator error",
     );
 
     expect(() =>
-      validate(object({ name: string }), { name: 123 }, { throwOnError: true }),
+      validate(object({ name: string }), { name: 123 }, { throw: true }),
     ).toThrow("Validator error");
 
     expect(() =>
       validate(
         object({ name: string }),
         { name: "valid", extra: true },
-        { throwOnError: true },
+        { throw: true },
       ),
     ).toThrow("Validator error");
   });
@@ -393,7 +393,7 @@ describe("validate", () => {
             },
           },
         },
-        { throwOnError: true },
+        { throw: true },
       );
       fail("Should have thrown");
     } catch (e: any) {

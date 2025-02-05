@@ -357,7 +357,7 @@ export function validate<T extends Validator<any, any, any>>(
   validator: T,
   value: unknown,
   opts?: {
-    throwOnError?: boolean;
+    throw?: boolean;
     pathPrefix?: string;
   },
 ): value is T["type"] {
@@ -467,7 +467,7 @@ export function validate<T extends Validator<any, any, any>>(
         }
         for (const k of Object.keys(value)) {
           if (validator.fields[k] === undefined) {
-            if (opts?.throwOnError) {
+            if (opts?.throw) {
               throw new ValidationError(
                 "nothing",
                 typeof (value as any)[k],
@@ -517,7 +517,7 @@ export function validate<T extends Validator<any, any, any>>(
       }
     }
   }
-  if (!valid && opts?.throwOnError) {
+  if (!valid && opts?.throw) {
     throw new ValidationError(expected, typeof value, opts?.pathPrefix);
   }
   return valid;
