@@ -671,9 +671,16 @@ const balanceAndEmail = pick(vv.doc("accounts").fields, ["balance", "email"]);
 const accountWithoutBalance = omit(vv.doc("accounts").fields, ["balance"]);
 
 // Validate against a validator. Can optionally throw on error.
-validate(balanceAndEmail, { balance: 123n, email: "test@example.com" });
+const value = { balance: 123n, email: "test@example.com" };
+validate(balanceAndEmail, value);
+
+// This will throw a ValidationError if the value is not valid.
+validate(balanceAndEmail, value, { throw: true });
+
 // Warning: this only validates that `accountId` is a string.
 validate(vv.id("accounts"), accountId);
+// Whereas this validates that `accountId` is an id for the accounts table.
+validate(vv.id("accounts"), accountId, { db: ctx.db });
 ```
 
 ## Filter

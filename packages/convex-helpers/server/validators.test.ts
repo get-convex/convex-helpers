@@ -357,6 +357,23 @@ describe("validate", () => {
     expect(validate(optionalString, 123)).toBe(false);
   });
 
+  test("validates id validator", async () => {
+    const idValidator = id("users");
+    expect(validate(idValidator, "123")).toBe(true);
+    expect(validate(idValidator, "any string")).toBe(true);
+    expect(
+      validate(object({ someArray: optional(array(idValidator)) }), {
+        someArray: ["string", "other string"],
+      }),
+    ).toBe(true);
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { tokenIdentifier: "test" });
+      expect(validate(idValidator, userId, { db: ctx.db })).toBe(true);
+      expect(validate(idValidator, "not an id", { db: ctx.db })).toBe(false);
+    });
+  });
+
   test("throws validation errors when configured", () => {
     expect(() => validate(string, 123, { throw: true })).toThrow(
       ValidationError,
