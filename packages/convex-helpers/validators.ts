@@ -12,6 +12,8 @@ import {
 import { Expand } from "./index.js";
 import {
   DataModelFromSchemaDefinition,
+  GenericDatabaseReader,
+  GenericDataModel,
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
@@ -357,8 +359,13 @@ export function validate<T extends Validator<any, any, any>>(
   validator: T,
   value: unknown,
   opts?: {
+    /* If true, throw an error if the value is not valid. */
     throw?: boolean;
-    pathPrefix?: string;
+    /* If provided, v.id validation will check that the id is for the table. */
+    db?: GenericDatabaseReader<GenericDataModel>;
+    /* A prefix for the path of the value being validated, for error reporting.
+    This is used for recursive calls, do not set it manually. */
+    _pathPrefix?: string;
   },
 ): value is T["type"] {
   let valid = true;
@@ -419,6 +426,11 @@ export function validate<T extends Validator<any, any, any>>(
       case "id": {
         if (typeof value !== "string") {
           valid = false;
+        } else if (opts?.db) {
+          const id = opts.db.normalizeId(validator.tableName, value);
+          if (!id) {
+            valid = false;
+          }
         }
         break;
       }
@@ -428,8 +440,11 @@ export function validate<T extends Validator<any, any, any>>(
           break;
         }
         for (const [index, v] of value.entries()) {
-          const path = `${opts?.pathPrefix ?? ""}[${index}]`;
-          valid = validate(validator.element, v, { ...opts, pathPrefix: path });
+          const path = `${opts?._pathPrefix ?? ""}[${index}]`;
+          valid = validate(validator.element, v, {
+            ...opts,
+            _pathPrefix: path,
+          });
           if (!valid) {
             expected = validator.element.kind;
             break;
@@ -459,7 +474,7 @@ export function validate<T extends Validator<any, any, any>>(
         for (const [k, fieldValidator] of Object.entries(validator.fields)) {
           valid = validate(fieldValidator, (value as any)[k], {
             ...opts,
-            pathPrefix: appendPath(opts, k),
+            _pathPrefix: appendPath(opts, k),
           });
           if (!valid) {
             break;
@@ -498,7 +513,7 @@ export function validate<T extends Validator<any, any, any>>(
         for (const [k, fieldValue] of Object.entries(value)) {
           valid = validate(validator.key, k, {
             ...opts,
-            pathPrefix: appendPath(opts, k),
+            _pathPrefix: appendPath(opts, k),
           });
           if (!valid) {
             expected = validator.key.kind;
@@ -506,7 +521,7 @@ export function validate<T extends Validator<any, any, any>>(
           }
           valid = validate(validator.value, fieldValue, {
             ...opts,
-            pathPrefix: appendPath(opts, k),
+            _pathPrefix: appendPath(opts, k),
           });
           if (!valid) {
             expected = validator.value.kind;
@@ -518,11 +533,11 @@ export function validate<T extends Validator<any, any, any>>(
     }
   }
   if (!valid && opts?.throw) {
-    throw new ValidationError(expected, typeof value, opts?.pathPrefix);
+    throw new ValidationError(expected, typeof value, opts?._pathPrefix);
   }
   return valid;
 }
 
-function appendPath(opts: { pathPrefix?: string } | undefined, path: string) {
-  return opts?.pathPrefix ? `${opts.pathPrefix}.${path}` : path;
+function appendPath(opts: { _pathPrefix?: string } | undefined, path: string) {
+  return opts?._pathPrefix ? `${opts._pathPrefix}.${path}` : path;
 }
