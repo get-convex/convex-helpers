@@ -359,12 +359,12 @@ describe("validate", () => {
 
   test("throws validation errors when configured", () => {
     expect(() => validate(string, 123, { throw: true })).toThrow(
-      "Validator error",
+      ValidationError,
     );
 
     expect(() =>
       validate(object({ name: string }), { name: 123 }, { throw: true }),
-    ).toThrow("Validator error");
+    ).toThrow(ValidationError);
 
     expect(() =>
       validate(
@@ -372,7 +372,7 @@ describe("validate", () => {
         { name: "valid", extra: true },
         { throw: true },
       ),
-    ).toThrow("Validator error");
+    ).toThrow(ValidationError);
   });
 
   test("includes path in error messages", () => {
@@ -424,7 +424,14 @@ describe("validate", () => {
       );
       fail("Should have thrown");
     } catch (e: any) {
-      expect(e.message).toContain("user.details.name");
+      if (e instanceof ValidationError) {
+        expect(e.message).toContain("user.details.name");
+        expect(e.path).toBe("user.details.name");
+        expect(e.expected).toBe("string");
+        expect(e.got).toBe("number");
+      } else {
+        throw e;
+      }
     }
   });
 
@@ -448,7 +455,14 @@ describe("validate", () => {
       );
       fail("Should have thrown");
     } catch (e: any) {
-      expect(e.message).toContain("user.details[1]");
+      if (e instanceof ValidationError) {
+        expect(e.message).toContain("user.details[1]");
+        expect(e.path).toBe("user.details[1]");
+        expect(e.expected).toBe("string");
+        expect(e.got).toBe("number");
+      } else {
+        throw e;
+      }
     }
   });
 
