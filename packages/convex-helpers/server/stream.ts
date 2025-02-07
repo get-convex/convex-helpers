@@ -1,0 +1,1085 @@
+import { Value, convexToJson, jsonToConvex } from "convex/values";
+import {
+  DataModelFromSchemaDefinition,
+  DocumentByInfo,
+  DocumentByName,
+  GenericDataModel,
+  GenericDatabaseReader,
+  GenericIndexFields,
+  IndexNames,
+  IndexRange,
+  IndexRangeBuilder,
+  NamedIndex,
+  NamedTableInfo,
+  OrderedQuery,
+  PaginationOptions,
+  PaginationResult,
+  Query,
+  QueryInitializer,
+  SchemaDefinition,
+  TableNamesInDataModel,
+} from "convex/server";
+import { compareValues } from "./compare.js";
+
+export type IndexKey = Value[];
+
+export type PageRequest<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> = {
+  /** Request a page of documents from this table. */
+  table: T;
+  /** Where the page starts. Default or empty array is the start of the table. */
+  startIndexKey?: IndexKey;
+  /** Whether the startIndexKey is inclusive. Default is false. */
+  startInclusive?: boolean;
+  /** Where the page ends. If provided, all documents up to this key will be
+   * included, if possible. targetMaxRows will be ignored (but absoluteMaxRows
+   * will not). This ensures adjacent pages stay adjacent, even as they grow.
+   * An empty array means the end of the table.
+   */
+  endIndexKey?: IndexKey;
+  /** Whether the endIndexKey is inclusive. Default is true.*/
+  endInclusive?: boolean;
+  /** Maximum number of rows to return, as long as endIndexKey is not provided.
+   * Default is 100.
+   */
+  targetMaxRows?: number;
+  /** Absolute maximum number of rows to return, even if endIndexKey is
+   * provided. Use this to prevent a single page from growing too large, but
+   * watch out because gaps can form between pages.
+   * Default is unlimited.
+   */
+  absoluteMaxRows?: number;
+  /** Whether the index is walked in ascending or descending order. Default is
+   * ascending.
+   */
+  order?: "asc" | "desc";
+  /** Which index to walk.
+   * Default is by_creation_time.
+   */
+  index?: IndexNames<NamedTableInfo<DataModel, T>>;
+  /** If index is not by_creation_time or by_id,
+   * you need to provide the index fields, either directly or from the schema.
+   * schema can be found with
+   * `import schema from "./schema";`
+   */
+  schema?: SchemaDefinition<any, boolean>;
+  /** The fields of the index, if you specified an index and not a schema. */
+  indexFields?: string[];
+};
+
+export type PageResponse<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> = {
+  /** Page of documents in the table.
+   * Order is by the `index`, possibly reversed by `order`.
+   */
+  page: DocumentByName<DataModel, T>[];
+  /** hasMore is true if this page did not exhaust the queried range.*/
+  hasMore: boolean;
+  /** indexKeys[i] is the index key for the document page[i].
+   * indexKeys can be used as `startIndexKey` or `endIndexKey` to fetch pages
+   * relative to this one.
+   */
+  indexKeys: IndexKey[];
+};
+
+/**
+ * Get a single page of documents from a table.
+ * See examples in README.
+ * @param ctx A ctx from a query or mutation context.
+ * @param request What page to get.
+ * @returns { page, hasMore, indexKeys }.
+ */
+export async function getPage<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(
+  ctx: { db: GenericDatabaseReader<DataModel> },
+  request: PageRequest<DataModel, T>,
+): Promise<PageResponse<DataModel, T>> {
+  const absoluteMaxRows = request.absoluteMaxRows ?? Infinity;
+  const targetMaxRows = request.targetMaxRows ?? DEFAULT_TARGET_MAX_ROWS;
+  const absoluteLimit = request.endIndexKey
+    ? absoluteMaxRows
+    : Math.min(absoluteMaxRows, targetMaxRows);
+  const page: DocumentByName<DataModel, T>[] = [];
+  const indexKeys: IndexKey[] = [];
+  const stream = streamQuery(ctx, request);
+  for await (const [doc, indexKey] of stream) {
+    if (page.length >= absoluteLimit) {
+      return {
+        page,
+        hasMore: true,
+        indexKeys,
+      };
+    }
+    page.push(doc);
+    indexKeys.push(indexKey);
+  }
+  return {
+    page,
+    hasMore: false,
+    indexKeys,
+  };
+}
+
+export async function* streamQuery<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(
+  ctx: { db: GenericDatabaseReader<DataModel> },
+  request: Omit<PageRequest<DataModel, T>, "targetMaxRows" | "absoluteMaxRows">,
+): AsyncGenerator<[DocumentByName<DataModel, T>, IndexKey]> {
+  const index = request.index ?? "by_creation_time";
+  const indexFields = getIndexFields(request);
+  const startIndexKey = request.startIndexKey ?? [];
+  const endIndexKey = request.endIndexKey ?? [];
+  const startInclusive = request.startInclusive ?? false;
+  const order = request.order === "desc" ? "desc" : "asc";
+  const startBoundType =
+    order === "desc" ? ltOr(startInclusive) : gtOr(startInclusive);
+  const endInclusive = request.endInclusive ?? true;
+  const endBoundType =
+    order === "desc" ? gtOr(endInclusive) : ltOr(endInclusive);
+  if (
+    indexFields.length < startIndexKey.length ||
+    indexFields.length < endIndexKey.length
+  ) {
+    throw new Error("Index key length exceeds index fields length");
+  }
+  const split = splitRange(
+    indexFields,
+    startIndexKey,
+    endIndexKey,
+    startBoundType,
+    endBoundType,
+  );
+  for (const range of split) {
+    const query = ctx.db
+      .query(request.table)
+      .withIndex(index, rangeToQuery(range))
+      .order(order);
+    for await (const doc of query) {
+      yield [doc, getIndexKey(doc, indexFields)];
+    }
+  }
+}
+
+//
+// Helper functions
+//
+
+const DEFAULT_TARGET_MAX_ROWS = 100;
+
+function exclType(boundType: "gt" | "lt" | "gte" | "lte") {
+  if (boundType === "gt" || boundType === "gte") {
+    return "gt";
+  }
+  return "lt";
+}
+
+const ltOr = (equal: boolean) => (equal ? "lte" : "lt");
+const gtOr = (equal: boolean) => (equal ? "gte" : "gt");
+
+type Bound = ["gt" | "lt" | "gte" | "lte" | "eq", string, Value];
+
+/** Split a range query between two index keys into a series of range queries
+ * that should be executed in sequence. This is necessary because Convex only
+ * supports range queries of the form
+ * q.eq("f1", v).eq("f2", v).lt("f3", v).gt("f3", v).
+ * i.e. all fields must be equal except for the last field, which can have
+ * two inequalities.
+ *
+ * For example, the range from >[1, 2, 3] to <=[1, 3, 2] would be split into
+ * the following queries:
+ * 1. q.eq("f1", 1).eq("f2", 2).gt("f3", 3)
+ * 2. q.eq("f1", 1).gt("f2", 2).lt("f2", 3)
+ * 3. q.eq("f1", 1).eq("f2", 3).lte("f3", 2)
+ */
+function splitRange(
+  indexFields: string[],
+  startBound: IndexKey,
+  endBound: IndexKey,
+  startBoundType: "gt" | "lt" | "gte" | "lte",
+  endBoundType: "gt" | "lt" | "gte" | "lte",
+): Bound[][] {
+  // Three parts to the split:
+  // 1. reduce down from startBound to common prefix
+  // 2. range with common prefix
+  // 3. build back up from common prefix to endBound
+  const commonPrefix: Bound[] = [];
+  while (
+    startBound.length > 0 &&
+    endBound.length > 0 &&
+    compareValues(startBound[0]!, endBound[0]!) === 0
+  ) {
+    const indexField = indexFields[0]!;
+    indexFields = indexFields.slice(1);
+    const eqBound = startBound[0]!;
+    startBound = startBound.slice(1);
+    endBound = endBound.slice(1);
+    commonPrefix.push(["eq", indexField, eqBound]);
+  }
+  const makeCompare = (
+    boundType: "gt" | "lt" | "gte" | "lte",
+    key: IndexKey,
+  ) => {
+    const range = commonPrefix.slice();
+    let i = 0;
+    for (; i < key.length - 1; i++) {
+      range.push(["eq", indexFields[i]!, key[i]!]);
+    }
+    if (i < key.length) {
+      range.push([boundType, indexFields[i]!, key[i]!]);
+    }
+    return range;
+  };
+  // Stage 1.
+  const startRanges: Bound[][] = [];
+  while (startBound.length > 1) {
+    startRanges.push(makeCompare(startBoundType, startBound));
+    startBoundType = exclType(startBoundType);
+    startBound = startBound.slice(0, -1);
+  }
+  // Stage 3.
+  const endRanges: Bound[][] = [];
+  while (endBound.length > 1) {
+    endRanges.push(makeCompare(endBoundType, endBound));
+    endBoundType = exclType(endBoundType);
+    endBound = endBound.slice(0, -1);
+  }
+  endRanges.reverse();
+  // Stage 2.
+  let middleRange;
+  if (endBound.length === 0) {
+    middleRange = makeCompare(startBoundType, startBound);
+  } else if (startBound.length === 0) {
+    middleRange = makeCompare(endBoundType, endBound);
+  } else {
+    const startValue = startBound[0]!;
+    const endValue = endBound[0]!;
+    middleRange = commonPrefix.slice();
+    middleRange.push([startBoundType, indexFields[0]!, startValue]);
+    middleRange.push([endBoundType, indexFields[0]!, endValue]);
+  }
+  return [...startRanges, middleRange, ...endRanges];
+}
+
+function rangeToQuery(range: Bound[]) {
+  return (q: any) => {
+    for (const [boundType, field, value] of range) {
+      q = q[boundType](field, value);
+    }
+    return q;
+  };
+}
+
+function getIndexFields<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(
+  request: Pick<
+    PageRequest<DataModel, T>,
+    "indexFields" | "schema" | "table" | "index"
+  >,
+): string[] {
+  const indexDescriptor = String(request.index ?? "by_creation_time");
+  if (indexDescriptor === "by_creation_time") {
+    return ["_creationTime", "_id"];
+  }
+  if (indexDescriptor === "by_id") {
+    return ["_id"];
+  }
+  if (request.indexFields) {
+    const fields = request.indexFields.slice();
+    if (!request.indexFields.includes("_creationTime")) {
+      fields.push("_creationTime");
+    }
+    if (!request.indexFields.includes("_id")) {
+      fields.push("_id");
+    }
+    return fields;
+  }
+  if (!request.schema) {
+    throw new Error("schema is required to infer index fields");
+  }
+  const table = request.schema.tables[request.table];
+  const index = table.indexes.find(
+    (index: any) => index.indexDescriptor === indexDescriptor,
+  );
+  if (!index) {
+    throw new Error(
+      `Index ${indexDescriptor} not found in table ${request.table}`,
+    );
+  }
+  const fields = index.fields.slice();
+  fields.push("_creationTime");
+  fields.push("_id");
+  return fields;
+}
+
+function getIndexKey<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(doc: DocumentByName<DataModel, T>, indexFields: string[]): IndexKey {
+  const key: IndexKey = [];
+  for (const field of indexFields) {
+    let obj: any = doc;
+    for (const subfield of field.split(".")) {
+      obj = obj[subfield];
+    }
+    key.push(obj);
+  }
+  return key;
+}
+
+const END_CURSOR = "endcursor";
+
+/**
+ * Simpified version of `getPage` that you can use for one-off queries that
+ * don't need to be reactive.
+ *
+ * These two queries are roughly equivalent:
+ *
+ * ```ts
+ * await db.query(table)
+ *  .withIndex(index, q=>q.eq(field, value))
+ *  .order("desc")
+ *  .paginate(opts)
+ *
+ * await reflect(db, schema)
+ *   .query(table)
+ *   .withIndex(index, q=>q.eq(field, value))
+ *   .order("desc")
+ *   .paginate(opts)
+ * ```
+ * 
+ * Differences:
+ *
+ * - `paginator` does not automatically track the end of the page for when
+ *   the query reruns. The standard `paginate` call will record the end of the page,
+ *   so a client can have seamless reactive pagination. To pin the end of the page,
+ *   you can use the `endCursor` option. This does not happen automatically.
+ *   Read more [here](https://stack.convex.dev/pagination#stitching-the-pages-together)
+ * - `paginator` can be called multiple times in a query or mutation,
+ *   and within Convex components.
+ * - Cursors are not encrypted.
+ * - `.filter()` and the `filter()` convex-helper are not supported.
+ *   Filter the returned `page` in TypeScript instead.
+ * - System tables like _storage and _scheduled_functions are not supported.
+ * - Having a schema is required.
+ * 
+ * @argument opts.cursor Where to start the page. This should come from
+ * `continueCursor` in the previous page.
+ * @argument opts.endCursor Where to end the page. This should from from
+ * `continueCursor` in the *current* page.
+ * If not provided, the page will end when it reaches `options.opts.numItems`.
+ * @argument options.schema If you use an index that is not by_creation_time
+ * or by_id, you need to provide the schema.
+ */
+export function reflect<
+  Schema extends SchemaDefinition<any, boolean>,
+>(
+  db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
+  schema: Schema,
+): ReflectDatabaseReader<Schema> {
+  return new ReflectDatabaseReader(db, schema);
+}
+
+export class ReflectDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
+  implements GenericDatabaseReader<DM<Schema>> {
+
+  // TODO: support system tables
+  public system: any = null;
+
+  constructor(
+    public db: GenericDatabaseReader<DM<Schema>>,
+    public schema: Schema,
+  ) {}
+
+  query<TableName extends TableNamesInDataModel<DM<Schema>>>(
+    tableName: TableName,
+  ): ReflectQueryInitializer<Schema, TableName> {
+    return new ReflectQueryInitializer(this, tableName);
+  }
+  get(_id: any): any {
+    throw new Error("get() not supported for `paginator`");
+  }
+  normalizeId(_tableName: any, _id: any): any {
+    throw new Error("normalizeId() not supported for `paginator`.");
+  }
+}
+
+type DM<Schema extends SchemaDefinition<any, boolean>> = DataModelFromSchemaDefinition<Schema>;
+
+export type IndexBounds = {
+  lowerBound: IndexKey;
+  lowerBoundInclusive: boolean;
+  upperBound: IndexKey;
+  upperBoundInclusive: boolean;
+};
+
+export type QueryReflection<
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
+  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+> = {
+  db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>;
+  schema: Schema;
+  table: T;
+  index: IndexName;
+  indexFields: string[];
+  order: "asc" | "desc";
+  bounds: IndexBounds;
+  indexRange?: (
+    q: IndexRangeBuilder<
+      DocumentByInfo<NamedTableInfo<DM<Schema>, T>>,
+      NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
+    >,
+  ) => IndexRange;
+}
+
+export interface ReflectableQuery<
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
+  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+> extends IndexStream<DM<Schema>, T> {
+  reflect(): QueryReflection<Schema, T, IndexName>;
+}
+
+export class ReflectQueryInitializer<
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
+> implements QueryInitializer<NamedTableInfo<DM<Schema>, T>>, ReflectableQuery<Schema, T, "by_creation_time"> {
+  constructor(
+    public parent: ReflectDatabaseReader<Schema>,
+    public table: T,
+  ) {}
+  fullTableScan(): ReflectQuery<Schema, T, "by_creation_time"> {
+    return this.withIndex("by_creation_time");
+  }
+  withIndex<IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>>(
+    indexName: IndexName,
+    indexRange?: (
+      q: IndexRangeBuilder<
+        DocumentByInfo<NamedTableInfo<DM<Schema>, T>>,
+        NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
+      >,
+    ) => IndexRange,
+  ): ReflectQuery<Schema, T, IndexName> {
+    const indexFields = getIndexFields<DM<Schema>, T>({
+      table: this.table,
+      index: indexName,
+      schema: this.parent.schema,
+    });
+    const q = new ReflectIndexRange(indexFields);
+    if (indexRange) {
+      indexRange(q as any);
+    }
+    return new ReflectQuery(this, indexName, q);
+  }
+  withSearchIndex(_indexName: any, _searchFilter: any): any {
+    throw new Error("Cannot paginate withSearchIndex");
+  }
+  inner() {
+    return this.fullTableScan();
+  }
+  order(order: "asc" | "desc"): OrderedReflectQuery<Schema, T, "by_creation_time"> {
+    return this.inner().order(order);
+  }
+  paginate(opts: PaginationOptions & { endCursor?: string | null }) {
+    return this.inner().paginate(opts);
+  }
+  filter(_predicate: any): any {
+    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+  }
+  collect() {
+    return this.inner().collect();
+  }
+  first() {
+    return this.inner().first();
+  }
+  unique() {
+    return this.inner().unique();
+  }
+  take(n: number) {
+    return this.inner().take(n);
+  }
+  [Symbol.asyncIterator](){
+    return this.inner()[Symbol.asyncIterator]();
+  }
+  reflect() {
+    return this.inner().reflect();
+  }
+  iterWithKeys() {
+    return this.inner().iterWithKeys();
+  }
+  reflectOrder(): "asc" | "desc" {
+    return this.inner().reflectOrder();
+  }
+  narrow(indexBounds: IndexBounds) {
+    return this.inner().narrow(indexBounds);
+  }
+}
+
+export class ReflectQuery<
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
+  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+> implements Query<NamedTableInfo<DM<Schema>, T>>, ReflectableQuery<Schema, T, IndexName> {
+  constructor(
+    public parent: ReflectQueryInitializer<Schema, T>,
+    public index: IndexName,
+    public q: ReflectIndexRange,
+    public indexRange?: (
+      q: IndexRangeBuilder<
+        DocumentByInfo<NamedTableInfo<DM<Schema>, T>>,
+        NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
+      >,
+    ) => IndexRange
+  ) {}
+  order(order: "asc" | "desc") {
+    return new OrderedReflectQuery(this, order);
+  }
+  inner() {
+    return this.order("asc");
+  }
+  paginate(opts: PaginationOptions & { endCursor?: string | null }) {
+    return this.inner().paginate(opts);
+  }
+  filter(_predicate: any): this {
+    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+  }
+  collect() {
+    return this.inner().collect();
+  }
+  first() {
+    return this.inner().first();
+  }
+  unique() {
+    return this.inner().unique();
+  }
+  take(n: number) {
+    return this.inner().take(n);
+  }
+  [Symbol.asyncIterator]() {
+    return this.inner()[Symbol.asyncIterator]();
+  }
+  reflect() {
+    return this.inner().reflect();
+  }
+  iterWithKeys() {
+    return this.inner().iterWithKeys();
+  }
+  reflectOrder() {
+    return this.inner().reflectOrder();
+  }
+  narrow(indexBounds: IndexBounds) {
+    return this.inner().narrow(indexBounds);
+  }
+}
+
+export class OrderedReflectQuery<
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
+  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+> implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>, ReflectableQuery<Schema, T, IndexName> {
+  constructor(
+    public parent: ReflectQuery<Schema, T, IndexName>,
+    public order: "asc" | "desc",
+  ) {}
+  reflect() {
+    return {
+      db: this.parent.parent.parent.db,
+      schema: this.parent.parent.parent.schema,
+      table: this.parent.parent.table,
+      index: this.parent.index,
+      indexFields: this.parent.q.indexFields,
+      order: this.order,
+      bounds: {
+        lowerBound: this.parent.q.lowerBoundIndexKey ?? [],
+        lowerBoundInclusive: this.parent.q.lowerBoundInclusive,
+        upperBound: this.parent.q.upperBoundIndexKey ?? [],
+        upperBoundInclusive: this.parent.q.upperBoundInclusive,
+      },
+      indexRange: this.parent.indexRange,
+    };
+  }
+  inner(): OrderedQuery<NamedTableInfo<DM<Schema>, T>> {
+    const { db, table, index, order, indexRange } = this.reflect();
+    return db.query(table).withIndex(index, indexRange).order(order);
+  }
+  async paginate(opts: PaginationOptions & { endCursor?: string | null }) {
+    return this.inner().paginate(opts);
+  }
+  filter(_predicate: any): any {
+    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+  }
+  collect() {
+    return this.inner().collect();
+  }
+  first() {
+    return this.inner().first();
+  }
+  unique() {
+    return this.inner().unique();
+  }
+  take(n: number) {
+    return this.inner().take(n);
+  }
+  [Symbol.asyncIterator]() {
+    return this.inner()[Symbol.asyncIterator]();
+  }
+  iterWithKeys(): AsyncIterable<[IndexKey, DocumentByName<DM<Schema>, T>]> {
+    const { indexFields } = this.reflect();
+    const iterable = this.inner();
+    return {
+      [Symbol.asyncIterator]() {
+        const iterator = iterable[Symbol.asyncIterator]();
+        return {
+          async next() {
+            const result = await iterator.next();
+            if (result.done) {
+              return { done: true, value: undefined };
+            }
+            return {
+              done: false,
+              value: [getIndexKey(result.value, indexFields), result.value]
+            };
+          }
+        }
+      }
+    };
+  }
+  reflectOrder() {
+    return this.order;
+  }
+  narrow(indexBounds: IndexBounds): IndexStream<DM<Schema>, T> {
+    const { db, table, index, order, bounds, indexFields, schema } = this.reflect();
+    let maxLowerBound = bounds.lowerBound;
+    let maxLowerBoundInclusive = bounds.lowerBoundInclusive;
+    if (compareKeys({ value: indexBounds.lowerBound, kind: indexBounds.lowerBoundInclusive ? "exact" : "successor" }, { value: bounds.lowerBound, kind: bounds.lowerBoundInclusive ? "exact" : "successor" }) > 0) {
+      maxLowerBound = indexBounds.lowerBound;
+      maxLowerBoundInclusive = indexBounds.lowerBoundInclusive;
+    }
+    let minUpperBound = bounds.upperBound;
+    let minUpperBoundInclusive = bounds.upperBoundInclusive;
+    if (compareKeys({ value: indexBounds.upperBound, kind: indexBounds.upperBoundInclusive ? "exact" : "predecessor" }, { value: bounds.upperBound, kind: bounds.upperBoundInclusive ? "exact" : "predecessor" }) < 0) {
+      minUpperBound = indexBounds.upperBound;
+      minUpperBoundInclusive = indexBounds.upperBoundInclusive;
+    }
+    const splitBounds = splitRange(
+      indexFields,
+      maxLowerBound,
+      minUpperBound,
+      maxLowerBoundInclusive ? "gte" : "gt",
+      minUpperBoundInclusive ? "lte" : "lt",
+    );
+    const subQueries = [];
+    for (const splitBound of splitBounds) {
+      subQueries.push(reflect(db, schema).query(table).withIndex(index, (q: any) => {
+        for (const [boundType, field, value] of splitBound) {
+          q = q[boundType](field, value);
+        }
+        return q;
+      }).order(order));
+    }
+    return mergeStreams(...subQueries);
+  }
+}
+
+class ReflectIndexRange {
+  private hasSuffix = false;
+  public lowerBoundIndexKey: IndexKey | undefined = undefined;
+  public lowerBoundInclusive: boolean = true;
+  public upperBoundIndexKey: IndexKey | undefined = undefined;
+  public upperBoundInclusive: boolean = true;
+  constructor(
+    public indexFields: string[],
+  ) {}
+  eq(field: string, value: Value) {
+    if (!this.canLowerBound(field) || !this.canUpperBound(field)) {
+      throw new Error(`Cannot use eq on field '${field}'`);
+    }
+    this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
+    this.lowerBoundIndexKey.push(value);
+    this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
+    this.upperBoundIndexKey.push(value);
+    return this;
+  }
+  lt(field: string, value: Value) {
+    if (!this.canUpperBound(field)) {
+      throw new Error(`Cannot use lt on field '${field}'`);
+    }
+    this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
+    this.upperBoundIndexKey.push(value);
+    this.upperBoundInclusive = false;
+    this.hasSuffix = true;
+    return this;
+  }
+  lte(field: string, value: Value) {
+    if (!this.canUpperBound(field)) {
+      throw new Error(`Cannot use lte on field '${field}'`);
+    }
+    this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
+    this.upperBoundIndexKey.push(value);
+    this.hasSuffix = true;
+    return this;
+  }
+  gt(field: string, value: Value) {
+    if (!this.canLowerBound(field)) {
+      throw new Error(`Cannot use gt on field '${field}'`);
+    }
+    this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
+    this.lowerBoundIndexKey.push(value);
+    this.lowerBoundInclusive = false;
+    this.hasSuffix = true;
+    return this;
+  }
+  gte(field: string, value: Value) {
+    if (!this.canLowerBound(field)) {
+      throw new Error(`Cannot use gte on field '${field}'`);
+    }
+    this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
+    this.lowerBoundIndexKey.push(value);
+    this.hasSuffix = true;
+    return this;
+  }
+  private canLowerBound(field: string) {
+    const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
+    const currentUpperBoundLength = this.upperBoundIndexKey?.length ?? 0;
+    if (currentLowerBoundLength > currentUpperBoundLength) {
+      // Already have a lower bound.
+      return false;
+    }
+    if (currentLowerBoundLength === currentUpperBoundLength && this.hasSuffix) {
+      // Already have a lower bound and an upper bound.
+      return false;
+    }
+    return currentLowerBoundLength < this.indexFields.length && this.indexFields[currentLowerBoundLength] === field;
+  }
+  private canUpperBound(field: string) {
+    const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
+    const currentUpperBoundLength = this.upperBoundIndexKey?.length ?? 0;
+    if (currentUpperBoundLength > currentLowerBoundLength) {
+      // Already have an upper bound.
+      return false;
+    }
+    if (currentLowerBoundLength === currentUpperBoundLength && this.hasSuffix) {
+      // Already have a lower bound and an upper bound.
+      return false;
+    }
+    return currentUpperBoundLength < this.indexFields.length && this.indexFields[currentUpperBoundLength] === field;
+  }
+}
+
+export interface IndexStream<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> {
+  iterWithKeys(): AsyncIterable<[IndexKey, DocumentByName<DataModel, T>]>;
+  reflectOrder(): "asc" | "desc";
+  narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
+}
+
+export function mergeStreams<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(...streams: IndexStream<DataModel, T>[]): IndexStream<DataModel, T> {
+  if (streams.length === 0) {
+    throw new Error("Cannot union empty array of streams");
+  }
+  let order = streams[0]!.reflectOrder();
+  for (const stream of streams) {
+    if (stream.reflectOrder() !== order) {
+      throw new Error("Cannot union streams with different orders");
+    }
+  }
+  return {
+    iterWithKeys: () => {
+      const iterables = streams.map(stream => stream.iterWithKeys());
+      return {
+        [Symbol.asyncIterator]() {
+          const iterators = iterables.map(iterable => iterable[Symbol.asyncIterator]());
+          const results = Array.from({ length: iterators.length }, (): IteratorResult<[IndexKey, DocumentByName<DataModel, T>] | undefined> => ({ done: false, value: undefined }));
+          return {
+            async next() {
+              // Fill results from iterators with no value yet.
+              await Promise.all(iterators.map(async (iterator, i) => {
+                if (!results[i]!.done && !results[i]!.value) {
+                  const result = await iterator.next();
+                  results[i] = result;
+                }
+              }));
+              // Find index for the value with the lowest index key.
+              let minIndexKeyAndIndex: [IndexKey, number] | undefined = undefined;
+              for (let i = 0; i < results.length; i++) {
+                const result = results[i]!;
+                if (result.done || !result.value) {
+                  continue;
+                }
+                const [resultIndexKey, _] = result.value;
+                if (minIndexKeyAndIndex === undefined) {
+                  minIndexKeyAndIndex = [resultIndexKey, i];
+                  continue;
+                }
+                const [prevMin, _prevMinIndex] = minIndexKeyAndIndex;
+                if (compareKeys({ value: resultIndexKey, kind: "exact" }, { value: prevMin, kind: "exact" }) < 0) {
+                  minIndexKeyAndIndex = [resultIndexKey, i];
+                }
+              }
+              if (minIndexKeyAndIndex === undefined) {
+                return { done: true, value: undefined };
+              }
+              const [_, minIndex] = minIndexKeyAndIndex;
+              const result = results[minIndex]!.value;
+              // indicate that we've used this result
+              results[minIndex]!.value = undefined;
+              return { done: false, value: result };
+            }
+          }
+        }
+      };
+    },
+    reflectOrder: () => order,
+    narrow: (indexBounds: IndexBounds) => {
+      return mergeStreams(...streams.map(stream => stream.narrow(indexBounds)));
+    },
+  };
+}
+
+export function concatStreams<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(...streams: IndexStream<DataModel, T>[]): IndexStream<DataModel, T> {
+  if (streams.length === 0) {
+    throw new Error("Cannot concat empty array of streams");
+  }
+  let order = streams[0]!.reflectOrder();
+  for (const stream of streams) {
+    if (stream.reflectOrder() !== order) {
+      throw new Error("Cannot concat streams with different orders");
+    }
+  }
+  return {
+    iterWithKeys: () => {
+      const iterables = streams.map(stream => stream.iterWithKeys());
+      return {
+        [Symbol.asyncIterator]() {
+          const iterators = iterables.map(iterable => iterable[Symbol.asyncIterator]());
+          return {
+            async next() {
+              while (iterators.length > 0) {
+                const result = await iterators[0]!.next();
+                if (result.done) {
+                  iterators.shift();
+                } else {
+                  return result;
+                }
+              }
+              return { done: true, value: undefined };
+            }
+          };
+        },
+      };
+    },
+    reflectOrder: () => order,
+    narrow: (indexBounds: IndexBounds) => {
+      return concatStreams(...streams.map(stream => stream.narrow(indexBounds)));
+    },
+  };
+}
+
+export function filterStream<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(
+  stream: IndexStream<DataModel, T>,
+  predicate: (doc: DocumentByInfo<NamedTableInfo<DataModel, T>>) => Promise<boolean>,
+): IndexStream<DataModel, T> {
+  return {
+    iterWithKeys: () => {
+      const iterable = stream.iterWithKeys();
+      return {
+        [Symbol.asyncIterator]() {
+          const iterator = iterable[Symbol.asyncIterator]();
+          return {
+            async next() {
+              while (true) {
+                const result = await iterator.next();
+                if (result.done) {
+                  return result;
+                }
+                if (await predicate(result.value[1])) {
+                  return result;
+                }
+              }
+            }
+          };
+        },
+      };
+    },
+    reflectOrder: () => stream.reflectOrder(),
+    narrow: (indexBounds: IndexBounds) => filterStream(stream.narrow(indexBounds), predicate),
+  };
+}
+
+async function streamTake<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(stream: IndexStream<DataModel, T>, n: number): Promise<DocumentByInfo<NamedTableInfo<DataModel, T>>[]> {
+  const results: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
+  for await (const [_, doc] of stream.iterWithKeys()) {
+    results.push(doc);
+    if (results.length === n) {
+      break;
+    }
+  }
+  return results;
+}
+
+export function queryStream<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(stream: IndexStream<DataModel, T>): OrderedQuery<NamedTableInfo<DataModel, T>> {
+  return {
+    filter: (_predicate) => {
+      throw new Error("Cannot filter query stream. use filterStream instead.");
+    },
+    paginate: async (opts: PaginationOptions & { endCursor?: string | null }) => {
+      throw new Error("TODO");
+    },
+    collect: async () => {
+      return streamTake(stream, Infinity);
+    },
+    take: async (n) => {
+      return streamTake(stream, n);
+    },
+    unique: async () => {
+      const docs = await streamTake(stream, 2);
+      if (docs.length === 2) {
+        throw new Error("Query is not unique");
+      }
+      return docs[0] ?? null;
+    },
+    first: async () => {
+      const docs = await streamTake(stream, 1);
+      return docs[0] ?? null;
+    },
+    [Symbol.asyncIterator]() {
+      const iterator = stream.iterWithKeys()[Symbol.asyncIterator]();
+      return {
+        async next() {
+          const result = await iterator.next();
+          if (result.done) {
+            return { done: true, value: undefined };
+          }
+          return { done: false, value: result.value[1] };
+        }
+      };
+    },
+  };
+}
+
+type Key = {
+  value: IndexKey;
+  kind: "successor" | "predecessor" | "exact";
+};
+
+function getValueAtIndex(
+  v: Value[],
+  index: number,
+): { kind: "found"; value: Value } | undefined {
+  if (index >= v.length) {
+    return undefined;
+  }
+  return { kind: "found", value: v[index]! };
+}
+
+function compareDanglingSuffix(
+  shorterKeyKind: "exact" | "successor" | "predecessor",
+  longerKeyKind: "exact" | "successor" | "predecessor",
+  shorterKey: Key,
+  longerKey: Key,
+): number {
+  if (shorterKeyKind === "exact" && longerKeyKind === "exact") {
+    throw new Error(
+      `Exact keys are not the same length:  ${JSON.stringify(
+        shorterKey.value,
+      )}, ${JSON.stringify(longerKey.value)}`,
+    );
+  }
+  if (shorterKeyKind === "exact") {
+    throw new Error(
+      `Exact key is shorter than prefix: ${JSON.stringify(
+        shorterKey.value,
+      )}, ${JSON.stringify(longerKey.value)}`,
+    );
+  }
+  if (shorterKeyKind === "predecessor" && longerKeyKind === "successor") {
+    // successor is longer than predecessor, so it is bigger
+    return -1;
+  }
+  if (shorterKeyKind === "successor" && longerKeyKind === "predecessor") {
+    // successor is shorter than predecessor, so it is larger
+    return 1;
+  }
+  if (shorterKeyKind === "predecessor" && longerKeyKind === "predecessor") {
+    // predecessor of [2, 3] contains [2, 1] while predecessor of [2] doesn't, so longer predecessors are larger
+    return -1;
+  }
+  if (shorterKeyKind === "successor" && longerKeyKind === "successor") {
+    // successor of [2, 3] contains [2, 4] while successor of [2] doesn't, so longer successors are smaller
+    return 1;
+  }
+  if (shorterKeyKind === "predecessor" && longerKeyKind === "exact") {
+    return -1;
+  }
+  if (shorterKeyKind === "successor" && longerKeyKind === "exact") {
+    return 1;
+  }
+  throw new Error(`Unexpected key kinds: ${shorterKeyKind}, ${longerKeyKind}`);
+}
+
+function compareKeys(key1: Key, key2: Key): number {
+  let i = 0;
+  while (i < Math.max(key1.value.length, key2.value.length)) {
+    const v1 = getValueAtIndex(key1.value as any, i);
+    const v2 = getValueAtIndex(key2.value as any, i);
+    if (v1 === undefined) {
+      return compareDanglingSuffix(key1.kind, key2.kind, key1, key2);
+    }
+    if (v2 === undefined) {
+      return -1 * compareDanglingSuffix(key2.kind, key1.kind, key2, key1);
+    }
+    const result = compareValues(v1.value, v2.value);
+    if (result !== 0) {
+      return result;
+    }
+    // if the prefixes are the same so far, keep going with the comparison
+    i++;
+  }
+
+  if (key1.kind === key2.kind) {
+    return 0;
+  }
+
+  // keys are the same length and values
+  if (key1.kind === "exact") {
+    if (key2.kind === "successor") {
+      return -1;
+    } else {
+      return 1;
+    }
+  }
+  if (key1.kind === "predecessor") {
+    return -1;
+  }
+  if (key1.kind === "successor") {
+    return 1;
+  }
+  throw new Error(`Unexpected key kind: ${key1.kind as any}`);
+}
