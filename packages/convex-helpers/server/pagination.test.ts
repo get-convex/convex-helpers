@@ -388,6 +388,7 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
+      // First page has two items in it.
       const result1 = await paginator(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 3).lte("b", 5))
@@ -397,6 +398,7 @@ describe("paginator", () => {
         { a: 1, b: 4, c: 3 },
       ]);
       expect(result1.isDone).toBe(false);
+      // Add an item to the first page and refetch with endCursor.
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
       const result2 = await paginator(ctx.db, schema)
         .query("foo")
@@ -413,6 +415,8 @@ describe("paginator", () => {
       ]);
       expect(result2.isDone).toBe(false);
       expect(result1.continueCursor).toStrictEqual(result2.continueCursor);
+
+      // Second page has one item in it.
       const result3 = await paginator(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 3).lte("b", 5))
@@ -421,6 +425,9 @@ describe("paginator", () => {
         { a: 1, b: 5, c: 1 },
       ]);
       expect(result3.isDone).toBe(true);
+      // Add two items to the second page and refetch with endCursor.
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 2 });
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 3 });
       const result4 = await paginator(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 3).lte("b", 5))
@@ -431,6 +438,8 @@ describe("paginator", () => {
         });
       expect(result4.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 5, c: 1 },
+        { a: 1, b: 5, c: 2 },
+        { a: 1, b: 5, c: 3 },
       ]);
       expect(result4.isDone).toBe(true);
     });

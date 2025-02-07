@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.67",
+  "version": "0.1.71",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
@@ -114,7 +114,7 @@
   },
   "scripts": {
     "build:bin": "esbuild ./cli/index.ts --bundle --platform=node --external:prettier --format=cjs --outfile=dist/bin.cjs",
-    "build": "node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && rm dist/server/_generated/_ignore.ts && cd dist/ && tsc",
+    "build": "node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && cd dist/ && rm **/*.test.* && rm -r server/_generated && tsc",
     "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -c 'cd ../.. && npm run build' --initial"
   },
   "repository": {
@@ -138,7 +138,7 @@
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "devDependencies": {
     "chalk": "5.4.1",
-    "commander": "13.0.0"
+    "commander": "13.1.0"
   },
   "peerDependencies": {
     "convex": "^1.13.0",

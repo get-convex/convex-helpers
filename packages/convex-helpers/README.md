@@ -600,29 +600,29 @@ await ctx.runMutation(internal.users.update, {
 When using validators for defining database schema or function arguments,
 these validators help:
 
-1. Add a `Table` utility that defines a table and keeps references to the fields
+1. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
+   field, a `partial` object, and `brandedString`.
+   To learn more about branded strings see
+   [this article](https://stack.convex.dev/using-branded-types-in-validators).
+2. A `validate(validator, data)` function validates a value against a validator.
+   Warning: this does not validate that the value of v.id is an ID for the given table.
+3. Add utilties for `partial`, `pick` and `omit` to match the TypeScript type
+   utilities.
+4. Add a `doc(schema, "tableName")` helper to validate a document with system
+   fields included.
+5. Add a `typedV(schema)` helper that is a `v` replacement that also has:
+   - `doc("tableName")` that works like `doc` above.
+   - `id("tableName")` that is typed to tables in your schema.
+6. Add a `Table` utility that defines a table and keeps references to the fields
    to avoid re-defining validators. To learn more about sharing validators, read
    [this article](https://stack.convex.dev/argument-validation-without-repetition),
    an extension of [this article](https://stack.convex.dev/types-cookbook).
-2. Add utilties for `partial`, `pick` and `omit` to match the TypeScript type
-   utilities.
-3. Add shorthand for a union of `literals`, a `nullable` field, a `deprecated`
-   field, and `brandedString`. To learn more about branded strings see
-   [this article](https://stack.convex.dev/using-branded-types-in-validators).
-4. Make the validators look more like TypeScript types, even though they're
-   runtime values. (This is controvercial and not required to use the above).
 
 Example:
 
-```js
-import { Table } from "convex-helpers/server";
-import {
-  literals,
-  partial,
-  deprecated,
-  brandedString,
-} from "convex-helpers/validators";
-import { omit, pick } from "convex-helpers";
+```ts
+// convex/schema.ts
+import { literals, deprecated, brandedString } from "convex-helpers/validators";
 import { Infer } from "convex/values";
 
 // Define a validator that requires an Email string type.
@@ -630,40 +630,57 @@ export const emailValidator = brandedString("email");
 // Define the Email type based on the branded string.
 export type Email = Infer<typeof emailValidator>;
 
-export const Account = Table("accounts", {
-  balance: nullable(v.bigint()),
-  status: literals("active", "inactive"),
-  email: emailValidator,
-
-  oldField: deprecated,
-});
-
-// convex/schema.ts
 export default defineSchema({
-  accounts: Account.table.index("status", ["status"]),
+  accounts: defineTable({
+    balance: nullable(v.bigint()),
+    status: literals("active", "inactive"),
+    email: emailValidator,
+    oldField: deprecated,
+  }).index("status", ["status"]),
   //...
 });
 
 // some module
+import { doc, typedV, partial } from "convex-helpers/validators";
+import { omit, pick } from "convex-helpers";
+import schema from "./schema";
+
+// You could export this from your schema file, or define it where you need it.
+const vv = typedV(schema);
+
 export const replaceUser = internalMutation({
   args: {
-    id: Account._id,
+    id: vv.id("accounts"),
     replace: object({
       // You can provide the document with or without system fields.
-      ...Account.withoutSystemFields,
-      ...partial(Account.systemFields),
+      ...schema.tables.accounts.validator.fields,
+      ...partial(systemFields("accounts")),
     }),
   },
+  returns: doc(schema, "accounts"), // See below for vv.doc
   handler: async (ctx, args) => {
     await ctx.db.replace(args.id, args.replace);
+    return await ctx.db.get(args.id);
   },
 });
 
 // A validator just for balance & email: { balance: v.union(...), email: ..}
-const balanceAndEmail = pick(Account.withoutSystemFields, ["balance", "email"]);
+const balanceAndEmail = pick(vv.doc("accounts").fields, ["balance", "email"]);
 
 // A validator for all the fields except balance.
-const accountWithoutBalance = omit(Account.withSystemFields, ["balance"]);
+const accountWithoutBalance = omit(vv.doc("accounts").fields, ["balance"]);
+
+// Validate against a validator. Can optionally throw on error.
+const value = { balance: 123n, email: "test@example.com" };
+validate(balanceAndEmail, value);
+
+// This will throw a ValidationError if the value is not valid.
+validate(balanceAndEmail, value, { throw: true });
+
+// Warning: this only validates that `accountId` is a string.
+validate(vv.id("accounts"), accountId);
+// Whereas this validates that `accountId` is an id for the accounts table.
+validate(vv.id("accounts"), accountId, { db: ctx.db });
 ```
 
 ## Filter

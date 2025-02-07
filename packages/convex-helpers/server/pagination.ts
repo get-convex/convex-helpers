@@ -98,6 +98,39 @@ export async function getPage<
   ctx: { db: GenericDatabaseReader<DataModel> },
   request: PageRequest<DataModel, T>,
 ): Promise<PageResponse<DataModel, T>> {
+  const absoluteMaxRows = request.absoluteMaxRows ?? Infinity;
+  const targetMaxRows = request.targetMaxRows ?? DEFAULT_TARGET_MAX_ROWS;
+  const absoluteLimit = request.endIndexKey
+    ? absoluteMaxRows
+    : Math.min(absoluteMaxRows, targetMaxRows);
+  const page: DocumentByName<DataModel, T>[] = [];
+  const indexKeys: IndexKey[] = [];
+  const stream = streamQuery(ctx, request);
+  for await (const [doc, indexKey] of stream) {
+    if (page.length >= absoluteLimit) {
+      return {
+        page,
+        hasMore: true,
+        indexKeys,
+      };
+    }
+    page.push(doc);
+    indexKeys.push(indexKey);
+  }
+  return {
+    page,
+    hasMore: false,
+    indexKeys,
+  };
+}
+
+export async function* streamQuery<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+>(
+  ctx: { db: GenericDatabaseReader<DataModel> },
+  request: Omit<PageRequest<DataModel, T>, "targetMaxRows" | "absoluteMaxRows">,
+): AsyncGenerator<[DocumentByName<DataModel, T>, IndexKey]> {
   const index = request.index ?? "by_creation_time";
   const indexFields = getIndexFields(request);
   const startIndexKey = request.startIndexKey ?? [];
@@ -122,35 +155,15 @@ export async function getPage<
     startBoundType,
     endBoundType,
   );
-  const absoluteMaxRows = request.absoluteMaxRows ?? Infinity;
-  const targetMaxRows = request.targetMaxRows ?? DEFAULT_TARGET_MAX_ROWS;
-  const absoluteLimit = request.endIndexKey
-    ? absoluteMaxRows
-    : Math.min(absoluteMaxRows, targetMaxRows);
-  const page: DocumentByName<DataModel, T>[] = [];
-  const indexKeys: IndexKey[] = [];
   for (const range of split) {
     const query = ctx.db
       .query(request.table)
       .withIndex(index, rangeToQuery(range))
       .order(order);
     for await (const doc of query) {
-      if (page.length >= absoluteLimit) {
-        return {
-          page,
-          hasMore: true,
-          indexKeys,
-        };
-      }
-      page.push(doc);
-      indexKeys.push(getIndexKey(doc, indexFields));
+      yield [doc, getIndexKey(doc, indexFields)];
     }
   }
-  return {
-    page,
-    hasMore: false,
-    indexKeys,
-  };
 }
 
 //
@@ -575,10 +588,12 @@ export class OrderedPaginatorQuery<
     let endIndexKey = this.endIndexKey;
     let endInclusive = this.endInclusive;
     let absoluteMaxRows: number | undefined = opts.numItems;
-    if (opts.endCursor && opts.endCursor !== END_CURSOR) {
-      endIndexKey = jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey;
-      endInclusive = true;
+    if (opts.endCursor) {
       absoluteMaxRows = undefined;
+      if (opts.endCursor !== END_CURSOR) {
+        endIndexKey = jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey;
+        endInclusive = true;
+      }
     }
     const { page, hasMore, indexKeys } = await getPage(
       { db: this.parent.parent.parent.db },

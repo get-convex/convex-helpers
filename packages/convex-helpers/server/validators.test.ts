@@ -1,11 +1,13 @@
-import { assert, Equals } from "..";
+import { assert, Equals } from "../index.js";
 import {
   any,
   array,
+  arrayBuffer,
   bigint,
   boolean,
   brandedString,
   deprecated,
+  doc,
   id,
   literal as is,
   literals,
@@ -18,18 +20,26 @@ import {
   pretend,
   pretendRequired,
   string,
-} from "../validators";
+  typedV,
+  ValidationError,
+} from "../validators.js";
 import { convexTest } from "convex-test";
 import {
   anyApi,
   ApiFromModules,
+  DataModelFromSchemaDefinition,
   defineSchema,
   defineTable,
+  internalMutationGeneric,
   internalQueryGeneric,
+  MutationBuilder,
+  QueryBuilder,
 } from "convex/server";
 import { Infer, ObjectType } from "convex/values";
 import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
+import { getOrThrow } from "convex-helpers/server/relationships";
+import { validate } from "../validators.js";
 
 export const testLiterals = internalQueryGeneric({
   args: {
@@ -110,13 +120,103 @@ const schema = defineSchema({
     tokenIdentifier: string,
   }),
   kitchenSink: defineTable(ExampleFields),
+  unionTable: defineTable(or(object({ foo: string }), object({ bar: number }))),
+});
+
+const internalMutation = internalMutationGeneric as MutationBuilder<
+  DataModelFromSchemaDefinition<typeof schema>,
+  "internal"
+>;
+const internalQuery = internalQueryGeneric as QueryBuilder<
+  DataModelFromSchemaDefinition<typeof schema>,
+  "internal"
+>;
+
+export const toDoc = internalMutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const kid = await ctx.db.insert("kitchenSink", valid);
+    const uid = await ctx.db.insert("unionTable", { foo: "" });
+
+    return {
+      sink: await getOrThrow(ctx, kid),
+      union: await getOrThrow(ctx, uid),
+    };
+  },
+  returns: object({
+    sink: doc(schema, "kitchenSink"),
+    union: doc(schema, "unionTable"),
+  }),
+});
+
+const vv = typedV(schema);
+
+export const getSink = internalQuery({
+  args: { docId: vv.id("kitchenSink") },
+  returns: nullable(vv.doc("kitchenSink")),
+  handler: (ctx, args) => ctx.db.get(args.docId),
+});
+
+export const getUnion = internalQuery({
+  args: { docId: vv.id("unionTable") },
+  returns: nullable(vv.doc("unionTable")),
+  handler: (ctx, args) => ctx.db.get(args.docId),
 });
 
 const testApi: ApiFromModules<{
   fns: {
     echo: typeof echo;
+    toDoc: typeof toDoc;
+    getSink: typeof getSink;
+    getUnion: typeof getUnion;
   };
 }>["fns"] = anyApi["validators.test"] as any;
+
+test("vv generates the right types for objects", async () => {
+  const t = convexTest(schema, modules);
+  const docId = await t.run((ctx) => ctx.db.insert("kitchenSink", valid));
+  const doc = await t.query(testApi.getSink, { docId });
+  expect(doc).toBeDefined();
+  expect(doc!._creationTime).toBeTypeOf("number");
+});
+
+test("vv generates the right types for unions", async () => {
+  const t = convexTest(schema, modules);
+  const docId = await t.run((ctx) =>
+    ctx.db.insert("unionTable", { foo: "foo" }),
+  );
+  const doc = await t.query(testApi.getUnion, { docId });
+  expect(doc).toBeDefined();
+  expect(doc!._creationTime).toBeTypeOf("number");
+  expect(doc!["foo"]).toBeDefined();
+});
+
+test("doc validator adds fields", async () => {
+  const t = convexTest(schema, modules);
+  await t.mutation(testApi.toDoc, {});
+  const userDoc = doc(schema, "users");
+  expect(userDoc.fields.tokenIdentifier).toBeDefined();
+  expect(userDoc.fields._id).toBeDefined();
+  expect(userDoc.fields._creationTime).toBeDefined();
+  const unionDoc = doc(schema, "unionTable");
+  expect(unionDoc.kind).toBe("union");
+  if (unionDoc.kind !== "union") {
+    throw new Error("Expected union");
+  }
+  expect(unionDoc.members[0]!.kind).toBe("object");
+  if (unionDoc.members[0]!.kind !== "object") {
+    throw new Error("Expected object");
+  }
+  expect(unionDoc.members[0]!.fields.foo).toBeDefined();
+  expect(unionDoc.members[0]!.fields._id).toBeDefined();
+  expect(unionDoc.members[0]!.fields._creationTime).toBeDefined();
+  if (unionDoc.members[1]!.kind !== "object") {
+    throw new Error("Expected object");
+  }
+  expect(unionDoc.members[1]!.fields.bar).toBeDefined();
+  expect(unionDoc.members[1]!.fields._id).toBeDefined();
+  expect(unionDoc.members[1]!.fields._creationTime).toBeDefined();
+});
 
 test("validators preserve things when they're set", async () => {
   const t = convexTest(schema, modules);
@@ -170,4 +270,230 @@ test("validators disallow things when they're wrong", async () => {
       maybeNotSetYet: true as unknown as string,
     } as ExampleFields);
   }).rejects.toThrowError("Validator error");
+});
+
+describe("validate", () => {
+  test("validates primitive validators", () => {
+    // String
+    expect(validate(string, "hello")).toBe(true);
+    expect(validate(string, 123)).toBe(false);
+    expect(validate(string, null)).toBe(false);
+
+    // Number
+    expect(validate(number, 123)).toBe(true);
+    expect(validate(number, "123")).toBe(false);
+    expect(validate(number, null)).toBe(false);
+
+    // Boolean
+    expect(validate(boolean, true)).toBe(true);
+    expect(validate(boolean, false)).toBe(true);
+    expect(validate(boolean, "true")).toBe(false);
+    expect(validate(boolean, 1)).toBe(false);
+
+    // Null
+    expect(validate(null_, null)).toBe(true);
+    expect(validate(null_, undefined)).toBe(false);
+    expect(validate(null_, false)).toBe(false);
+
+    // BigInt/Int64
+    expect(validate(bigint, 123n)).toBe(true);
+    expect(validate(bigint, 123)).toBe(false);
+    expect(validate(bigint, "123")).toBe(false);
+  });
+
+  test("validates array validator", () => {
+    const arrayOfStrings = array(string);
+    expect(validate(arrayOfStrings, ["a", "b", "c"])).toBe(true);
+    expect(validate(arrayOfStrings, [])).toBe(true);
+    expect(validate(arrayOfStrings, ["a", 1, "c"])).toBe(false);
+    expect(validate(arrayOfStrings, null)).toBe(false);
+    expect(validate(arrayOfStrings, "not an array")).toBe(false);
+  });
+
+  test("validates object validator", () => {
+    const personValidator = object({
+      name: string,
+      age: number,
+      optional: optional(string),
+    });
+
+    expect(validate(personValidator, { name: "Alice", age: 30 })).toBe(true);
+    expect(
+      validate(personValidator, { name: "Bob", age: 25, optional: "test" }),
+    ).toBe(true);
+    expect(validate(personValidator, { name: "Charlie", age: "30" })).toBe(
+      false,
+    );
+    expect(validate(personValidator, { name: "Dave" })).toBe(false);
+    expect(validate(personValidator, null)).toBe(false);
+    expect(
+      validate(personValidator, { name: "Eve", age: 20, extra: "field" }),
+    ).toBe(false);
+  });
+
+  test("validates union validator", () => {
+    const unionValidator = or(string, number, object({ type: is("test") }));
+
+    expect(validate(unionValidator, "string")).toBe(true);
+    expect(validate(unionValidator, 123)).toBe(true);
+    expect(validate(unionValidator, { type: "test" })).toBe(true);
+    expect(validate(unionValidator, { type: "wrong" })).toBe(false);
+    expect(validate(unionValidator, true)).toBe(false);
+    expect(validate(unionValidator, null)).toBe(false);
+  });
+
+  test("validates literal validator", () => {
+    const literalValidator = is("specific");
+    expect(validate(literalValidator, "specific")).toBe(true);
+    expect(validate(literalValidator, "other")).toBe(false);
+    expect(validate(literalValidator, null)).toBe(false);
+  });
+
+  test("validates optional values", () => {
+    const optionalString = optional(string);
+    expect(validate(optionalString, "value")).toBe(true);
+    expect(validate(optionalString, undefined)).toBe(true);
+    expect(validate(optionalString, null)).toBe(false);
+    expect(validate(optionalString, 123)).toBe(false);
+  });
+
+  test("validates id validator", async () => {
+    const idValidator = id("users");
+    expect(validate(idValidator, "123")).toBe(true);
+    expect(validate(idValidator, "any string")).toBe(true);
+    expect(
+      validate(object({ someArray: optional(array(idValidator)) }), {
+        someArray: ["string", "other string"],
+      }),
+    ).toBe(true);
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { tokenIdentifier: "test" });
+      expect(validate(idValidator, userId, { db: ctx.db })).toBe(true);
+      expect(validate(idValidator, "not an id", { db: ctx.db })).toBe(false);
+    });
+  });
+
+  test("throws validation errors when configured", () => {
+    expect(() => validate(string, 123, { throw: true })).toThrow(
+      ValidationError,
+    );
+
+    expect(() =>
+      validate(object({ name: string }), { name: 123 }, { throw: true }),
+    ).toThrow(ValidationError);
+
+    expect(() =>
+      validate(
+        object({ name: string }),
+        { name: "valid", extra: true },
+        { throw: true },
+      ),
+    ).toThrow(ValidationError);
+  });
+
+  test("includes path in error messages", () => {
+    const complexValidator = object({
+      user: object({
+        details: object({
+          name: string,
+        }),
+      }),
+    });
+
+    try {
+      validate(
+        complexValidator,
+        {
+          user: {
+            details: {
+              name: 123,
+            },
+          },
+        },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      expect(e.message).toContain("user.details.name");
+    }
+  });
+
+  test("includes path for nested objects", () => {
+    const complexValidator = object({
+      user: object({
+        details: object({
+          name: string,
+        }),
+      }),
+    });
+    expect(
+      validate(complexValidator, { user: { details: { name: "Alice" } } }),
+    ).toBe(true);
+    expect(
+      validate(complexValidator, { user: { details: { name: 123 } } }),
+    ).toBe(false);
+    try {
+      validate(
+        complexValidator,
+        { user: { details: { name: 123 } } },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      if (e instanceof ValidationError) {
+        expect(e.message).toContain("user.details.name");
+        expect(e.path).toBe("user.details.name");
+        expect(e.expected).toBe("string");
+        expect(e.got).toBe("number");
+      } else {
+        throw e;
+      }
+    }
+  });
+
+  test("includes path for nested arrays", () => {
+    const complexValidator = object({
+      user: object({
+        details: array(string),
+      }),
+    });
+    expect(
+      validate(complexValidator, { user: { details: ["a", "b", "c"] } }),
+    ).toBe(true);
+    expect(validate(complexValidator, { user: { details: [1, 2, 3] } })).toBe(
+      false,
+    );
+    try {
+      validate(
+        complexValidator,
+        { user: { details: ["a", 3] } },
+        { throw: true },
+      );
+      fail("Should have thrown");
+    } catch (e: any) {
+      if (e instanceof ValidationError) {
+        expect(e.message).toContain("user.details[1]");
+        expect(e.path).toBe("user.details[1]");
+        expect(e.expected).toBe("string");
+        expect(e.got).toBe("number");
+      } else {
+        throw e;
+      }
+    }
+  });
+
+  test("validates bytes/ArrayBuffer", () => {
+    const buffer = new ArrayBuffer(8);
+    expect(validate(arrayBuffer, buffer)).toBe(true);
+    expect(validate(arrayBuffer, new Uint8Array(8))).toBe(false);
+    expect(validate(arrayBuffer, "binary")).toBe(false);
+  });
+
+  test("validates any", () => {
+    expect(validate(any, "anything")).toBe(true);
+    expect(validate(any, 123)).toBe(true);
+    expect(validate(any, null)).toBe(true);
+    expect(validate(any, { complex: "object" })).toBe(true);
+  });
 });

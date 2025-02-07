@@ -1,6 +1,8 @@
 import {
   GenericValidator,
+  ObjectType,
   PropertyValidators,
+  VObject,
   VOptional,
   VString,
   VUnion,
@@ -8,6 +10,13 @@ import {
   v,
 } from "convex/values";
 import { Expand } from "./index.js";
+import {
+  DataModelFromSchemaDefinition,
+  GenericDatabaseReader,
+  GenericDataModel,
+  SchemaDefinition,
+  TableNamesInDataModel,
+} from "convex/server";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -89,7 +98,7 @@ export const null_ = v.null();
 /** Re-export values from v without having to do v.* */
 export const { id, object, array, bytes, literal, optional, union } = v;
 /** ArrayBuffer validator. */
-export const arrayBuffer = bytes;
+export const arrayBuffer = bytes();
 
 /**
  * Utility to get the validators for fields associated with a table.
@@ -105,6 +114,10 @@ export const systemFields = <TableName extends string>(
   _id: v.id(tableName),
   _creationTime: v.number(),
 });
+
+export type SystemFields<TableName extends string> = ReturnType<
+  typeof systemFields<TableName>
+>;
 
 /**
  * Utility to add system fields to an object with fields mapping to validators.
@@ -128,6 +141,112 @@ export const withSystemFields = <
     ...system,
   } as Expand<T & typeof system>;
 };
+
+export type AddFieldsToValidator<
+  V extends Validator<any, any, any>,
+  Fields extends PropertyValidators,
+> =
+  V extends VObject<infer T, infer F, infer O>
+    ? VObject<Expand<T & ObjectType<Fields>>, Expand<F & Fields>, O>
+    : Validator<
+        Expand<V["type"] & ObjectType<Fields>>,
+        V["isOptional"],
+        V["fieldPaths"] &
+          {
+            [Property in keyof Fields & string]:
+              | `${Property}.${Fields[Property]["fieldPaths"]}`
+              | Property;
+          }[keyof Fields & string] &
+          string
+      >;
+
+export const doc = <
+  Schema extends SchemaDefinition<any, boolean>,
+  TableName extends TableNamesInDataModel<
+    DataModelFromSchemaDefinition<Schema>
+  >,
+>(
+  schema: Schema,
+  tableName: TableName,
+): AddFieldsToValidator<
+  (typeof schema)["tables"][TableName]["validator"],
+  SystemFields<TableName>
+> => {
+  function addSystemFields<V extends Validator<any, any, any>>(
+    validator: V,
+  ): any {
+    if (validator.kind === "object") {
+      return v.object({
+        ...validator.fields,
+        ...systemFields(tableName),
+      });
+    }
+    if (validator.kind !== "union") {
+      throw new Error(
+        "Only object and union validators are supported for documents",
+      );
+    }
+    return v.union(...validator.members.map(addSystemFields));
+  }
+  return addSystemFields(schema.tables[tableName].validator);
+};
+
+/**
+ * Creates a validator with a type-safe `.id(table)` and a new `.doc(table)`.
+ * Can be used instead of `v` for function arugments & return validators.
+ * However, it cannot be used as part of defining a schema, since it would be
+ * circular.
+ * ```ts
+ * import schema from "./schema";
+ * export const vv = typedV(schema);
+ *
+ * export const myQuery = query({
+ *   args: { docId: vv.id("mytable") },
+ *   returns: vv.doc("mytable"),
+ *   handler: (ctx, args) => ctx.db.get(args.docId),
+ * })
+ *
+ * @param schema Typically from `import schema from "./schema"`.
+ * @returns A validator like `v` with type-safe `v.id` and a new `v.doc`
+ */
+export function typedV<Schema extends SchemaDefinition<any, boolean>>(
+  schema: Schema,
+) {
+  return {
+    ...v,
+    /**
+     * Similar to v.id but is type-safe on the table name.
+     * @param tableName A table named in your schema.
+     * @returns A validator for an ID to the named table.
+     */
+    id: <
+      TableName extends TableNamesInDataModel<
+        DataModelFromSchemaDefinition<Schema>
+      >,
+    >(
+      tableName: TableName,
+    ) => v.id(tableName),
+    /**
+     * Generates a validator for a document, including system fields.
+     * To be used in validators when passing a full document in or out of a
+     * function.
+     * @param tableName A table named in your schema.
+     * @returns A validator that matches the schema validator, adding _id and
+     * _creationTime. If the validator was a union, it will update all documents
+     * recursively, but will currently lose the VUnion-specific type.
+     */
+    doc: <
+      TableName extends TableNamesInDataModel<
+        DataModelFromSchemaDefinition<Schema>
+      >,
+    >(
+      tableName: TableName,
+    ): AddFieldsToValidator<
+      (typeof schema)["tables"][TableName]["validator"],
+      SystemFields<TableName>
+    > => doc(schema, tableName),
+  };
+}
 
 /**
  * A string validator that is a branded string type.
@@ -212,3 +331,213 @@ export const pretend = <T extends GenericValidator>(_typeToImmitate: T): T =>
 export const pretendRequired = <T extends Validator<any, "required", any>>(
   optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
+
+export class ValidationError extends Error {
+  constructor(
+    public expected: string,
+    public got: string,
+    public path?: string,
+  ) {
+    const message = `Validator error${path ? ` for ${path}` : ""}: Expected \`${expected}\`, got \`${got}\``;
+    super(message);
+    this.name = "ValidationError";
+  }
+}
+
+/**
+ * Validate a value against a validator.
+ *
+ * WARNING: This does not validate that v.id is an ID for the given table.
+ * It only validates that the ID is a string. Function `args`, `returns` and
+ * schema definitions will validate that the ID is an ID for the given table.
+ *
+ * @param validator The validator to validate against.
+ * @param value The value to validate.
+ * @returns Whether the value is valid against the validator.
+ */
+export function validate<T extends Validator<any, any, any>>(
+  validator: T,
+  value: unknown,
+  opts?: {
+    /* If true, throw an error if the value is not valid. */
+    throw?: boolean;
+    /* If provided, v.id validation will check that the id is for the table. */
+    db?: GenericDatabaseReader<GenericDataModel>;
+    /* A prefix for the path of the value being validated, for error reporting.
+    This is used for recursive calls, do not set it manually. */
+    _pathPrefix?: string;
+  },
+): value is T["type"] {
+  let valid = true;
+  let expected: string = validator.kind;
+  if (value === undefined) {
+    if (validator.isOptional !== "optional") {
+      valid = false;
+    }
+  } else {
+    switch (validator.kind) {
+      case "null": {
+        if (value !== null) {
+          valid = false;
+        }
+        break;
+      }
+      case "float64": {
+        if (typeof value !== "number") {
+          expected = "number";
+          valid = false;
+        }
+        break;
+      }
+      case "int64": {
+        if (typeof value !== "bigint") {
+          expected = "bigint";
+          valid = false;
+        }
+        break;
+      }
+      case "boolean": {
+        if (typeof value !== "boolean") {
+          valid = false;
+        }
+        break;
+      }
+      case "string": {
+        if (typeof value !== "string") {
+          valid = false;
+        }
+        break;
+      }
+      case "bytes": {
+        if (!(value instanceof ArrayBuffer)) {
+          valid = false;
+        }
+        break;
+      }
+      case "any": {
+        break;
+      }
+      case "literal": {
+        if (value !== validator.value) {
+          valid = false;
+        }
+        break;
+      }
+      case "id": {
+        if (typeof value !== "string") {
+          valid = false;
+        } else if (opts?.db) {
+          const id = opts.db.normalizeId(validator.tableName, value);
+          if (!id) {
+            valid = false;
+          }
+        }
+        break;
+      }
+      case "array": {
+        if (!Array.isArray(value)) {
+          valid = false;
+          break;
+        }
+        for (const [index, v] of value.entries()) {
+          const path = `${opts?._pathPrefix ?? ""}[${index}]`;
+          valid = validate(validator.element, v, {
+            ...opts,
+            _pathPrefix: path,
+          });
+          if (!valid) {
+            expected = validator.element.kind;
+            break;
+          }
+        }
+        break;
+      }
+      case "object": {
+        if (typeof value !== "object" || value === null) {
+          valid = false;
+          break;
+        }
+        const prototype = Object.getPrototypeOf(value);
+        const isSimple =
+          prototype === null ||
+          prototype === Object.prototype ||
+          // Objects generated from other contexts (e.g. across Node.js `vm` modules) will not satisfy the previous
+          // conditions but are still simple objects.
+          prototype?.constructor?.name === "Object";
+
+        if (!isSimple) {
+          expected =
+            prototype?.constructor?.name ?? typeof prototype ?? "object";
+          valid = false;
+          break;
+        }
+        for (const [k, fieldValidator] of Object.entries(validator.fields)) {
+          valid = validate(fieldValidator, (value as any)[k], {
+            ...opts,
+            _pathPrefix: appendPath(opts, k),
+          });
+          if (!valid) {
+            break;
+          }
+        }
+        for (const k of Object.keys(value)) {
+          if (validator.fields[k] === undefined) {
+            if (opts?.throw) {
+              throw new ValidationError(
+                "nothing",
+                typeof (value as any)[k],
+                appendPath(opts, k),
+              );
+            }
+            valid = false;
+            break;
+          }
+        }
+        break;
+      }
+      case "union": {
+        valid = false;
+        for (const member of validator.members) {
+          if (validate(member, value, opts)) {
+            valid = true;
+            break;
+          }
+        }
+        break;
+      }
+      case "record": {
+        if (typeof value !== "object" || value === null) {
+          valid = false;
+          break;
+        }
+        for (const [k, fieldValue] of Object.entries(value)) {
+          valid = validate(validator.key, k, {
+            ...opts,
+            _pathPrefix: appendPath(opts, k),
+          });
+          if (!valid) {
+            expected = validator.key.kind;
+            break;
+          }
+          valid = validate(validator.value, fieldValue, {
+            ...opts,
+            _pathPrefix: appendPath(opts, k),
+          });
+          if (!valid) {
+            expected = validator.value.kind;
+            break;
+          }
+        }
+        break;
+      }
+    }
+  }
+  if (!valid && opts?.throw) {
+    throw new ValidationError(expected, typeof value, opts?._pathPrefix);
+  }
+  return valid;
+}
+
+function appendPath(opts: { _pathPrefix?: string } | undefined, path: string) {
+  return opts?._pathPrefix ? `${opts._pathPrefix}.${path}` : path;
+}
