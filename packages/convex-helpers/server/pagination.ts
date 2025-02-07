@@ -345,7 +345,7 @@ const END_CURSOR = "endcursor";
  *   .order("desc")
  *   .paginate(opts)
  * ```
- * 
+ *
  * Differences:
  *
  * - `paginator` does not automatically track the end of the page for when
@@ -360,7 +360,7 @@ const END_CURSOR = "endcursor";
  *   Filter the returned `page` in TypeScript instead.
  * - System tables like _storage and _scheduled_functions are not supported.
  * - Having a schema is required.
- * 
+ *
  * @argument opts.cursor Where to start the page. This should come from
  * `continueCursor` in the previous page.
  * @argument opts.endCursor Where to end the page. This should from from
@@ -369,9 +369,7 @@ const END_CURSOR = "endcursor";
  * @argument options.schema If you use an index that is not by_creation_time
  * or by_id, you need to provide the schema.
  */
-export function paginator<
-  Schema extends SchemaDefinition<any, boolean>,
->(
+export function paginator<Schema extends SchemaDefinition<any, boolean>>(
   db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
   schema: Schema,
 ): PaginatorDatabaseReader<DataModelFromSchemaDefinition<Schema>> {
@@ -379,8 +377,8 @@ export function paginator<
 }
 
 export class PaginatorDatabaseReader<DataModel extends GenericDataModel>
-  implements GenericDatabaseReader<DataModel> {
-
+  implements GenericDatabaseReader<DataModel>
+{
   // TODO: support system tables
   public system: any = null;
 
@@ -405,7 +403,8 @@ export class PaginatorDatabaseReader<DataModel extends GenericDataModel>
 export class PaginatorQueryInitializer<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
-> implements QueryInitializer<NamedTableInfo<DataModel, T>> {
+> implements QueryInitializer<NamedTableInfo<DataModel, T>>
+{
   constructor(
     public parent: PaginatorDatabaseReader<DataModel>,
     public table: T,
@@ -439,33 +438,48 @@ export class PaginatorQueryInitializer<
   order(order: "asc" | "desc"): OrderedPaginatorQuery<DataModel, T> {
     return this.fullTableScan().order(order);
   }
-  paginate(opts: PaginationOptions & { endCursor?: string | null }): Promise<PaginationResult<DocumentByInfo<NamedTableInfo<DataModel, T>>>> {
+  paginate(
+    opts: PaginationOptions & { endCursor?: string | null },
+  ): Promise<PaginationResult<DocumentByInfo<NamedTableInfo<DataModel, T>>>> {
     return this.fullTableScan().paginate(opts);
   }
   filter(_predicate: any): any {
-    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+    throw new Error(
+      ".filter() not supported for `paginator`. Filter the returned `page` instead.",
+    );
   }
   collect(): any {
-    throw new Error(".collect() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".collect() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   first(): any {
-    throw new Error(".first() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".first() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   unique(): any {
-    throw new Error(".unique() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".unique() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   take(_n: number): any {
-    throw new Error(".take() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".take() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   [Symbol.asyncIterator](): any {
-    throw new Error("[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      "[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
 }
 
 export class PaginatorQuery<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
-> implements Query<NamedTableInfo<DataModel, T>> {
+> implements Query<NamedTableInfo<DataModel, T>>
+{
   constructor(
     public parent: PaginatorQueryInitializer<DataModel, T>,
     public index: IndexNames<NamedTableInfo<DataModel, T>>,
@@ -474,33 +488,48 @@ export class PaginatorQuery<
   order(order: "asc" | "desc") {
     return new OrderedPaginatorQuery(this, order);
   }
-  paginate(opts: PaginationOptions & { endCursor?: string | null }): Promise<PaginationResult<DocumentByInfo<NamedTableInfo<DataModel, T>>>> {
+  paginate(
+    opts: PaginationOptions & { endCursor?: string | null },
+  ): Promise<PaginationResult<DocumentByInfo<NamedTableInfo<DataModel, T>>>> {
     return this.order("asc").paginate(opts);
   }
   filter(_predicate: any): this {
-    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+    throw new Error(
+      ".filter() not supported for `paginator`. Filter the returned `page` instead.",
+    );
   }
   collect(): any {
-    throw new Error(".collect() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".collect() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   first(): any {
-    throw new Error(".first() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".first() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   unique(): any {
-    throw new Error(".unique() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".unique() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   take(_n: number): any {
-    throw new Error(".take() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".take() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   [Symbol.asyncIterator](): any {
-    throw new Error("[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      "[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
 }
 
 export class OrderedPaginatorQuery<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
-> implements OrderedQuery<NamedTableInfo<DataModel, T>> {
+> implements OrderedQuery<NamedTableInfo<DataModel, T>>
+{
   public startIndexKey: IndexKey | undefined;
   public startInclusive: boolean;
   public endIndexKey: IndexKey | undefined;
@@ -509,12 +538,26 @@ export class OrderedPaginatorQuery<
     public parent: PaginatorQuery<DataModel, T>,
     public order: "asc" | "desc",
   ) {
-    this.startIndexKey = order === "asc" ? parent.q.lowerBoundIndexKey : parent.q.upperBoundIndexKey;
-    this.endIndexKey = order === "asc" ? parent.q.upperBoundIndexKey : parent.q.lowerBoundIndexKey;
-    this.startInclusive = order === "asc" ? parent.q.lowerBoundInclusive : parent.q.upperBoundInclusive;
-    this.endInclusive = order === "asc" ? parent.q.upperBoundInclusive : parent.q.lowerBoundInclusive;
+    this.startIndexKey =
+      order === "asc"
+        ? parent.q.lowerBoundIndexKey
+        : parent.q.upperBoundIndexKey;
+    this.endIndexKey =
+      order === "asc"
+        ? parent.q.upperBoundIndexKey
+        : parent.q.lowerBoundIndexKey;
+    this.startInclusive =
+      order === "asc"
+        ? parent.q.lowerBoundInclusive
+        : parent.q.upperBoundInclusive;
+    this.endInclusive =
+      order === "asc"
+        ? parent.q.upperBoundInclusive
+        : parent.q.lowerBoundInclusive;
   }
-  async paginate(opts: PaginationOptions & { endCursor?: string | null }): Promise<PaginationResult<DocumentByName<DataModel, T>>> {
+  async paginate(
+    opts: PaginationOptions & { endCursor?: string | null },
+  ): Promise<PaginationResult<DocumentByName<DataModel, T>>> {
     if (opts.cursor === END_CURSOR) {
       return {
         page: [],
@@ -537,28 +580,31 @@ export class OrderedPaginatorQuery<
       endInclusive = true;
       absoluteMaxRows = undefined;
     }
-    const {
-      page, hasMore, indexKeys,
-    } = await getPage({ db: this.parent.parent.parent.db }, {
-      table: this.parent.parent.table,
-      startIndexKey,
-      startInclusive,
-      endIndexKey,
-      endInclusive,
-      targetMaxRows: opts.numItems,
-      absoluteMaxRows,
-      order: this.order,
-      index: this.parent.index,
-      schema,
-      indexFields: this.parent.q.indexFields,
-    });
+    const { page, hasMore, indexKeys } = await getPage(
+      { db: this.parent.parent.parent.db },
+      {
+        table: this.parent.parent.table,
+        startIndexKey,
+        startInclusive,
+        endIndexKey,
+        endInclusive,
+        targetMaxRows: opts.numItems,
+        absoluteMaxRows,
+        order: this.order,
+        index: this.parent.index,
+        schema,
+        indexFields: this.parent.q.indexFields,
+      },
+    );
     let continueCursor = END_CURSOR;
     let isDone = !hasMore;
     if (opts.endCursor && opts.endCursor !== END_CURSOR) {
       continueCursor = opts.endCursor;
       isDone = false;
     } else if (indexKeys.length > 0 && hasMore) {
-      continueCursor = JSON.stringify(convexToJson(indexKeys[indexKeys.length - 1] as Value));
+      continueCursor = JSON.stringify(
+        convexToJson(indexKeys[indexKeys.length - 1] as Value),
+      );
     }
     return {
       page,
@@ -567,22 +613,34 @@ export class OrderedPaginatorQuery<
     };
   }
   filter(_predicate: any): any {
-    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+    throw new Error(
+      ".filter() not supported for `paginator`. Filter the returned `page` instead.",
+    );
   }
   collect(): any {
-    throw new Error(".collect() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".collect() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   first(): any {
-    throw new Error(".first() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".first() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   unique(): any {
-    throw new Error(".unique() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".unique() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   take(_n: number): any {
-    throw new Error(".take() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      ".take() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
   [Symbol.asyncIterator](): any {
-    throw new Error("[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.");
+    throw new Error(
+      "[Symbol.asyncIterator]() not supported for `paginator`. Use .paginate() instead.",
+    );
   }
 }
 
@@ -592,9 +650,7 @@ class PaginatorIndexRange {
   public lowerBoundInclusive: boolean = true;
   public upperBoundIndexKey: IndexKey | undefined = undefined;
   public upperBoundInclusive: boolean = true;
-  constructor(
-    public indexFields: string[],
-  ) {}
+  constructor(public indexFields: string[]) {}
   eq(field: string, value: Value) {
     if (!this.canLowerBound(field) || !this.canUpperBound(field)) {
       throw new Error(`Cannot use eq on field '${field}'`);
@@ -654,7 +710,10 @@ class PaginatorIndexRange {
       // Already have a lower bound and an upper bound.
       return false;
     }
-    return currentLowerBoundLength < this.indexFields.length && this.indexFields[currentLowerBoundLength] === field;
+    return (
+      currentLowerBoundLength < this.indexFields.length &&
+      this.indexFields[currentLowerBoundLength] === field
+    );
   }
   private canUpperBound(field: string) {
     const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
@@ -667,6 +726,9 @@ class PaginatorIndexRange {
       // Already have a lower bound and an upper bound.
       return false;
     }
-    return currentUpperBoundLength < this.indexFields.length && this.indexFields[currentUpperBoundLength] === field;
+    return (
+      currentUpperBoundLength < this.indexFields.length &&
+      this.indexFields[currentUpperBoundLength] === field
+    );
   }
 }

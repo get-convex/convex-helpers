@@ -24,13 +24,13 @@ export default ({ othersPresence }: FacePileProps) => {
         .sort((presence1, presence2) =>
           presence1.online === presence2.online
             ? presence1.created - presence2.created
-            : Number(presence1.online) - Number(presence2.online)
+            : Number(presence1.online) - Number(presence2.online),
         )
         .map((presence) => (
           <span
             className={classNames(
               "relative inline-block h-6 w-6 rounded-full bg-white ring-2 ring-white text-xl",
-              { grayscale: !presence.online }
+              { grayscale: !presence.online },
             )}
             key={presence.created}
             title={

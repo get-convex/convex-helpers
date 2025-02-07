@@ -1,8 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 export default (
   text: string,
-  updateMyPresence: (p: { typing?: boolean }) => void
+  updateMyPresence: (p: { typing?: boolean }) => void,
 ) => {
   useEffect(() => {
     if (text.length === 0) {

@@ -266,6 +266,6 @@ components:
       FailedResponse:
         type: object
         properties: {}
-`
+`;
 
-test("setup", () => { });
+test("setup", () => {});

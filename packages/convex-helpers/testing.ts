@@ -29,16 +29,16 @@ export class ConvexTestingHelper {
 
   constructor(options: { adminKey?: string; backendUrl?: string } = {}) {
     this.client = new ConvexClient(
-      options.backendUrl ?? "http://127.0.0.1:3210"
+      options.backendUrl ?? "http://127.0.0.1:3210",
     );
     this._adminKey =
       options.adminKey ??
       // default admin key for local backends - from https://github.com/get-convex/convex-backend/blob/main/Justfile
-      "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd"
+      "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd";
   }
 
   newIdentity(
-    args: Partial<Omit<UserIdentity, "tokenIdentifier">>
+    args: Partial<Omit<UserIdentity, "tokenIdentifier">>,
   ): Omit<UserIdentity, "tokenIdentifier"> {
     const subject = `test subject ${this._nextSubjectId}`;
     this._nextSubjectId += 1;
@@ -51,7 +51,7 @@ export class ConvexTestingHelper {
   }
 
   withIdentity(
-    identity: Omit<UserIdentity, "tokenIdentifier">
+    identity: Omit<UserIdentity, "tokenIdentifier">,
   ): Pick<ConvexClient, "mutation" | "action" | "query"> {
     return {
       mutation: (functionReference, args) => {
@@ -77,21 +77,21 @@ export class ConvexTestingHelper {
 
   async mutation<Mutation extends FunctionReference<"mutation">>(
     mutation: Mutation,
-    args: FunctionArgs<Mutation>
+    args: FunctionArgs<Mutation>,
   ): Promise<Awaited<FunctionReturnType<Mutation>>> {
     return this.client.mutation(mutation, args);
   }
 
   async query<Query extends FunctionReference<"query", "public">>(
     query: Query,
-    args: FunctionArgs<Query>
+    args: FunctionArgs<Query>,
   ): Promise<Awaited<FunctionReturnType<Query>>> {
     return this.client.query(query, args);
   }
 
   async action<Action extends FunctionReference<"action">>(
     action: Action,
-    args: FunctionArgs<Action>
+    args: FunctionArgs<Action>,
   ): Promise<Awaited<FunctionReturnType<Action>>> {
     return this.client.action(action, args);
   }
