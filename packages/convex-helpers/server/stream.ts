@@ -5,7 +5,6 @@ import {
   DocumentByName,
   GenericDataModel,
   GenericDatabaseReader,
-  GenericIndexFields,
   IndexNames,
   IndexRange,
   IndexRangeBuilder,
@@ -13,7 +12,6 @@ import {
   NamedTableInfo,
   OrderedQuery,
   PaginationOptions,
-  PaginationResult,
   Query,
   QueryInitializer,
   SchemaDefinition,
@@ -23,156 +21,9 @@ import { compareValues } from "./compare.js";
 
 export type IndexKey = Value[];
 
-export type PageRequest<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
-> = {
-  /** Request a page of documents from this table. */
-  table: T;
-  /** Where the page starts. Default or empty array is the start of the table. */
-  startIndexKey?: IndexKey;
-  /** Whether the startIndexKey is inclusive. Default is false. */
-  startInclusive?: boolean;
-  /** Where the page ends. If provided, all documents up to this key will be
-   * included, if possible. targetMaxRows will be ignored (but absoluteMaxRows
-   * will not). This ensures adjacent pages stay adjacent, even as they grow.
-   * An empty array means the end of the table.
-   */
-  endIndexKey?: IndexKey;
-  /** Whether the endIndexKey is inclusive. Default is true.*/
-  endInclusive?: boolean;
-  /** Maximum number of rows to return, as long as endIndexKey is not provided.
-   * Default is 100.
-   */
-  targetMaxRows?: number;
-  /** Absolute maximum number of rows to return, even if endIndexKey is
-   * provided. Use this to prevent a single page from growing too large, but
-   * watch out because gaps can form between pages.
-   * Default is unlimited.
-   */
-  absoluteMaxRows?: number;
-  /** Whether the index is walked in ascending or descending order. Default is
-   * ascending.
-   */
-  order?: "asc" | "desc";
-  /** Which index to walk.
-   * Default is by_creation_time.
-   */
-  index?: IndexNames<NamedTableInfo<DataModel, T>>;
-  /** If index is not by_creation_time or by_id,
-   * you need to provide the index fields, either directly or from the schema.
-   * schema can be found with
-   * `import schema from "./schema";`
-   */
-  schema?: SchemaDefinition<any, boolean>;
-  /** The fields of the index, if you specified an index and not a schema. */
-  indexFields?: string[];
-};
-
-export type PageResponse<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
-> = {
-  /** Page of documents in the table.
-   * Order is by the `index`, possibly reversed by `order`.
-   */
-  page: DocumentByName<DataModel, T>[];
-  /** hasMore is true if this page did not exhaust the queried range.*/
-  hasMore: boolean;
-  /** indexKeys[i] is the index key for the document page[i].
-   * indexKeys can be used as `startIndexKey` or `endIndexKey` to fetch pages
-   * relative to this one.
-   */
-  indexKeys: IndexKey[];
-};
-
-/**
- * Get a single page of documents from a table.
- * See examples in README.
- * @param ctx A ctx from a query or mutation context.
- * @param request What page to get.
- * @returns { page, hasMore, indexKeys }.
- */
-export async function getPage<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
->(
-  ctx: { db: GenericDatabaseReader<DataModel> },
-  request: PageRequest<DataModel, T>,
-): Promise<PageResponse<DataModel, T>> {
-  const absoluteMaxRows = request.absoluteMaxRows ?? Infinity;
-  const targetMaxRows = request.targetMaxRows ?? DEFAULT_TARGET_MAX_ROWS;
-  const absoluteLimit = request.endIndexKey
-    ? absoluteMaxRows
-    : Math.min(absoluteMaxRows, targetMaxRows);
-  const page: DocumentByName<DataModel, T>[] = [];
-  const indexKeys: IndexKey[] = [];
-  const stream = streamQuery(ctx, request);
-  for await (const [doc, indexKey] of stream) {
-    if (page.length >= absoluteLimit) {
-      return {
-        page,
-        hasMore: true,
-        indexKeys,
-      };
-    }
-    page.push(doc);
-    indexKeys.push(indexKey);
-  }
-  return {
-    page,
-    hasMore: false,
-    indexKeys,
-  };
-}
-
-export async function* streamQuery<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
->(
-  ctx: { db: GenericDatabaseReader<DataModel> },
-  request: Omit<PageRequest<DataModel, T>, "targetMaxRows" | "absoluteMaxRows">,
-): AsyncGenerator<[DocumentByName<DataModel, T>, IndexKey]> {
-  const index = request.index ?? "by_creation_time";
-  const indexFields = getIndexFields(request);
-  const startIndexKey = request.startIndexKey ?? [];
-  const endIndexKey = request.endIndexKey ?? [];
-  const startInclusive = request.startInclusive ?? false;
-  const order = request.order === "desc" ? "desc" : "asc";
-  const startBoundType =
-    order === "desc" ? ltOr(startInclusive) : gtOr(startInclusive);
-  const endInclusive = request.endInclusive ?? true;
-  const endBoundType =
-    order === "desc" ? gtOr(endInclusive) : ltOr(endInclusive);
-  if (
-    indexFields.length < startIndexKey.length ||
-    indexFields.length < endIndexKey.length
-  ) {
-    throw new Error("Index key length exceeds index fields length");
-  }
-  const split = splitRange(
-    indexFields,
-    startIndexKey,
-    endIndexKey,
-    startBoundType,
-    endBoundType,
-  );
-  for (const range of split) {
-    const query = ctx.db
-      .query(request.table)
-      .withIndex(index, rangeToQuery(range))
-      .order(order);
-    for await (const doc of query) {
-      yield [doc, getIndexKey(doc, indexFields)];
-    }
-  }
-}
-
 //
 // Helper functions
 //
-
-const DEFAULT_TARGET_MAX_ROWS = 100;
 
 function exclType(boundType: "gt" | "lt" | "gte" | "lte") {
   if (boundType === "gt" || boundType === "gte") {
@@ -180,9 +31,6 @@ function exclType(boundType: "gt" | "lt" | "gte" | "lte") {
   }
   return "lt";
 }
-
-const ltOr = (equal: boolean) => (equal ? "lte" : "lt");
-const gtOr = (equal: boolean) => (equal ? "gte" : "gt");
 
 type Bound = ["gt" | "lt" | "gte" | "lte" | "eq", string, Value];
 
@@ -278,44 +126,33 @@ function rangeToQuery(range: Bound[]) {
 }
 
 function getIndexFields<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
 >(
-  request: Pick<
-    PageRequest<DataModel, T>,
-    "indexFields" | "schema" | "table" | "index"
-  >,
+  table: T,
+  index?: IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  schema?: Schema,
 ): string[] {
-  const indexDescriptor = String(request.index ?? "by_creation_time");
+  const indexDescriptor = String(index ?? "by_creation_time");
   if (indexDescriptor === "by_creation_time") {
     return ["_creationTime", "_id"];
   }
   if (indexDescriptor === "by_id") {
     return ["_id"];
   }
-  if (request.indexFields) {
-    const fields = request.indexFields.slice();
-    if (!request.indexFields.includes("_creationTime")) {
-      fields.push("_creationTime");
-    }
-    if (!request.indexFields.includes("_id")) {
-      fields.push("_id");
-    }
-    return fields;
-  }
-  if (!request.schema) {
+  if (!schema) {
     throw new Error("schema is required to infer index fields");
   }
-  const table = request.schema.tables[request.table];
-  const index = table.indexes.find(
+  const tableInfo = schema.tables[table];
+  const indexInfo = tableInfo.indexes.find(
     (index: any) => index.indexDescriptor === indexDescriptor,
   );
-  if (!index) {
+  if (!indexInfo) {
     throw new Error(
-      `Index ${indexDescriptor} not found in table ${request.table}`,
+      `Index ${indexDescriptor} not found in table ${table}`,
     );
   }
-  const fields = index.fields.slice();
+  const fields = indexInfo.fields.slice();
   fields.push("_creationTime");
   fields.push("_id");
   return fields;
@@ -335,8 +172,6 @@ function getIndexKey<
   }
   return key;
 }
-
-const END_CURSOR = "endcursor";
 
 /**
  * Simpified version of `getPage` that you can use for one-off queries that
@@ -387,6 +222,15 @@ export function reflect<
   schema: Schema,
 ): ReflectDatabaseReader<Schema> {
   return new ReflectDatabaseReader(db, schema);
+}
+
+export function stream<
+  Schema extends SchemaDefinition<any, boolean>,
+>(
+  db: GenericDatabaseReader<DM<Schema>>,
+  schema: Schema,
+): ReflectDatabaseReader<Schema> {
+  return reflect(db, schema);
 }
 
 export class ReflectDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
@@ -470,16 +314,16 @@ export class ReflectQueryInitializer<
       >,
     ) => IndexRange,
   ): ReflectQuery<Schema, T, IndexName> {
-    const indexFields = getIndexFields<DM<Schema>, T>({
-      table: this.table,
-      index: indexName,
-      schema: this.parent.schema,
-    });
+    const indexFields = getIndexFields<Schema, T>(
+      this.table,
+      indexName,
+      this.parent.schema,
+    );
     const q = new ReflectIndexRange(indexFields);
     if (indexRange) {
       indexRange(q as any);
     }
-    return new ReflectQuery(this, indexName, q);
+    return new ReflectQuery(this, indexName, q, indexRange);
   }
   withSearchIndex(_indexName: any, _searchFilter: any): any {
     throw new Error("Cannot paginate withSearchIndex");
@@ -534,12 +378,12 @@ export class ReflectQuery<
     public parent: ReflectQueryInitializer<Schema, T>,
     public index: IndexName,
     public q: ReflectIndexRange,
-    public indexRange?: (
+    public indexRange: ((
       q: IndexRangeBuilder<
         DocumentByInfo<NamedTableInfo<DM<Schema>, T>>,
         NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
       >,
-    ) => IndexRange
+    ) => IndexRange) | undefined,
   ) {}
   order(order: "asc" | "desc") {
     return new OrderedReflectQuery(this, order);
@@ -661,13 +505,13 @@ export class OrderedReflectQuery<
     const { db, table, index, order, bounds, indexFields, schema } = this.reflect();
     let maxLowerBound = bounds.lowerBound;
     let maxLowerBoundInclusive = bounds.lowerBoundInclusive;
-    if (compareKeys({ value: indexBounds.lowerBound, kind: indexBounds.lowerBoundInclusive ? "exact" : "successor" }, { value: bounds.lowerBound, kind: bounds.lowerBoundInclusive ? "exact" : "successor" }) > 0) {
+    if (compareKeys({ value: indexBounds.lowerBound, kind: indexBounds.lowerBoundInclusive ? "predecessor" : "successor" }, { value: bounds.lowerBound, kind: bounds.lowerBoundInclusive ? "predecessor" : "successor" }) > 0) {
       maxLowerBound = indexBounds.lowerBound;
       maxLowerBoundInclusive = indexBounds.lowerBoundInclusive;
     }
     let minUpperBound = bounds.upperBound;
     let minUpperBoundInclusive = bounds.upperBoundInclusive;
-    if (compareKeys({ value: indexBounds.upperBound, kind: indexBounds.upperBoundInclusive ? "exact" : "predecessor" }, { value: bounds.upperBound, kind: bounds.upperBoundInclusive ? "exact" : "predecessor" }) < 0) {
+    if (compareKeys({ value: indexBounds.upperBound, kind: indexBounds.upperBoundInclusive ? "successor" : "predecessor" }, { value: bounds.upperBound, kind: bounds.upperBoundInclusive ? "successor" : "predecessor" }) < 0) {
       minUpperBound = indexBounds.upperBound;
       minUpperBoundInclusive = indexBounds.upperBoundInclusive;
     }
@@ -680,14 +524,9 @@ export class OrderedReflectQuery<
     );
     const subQueries = [];
     for (const splitBound of splitBounds) {
-      subQueries.push(reflect(db, schema).query(table).withIndex(index, (q: any) => {
-        for (const [boundType, field, value] of splitBound) {
-          q = q[boundType](field, value);
-        }
-        return q;
-      }).order(order));
+      subQueries.push(reflect(db, schema).query(table).withIndex(index, rangeToQuery(splitBound)).order(order));
     }
-    return mergeStreams(...subQueries);
+    return concatStreams(...subQueries);
   }
 }
 
@@ -950,7 +789,57 @@ export function queryStream<
       throw new Error("Cannot filter query stream. use filterStream instead.");
     },
     paginate: async (opts: PaginationOptions & { endCursor?: string | null }) => {
-      throw new Error("TODO");
+      const order = stream.reflectOrder();
+      let newStartKey = {
+        key: [] as IndexKey,
+        inclusive: true,
+      };
+      if (opts.cursor !== null) {
+        newStartKey = {
+          key: jsonToConvex(JSON.parse(opts.cursor)) as IndexKey,
+          inclusive: false,
+        };
+      }
+      let newEndKey = {
+        key: [] as IndexKey,
+        inclusive: true,
+      };
+      let maxRows: number | undefined = opts.numItems;
+      if (opts.endCursor) {
+        newEndKey = {
+          key: jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey,
+          inclusive: true,
+        };
+        // If there's an endCursor, continue until we get there even if it's more
+        // than numItems.
+        maxRows = undefined;
+      }
+      const newLowerBound = order === "asc" ? newStartKey : newEndKey;
+      const newUpperBound = order === "asc" ? newEndKey : newStartKey;
+      const narrowStream = stream.narrow({
+        lowerBound: newLowerBound.key,
+        lowerBoundInclusive: newLowerBound.inclusive,
+        upperBound: newUpperBound.key,
+        upperBoundInclusive: newUpperBound.inclusive,
+      });
+      const page: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
+      const indexKeys: IndexKey[] = [];
+      let hasMore = (opts.endCursor && opts.endCursor !== "[]");
+      let continueCursor = opts.endCursor ?? "[]";
+      for await (const [indexKey, doc] of narrowStream.iterWithKeys()) {
+        page.push(doc);
+        indexKeys.push(indexKey);
+        if (maxRows !== undefined && page.length >= maxRows) {
+          hasMore = true;
+          continueCursor = JSON.stringify(convexToJson(indexKey as Value));
+          break;
+        }
+      }
+      return {
+        page,
+        isDone: !hasMore,
+        continueCursor,
+      };
     },
     collect: async () => {
       return streamTake(stream, Infinity);
