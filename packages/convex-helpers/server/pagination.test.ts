@@ -1,7 +1,8 @@
 import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { IndexKey, getPage, paginator } from "./pagination.js";
+import { IndexKey, getPage } from "./pagination.js";
+import { queryStream, stream } from "./stream.js";
 import { modules } from "./setup.test.js";
 import { GenericId, v } from "convex/values";
 
@@ -251,7 +252,7 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      const result1 = await paginator(ctx.db, schema).query("foo")
+      const result1 = await queryStream(stream(ctx.db, schema).query("foo"))
         .paginate({ numItems: 100, cursor: null });
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
@@ -259,7 +260,7 @@ describe("paginator", () => {
         { a: 1, b: 2, c: 5 },
       ]);
       expect(result1.isDone).toBe(true);
-      expect(result1.continueCursor).toBe("endcursor");
+      expect(result1.continueCursor).toBe("[]");
     });
   });
 
@@ -269,17 +270,15 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      const result1 = await paginator(ctx.db, schema)
-        .query("foo")
+      const result1 = await queryStream(stream(ctx.db, schema).query("foo"))
         .paginate({ numItems: 2, cursor: null });
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
         { a: 1, b: 2, c: 4 },
       ]);
       expect(result1.isDone).toBe(false);
-      
-      const result2 = await paginator(ctx.db, schema)
-        .query("foo")
+
+      const result2 = await queryStream(stream(ctx.db, schema).query("foo"))
         .paginate({ numItems: 2, cursor: result1.continueCursor });
       expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 5 },
@@ -296,8 +295,8 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result1 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5))
+      const result1 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)))
         .paginate({ cursor: null, numItems: 100 });
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 1 },
@@ -307,8 +306,8 @@ describe("paginator", () => {
       expect(result1.isDone).toBe(true);
 
       // Descending.
-      const result2 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc")
+      const result2 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"))
         .paginate({ cursor: null, numItems: 100 });
       expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 5, c: 1 },
@@ -327,8 +326,8 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result1 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc")
+      const result1 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"))
         .paginate({ cursor: null, numItems: 2 });
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 5, c: 1 },
@@ -336,8 +335,8 @@ describe("paginator", () => {
       ]);
       expect(result1.isDone).toBe(false);
 
-      const result2 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc")
+      const result2 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)).order("desc"))
         .paginate({ cursor: result1.continueCursor, numItems: 2 });
       expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 1 },
@@ -349,16 +348,16 @@ describe("paginator", () => {
   test("invalid index range", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      expect(() => paginator(ctx.db, schema)
+      expect(() => stream(ctx.db, schema)
         .query("foo").withIndex("abc", q => q.gt("c" as any, 3))
       ).toThrow("Cannot use gt on field 'c'");
-      expect(() => paginator(ctx.db, schema)
+      expect(() => stream(ctx.db, schema)
         .query("foo").withIndex("abc", q => q.eq("a", 1).eq("c" as any, 3))
       ).toThrow("Cannot use eq on field 'c'");
-      expect(() => paginator(ctx.db, schema)
+      expect(() => stream(ctx.db, schema)
         .query("foo").withIndex("abc", q => (q.gt("a", 1) as any).gt("b", 3))
       ).toThrow("Cannot use gt on field 'b'");
-      expect(() => paginator(ctx.db, schema)
+      expect(() => stream(ctx.db, schema)
         .query("foo").withIndex("abc", q => (q.gt("a", 1).lt("a", 3) as any).eq("b", 3))
       ).toThrow("Cannot use eq on field 'b'");
     });
@@ -373,8 +372,8 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
       // First page has two items in it.
-      const result1 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5))
+      const result1 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)))
         .paginate({ cursor: null, numItems: 2 });
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 1 },
@@ -383,8 +382,8 @@ describe("paginator", () => {
       expect(result1.isDone).toBe(false);
       // Add an item to the first page and refetch with endCursor.
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
-      const result2 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5))
+      const result2 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)))
         .paginate({ cursor: null, endCursor: result1.continueCursor, numItems: 2 });
       expect(result2.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 1 },
@@ -395,8 +394,8 @@ describe("paginator", () => {
       expect(result1.continueCursor).toStrictEqual(result2.continueCursor);
 
       // Second page has one item in it.
-      const result3 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5))
+      const result3 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)))
         .paginate({ cursor: result2.continueCursor, numItems: 2 });
       expect(result3.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 5, c: 1 },
@@ -405,8 +404,8 @@ describe("paginator", () => {
       // Add two items to the second page and refetch with endCursor.
       await ctx.db.insert("foo", { a: 1, b: 5, c: 2 });
       await ctx.db.insert("foo", { a: 1, b: 5, c: 3 });
-      const result4 = await paginator(ctx.db, schema)
-        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5))
+      const result4 = await queryStream(stream(ctx.db, schema)
+        .query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 3).lte("b", 5)))
         .paginate({ cursor: result2.continueCursor, endCursor: result3.continueCursor, numItems: 2 });
       expect(result4.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 5, c: 1 },

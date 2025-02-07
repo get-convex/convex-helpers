@@ -20,10 +20,10 @@ function stripSystemFields(doc: GenericDocument) {
 function dropSystemFields(indexKey: IndexKey) {
   return indexKey.slice(0, -2);
 }
-function dropAndStripSystemFields(item: IteratorResult<[IndexKey, GenericDocument]>) {
+function dropAndStripSystemFields(item: IteratorResult<[GenericDocument, IndexKey]>) {
   return {
     done: item.done,
-    value: item.value ? [dropSystemFields(item.value[0]), stripSystemFields(item.value[1])] : undefined,
+    value: item.value ? [stripSystemFields(item.value[0]), dropSystemFields(item.value[1])] : undefined,
   };
 }
 
@@ -79,8 +79,8 @@ describe("stream", () => {
       const query = stream(ctx.db, schema).query("foo").withIndex("abc", q => q.eq("a", 1).gt("b", 2)).order("desc");
       expect(query.reflectOrder()).toBe("desc");
       const iter = query.iterWithKeys()[Symbol.asyncIterator]();
-      expect(dropAndStripSystemFields(await iter.next())).toEqual({ done: false, value: [[1, 4, 3], { a: 1, b: 4, c: 3 }] });
-      expect(dropAndStripSystemFields(await iter.next())).toEqual({ done: false, value: [[1, 3, 3], { a: 1, b: 3, c: 3 }] });
+      expect(dropAndStripSystemFields(await iter.next())).toEqual({ done: false, value: [{ a: 1, b: 4, c: 3 }, [1, 4, 3]] });
+      expect(dropAndStripSystemFields(await iter.next())).toEqual({ done: false, value: [{ a: 1, b: 3, c: 3 }, [1, 3, 3]] });
       expect(dropAndStripSystemFields(await iter.next())).toEqual({ done: true });
     });
   });

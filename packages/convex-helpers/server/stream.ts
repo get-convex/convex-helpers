@@ -477,7 +477,7 @@ export class OrderedReflectQuery<
   [Symbol.asyncIterator]() {
     return this.inner()[Symbol.asyncIterator]();
   }
-  iterWithKeys(): AsyncIterable<[IndexKey, DocumentByName<DM<Schema>, T>]> {
+  iterWithKeys(): AsyncIterable<[DocumentByName<DM<Schema>, T>, IndexKey]> {
     const { indexFields } = this.reflect();
     const iterable = this.inner();
     return {
@@ -491,7 +491,7 @@ export class OrderedReflectQuery<
             }
             return {
               done: false,
-              value: [getIndexKey(result.value, indexFields), result.value]
+              value: [result.value, getIndexKey(result.value, indexFields)]
             };
           }
         }
@@ -502,7 +502,7 @@ export class OrderedReflectQuery<
     return this.order;
   }
   narrow(indexBounds: IndexBounds): IndexStream<DM<Schema>, T> {
-    const { db, table, index, order, bounds, indexFields, schema } = this.reflect();
+    const { db, table, index, order, bounds, schema } = this.reflect();
     let maxLowerBound = bounds.lowerBound;
     let maxLowerBoundInclusive = bounds.lowerBoundInclusive;
     if (compareKeys({ value: indexBounds.lowerBound, kind: indexBounds.lowerBoundInclusive ? "predecessor" : "successor" }, { value: bounds.lowerBound, kind: bounds.lowerBoundInclusive ? "predecessor" : "successor" }) > 0) {
@@ -515,19 +515,40 @@ export class OrderedReflectQuery<
       minUpperBound = indexBounds.upperBound;
       minUpperBoundInclusive = indexBounds.upperBoundInclusive;
     }
-    const splitBounds = splitRange(
-      indexFields,
-      maxLowerBound,
-      minUpperBound,
-      maxLowerBoundInclusive ? "gte" : "gt",
-      minUpperBoundInclusive ? "lte" : "lt",
-    );
-    const subQueries = [];
-    for (const splitBound of splitBounds) {
-      subQueries.push(reflect(db, schema).query(table).withIndex(index, rangeToQuery(splitBound)).order(order));
-    }
-    return concatStreams(...subQueries);
+    return streamIndexRange(db, schema, table, index, {
+      lowerBound: maxLowerBound,
+      lowerBoundInclusive: maxLowerBoundInclusive,
+      upperBound: minUpperBound,
+      upperBoundInclusive: minUpperBoundInclusive,
+    }, order);
   }
+}
+
+export function streamIndexRange<
+  Schema extends SchemaDefinition<any, boolean>,
+  T extends TableNamesInDataModel<DM<Schema>>,
+  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+>(
+  db: GenericDatabaseReader<DM<Schema>>,
+  schema: Schema,
+  table: T,
+  index: IndexName,
+  bounds: IndexBounds,
+  order: "asc" | "desc",
+): IndexStream<DM<Schema>, T> {
+  const indexFields = getIndexFields(table, index, schema);
+  const splitBounds = splitRange(
+    indexFields,
+    bounds.lowerBound,
+    bounds.upperBound,
+    bounds.lowerBoundInclusive ? "gte" : "gt",
+    bounds.upperBoundInclusive ? "lte" : "lt",
+  );
+  const subQueries = [];
+  for (const splitBound of splitBounds) {
+    subQueries.push(reflect(db, schema).query(table).withIndex(index, rangeToQuery(splitBound)).order(order));
+  }
+  return concatStreams(...subQueries);
 }
 
 class ReflectIndexRange {
@@ -619,7 +640,7 @@ export interface IndexStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > {
-  iterWithKeys(): AsyncIterable<[IndexKey, DocumentByName<DataModel, T>]>;
+  iterWithKeys(): AsyncIterable<[DocumentByName<DataModel, T>, IndexKey]>;
   reflectOrder(): "asc" | "desc";
   narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
 }
@@ -643,7 +664,7 @@ export function mergeStreams<
       return {
         [Symbol.asyncIterator]() {
           const iterators = iterables.map(iterable => iterable[Symbol.asyncIterator]());
-          const results = Array.from({ length: iterators.length }, (): IteratorResult<[IndexKey, DocumentByName<DataModel, T>] | undefined> => ({ done: false, value: undefined }));
+          const results = Array.from({ length: iterators.length }, (): IteratorResult<[DocumentByName<DataModel, T>, IndexKey] | undefined> => ({ done: false, value: undefined }));
           return {
             async next() {
               // Fill results from iterators with no value yet.
@@ -660,7 +681,7 @@ export function mergeStreams<
                 if (result.done || !result.value) {
                   continue;
                 }
-                const [resultIndexKey, _] = result.value;
+                const [_, resultIndexKey] = result.value;
                 if (minIndexKeyAndIndex === undefined) {
                   minIndexKeyAndIndex = [resultIndexKey, i];
                   continue;
@@ -752,7 +773,7 @@ export function filterStream<
                 if (result.done) {
                   return result;
                 }
-                if (await predicate(result.value[1])) {
+                if (await predicate(result.value[0])) {
                   return result;
                 }
               }
@@ -766,111 +787,113 @@ export function filterStream<
   };
 }
 
-async function streamTake<
+/**
+ * A wrapper around an IndexStream that provides a query interface.
+ */
+export class QueryStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
->(stream: IndexStream<DataModel, T>, n: number): Promise<DocumentByInfo<NamedTableInfo<DataModel, T>>[]> {
-  const results: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
-  for await (const [_, doc] of stream.iterWithKeys()) {
-    results.push(doc);
-    if (results.length === n) {
-      break;
-    }
+> implements OrderedQuery<NamedTableInfo<DataModel, T>> {
+  constructor(public stream: IndexStream<DataModel, T>) {}
+  filter(_predicate: any): never {
+    throw new Error("Cannot filter query stream. use filterStream instead.");
   }
-  return results;
+  async paginate(opts: PaginationOptions & { endCursor?: string | null }) {
+    const order = this.stream.reflectOrder();
+    let newStartKey = {
+      key: [] as IndexKey,
+      inclusive: true,
+    };
+    if (opts.cursor !== null) {
+      newStartKey = {
+        key: jsonToConvex(JSON.parse(opts.cursor)) as IndexKey,
+        inclusive: false,
+      };
+    }
+    let newEndKey = {
+      key: [] as IndexKey,
+      inclusive: true,
+    };
+    let maxRows: number | undefined = opts.numItems;
+    if (opts.endCursor) {
+      newEndKey = {
+        key: jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey,
+        inclusive: true,
+      };
+      // If there's an endCursor, continue until we get there even if it's more
+      // than numItems.
+      maxRows = undefined;
+    }
+    const newLowerBound = order === "asc" ? newStartKey : newEndKey;
+    const newUpperBound = order === "asc" ? newEndKey : newStartKey;
+    const narrowStream = this.stream.narrow({
+      lowerBound: newLowerBound.key,
+      lowerBoundInclusive: newLowerBound.inclusive,
+      upperBound: newUpperBound.key,
+      upperBoundInclusive: newUpperBound.inclusive,
+    });
+    const page: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
+    const indexKeys: IndexKey[] = [];
+    let hasMore = (opts.endCursor && opts.endCursor !== "[]");
+    let continueCursor = opts.endCursor ?? "[]";
+    for await (const [doc, indexKey] of narrowStream.iterWithKeys()) {
+      page.push(doc);
+      indexKeys.push(indexKey);
+      if (maxRows !== undefined && page.length >= maxRows) {
+        hasMore = true;
+        continueCursor = JSON.stringify(convexToJson(indexKey as Value));
+        break;
+      }
+    }
+    return {
+      page,
+      isDone: !hasMore,
+      continueCursor,
+    };
+  }
+  async collect() {
+    return await this.take(Infinity);
+  }
+  async take(n: number) {
+    const results: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
+    for await (const [doc, _] of this.stream.iterWithKeys()) {
+      results.push(doc);
+      if (results.length === n) {
+        break;
+      }
+    }
+    return results;
+  }
+  async unique() {
+    const docs = await this.take(2);
+    if (docs.length === 2) {
+      throw new Error("Query is not unique");
+    }
+    return docs[0] ?? null;
+  }
+  async first() {
+    const docs = await this.take(1);
+    return docs[0] ?? null;
+  }
+  [Symbol.asyncIterator]() {
+    const iterator = this.stream.iterWithKeys()[Symbol.asyncIterator]();
+    return {
+      async next() {
+        const result = await iterator.next();
+        if (result.done) {
+          return { done: true as const, value: undefined };
+        }
+        return { done: false, value: result.value[0]! };
+      }
+    };
+  }
 }
 
 export function queryStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
->(stream: IndexStream<DataModel, T>): OrderedQuery<NamedTableInfo<DataModel, T>> {
-  return {
-    filter: (_predicate) => {
-      throw new Error("Cannot filter query stream. use filterStream instead.");
-    },
-    paginate: async (opts: PaginationOptions & { endCursor?: string | null }) => {
-      const order = stream.reflectOrder();
-      let newStartKey = {
-        key: [] as IndexKey,
-        inclusive: true,
-      };
-      if (opts.cursor !== null) {
-        newStartKey = {
-          key: jsonToConvex(JSON.parse(opts.cursor)) as IndexKey,
-          inclusive: false,
-        };
-      }
-      let newEndKey = {
-        key: [] as IndexKey,
-        inclusive: true,
-      };
-      let maxRows: number | undefined = opts.numItems;
-      if (opts.endCursor) {
-        newEndKey = {
-          key: jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey,
-          inclusive: true,
-        };
-        // If there's an endCursor, continue until we get there even if it's more
-        // than numItems.
-        maxRows = undefined;
-      }
-      const newLowerBound = order === "asc" ? newStartKey : newEndKey;
-      const newUpperBound = order === "asc" ? newEndKey : newStartKey;
-      const narrowStream = stream.narrow({
-        lowerBound: newLowerBound.key,
-        lowerBoundInclusive: newLowerBound.inclusive,
-        upperBound: newUpperBound.key,
-        upperBoundInclusive: newUpperBound.inclusive,
-      });
-      const page: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
-      const indexKeys: IndexKey[] = [];
-      let hasMore = (opts.endCursor && opts.endCursor !== "[]");
-      let continueCursor = opts.endCursor ?? "[]";
-      for await (const [indexKey, doc] of narrowStream.iterWithKeys()) {
-        page.push(doc);
-        indexKeys.push(indexKey);
-        if (maxRows !== undefined && page.length >= maxRows) {
-          hasMore = true;
-          continueCursor = JSON.stringify(convexToJson(indexKey as Value));
-          break;
-        }
-      }
-      return {
-        page,
-        isDone: !hasMore,
-        continueCursor,
-      };
-    },
-    collect: async () => {
-      return streamTake(stream, Infinity);
-    },
-    take: async (n) => {
-      return streamTake(stream, n);
-    },
-    unique: async () => {
-      const docs = await streamTake(stream, 2);
-      if (docs.length === 2) {
-        throw new Error("Query is not unique");
-      }
-      return docs[0] ?? null;
-    },
-    first: async () => {
-      const docs = await streamTake(stream, 1);
-      return docs[0] ?? null;
-    },
-    [Symbol.asyncIterator]() {
-      const iterator = stream.iterWithKeys()[Symbol.asyncIterator]();
-      return {
-        async next() {
-          const result = await iterator.next();
-          if (result.done) {
-            return { done: true, value: undefined };
-          }
-          return { done: false, value: result.value[1] };
-        }
-      };
-    },
-  };
+>(stream: IndexStream<DataModel, T>): QueryStream<DataModel, T> {
+  return new QueryStream(stream);
 }
 
 type Key = {
