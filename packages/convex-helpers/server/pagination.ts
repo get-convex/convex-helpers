@@ -532,10 +532,12 @@ export class OrderedPaginatorQuery<
     let endIndexKey = this.endIndexKey;
     let endInclusive = this.endInclusive;
     let absoluteMaxRows: number | undefined = opts.numItems;
-    if (opts.endCursor && opts.endCursor !== END_CURSOR) {
-      endIndexKey = jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey;
-      endInclusive = true;
+    if (opts.endCursor) {
       absoluteMaxRows = undefined;
+      if (opts.endCursor !== END_CURSOR) {
+        endIndexKey = jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey;
+        endInclusive = true;
+      }
     }
     const {
       page, hasMore, indexKeys,
