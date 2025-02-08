@@ -534,7 +534,7 @@ export function streamIndexRange<
     bounds.lowerBoundInclusive ? "gte" : "gt",
     bounds.upperBoundInclusive ? "lte" : "lt",
   );
-  const subQueries = [];
+  const subQueries: OrderedReflectQuery<Schema, T, IndexName>[] = [];
   for (const splitBound of splitBounds) {
     subQueries.push(reflect(db, schema).query(table).withIndex(index, rangeToQuery(splitBound)).order(order));
   }

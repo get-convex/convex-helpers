@@ -3,7 +3,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { filterStream, IndexKey, mergeStreams, queryStream, reflect, stream } from "./stream.js";
 import { modules } from "./setup.test.js";
-import { GenericId, v } from "convex/values";
+import { v } from "convex/values";
 
 const schema = defineSchema({
   foo: defineTable({
