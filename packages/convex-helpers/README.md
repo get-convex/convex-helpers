@@ -853,6 +853,80 @@ export const list = query({
 });
 ```
 
+## Composable streams of query results
+
+These are helper functions for constructing and composing streams of query results.
+
+A "stream" is an async iterable of query results, ordered by an index on a table.
+
+A "query" implements the `OrderedQuery` interface from the "convex/server" package,
+so it has methods `.first()`, `.collect()`, `.paginate()`, etc.
+
+With the `stream` helper, you can construct a stream with the same syntax as
+you would use `DatabaseReader`. Once you have a stream, you can compose them
+to get more streams. Then the `queryStream` helper can convert any stream into a
+query.
+
+Beware if using `.paginate()` with streams in reactive queries, as they have the
+same problems as [`paginator` and `getPage`](#manual-pagination): you need to
+pass in `endCursor` to prevent holes or overlaps between the pages.
+
+To merge streams into a single stream (still ordered by the same index), use
+`mergeStreams`. To filter a stream using an arbitrary typescript predicate,
+use `filterStream`.
+
+**Motivating examples:**
+
+1. For a fixed set of authors, paginate all messages by those authors.
+
+```ts
+import { stream, mergeStreams } from "convex-helpers/server/stream";
+import schema from "./schema";
+
+export const listForAuthors = query({
+  args: { authors: v.array(v.id("users")), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { authors, paginationOpts }) => {
+    const authorStreams = authors.map(author =>
+      stream(ctx.db, schema).query("messages").withIndex("by_author", q => q.eq("author", author))
+    );
+    const allAuthorsStream = mergeStreams(authorStreams);
+    return await queryStream(allAuthorsStream).paginate(paginationOpts);
+  }
+});
+```
+
+2. Paginate all messages whose authors match a complex predicate.
+
+There are actually two ways to do this. One uses "post-filter" pagination,
+where the filter is applied after picking the page size. To do that, you can
+use the `filter` helper described [above](#filter). The advantage is that the
+queries read bounded data, but the disadvantage is that the returned page might
+be small or empty.
+
+The other does "pre-filter" pagination, where the filter is applied before
+picking the page size. Doing this with sparse filters may result in slow queries
+or errors because it's reading too much data, but if the predicate often returns
+true, it's perfectly fine. Let's see how to do that with streams.
+
+```ts
+import { stream, mergeStreams, filterStream, queryStream } from "convex-helpers/server/stream";
+import schema from "./schema";
+
+export const list = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const allMessagesStream = stream(ctx.db, schema).query("messages").order("desc");
+    const messagesByVerifiedAuthors = filterStream(allMessagesStream, async (message) => {
+      const author = await ctx.db.get(message.author);
+      return author !== null && author.verified;
+    });
+    return await queryStream(messagesByVerifiedAuthors).paginate(paginationOpts);
+  },
+});
+```
+
+Again, remember to use `endCursor` in reactive queries to keep pages contiguous.
+
 ## Query Caching
 
 Utilize a query cache implementation which persists subscriptions to the

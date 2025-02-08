@@ -125,7 +125,7 @@ function rangeToQuery(range: Bound[]) {
   };
 }
 
-function getIndexFields<
+export function getIndexFields<
   Schema extends SchemaDefinition<any, boolean>,
   T extends TableNamesInDataModel<DM<Schema>>,
 >(
@@ -452,15 +452,23 @@ export class OrderedReflectQuery<
       indexRange: this.parent.indexRange,
     };
   }
+  /**
+   * inner() is as if you had used ctx.db to construct the query.
+   */ 
   inner(): OrderedQuery<NamedTableInfo<DM<Schema>, T>> {
     const { db, table, index, order, indexRange } = this.reflect();
     return db.query(table).withIndex(index, indexRange).order(order);
   }
   async paginate(opts: PaginationOptions & { endCursor?: string | null }) {
-    return this.inner().paginate(opts);
+    // Note `db.query().paginate()` has additional semantics: it reads from the
+    // query journal and can only be called once per query.
+    // Meanwhile `queryStream(stream).paginate()` doesn't have those semantics.
+    // It would be weird to change semantics so subtly, so we wrap the query
+    // in a queryStream before paginating.
+    return queryStream(this).paginate(opts);
   }
   filter(_predicate: any): any {
-    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+    throw new Error(".filter() not supported for ReflectQuery. Use `filter` or `filterStream` instead.");
   }
   collect() {
     return this.inner().collect();

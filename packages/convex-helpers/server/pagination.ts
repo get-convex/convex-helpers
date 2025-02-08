@@ -1,5 +1,6 @@
 import { Value } from "convex/values";
 import {
+  DataModelFromSchemaDefinition,
   DocumentByName,
   GenericDataModel,
   GenericDatabaseReader,
@@ -8,7 +9,7 @@ import {
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
-import { streamIndexRange } from "./stream.js";
+import { getIndexFields, ReflectDatabaseReader, stream, streamIndexRange } from "./stream.js";
 
 export type IndexKey = Value[];
 
@@ -123,7 +124,7 @@ export async function* streamQuery<
   request: Omit<PageRequest<DataModel, T>, "targetMaxRows" | "absoluteMaxRows">,
 ): AsyncGenerator<[DocumentByName<DataModel, T>, IndexKey]> {
   const index = request.index ?? "by_creation_time";
-  const indexFields = getIndexFields(request);
+  const indexFields = getIndexFields(request.table, request.index as any, request.schema);
   const startIndexKey = request.startIndexKey ?? [];
   const endIndexKey = request.endIndexKey ?? [];
   const startInclusive = request.startInclusive ?? false;
@@ -147,52 +148,17 @@ export async function* streamQuery<
   }
 }
 
+export function paginator<
+  Schema extends SchemaDefinition<any, boolean>,
+>(
+  db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
+  schema: Schema,
+): ReflectDatabaseReader<Schema> {
+  return stream(db, schema);
+}
+
 //
 // Helper functions
 //
 
 const DEFAULT_TARGET_MAX_ROWS = 100;
-
-function getIndexFields<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
->(
-  request: Pick<
-    PageRequest<DataModel, T>,
-    "indexFields" | "schema" | "table" | "index"
-  >,
-): string[] {
-  const indexDescriptor = String(request.index ?? "by_creation_time");
-  if (indexDescriptor === "by_creation_time") {
-    return ["_creationTime", "_id"];
-  }
-  if (indexDescriptor === "by_id") {
-    return ["_id"];
-  }
-  if (request.indexFields) {
-    const fields = request.indexFields.slice();
-    if (!request.indexFields.includes("_creationTime")) {
-      fields.push("_creationTime");
-    }
-    if (!request.indexFields.includes("_id")) {
-      fields.push("_id");
-    }
-    return fields;
-  }
-  if (!request.schema) {
-    throw new Error("schema is required to infer index fields");
-  }
-  const table = request.schema.tables[request.table];
-  const index = table.indexes.find(
-    (index: any) => index.indexDescriptor === indexDescriptor,
-  );
-  if (!index) {
-    throw new Error(
-      `Index ${indexDescriptor} not found in table ${request.table}`,
-    );
-  }
-  const fields = index.fields.slice();
-  fields.push("_creationTime");
-  fields.push("_id");
-  return fields;
-}
