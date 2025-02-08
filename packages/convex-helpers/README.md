@@ -864,17 +864,13 @@ so it has methods `.first()`, `.collect()`, `.paginate()`, etc.
 
 With the `stream` helper, you can construct a stream with the same syntax as
 you would use `DatabaseReader`. Once you have a stream, you can compose them
-to get more streams, with `mergeStreams`, and you can filter a stream with
-`filterStream`. Then the `queryStream` helper can convert any stream into a
-query.
+to get more streams (still ordered by the same index) with `mergeStreams`, and
+you can filter a stream with `filterStream`. Then the `queryStream` helper can
+convert any stream into a query.
 
 Beware if using `.paginate()` with streams in reactive queries, as they have the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
 pass in `endCursor` to prevent holes or overlaps between the pages.
-
-To merge streams into a single stream (still ordered by the same index), use
-`mergeStreams`. To filter a stream using an arbitrary typescript predicate,
-use `filterStream`.
 
 **Motivating examples:**
 
