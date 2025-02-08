@@ -148,6 +148,48 @@ export async function* streamQuery<
   }
 }
 
+/**
+ * Simpified version of `getPage` that you can use for one-off queries that
+ * don't need to be reactive.
+ *
+ * These two queries are roughly equivalent:
+ *
+ * ```ts
+ * await db.query(table)
+ *  .withIndex(index, q=>q.eq(field, value))
+ *  .order("desc")
+ *  .paginate(opts)
+ *
+ * await paginator(db, schema)
+ *   .query(table)
+ *   .withIndex(index, q=>q.eq(field, value))
+ *   .order("desc")
+ *   .paginate(opts)
+ * ```
+ * 
+ * Differences:
+ *
+ * - `paginator` does not automatically track the end of the page for when
+ *   the query reruns. The standard `paginate` call will record the end of the page,
+ *   so a client can have seamless reactive pagination. To pin the end of the page,
+ *   you can use the `endCursor` option. This does not happen automatically.
+ *   Read more [here](https://stack.convex.dev/pagination#stitching-the-pages-together)
+ * - `paginator` can be called multiple times in a query or mutation,
+ *   and within Convex components.
+ * - Cursors are not encrypted.
+ * - `.filter()` and the `filter()` convex-helper are not supported.
+ *   Filter the returned `page` in TypeScript instead.
+ * - System tables like _storage and _scheduled_functions are not supported.
+ * - Having a schema is required.
+ * 
+ * @argument opts.cursor Where to start the page. This should come from
+ * `continueCursor` in the previous page.
+ * @argument opts.endCursor Where to end the page. This should from from
+ * `continueCursor` in the *current* page.
+ * If not provided, the page will end when it reaches `options.opts.numItems`.
+ * @argument options.schema If you use an index that is not by_creation_time
+ * or by_id, you need to provide the schema.
+ */
 export function paginator<
   Schema extends SchemaDefinition<any, boolean>,
 >(

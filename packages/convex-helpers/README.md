@@ -924,6 +924,30 @@ export const list = query({
 
 Again, remember to use `endCursor` in reactive queries to keep pages contiguous.
 
+3. Ignore a boolean field in an index.
+
+Suppose you have an index on `["author", "unread"]` and you want to get the
+most recent 10 messages for an author, ignoring whether a messages is unread.
+
+Normally this would require a separate index on `["author"]`, or doing two
+requests and manually picking the 10 most recent. But with streams, it's cleaner:
+
+```ts
+import { stream, mergeStreams, filterStream, queryStream } from "convex-helpers/server/stream";
+import schema from "./schema";
+
+export const latestMessages = query({
+  args: { author: v.id("users") },
+  handler: async (ctx, { author }) => {
+    const messagesForUnreadStatus = [false, true].map(unread => stream(ctx.db, schema).query("messages")
+      .withIndex("by_author", q => q.eq("author", author).eq("unread", unread))
+      .order("desc"));
+    const allMessagesByCreationTime = mergeStreams(...messagesForUnreadStatus);
+    return await queryStream(allMessagesByCreationTime).take(10);
+  },
+});
+```
+
 ## Query Caching
 
 Utilize a query cache implementation which persists subscriptions to the

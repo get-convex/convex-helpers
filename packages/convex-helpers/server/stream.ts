@@ -173,48 +173,6 @@ function getIndexKey<
   return key;
 }
 
-/**
- * Simpified version of `getPage` that you can use for one-off queries that
- * don't need to be reactive.
- *
- * These two queries are roughly equivalent:
- *
- * ```ts
- * await db.query(table)
- *  .withIndex(index, q=>q.eq(field, value))
- *  .order("desc")
- *  .paginate(opts)
- *
- * await reflect(db, schema)
- *   .query(table)
- *   .withIndex(index, q=>q.eq(field, value))
- *   .order("desc")
- *   .paginate(opts)
- * ```
- * 
- * Differences:
- *
- * - `paginator` does not automatically track the end of the page for when
- *   the query reruns. The standard `paginate` call will record the end of the page,
- *   so a client can have seamless reactive pagination. To pin the end of the page,
- *   you can use the `endCursor` option. This does not happen automatically.
- *   Read more [here](https://stack.convex.dev/pagination#stitching-the-pages-together)
- * - `paginator` can be called multiple times in a query or mutation,
- *   and within Convex components.
- * - Cursors are not encrypted.
- * - `.filter()` and the `filter()` convex-helper are not supported.
- *   Filter the returned `page` in TypeScript instead.
- * - System tables like _storage and _scheduled_functions are not supported.
- * - Having a schema is required.
- * 
- * @argument opts.cursor Where to start the page. This should come from
- * `continueCursor` in the previous page.
- * @argument opts.endCursor Where to end the page. This should from from
- * `continueCursor` in the *current* page.
- * If not provided, the page will end when it reaches `options.opts.numItems`.
- * @argument options.schema If you use an index that is not by_creation_time
- * or by_id, you need to provide the schema.
- */
 export function reflect<
   Schema extends SchemaDefinition<any, boolean>,
 >(
@@ -224,6 +182,18 @@ export function reflect<
   return new ReflectDatabaseReader(db, schema);
 }
 
+/**
+ * A "stream" is an async iterable of query results, ordered by an index on a table.
+ * 
+ * Use it as you would use `ctx.db`.
+ * If using pagination in a reactive query, see the warnings on the `paginator`
+ * function. TL;DR: you need to pass in `endCursor` to prevent holes or overlaps
+ * between pages.
+ * 
+ * Once you have a stream, you can use `mergeStreams` or `filterStream` to make
+ * more streams. Then use `queryStream` to convert it into an OrderedQuery,
+ * so you can call `.paginate()`, `.collect()`, etc.
+ */
 export function stream<
   Schema extends SchemaDefinition<any, boolean>,
 >(
@@ -231,6 +201,18 @@ export function stream<
   schema: Schema,
 ): ReflectDatabaseReader<Schema> {
   return reflect(db, schema);
+}
+
+/**
+ * A "stream" is an async iterable of query results, ordered by an index on a table.
+ */
+export interface IndexStream<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> {
+  iterWithKeys(): AsyncIterable<[DocumentByName<DataModel, T>, IndexKey]>;
+  reflectOrder(): "asc" | "desc";
+  narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
 }
 
 export class ReflectDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
@@ -644,15 +626,9 @@ class ReflectIndexRange {
   }
 }
 
-export interface IndexStream<
-  DataModel extends GenericDataModel,
-  T extends TableNamesInDataModel<DataModel>,
-> {
-  iterWithKeys(): AsyncIterable<[DocumentByName<DataModel, T>, IndexKey]>;
-  reflectOrder(): "asc" | "desc";
-  narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
-}
-
+/**
+ * Merge multiple streams, provided in any order, into a single stream.
+ */
 export function mergeStreams<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
@@ -719,6 +695,21 @@ export function mergeStreams<
   };
 }
 
+/**
+ * Concatenate multiple streams into a single stream.
+ * This assumes that the streams correspond to disjoint index ranges,
+ * and provided in the same order as the index ranges.
+ * 
+ * e.g. ```ts
+ * concatStreams(
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
+ * )
+ * ```
+ * 
+ * is valid, but if the stream arguments were reversed, or the queries were
+ * `.order("desc")`, it would be invalid.
+ */
 export function concatStreams<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
@@ -761,6 +752,11 @@ export function concatStreams<
   };
 }
 
+/**
+ * Apply a filter to a stream.
+ * 
+ * Watch out for sparse filters, as they may read unbounded amounts of data.
+ */
 export function filterStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
