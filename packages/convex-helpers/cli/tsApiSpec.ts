@@ -76,8 +76,11 @@ function generateArgsType(argsJson: ValidatorJSON): string {
             return `Id<"${argsJson.tableName}">`
         case 'array':
             return `Array<${generateArgsType(argsJson.value)}>`
-        case 'record':
-            return 'any'
+        case 'record': {
+            const keyType = generateRecordKeyType(argsJson.keys)
+            const valueType = generateArgsType(argsJson.values.fieldType)
+            return `Record<${keyType}, ${valueType}>`
+        }
         case 'object': {
             const members: string[] = Object.entries(argsJson.value).map(
                 ([key, value]) => {
@@ -96,6 +99,24 @@ function generateArgsType(argsJson: ValidatorJSON): string {
             const members: string[] = argsJson.value.map((v) => generateArgsType(v))
             return members.join(' | ')
         }
+    }
+}
+
+/**
+ * Generates a TypeScript-compatible key type for a record.
+ * 
+ * The keys should actually be RecordKeyValidatorJSON, but this isn't exported from validators.ts in convex.
+ */
+function generateRecordKeyType(keys: any): string {
+    switch (keys.type) {
+        case 'string':
+            return 'string'
+        case 'id':
+            return `Id<"${keys.tableName}">`
+        case 'union':
+            return keys.value.map(generateRecordKeyType).join(' | ')
+        default:
+            return '';
     }
 }
 
