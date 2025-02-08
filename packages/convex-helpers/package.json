@@ -91,6 +91,10 @@
       "types": "./server/sessions.d.ts",
       "default": "./server/sessions.js"
     },
+    "./server/stream": {
+      "types": "./server/stream.d.ts",
+      "default": "./server/stream.js"
+    },
     "./server/triggers": {
       "types": "./server/triggers.d.ts",
       "default": "./server/triggers.js"
