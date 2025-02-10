@@ -868,7 +868,7 @@ to get more streams (still ordered by the same index) with `mergeStreams`, and
 you can filter a stream with `filterStream`. Then the `queryStream` helper can
 convert any stream into a query.
 
-Beware if using `.paginate()` with streams in reactive queries, as they have the
+Beware if using `.paginate()` with streams in reactive queries, as it has the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
 pass in `endCursor` to prevent holes or overlaps between the pages.
 
