@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from "react";
 
 /**
  * Wraps a function to single-flight invocations, using the latest args.
@@ -23,7 +23,7 @@ import { useCallback, useRef } from 'react';
  * only resolve or throw if the underlying function gets called.
  */
 export default function useSingleFlight<
-  F extends (...args: any[]) => Promise<any>
+  F extends (...args: any[]) => Promise<any>,
 >(fn: F) {
   const flightStatus = useRef({
     inFlight: false,
@@ -62,6 +62,6 @@ export default function useSingleFlight<
       })();
       return firstReq;
     },
-    [fn]
+    [fn],
   );
 }

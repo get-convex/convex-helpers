@@ -32,7 +32,7 @@ export class ConvexReactClientFake {
           return query(args);
         }
         throw new Error(
-          `Unexpected query: ${name}. Try providing a function for this query in the mock client constructor.`
+          `Unexpected query: ${name}. Try providing a function for this query in the mock client constructor.`,
         );
       },
       onUpdate: () => () => ({
@@ -48,10 +48,10 @@ export class ConvexReactClientFake {
     const name = getFunctionName(functionReference);
     const mutation = this.mutations && this.mutations[name];
     if (mutation) {
-      return mutation(args)
+      return mutation(args);
     }
     throw new Error(
-      `Unexpected mutation: ${name}. Try providing a function for this mutation in the mock client constructor.`
+      `Unexpected mutation: ${name}. Try providing a function for this mutation in the mock client constructor.`,
     );
   }
 
@@ -62,7 +62,7 @@ export class ConvexReactClientFake {
       return action(args);
     }
     throw new Error(
-      `Unexpected action: ${name}. Try providing a function for this actionin the mock client constructor.`
+      `Unexpected action: ${name}. Try providing a function for this actionin the mock client constructor.`,
     );
   }
 

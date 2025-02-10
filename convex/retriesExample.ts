@@ -7,7 +7,7 @@ import { makeActionRetrier } from "convex-helpers/server/retries";
 // Export the helpers, with the name of the retry function.
 export const { runWithRetries, retry } = makeActionRetrier(
   "retriesExample:retry",
-  { retryBackoff: 1000, log: console.warn } // options for demo purposes.
+  { retryBackoff: 1000, log: console.warn }, // options for demo purposes.
 );
 
 // This is a sample action will fail randomly based on the `failureRate`
@@ -67,7 +67,7 @@ export const runFromAnAction = internalAction({
         // 1000 seconds before retrying the third time (~16.7 minutes),
         // 10000 seconds before retrying the fourth and final time (~2.7 hours),
         // giving the action 5 chances to succeed over ~3 hours.
-      }
+      },
     );
     // Unlike in mutations, in an action the scheduler will immediately be
     // given the action & parameters to run, even if there's an exception thrown
