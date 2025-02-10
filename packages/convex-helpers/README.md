@@ -901,7 +901,7 @@ queries read bounded data, but the disadvantage is that the returned page might
 be small or empty.
 
 The other does "pre-filter" pagination, where the filter is applied before
-picking the page size. Doing this with sparse filters may result in slow queries
+picking the page size. Doing this with a filter that excludes most documents may result in slow queries
 or errors because it's reading too much data, but if the predicate often returns
 true, it's perfectly fine. Let's see how to do that with streams.
 
