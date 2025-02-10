@@ -895,7 +895,7 @@ export const listForAuthors = query({
 2. Paginate all messages whose authors match a complex predicate.
 
 There are actually two ways to do this. One uses "post-filter" pagination,
-where the filter is applied after picking the page size. To do that, you can
+where the filter is applied after fetching a fixed number of documents. To do that, you can
 use the `filter` helper described [above](#filter). The advantage is that the
 queries read bounded data, but the disadvantage is that the returned page might
 be small or empty.
