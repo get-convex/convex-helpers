@@ -166,7 +166,7 @@ export async function* streamQuery<
  *   .order("desc")
  *   .paginate(opts)
  * ```
- * 
+ *
  * Differences:
  *
  * - `paginator` does not automatically track the end of the page for when
@@ -181,7 +181,7 @@ export async function* streamQuery<
  *   Filter the returned `page` in TypeScript instead.
  * - System tables like _storage and _scheduled_functions are not supported.
  * - Having a schema is required.
- * 
+ *
  * @argument opts.cursor Where to start the page. This should come from
  * `continueCursor` in the previous page.
  * @argument opts.endCursor Where to end the page. This should from from
@@ -190,9 +190,7 @@ export async function* streamQuery<
  * @argument options.schema If you use an index that is not by_creation_time
  * or by_id, you need to provide the schema.
  */
-export function paginator<
-  Schema extends SchemaDefinition<any, boolean>,
->(
+export function paginator<Schema extends SchemaDefinition<any, boolean>>(
   db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
   schema: Schema,
 ): ReflectDatabaseReader<Schema> {

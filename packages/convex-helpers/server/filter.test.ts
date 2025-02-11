@@ -68,7 +68,9 @@ test("filter", async () => {
   ]);
 
   const withOrderAfter = await t.run((ctx) =>
-    filter(ctx.db.query("tableA"), (c) => c.count > 5).order("desc").collect(),
+    filter(ctx.db.query("tableA"), (c) => c.count > 5)
+      .order("desc")
+      .collect(),
   );
   expect(withOrderAfter).toMatchObject([
     { count: 9 },

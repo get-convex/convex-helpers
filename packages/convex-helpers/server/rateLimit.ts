@@ -283,7 +283,7 @@ export async function checkRateLimit<DataModel extends RateLimitDataModel>(
     value: max,
     ts:
       config.kind === "fixed window"
-        ? config.start ?? Math.floor(Math.random() * config.period)
+        ? (config.start ?? Math.floor(Math.random() * config.period))
         : now,
   };
   let ts,

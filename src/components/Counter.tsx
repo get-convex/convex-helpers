@@ -8,7 +8,7 @@ const Counter = () => {
   const increment = useMutation(api.counter.incrementCounter);
   const incrementByOne = useCallback(
     () => increment({ counterName: "clicks", increment: 1 }),
-    [increment]
+    [increment],
   );
 
   return (

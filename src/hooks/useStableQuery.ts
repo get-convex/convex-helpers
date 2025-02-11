@@ -8,7 +8,7 @@ import { useRef } from "react";
  * the previously loaded data until the new data has finished loading.
  *
  * See https://stack.convex.dev/help-my-app-is-overreacting for details.
- * 
+ *
  * @param name - string naming the query function
  * @param ...args - arguments to be passed to the query function
  * @returns UseQueryResult
@@ -35,7 +35,7 @@ export const useStableQuery = ((name, ...args) => {
  * loading.
  *
  * See https://stack.convex.dev/help-my-app-is-overreacting for details.
- * 
+ *
  * @param name - string naming the query function
  * @param ...args - arguments to be passed to the query function
  * @returns UsePaginatedQueryResult
