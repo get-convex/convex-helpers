@@ -35,7 +35,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.17.3",
     "@edge-runtime/vm": "5.0.0",
-    "@redocly/cli": "1.28.3",
+    "@redocly/cli": "1.28.5",
     "@testing-library/react": "16.2.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.14",
@@ -46,7 +46,7 @@
     "@vitest/coverage-v8": "3.0.5",
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.35",
-    "eslint": "9.19.0",
+    "eslint": "9.20.0",
     "jsdom": "26.0.0",
     "npm-run-all2": "7.0.2",
     "typescript": "5.7.3",
