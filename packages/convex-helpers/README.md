@@ -868,7 +868,7 @@ to get more streams (still ordered by the same index) with `mergeStreams`, and
 you can filter a stream with `filterStream`. Then the `queryStream` helper can
 convert any stream into a query.
 
-Beware if using `.paginate()` with streams in reactive queries, as they have the
+Beware if using `.paginate()` with streams in reactive queries, as it has the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
 pass in `endCursor` to prevent holes or overlaps between the pages.
 
@@ -895,15 +895,15 @@ export const listForAuthors = query({
 2. Paginate all messages whose authors match a complex predicate.
 
 There are actually two ways to do this. One uses "post-filter" pagination,
-where the filter is applied after picking the page size. To do that, you can
+where the filter is applied after fetching a fixed number of documents. To do that, you can
 use the `filter` helper described [above](#filter). The advantage is that the
 queries read bounded data, but the disadvantage is that the returned page might
 be small or empty.
 
 The other does "pre-filter" pagination, where the filter is applied before
-picking the page size. Doing this with sparse filters may result in slow queries
+picking the page size. Doing this with a filter that excludes most documents may result in slow queries
 or errors because it's reading too much data, but if the predicate often returns
-true, it's perfectly fine. Let's see how to do that with streams.
+true, it's perfectly fine. Let's see how to do pre-filtering with streams.
 
 ```ts
 import { stream, mergeStreams, filterStream, queryStream } from "convex-helpers/server/stream";
