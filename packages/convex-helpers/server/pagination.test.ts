@@ -270,7 +270,8 @@ describe("paginator", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      const result1 = await paginator(ctx.db, schema).query("foo")
+      const result1 = await paginator(ctx.db, schema)
+        .query("foo")
         .paginate({ numItems: 2, cursor: null });
       expect(result1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },

@@ -863,10 +863,10 @@ A "query" implements the `OrderedQuery` interface from the "convex/server" packa
 so it has methods `.first()`, `.collect()`, `.paginate()`, etc.
 
 With the `stream` helper, you can construct a stream with the same syntax as
-you would use `DatabaseReader`. Once you have a stream, you can compose them
-to get more streams (still ordered by the same index) with `mergeStreams`, and
-you can filter a stream with `filterStream`. Then the `queryStream` helper can
-convert any stream into a query.
+you would use `DatabaseReader`. Once you have streams, you can combine their
+documents into a new stream (still ordered by the same index) with
+`mergeStreams`, and you can filter a stream with `filterStream`.
+Then the `queryStream` helper can convert any stream into a query.
 
 Beware if using `.paginate()` with streams in reactive queries, as it has the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
@@ -881,14 +881,19 @@ import { stream, mergeStreams } from "convex-helpers/server/stream";
 import schema from "./schema";
 
 export const listForAuthors = query({
-  args: { authors: v.array(v.id("users")), paginationOpts: paginationOptsValidator },
+  args: {
+    authors: v.array(v.id("users")),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, { authors, paginationOpts }) => {
-    const authorStreams = authors.map(author =>
-      stream(ctx.db, schema).query("messages").withIndex("by_author", q => q.eq("author", author))
+    const authorStreams = authors.map((author) =>
+      stream(ctx.db, schema)
+        .query("messages")
+        .withIndex("by_author", (q) => q.eq("author", author)),
     );
     const allAuthorsStream = mergeStreams(authorStreams);
     return await queryStream(allAuthorsStream).paginate(paginationOpts);
-  }
+  },
 });
 ```
 
@@ -906,18 +911,30 @@ or errors because it's reading too much data, but if the predicate often returns
 true, it's perfectly fine. Let's see how to do pre-filtering with streams.
 
 ```ts
-import { stream, mergeStreams, filterStream, queryStream } from "convex-helpers/server/stream";
+import {
+  stream,
+  mergeStreams,
+  filterStream,
+  queryStream,
+} from "convex-helpers/server/stream";
 import schema from "./schema";
 
 export const list = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
-    const allMessagesStream = stream(ctx.db, schema).query("messages").order("desc");
-    const messagesByVerifiedAuthors = filterStream(allMessagesStream, async (message) => {
-      const author = await ctx.db.get(message.author);
-      return author !== null && author.verified;
-    });
-    return await queryStream(messagesByVerifiedAuthors).paginate(paginationOpts);
+    const allMessagesStream = stream(ctx.db, schema)
+      .query("messages")
+      .order("desc");
+    const messagesByVerifiedAuthors = filterStream(
+      allMessagesStream,
+      async (message) => {
+        const author = await ctx.db.get(message.author);
+        return author !== null && author.verified;
+      },
+    );
+    return await queryStream(messagesByVerifiedAuthors).paginate(
+      paginationOpts,
+    );
   },
 });
 ```
@@ -933,15 +950,25 @@ Normally this would require a separate index on `["author"]`, or doing two
 requests and manually picking the 10 most recent. But with streams, it's cleaner:
 
 ```ts
-import { stream, mergeStreams, filterStream, queryStream } from "convex-helpers/server/stream";
+import {
+  stream,
+  mergeStreams,
+  filterStream,
+  queryStream,
+} from "convex-helpers/server/stream";
 import schema from "./schema";
 
 export const latestMessages = query({
   args: { author: v.id("users") },
   handler: async (ctx, { author }) => {
-    const messagesForUnreadStatus = [false, true].map(unread => stream(ctx.db, schema).query("messages")
-      .withIndex("by_author", q => q.eq("author", author).eq("unread", unread))
-      .order("desc"));
+    const messagesForUnreadStatus = [false, true].map((unread) =>
+      stream(ctx.db, schema)
+        .query("messages")
+        .withIndex("by_author", (q) =>
+          q.eq("author", author).eq("unread", unread),
+        )
+        .order("desc"),
+    );
     const allMessagesByCreationTime = mergeStreams(...messagesForUnreadStatus);
     return await queryStream(allMessagesByCreationTime).take(10);
   },

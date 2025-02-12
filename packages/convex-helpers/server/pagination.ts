@@ -9,7 +9,12 @@ import {
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
-import { getIndexFields, ReflectDatabaseReader, stream, streamIndexRange } from "./stream.js";
+import {
+  getIndexFields,
+  ReflectDatabaseReader,
+  stream,
+  streamIndexRange,
+} from "./stream.js";
 
 export type IndexKey = Value[];
 
@@ -124,7 +129,11 @@ export async function* streamQuery<
   request: Omit<PageRequest<DataModel, T>, "targetMaxRows" | "absoluteMaxRows">,
 ): AsyncGenerator<[DocumentByName<DataModel, T>, IndexKey]> {
   const index = request.index ?? "by_creation_time";
-  const indexFields = getIndexFields(request.table, request.index as any, request.schema);
+  const indexFields = getIndexFields(
+    request.table,
+    request.index as any,
+    request.schema,
+  );
   const startIndexKey = request.startIndexKey ?? [];
   const endIndexKey = request.endIndexKey ?? [];
   const startInclusive = request.startInclusive ?? false;
@@ -142,7 +151,14 @@ export async function* streamQuery<
     upperBound: order === "asc" ? endIndexKey : startIndexKey,
     upperBoundInclusive: order === "asc" ? endInclusive : startInclusive,
   };
-  const stream = streamIndexRange(ctx.db as any, request.schema as any, request.table, index as any, bounds, order).iterWithKeys();
+  const stream = streamIndexRange(
+    ctx.db as any,
+    request.schema as any,
+    request.table,
+    index as any,
+    bounds,
+    order,
+  ).iterWithKeys();
   for await (const [doc, indexKey] of stream) {
     yield [doc, indexKey];
   }

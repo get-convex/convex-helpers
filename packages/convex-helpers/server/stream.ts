@@ -148,9 +148,7 @@ export function getIndexFields<
     (index: any) => index.indexDescriptor === indexDescriptor,
   );
   if (!indexInfo) {
-    throw new Error(
-      `Index ${indexDescriptor} not found in table ${table}`,
-    );
+    throw new Error(`Index ${indexDescriptor} not found in table ${table}`);
   }
   const fields = indexInfo.fields.slice();
   fields.push("_creationTime");
@@ -173,9 +171,7 @@ function getIndexKey<
   return key;
 }
 
-export function reflect<
-  Schema extends SchemaDefinition<any, boolean>,
->(
+export function reflect<Schema extends SchemaDefinition<any, boolean>>(
   db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
   schema: Schema,
 ): ReflectDatabaseReader<Schema> {
@@ -184,19 +180,17 @@ export function reflect<
 
 /**
  * A "stream" is an async iterable of query results, ordered by an index on a table.
- * 
+ *
  * Use it as you would use `ctx.db`.
  * If using pagination in a reactive query, see the warnings on the `paginator`
  * function. TL;DR: you need to pass in `endCursor` to prevent holes or overlaps
  * between pages.
- * 
+ *
  * Once you have a stream, you can use `mergeStreams` or `filterStream` to make
  * more streams. Then use `queryStream` to convert it into an OrderedQuery,
  * so you can call `.paginate()`, `.collect()`, etc.
  */
-export function stream<
-  Schema extends SchemaDefinition<any, boolean>,
->(
+export function stream<Schema extends SchemaDefinition<any, boolean>>(
   db: GenericDatabaseReader<DM<Schema>>,
   schema: Schema,
 ): ReflectDatabaseReader<Schema> {
@@ -215,9 +209,10 @@ export interface IndexStream<
   narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
 }
 
-export class ReflectDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
-  implements GenericDatabaseReader<DM<Schema>> {
-
+export class ReflectDatabaseReader<
+  Schema extends SchemaDefinition<any, boolean>,
+> implements GenericDatabaseReader<DM<Schema>>
+{
   // TODO: support system tables
   public system: any = null;
 
@@ -239,7 +234,8 @@ export class ReflectDatabaseReader<Schema extends SchemaDefinition<any, boolean>
   }
 }
 
-type DM<Schema extends SchemaDefinition<any, boolean>> = DataModelFromSchemaDefinition<Schema>;
+type DM<Schema extends SchemaDefinition<any, boolean>> =
+  DataModelFromSchemaDefinition<Schema>;
 
 export type IndexBounds = {
   lowerBound: IndexKey;
@@ -266,7 +262,7 @@ export type QueryReflection<
       NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
     >,
   ) => IndexRange;
-}
+};
 
 export interface ReflectableQuery<
   Schema extends SchemaDefinition<any, boolean>,
@@ -277,9 +273,13 @@ export interface ReflectableQuery<
 }
 
 export class ReflectQueryInitializer<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-> implements QueryInitializer<NamedTableInfo<DM<Schema>, T>>, ReflectableQuery<Schema, T, "by_creation_time"> {
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+  >
+  implements
+    QueryInitializer<NamedTableInfo<DM<Schema>, T>>,
+    ReflectableQuery<Schema, T, "by_creation_time">
+{
   constructor(
     public parent: ReflectDatabaseReader<Schema>,
     public table: T,
@@ -313,14 +313,18 @@ export class ReflectQueryInitializer<
   inner() {
     return this.fullTableScan();
   }
-  order(order: "asc" | "desc"): OrderedReflectQuery<Schema, T, "by_creation_time"> {
+  order(
+    order: "asc" | "desc",
+  ): OrderedReflectQuery<Schema, T, "by_creation_time"> {
     return this.inner().order(order);
   }
   paginate(opts: PaginationOptions & { endCursor?: string | null }) {
     return this.inner().paginate(opts);
   }
   filter(_predicate: any): any {
-    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+    throw new Error(
+      ".filter() not supported for `paginator`. Filter the returned `page` instead.",
+    );
   }
   collect() {
     return this.inner().collect();
@@ -334,7 +338,7 @@ export class ReflectQueryInitializer<
   take(n: number) {
     return this.inner().take(n);
   }
-  [Symbol.asyncIterator](){
+  [Symbol.asyncIterator]() {
     return this.inner()[Symbol.asyncIterator]();
   }
   reflect() {
@@ -352,20 +356,26 @@ export class ReflectQueryInitializer<
 }
 
 export class ReflectQuery<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
-> implements Query<NamedTableInfo<DM<Schema>, T>>, ReflectableQuery<Schema, T, IndexName> {
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+    IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  >
+  implements
+    Query<NamedTableInfo<DM<Schema>, T>>,
+    ReflectableQuery<Schema, T, IndexName>
+{
   constructor(
     public parent: ReflectQueryInitializer<Schema, T>,
     public index: IndexName,
     public q: ReflectIndexRange,
-    public indexRange: ((
-      q: IndexRangeBuilder<
-        DocumentByInfo<NamedTableInfo<DM<Schema>, T>>,
-        NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
-      >,
-    ) => IndexRange) | undefined,
+    public indexRange:
+      | ((
+          q: IndexRangeBuilder<
+            DocumentByInfo<NamedTableInfo<DM<Schema>, T>>,
+            NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
+          >,
+        ) => IndexRange)
+      | undefined,
   ) {}
   order(order: "asc" | "desc") {
     return new OrderedReflectQuery(this, order);
@@ -377,7 +387,9 @@ export class ReflectQuery<
     return this.inner().paginate(opts);
   }
   filter(_predicate: any): this {
-    throw new Error(".filter() not supported for `paginator`. Filter the returned `page` instead.");
+    throw new Error(
+      ".filter() not supported for `paginator`. Filter the returned `page` instead.",
+    );
   }
   collect() {
     return this.inner().collect();
@@ -409,10 +421,14 @@ export class ReflectQuery<
 }
 
 export class OrderedReflectQuery<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
-> implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>, ReflectableQuery<Schema, T, IndexName> {
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+    IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  >
+  implements
+    OrderedQuery<NamedTableInfo<DM<Schema>, T>>,
+    ReflectableQuery<Schema, T, IndexName>
+{
   constructor(
     public parent: ReflectQuery<Schema, T, IndexName>,
     public order: "asc" | "desc",
@@ -436,7 +452,7 @@ export class OrderedReflectQuery<
   }
   /**
    * inner() is as if you had used ctx.db to construct the query.
-   */ 
+   */
   inner(): OrderedQuery<NamedTableInfo<DM<Schema>, T>> {
     const { db, table, index, order, indexRange } = this.reflect();
     return db.query(table).withIndex(index, indexRange).order(order);
@@ -450,7 +466,9 @@ export class OrderedReflectQuery<
     return queryStream(this).paginate(opts);
   }
   filter(_predicate: any): any {
-    throw new Error(".filter() not supported for ReflectQuery. Use `filter` or `filterStream` instead.");
+    throw new Error(
+      ".filter() not supported for ReflectQuery. Use `filter` or `filterStream` instead.",
+    );
   }
   collect() {
     return this.inner().collect();
@@ -481,11 +499,11 @@ export class OrderedReflectQuery<
             }
             return {
               done: false,
-              value: [result.value, getIndexKey(result.value, indexFields)]
+              value: [result.value, getIndexKey(result.value, indexFields)],
             };
-          }
-        }
-      }
+          },
+        };
+      },
     };
   }
   reflectOrder() {
@@ -495,22 +513,51 @@ export class OrderedReflectQuery<
     const { db, table, index, order, bounds, schema } = this.reflect();
     let maxLowerBound = bounds.lowerBound;
     let maxLowerBoundInclusive = bounds.lowerBoundInclusive;
-    if (compareKeys({ value: indexBounds.lowerBound, kind: indexBounds.lowerBoundInclusive ? "predecessor" : "successor" }, { value: bounds.lowerBound, kind: bounds.lowerBoundInclusive ? "predecessor" : "successor" }) > 0) {
+    if (
+      compareKeys(
+        {
+          value: indexBounds.lowerBound,
+          kind: indexBounds.lowerBoundInclusive ? "predecessor" : "successor",
+        },
+        {
+          value: bounds.lowerBound,
+          kind: bounds.lowerBoundInclusive ? "predecessor" : "successor",
+        },
+      ) > 0
+    ) {
       maxLowerBound = indexBounds.lowerBound;
       maxLowerBoundInclusive = indexBounds.lowerBoundInclusive;
     }
     let minUpperBound = bounds.upperBound;
     let minUpperBoundInclusive = bounds.upperBoundInclusive;
-    if (compareKeys({ value: indexBounds.upperBound, kind: indexBounds.upperBoundInclusive ? "successor" : "predecessor" }, { value: bounds.upperBound, kind: bounds.upperBoundInclusive ? "successor" : "predecessor" }) < 0) {
+    if (
+      compareKeys(
+        {
+          value: indexBounds.upperBound,
+          kind: indexBounds.upperBoundInclusive ? "successor" : "predecessor",
+        },
+        {
+          value: bounds.upperBound,
+          kind: bounds.upperBoundInclusive ? "successor" : "predecessor",
+        },
+      ) < 0
+    ) {
       minUpperBound = indexBounds.upperBound;
       minUpperBoundInclusive = indexBounds.upperBoundInclusive;
     }
-    return streamIndexRange(db, schema, table, index, {
-      lowerBound: maxLowerBound,
-      lowerBoundInclusive: maxLowerBoundInclusive,
-      upperBound: minUpperBound,
-      upperBoundInclusive: minUpperBoundInclusive,
-    }, order);
+    return streamIndexRange(
+      db,
+      schema,
+      table,
+      index,
+      {
+        lowerBound: maxLowerBound,
+        lowerBoundInclusive: maxLowerBoundInclusive,
+        upperBound: minUpperBound,
+        upperBoundInclusive: minUpperBoundInclusive,
+      },
+      order,
+    );
   }
 }
 
@@ -536,7 +583,12 @@ export function streamIndexRange<
   );
   const subQueries: OrderedReflectQuery<Schema, T, IndexName>[] = [];
   for (const splitBound of splitBounds) {
-    subQueries.push(reflect(db, schema).query(table).withIndex(index, rangeToQuery(splitBound)).order(order));
+    subQueries.push(
+      reflect(db, schema)
+        .query(table)
+        .withIndex(index, rangeToQuery(splitBound))
+        .order(order),
+    );
   }
   return concatStreams(...subQueries);
 }
@@ -547,9 +599,7 @@ class ReflectIndexRange {
   public lowerBoundInclusive: boolean = true;
   public upperBoundIndexKey: IndexKey | undefined = undefined;
   public upperBoundInclusive: boolean = true;
-  constructor(
-    public indexFields: string[],
-  ) {}
+  constructor(public indexFields: string[]) {}
   eq(field: string, value: Value) {
     if (!this.canLowerBound(field) || !this.canUpperBound(field)) {
       throw new Error(`Cannot use eq on field '${field}'`);
@@ -609,7 +659,10 @@ class ReflectIndexRange {
       // Already have a lower bound and an upper bound.
       return false;
     }
-    return currentLowerBoundLength < this.indexFields.length && this.indexFields[currentLowerBoundLength] === field;
+    return (
+      currentLowerBoundLength < this.indexFields.length &&
+      this.indexFields[currentLowerBoundLength] === field
+    );
   }
   private canUpperBound(field: string) {
     const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
@@ -622,12 +675,27 @@ class ReflectIndexRange {
       // Already have a lower bound and an upper bound.
       return false;
     }
-    return currentUpperBoundLength < this.indexFields.length && this.indexFields[currentUpperBoundLength] === field;
+    return (
+      currentUpperBoundLength < this.indexFields.length &&
+      this.indexFields[currentUpperBoundLength] === field
+    );
   }
 }
 
 /**
  * Merge multiple streams, provided in any order, into a single stream.
+ *
+ * The streams will be merged into a stream of documents ordered by the index keys.
+ *
+ * e.g. ```ts
+ * mergeStreams(
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
+ * )
+ * ```
+ *
+ * returns a stream of messages for user1, then user2, then user3.
  */
 export function mergeStreams<
   DataModel extends GenericDataModel,
@@ -644,22 +712,32 @@ export function mergeStreams<
   }
   return {
     iterWithKeys: () => {
-      const iterables = streams.map(stream => stream.iterWithKeys());
+      const iterables = streams.map((stream) => stream.iterWithKeys());
       return {
         [Symbol.asyncIterator]() {
-          const iterators = iterables.map(iterable => iterable[Symbol.asyncIterator]());
-          const results = Array.from({ length: iterators.length }, (): IteratorResult<[DocumentByName<DataModel, T>, IndexKey] | undefined> => ({ done: false, value: undefined }));
+          const iterators = iterables.map((iterable) =>
+            iterable[Symbol.asyncIterator](),
+          );
+          const results = Array.from(
+            { length: iterators.length },
+            (): IteratorResult<
+              [DocumentByName<DataModel, T>, IndexKey] | undefined
+            > => ({ done: false, value: undefined }),
+          );
           return {
             async next() {
               // Fill results from iterators with no value yet.
-              await Promise.all(iterators.map(async (iterator, i) => {
-                if (!results[i]!.done && !results[i]!.value) {
-                  const result = await iterator.next();
-                  results[i] = result;
-                }
-              }));
+              await Promise.all(
+                iterators.map(async (iterator, i) => {
+                  if (!results[i]!.done && !results[i]!.value) {
+                    const result = await iterator.next();
+                    results[i] = result;
+                  }
+                }),
+              );
               // Find index for the value with the lowest index key.
-              let minIndexKeyAndIndex: [IndexKey, number] | undefined = undefined;
+              let minIndexKeyAndIndex: [IndexKey, number] | undefined =
+                undefined;
               for (let i = 0; i < results.length; i++) {
                 const result = results[i]!;
                 if (result.done || !result.value) {
@@ -671,7 +749,12 @@ export function mergeStreams<
                   continue;
                 }
                 const [prevMin, _prevMinIndex] = minIndexKeyAndIndex;
-                if (compareKeys({ value: resultIndexKey, kind: "exact" }, { value: prevMin, kind: "exact" }) < 0) {
+                if (
+                  compareKeys(
+                    { value: resultIndexKey, kind: "exact" },
+                    { value: prevMin, kind: "exact" },
+                  ) < 0
+                ) {
                   minIndexKeyAndIndex = [resultIndexKey, i];
                 }
               }
@@ -683,14 +766,16 @@ export function mergeStreams<
               // indicate that we've used this result
               results[minIndex]!.value = undefined;
               return { done: false, value: result };
-            }
-          }
-        }
+            },
+          };
+        },
       };
     },
     reflectOrder: () => order,
     narrow: (indexBounds: IndexBounds) => {
-      return mergeStreams(...streams.map(stream => stream.narrow(indexBounds)));
+      return mergeStreams(
+        ...streams.map((stream) => stream.narrow(indexBounds)),
+      );
     },
   };
 }
@@ -698,17 +783,20 @@ export function mergeStreams<
 /**
  * Concatenate multiple streams into a single stream.
  * This assumes that the streams correspond to disjoint index ranges,
- * and provided in the same order as the index ranges.
- * 
+ * and are provided in the same order as the index ranges.
+ *
  * e.g. ```ts
  * concatStreams(
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
  * )
  * ```
- * 
+ *
  * is valid, but if the stream arguments were reversed, or the queries were
  * `.order("desc")`, it would be invalid.
+ *
+ * It's not recommended to use `concatStreams` directly, since it has the same
+ * behavior as `mergeStreams`, but with fewer runtime checks.
  */
 export function concatStreams<
   DataModel extends GenericDataModel,
@@ -725,10 +813,12 @@ export function concatStreams<
   }
   return {
     iterWithKeys: () => {
-      const iterables = streams.map(stream => stream.iterWithKeys());
+      const iterables = streams.map((stream) => stream.iterWithKeys());
       return {
         [Symbol.asyncIterator]() {
-          const iterators = iterables.map(iterable => iterable[Symbol.asyncIterator]());
+          const iterators = iterables.map((iterable) =>
+            iterable[Symbol.asyncIterator](),
+          );
           return {
             async next() {
               while (iterators.length > 0) {
@@ -740,21 +830,23 @@ export function concatStreams<
                 }
               }
               return { done: true, value: undefined };
-            }
+            },
           };
         },
       };
     },
     reflectOrder: () => order,
     narrow: (indexBounds: IndexBounds) => {
-      return concatStreams(...streams.map(stream => stream.narrow(indexBounds)));
+      return concatStreams(
+        ...streams.map((stream) => stream.narrow(indexBounds)),
+      );
     },
   };
 }
 
 /**
  * Apply a filter to a stream.
- * 
+ *
  * Watch out for sparse filters, as they may read unbounded amounts of data.
  */
 export function filterStream<
@@ -762,7 +854,9 @@ export function filterStream<
   T extends TableNamesInDataModel<DataModel>,
 >(
   stream: IndexStream<DataModel, T>,
-  predicate: (doc: DocumentByInfo<NamedTableInfo<DataModel, T>>) => Promise<boolean>,
+  predicate: (
+    doc: DocumentByInfo<NamedTableInfo<DataModel, T>>,
+  ) => Promise<boolean>,
 ): IndexStream<DataModel, T> {
   return {
     iterWithKeys: () => {
@@ -781,13 +875,14 @@ export function filterStream<
                   return result;
                 }
               }
-            }
+            },
           };
         },
       };
     },
     reflectOrder: () => stream.reflectOrder(),
-    narrow: (indexBounds: IndexBounds) => filterStream(stream.narrow(indexBounds), predicate),
+    narrow: (indexBounds: IndexBounds) =>
+      filterStream(stream.narrow(indexBounds), predicate),
   };
 }
 
@@ -797,7 +892,8 @@ export function filterStream<
 export class QueryStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
-> implements OrderedQuery<NamedTableInfo<DataModel, T>> {
+> implements OrderedQuery<NamedTableInfo<DataModel, T>>
+{
   constructor(public stream: IndexStream<DataModel, T>) {}
   filter(_predicate: any): never {
     throw new Error("Cannot filter query stream. use filterStream instead.");
@@ -838,7 +934,7 @@ export class QueryStream<
     });
     const page: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
     const indexKeys: IndexKey[] = [];
-    let hasMore = (opts.endCursor && opts.endCursor !== "[]");
+    let hasMore = opts.endCursor && opts.endCursor !== "[]";
     let continueCursor = opts.endCursor ?? "[]";
     for await (const [doc, indexKey] of narrowStream.iterWithKeys()) {
       page.push(doc);
@@ -888,7 +984,7 @@ export class QueryStream<
           return { done: true as const, value: undefined };
         }
         return { done: false, value: result.value[0]! };
-      }
+      },
     };
   }
 }
