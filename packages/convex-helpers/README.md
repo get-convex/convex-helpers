@@ -875,7 +875,7 @@ Concrete functions you can use:
 
 - `stream` constructs a stream using the same syntax as `DatabaseReader`.
   - e.g. `stream(ctx.db, schema).query("messages").withIndex("by_author", (q) => q.eq("author", "user1"))`
-- `mergeStreams` combines two streams into a new stream, ordered by the same index.
+- `mergeStreams` combines multiple streams into a new stream, ordered by the same index.
 - `filterStream` filters out documents from a stream based on a TypeScript predicate.
 - `queryStream` converts a stream into a query, so you can call `.first()`, `.collect()`, `.paginate()`, etc.
 
@@ -919,9 +919,12 @@ queries read bounded data, but the disadvantage is that the returned page might
 be small or empty.
 
 The other does "pre-filter" pagination, where the filter is applied before
-picking the page size. Doing this with a filter that excludes most documents may result in slow queries
-or errors because it's reading too much data, but if the predicate often returns
-true, it's perfectly fine. Let's see how to do pre-filtering with streams.
+picking the page size. Doing this with a filter that excludes most documents may
+result in slow queries or errors because it's reading too much data, but if the
+predicate often returns true, it's perfectly fine. To avoid edge cases where you
+accidentally read too much data, you can pass `maximumRowsRead` in pagination
+options to limit the number of rows read. Let's see how to do
+pre-filtering with streams.
 
 ```ts
 import {
@@ -948,7 +951,7 @@ export const list = query({
     // The pagination happens after the filtering, so the page should have size
     // `paginationOpts.numItems`.
     return await queryStream(messagesByVerifiedAuthors).paginate(
-      paginationOpts,
+      { ...paginationOpts, maximumRowsRead: 100 },
     );
   },
 });

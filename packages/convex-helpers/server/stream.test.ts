@@ -242,6 +242,18 @@ describe("stream", () => {
         { a: 1, b: 5, c: 4 },
       ]);
       expect(page1.isDone).toBe(false);
+
+      const limitedPage1 = await queryStream(filteredQuery).paginate({
+        numItems: 2,
+        cursor: null,
+        maximumRowsRead: 2,
+      });
+      expect(limitedPage1.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 4, c: 4 },
+      ]);
+      expect(limitedPage1.pageStatus).toBe("SplitRequired");
+      expect(dropSystemFields(JSON.parse(limitedPage1.splitCursor!))).toEqual([1, 3, 3]);
+      expect(dropSystemFields(JSON.parse(limitedPage1.continueCursor))).toEqual([1, 4, 4]);
     });
   });
 });

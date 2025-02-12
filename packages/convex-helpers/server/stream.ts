@@ -12,6 +12,7 @@ import {
   NamedTableInfo,
   OrderedQuery,
   PaginationOptions,
+  PaginationResult,
   Query,
   QueryInitializer,
   SchemaDefinition,
@@ -204,7 +205,7 @@ export interface IndexStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > {
-  iterWithKeys(): AsyncIterable<[DocumentByName<DataModel, T>, IndexKey]>;
+  iterWithKeys(): AsyncIterable<[DocumentByName<DataModel, T> | null, IndexKey]>;
   reflectOrder(): "asc" | "desc";
   narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
 }
@@ -721,7 +722,7 @@ export function mergeStreams<
           const results = Array.from(
             { length: iterators.length },
             (): IteratorResult<
-              [DocumentByName<DataModel, T>, IndexKey] | undefined
+              [DocumentByName<DataModel, T> | null, IndexKey] | undefined
             > => ({ done: false, value: undefined }),
           );
           return {
@@ -866,15 +867,14 @@ export function filterStream<
           const iterator = iterable[Symbol.asyncIterator]();
           return {
             async next() {
-              while (true) {
-                const result = await iterator.next();
-                if (result.done) {
-                  return result;
-                }
-                if (await predicate(result.value[0])) {
-                  return result;
-                }
+              const result = await iterator.next();
+              if (result.done) {
+                return result;
               }
+              if (result.value[0] === null || (await predicate(result.value[0]))) {
+                return result;
+              }
+              return { done: false, value: [null, result.value[1]] };
             },
           };
         },
@@ -898,7 +898,9 @@ export class QueryStream<
   filter(_predicate: any): never {
     throw new Error("Cannot filter query stream. use filterStream instead.");
   }
-  async paginate(opts: PaginationOptions & { endCursor?: string | null }) {
+  async paginate(
+    opts: PaginationOptions & { endCursor?: string | null, maximumRowsRead?: number },
+  ): Promise<PaginationResult<DocumentByName<DataModel, T>>> {
     const order = this.stream.reflectOrder();
     let newStartKey = {
       key: [] as IndexKey,
@@ -914,6 +916,8 @@ export class QueryStream<
       key: [] as IndexKey,
       inclusive: true,
     };
+    const maxRowsToRead = opts.maximumRowsRead;
+    const softMaxRowsToRead = maxRowsToRead ? (3 * maxRowsToRead / 4) : 1000;
     let maxRows: number | undefined = opts.numItems;
     if (opts.endCursor) {
       newEndKey = {
@@ -937,18 +941,31 @@ export class QueryStream<
     let hasMore = opts.endCursor && opts.endCursor !== "[]";
     let continueCursor = opts.endCursor ?? "[]";
     for await (const [doc, indexKey] of narrowStream.iterWithKeys()) {
-      page.push(doc);
+      if (doc !== null) {
+        page.push(doc);
+      }
       indexKeys.push(indexKey);
-      if (maxRows !== undefined && page.length >= maxRows) {
+      if ((maxRows !== undefined && page.length >= maxRows) || (maxRowsToRead !== undefined && indexKeys.length >= maxRowsToRead)) {
         hasMore = true;
         continueCursor = JSON.stringify(convexToJson(indexKey as Value));
         break;
       }
     }
+    let pageStatus: "SplitRecommended" | "SplitRequired" | undefined = undefined;
+    let splitCursor: IndexKey | undefined = undefined;
+    if (indexKeys.length === maxRowsToRead) {
+      pageStatus = "SplitRequired";
+      splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
+    } else if (indexKeys.length >= softMaxRowsToRead) {
+      pageStatus = "SplitRecommended";
+      splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
+    }
     return {
       page,
       isDone: !hasMore,
       continueCursor,
+      pageStatus,
+      splitCursor: splitCursor ? JSON.stringify(convexToJson(splitCursor as Value)) : undefined,
     };
   }
   async collect() {
@@ -957,6 +974,9 @@ export class QueryStream<
   async take(n: number) {
     const results: DocumentByInfo<NamedTableInfo<DataModel, T>>[] = [];
     for await (const [doc, _] of this.stream.iterWithKeys()) {
+      if (doc === null) {
+        continue;
+      }
       results.push(doc);
       if (results.length === n) {
         break;
