@@ -84,9 +84,10 @@ function generateArgsType(argsJson: ValidatorJSON): string {
     case "array":
       return `Array<${generateArgsType(argsJson.value)}>`;
     case 'record': {
-      const keyType = generateRecordKeyType(argsJson.keys)
-      const valueType = generateArgsType(argsJson.values.fieldType)
-      return `Record<${keyType}, ${valueType}>`
+      const keyType = generateRecordKeyType(argsJson.keys);
+      const valueType = generateArgsType(argsJson.values.fieldType);
+      const isOptional = argsJson.values.optional ? " | undefined" : "";
+      return `Record<${keyType}, ${valueType}${isOptional}>`;
     }
     case "object": {
       const members: string[] = Object.entries(argsJson.value).map(
