@@ -1,9 +1,9 @@
 import {
-    customAction,
-    customMutation,
-    customQuery,
-  } from "convex-helpers/server/customFunctions";
-  import { action, mutation, query } from "./_generated/server";
+  customAction,
+  customMutation,
+  customQuery,
+} from "convex-helpers/server/customFunctions";
+import { action, mutation, query } from "./_generated/server";
 import schema from "./schema";
 
 // Wrappers to use for function that should only be called from tests
@@ -12,7 +12,7 @@ export const testingQuery = customQuery(query, {
   input: async (_ctx, _args) => {
     if (process.env.IS_TEST === undefined) {
       throw new Error(
-        "Calling a test only function in an unexpected environment"
+        "Calling a test only function in an unexpected environment",
       );
     }
     return { ctx: {}, args: {} };
@@ -24,7 +24,7 @@ export const testingMutation = customMutation(mutation, {
   input: async (_ctx, _args) => {
     if (process.env.IS_TEST === undefined) {
       throw new Error(
-        "Calling a test only function in an unexpected environment"
+        "Calling a test only function in an unexpected environment",
       );
     }
     return { ctx: {}, args: {} };
@@ -36,13 +36,12 @@ export const testingAction = customAction(action, {
   input: async (_ctx, _args) => {
     if (process.env.IS_TEST === undefined) {
       throw new Error(
-        "Calling a test only function in an unexpected environment"
+        "Calling a test only function in an unexpected environment",
       );
     }
     return { ctx: {}, args: {} };
   },
 });
-
 
 export const clearAll = testingMutation(async ({ db, scheduler, storage }) => {
   for (const table of Object.keys(schema.tables)) {

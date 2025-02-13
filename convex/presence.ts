@@ -24,7 +24,7 @@ const LIST_LIMIT = 20;
 export const update = mutation(
   async (
     { db },
-    { room, user, data }: { room: string; user: string; data: any }
+    { room, user, data }: { room: string; user: string; data: any },
   ) => {
     const existing = await db
       .query("presence")
@@ -40,7 +40,7 @@ export const update = mutation(
         updated: Date.now(),
       });
     }
-  }
+  },
 );
 
 /**
@@ -59,7 +59,7 @@ export const heartbeat = mutation(
     if (existing) {
       await db.patch(existing._id, { updated: Date.now() });
     }
-  }
+  },
 );
 
 /**

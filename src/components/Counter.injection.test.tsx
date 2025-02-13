@@ -36,14 +36,14 @@ const mockClient = new ConvexReactClientFake();
 mockClient.registerQueryFake(api.counter.getCounter, getCounter);
 mockClient.registerMutationFake(
   api.counter.incrementCounter,
-  incrementCounterMock
+  incrementCounterMock,
 );
 
 const setup = () =>
   render(
     <ConvexProvider client={mockClient}>
       <Counter />
-    </ConvexProvider>
+    </ConvexProvider>,
   );
 
 afterEach(() => {

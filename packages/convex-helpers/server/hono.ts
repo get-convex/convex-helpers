@@ -168,7 +168,7 @@ export class HttpRouterWithHono<
     if (!handlersAndRoutes?.length) {
       return [this._handler, normalizeMethod(method), path] as const;
     }
-    
+
     const mostSpecificHandler =
       handlersAndRoutes[handlersAndRoutes.length - 1]![0][0];
     // On the first request let's populate a lookup from handler to info

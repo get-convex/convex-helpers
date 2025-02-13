@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from "react";
 
 /**
  * Promise-based access to the latest value updated.
@@ -27,7 +27,7 @@ export default function useLatestValue<T>() {
       ref.current.data = data;
       ref.current.resolve();
     },
-    [ref]
+    [ref],
   );
 
   return [nextValue, updateValue] as const;

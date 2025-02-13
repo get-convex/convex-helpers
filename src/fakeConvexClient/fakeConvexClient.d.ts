@@ -6,10 +6,10 @@ export class ConvexReactClientFake extends ConvexReactClient {
 
   registerQueryFake<FuncRef extends FunctionReference<"query", "public">>(
     funcRef: FuncRef,
-    impl: (args: FuncRef["_args"]) => FuncRef["_returnType"]
+    impl: (args: FuncRef["_args"]) => FuncRef["_returnType"],
   ): void;
   registerMutationFake<FuncRef extends FunctionReference<"mutation", "public">>(
     funcRef: FuncRef,
-    impl: (args: FuncRef["_args"]) => FuncRef["_returnType"]
+    impl: (args: FuncRef["_args"]) => FuncRef["_returnType"],
   ): void;
 }
