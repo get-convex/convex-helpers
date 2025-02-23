@@ -260,7 +260,7 @@ describe("paginator", () => {
         { a: 1, b: 2, c: 5 },
       ]);
       expect(result1.isDone).toBe(true);
-      expect(result1.continueCursor).toBe("endcursor");
+      expect(result1.continueCursor).toBe("[]");
     });
   });
 
