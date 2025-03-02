@@ -855,11 +855,12 @@ export const list = query({
 
 ## Composable streams of query results
 
-These are helper functions for constructing and composing streams of query results.
+In Convex queries, you can read data from many tables in many ways, and combine
+the data before returning to to the client. However, some patterns aren't so
+easy without these helpers. In particular, these helpers will allow you to take
+a union of multiple queries, filter out some of them, and paginate the result.
 
-- A "query" implements the `OrderedQuery` interface from the "convex/server" package,
-  so it has methods `.first()`, `.collect()`, `.paginate()`, etc.
-- A "stream" is an async iterable of documents, ordered by an index on a table.
+- A "stream" is an async iterable of documents, ordered by indexed fields.
 
 The cool thing about a stream is you can merge two streams together
 to create a new stream, and you can filter documents out of a stream with a
@@ -869,15 +870,18 @@ For example, if you have a stream of "messages created by user1" and a stream
 of "messages created by user2", you can merge them together to get a stream of
 "messages created by user1 or user2". And you can filter the merged stream to
 get a stream of "messages created by user1 or user2 that are unread". Then you
-can convert the stream into a query and paginate it.
+can paginate the result.
 
 Concrete functions you can use:
 
 - `stream` constructs a stream using the same syntax as `DatabaseReader`.
   - e.g. `stream(ctx.db, schema).query("messages").withIndex("by_author", (q) => q.eq("author", "user1"))`
-- `mergeStreams` combines multiple streams into a new stream, ordered by the same index.
-- `filterStream` filters out documents from a stream based on a TypeScript predicate.
-- `queryStream` converts a stream into a query, so you can call `.first()`, `.collect()`, `.paginate()`, etc.
+- `MergedStream` combines multiple streams into a new stream, ordered by the same index fields.
+- `.filterWith` filters out documents from a stream based on a TypeScript predicate.
+- `.orderBy` adjusts the indexed fields that the stream cares about.
+
+Once your stream is set up, you can get documents from it with the normal
+Convex query methods: `.first()`, `.collect()`, `.paginate()`, etc.
 
 Beware if using `.paginate()` with streams in reactive queries, as it has the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
@@ -888,8 +892,9 @@ pass in `endCursor` to prevent holes or overlaps between the pages.
 1. For a fixed set of authors, paginate all messages by those authors.
 
 ```ts
-import { stream, mergeStreams } from "convex-helpers/server/stream";
+import { stream, MergedStream } from "convex-helpers/server/stream";
 import schema from "./schema";
+// schema has messages: defineTable(...).withIndex("by_author", ["author"])
 
 export const listForAuthors = query({
   args: {
@@ -897,15 +902,20 @@ export const listForAuthors = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { authors, paginationOpts }) => {
+    // This is an array of streams, where each stream is messages by a single
+    // author.
     const authorStreams = authors.map((author) =>
       stream(ctx.db, schema)
         .query("messages")
         .withIndex("by_author", (q) => q.eq("author", author)),
     );
     // Create a new stream of all messages authored by users in `args.authors`,
-    // ordered by the "by_author" index.
-    const allAuthorsStream = mergeStreams(authorStreams);
-    return await queryStream(allAuthorsStream).paginate(paginationOpts);
+    // ordered by the "by_author" index (i.e. ["author", "_creationTime"]).
+    const allAuthorsStream = new MergedStream(
+      authorStreams,
+      ["author", "_creationTime"],
+    );
+    return await allAuthorsStream.paginate(paginationOpts);
   },
 });
 ```
@@ -915,7 +925,7 @@ export const listForAuthors = query({
 There are actually two ways to do this. One uses "post-filter" pagination,
 where the filter is applied after fetching a fixed number of documents. To do that, you can
 use the `filter` helper described [above](#filter). The advantage is that the
-queries read bounded data, but the disadvantage is that the returned page might
+queries read bounded data, but the disadvantage is that the returned pages might
 be small or empty.
 
 The other does "pre-filter" pagination, where the filter is applied before
@@ -929,9 +939,7 @@ pre-filtering with streams.
 ```ts
 import {
   stream,
-  mergeStreams,
   filterStream,
-  queryStream,
 } from "convex-helpers/server/stream";
 import schema from "./schema";
 
@@ -940,17 +948,15 @@ export const list = query({
   handler: async (ctx, { paginationOpts }) => {
     const allMessagesStream = stream(ctx.db, schema)
       .query("messages")
-      .order("desc");
-    const messagesByVerifiedAuthors = filterStream(
-      allMessagesStream,
-      async (message) => {
+      .order("desc")
+      .filterWith(async (message) => {
         const author = await ctx.db.get(message.author);
         return author !== null && author.verified;
-      },
-    );
+      });
     // The pagination happens after the filtering, so the page should have size
     // `paginationOpts.numItems`.
-    return await queryStream(messagesByVerifiedAuthors).paginate({
+    // To avoid reading too much data unexpectedly, set maximumRowsRead.
+    return await messagesByVerifiedAuthors.paginate({
       ...paginationOpts,
       maximumRowsRead: 100,
     });
@@ -965,6 +971,7 @@ Again, remember to use `endCursor` in reactive queries to keep pages contiguous
 
 Suppose you have an index on `["author", "unread"]` and you want to get the
 most recent 10 messages for an author, ignoring whether a messages is unread.
+The index implicitly ends in `"_creationTime"`, so this should be possible.
 
 Normally this would require a separate index on `["author"]`, or doing two
 requests and manually picking the 10 most recent. But with streams, it's cleaner:
@@ -972,29 +979,36 @@ requests and manually picking the 10 most recent. But with streams, it's cleaner
 ```ts
 import {
   stream,
-  mergeStreams,
+  MergedStream,
   filterStream,
-  queryStream,
 } from "convex-helpers/server/stream";
 import schema from "./schema";
+// schema has messages: defineTable(...).index("by_author", ["author", "unread"])
 
 export const latestMessages = query({
   args: { author: v.id("users") },
   handler: async (ctx, { author }) => {
-    // These are two streams of messages, ordered by _creationTime descending.
+    // These are two streams of messages, each ordered by _creationTime descending.
     // The first has read messages, the second has unread messages.
-    const messagesForUnreadStatus = [false, true].map((unread) =>
-      stream(ctx.db, schema)
-        .query("messages")
-        .withIndex("by_author", (q) =>
-          q.eq("author", author).eq("unread", unread),
-        )
-        .order("desc"),
-    );
-    // Merge the two streams into a single stream of all messages authored by
+    const readMessages = stream(ctx.db, schema)
+      .query("messages")
+      .withIndex("by_author", (q) => q.eq("author", author).eq("unread", false))
+      .order("desc");
+    const unreadMessages = stream(ctx.db, schema)
+      .query("messages")
+      .withIndex("by_author", (q) => q.eq("author", author).eq("unread", true))
+      .order("desc");
+    // Since each stream is ordered by ["_creationTime"], we can merge them and
+    // maintain that ordering.
+    // We could instead choose to merge the streams ordered by ["unread", "_creationTime"]
+    // or ordered by ["author", "unread", "_creationTime"].
+    // `allMessagesByCreationTime` is a single stream of all messages authored by
     // `args.author`, ordered by _creationTime descending.
-    const allMessagesByCreationTime = mergeStreams(...messagesForUnreadStatus);
-    return await queryStream(allMessagesByCreationTime).take(10);
+    const allMessagesByCreationTime = new MergedStream(
+      [readMessages, unreadMessages],
+      ["_creationTime"],
+    );
+    return await allMessagesByCreationTime.take(10);
   },
 });
 ```

@@ -211,12 +211,24 @@ abstract class IndexStream<
   // Values that must match a prefix of the index key.
   abstract getEqualityIndexFilter(): Value[];
 
+  /// Methods for creating new streams as modifications of the current stream.
+
   /**
-   * Methods for modifying the stream.
+   * Create a new stream with a TypeScript filter applied.
+   * 
+   * This is similar to `db.query(tableName).filter(predicate)`, but it's more
+   * general because it can call arbitrary TypeScript code, including more
+   * database queries.
+   * 
+   * All documents filtered out are still considered "read" from the database;
+   * they are just excluded from the output stream.
+   * 
+   * In contrast to `filter` from convex-helpers/server/filter, this filterWith
+   * is applied *before* any pagination. That means if the filter excludes a lot
+   * of documents, the `.paginate()` method will read a lot of documents until
+   * it gets as many documents as it wants. If you run into issues with reading
+   * too much data, you can pass `maximumRowsRead` to `paginate()`.
    */
-  orderBy(indexFields: string[]): IndexStream<DataModel, T> {
-    return new OrderByStream(this, indexFields);
-  }
   filterWith(
     predicate: (
       doc: DocumentByInfo<NamedTableInfo<DataModel, T>>,
@@ -224,14 +236,31 @@ abstract class IndexStream<
   ): IndexStream<DataModel, T> {
     return new FilterStream(this, predicate);
   }
-
   /**
-   * Implementation of OrderedQuery
+   * If you have a stream ordered by index fields ["author", "_creationTime"],
+   * and every document in the stream has the same author, then the stream is
+   * effectively ordered by "_creationTime". So you can do the following:
+   *
+   * ```ts
+   * stream(db, schema)
+   *   .query("messages")
+   *   .withIndex("by_author", q => q.eq("author", "user1"))
+   *   .orderBy(["_creationTime"])
+   * ```
+   *
+   * The orderBy doesn't change the stream, but it does change what happens if
+   * you use it in `MergedStream`. The merged stream will be ordered by
+   * "_creationTime", instead of by ["author", "_creationTime"].
    */
+  orderBy(indexFields: string[]): IndexStream<DataModel, T> {
+    return new OrderByStream(this, indexFields);
+  }
+
+  /// Implementation of OrderedQuery
 
   filter(_predicate: any): never {
     throw new Error(
-      "Cannot call .filter on query stream. use FilterStream instead.",
+      "Cannot call .filter on query stream. use .filterWith instead.",
     );
   }
   async paginate(
@@ -783,30 +812,33 @@ class ReflectIndexRange {
  * The streams will be merged into a stream of documents ordered by the index keys.
  *
  * e.g. ```ts
- * mergeStreams(
+ * new MergedStream([
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
- * )
+ * ])
  * ```
  *
  * returns a stream of messages for user1, then user2, then user3.
  *
- * You can also use `orderBy` to change the indexed fields before merging, which changes the order of the merged stream.
- * This only works if the "by_author" index is defined as being ordered by ["author", "_creationTime"],
- * and each query does an equality lookup on "author", so each individual query before merging is in fact ordered by "_creationTime".
+ * You can also use `orderByIndexFields` to change the indexed fields before merging, which changes the order of the merged stream.
+ * This only works if the streams are already ordered by `orderByIndexFields`,
+ * which happens if each does a .eq(field, value) on all index fields before `orderByIndexFields`.
+ * 
+ * e.g. if the "by_author" index is defined as being ordered by ["author", "_creationTime"],
+ * and each query does an equality lookup on "author", each individual query before merging is in fact ordered by "_creationTime".
  *
  * e.g. ```ts
- * mergeStreams(
- *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")).orderBy(["_creationTime"], "desc"),
- *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")).orderBy(["_creationTime"], "desc"),
- *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")).orderBy(["_creationTime"], "desc"),
- * )
+ * new MergedStream([
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
+ * ], ["_creationTime"])
  * ```
  *
- * returns a stream of messages from all three users, sorted by creation time descending.
+ * This returns a stream of messages from all three users, sorted by creation time.
  */
-export class MergeStreams<
+export class MergedStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > extends IndexStream<DataModel, T> {
@@ -814,23 +846,28 @@ export class MergeStreams<
   private streams: IndexStream<DataModel, T>[];
   private equalityIndexFilter: Value[];
   private indexFields: string[];
-  constructor(...streams: IndexStream<DataModel, T>[]) {
+  constructor(
+    streams: IndexStream<DataModel, T>[],
+    orderByIndexFields: string[],
+  ) {
     super();
-    this.streams = streams;
     if (streams.length === 0) {
       throw new Error("Cannot union empty array of streams");
     }
     this.order = allSame(
       streams.map((stream) => stream.getOrder()),
-      "Cannot merge streams with different orders. Consider using .orderBy()",
+      "Cannot merge streams with different orders",
+    );
+    this.streams = streams.map((stream) =>
+      new OrderByStream(stream, orderByIndexFields),
     );
     this.indexFields = allSame(
-      streams.map((stream) => stream.getIndexFields()),
+      this.streams.map((stream) => stream.getIndexFields()),
       "Cannot merge streams with different index fields. Consider using .orderBy()",
     );
     // Calculate common prefix of equality index filters.
     this.equalityIndexFilter = commonPrefix(
-      streams.map((stream) => stream.getEqualityIndexFilter()),
+      this.streams.map((stream) => stream.getEqualityIndexFilter()),
     );
   }
   iterWithKeys() {
@@ -905,8 +942,9 @@ export class MergeStreams<
     return this.indexFields;
   }
   narrow(indexBounds: IndexBounds) {
-    return new MergeStreams(
-      ...this.streams.map((stream) => stream.narrow(indexBounds)),
+    return new MergedStream(
+      this.streams.map((stream) => stream.narrow(indexBounds)),
+      this.indexFields,
     );
   }
 }
@@ -950,7 +988,7 @@ function commonPrefix(values: Value[][]) {
  * `.order("desc")`, it would be invalid.
  *
  * It's not recommended to use `ConcatStreams` directly, since it has the same
- * behavior as `MergeStreams`, but with fewer runtime checks.
+ * behavior as `MergedStream`, but with fewer runtime checks.
  */
 class ConcatStreams<
   DataModel extends GenericDataModel,
