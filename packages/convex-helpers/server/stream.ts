@@ -210,13 +210,12 @@ abstract class IndexStream<
   abstract getIndexFields(): string[];
   // Values that must match a prefix of the index key.
   abstract getEqualityIndexFilter(): Value[];
-  abstract reverse(): IndexStream<DataModel, T>;
 
   /**
    * Methods for modifying the stream.
    */
-  orderBy(indexFields: string[], order: "asc" | "desc"): IndexStream<DataModel, T> {
-    return new OrderByStream(this, indexFields, order);
+  orderBy(indexFields: string[]): IndexStream<DataModel, T> {
+    return new OrderByStream(this, indexFields);
   }
   filterWith(predicate: (doc: DocumentByInfo<NamedTableInfo<DataModel, T>>) => Promise<boolean>): IndexStream<DataModel, T> {
     return new FilterStream(this, predicate);
@@ -469,9 +468,6 @@ export class StreamQueryInitializer<
   getOrder(): "asc" | "desc" {
     return this.inner().getOrder();
   }
-  reverse(): IndexStream<DM<Schema>, T> {
-    return this.inner().reverse();
-  }
   getEqualityIndexFilter(): Value[] {
     return this.inner().getEqualityIndexFilter();
   }
@@ -520,9 +516,6 @@ export class StreamQuery<
   }
   getOrder(): "asc" | "desc" {
     return this.inner().getOrder();
-  }
-  reverse(): IndexStream<DM<Schema>, T> {
-    return this.inner().reverse();
   }
   getEqualityIndexFilter(): Value[] {
     return this.inner().getEqualityIndexFilter();
@@ -598,9 +591,6 @@ export class OrderedStreamQuery<
   }
   getOrder(): "asc" | "desc" {
     return this.order;
-  }
-  reverse(): IndexStream<DM<Schema>, T> {
-    return new OrderedStreamQuery(this.parent, this.order === "asc" ? "desc" : "asc");
   }
   getEqualityIndexFilter(): Value[] {
     return this.parent.q.equalityIndexFilter;
@@ -894,9 +884,6 @@ export class MergeStreams<
   getOrder(): "asc" | "desc" {
     return this.order;
   }
-  reverse(): IndexStream<DataModel, T> {
-    return new MergeStreams(...this.streams.map((stream) => stream.reverse()));
-  }
   getEqualityIndexFilter(): Value[] {
     return this.equalityIndexFilter;
   }
@@ -1010,11 +997,6 @@ class ConcatStreams<
   getOrder(): "asc" | "desc" {
     return this.order;
   }
-  reverse(): IndexStream<DataModel, T> {
-    return new ConcatStreams(
-      ...this.streams.reverse().map((stream) => stream.reverse()),
-    );
-  }
   getEqualityIndexFilter(): Value[] {
     return this.equalityIndexFilter;
   }
@@ -1074,9 +1056,6 @@ class FilterStream<
   getOrder(): "asc" | "desc" {
     return this.stream.getOrder();
   }
-  reverse(): IndexStream<DataModel, T> {
-    return new FilterStream(this.stream.reverse(), this.predicate);
-  }
   getEqualityIndexFilter(): Value[] {
     return this.stream.getEqualityIndexFilter();
   }
@@ -1092,11 +1071,9 @@ class OrderByStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > extends IndexStream<DataModel, T> {
-  private stream: IndexStream<DataModel, T>;
   private staticFilter: Value[];
-  constructor(stream: IndexStream<DataModel, T>, private indexFields: string[], private order: "asc" | "desc") {
+  constructor(private stream: IndexStream<DataModel, T>, private indexFields: string[]) {
     super();
-    this.stream = stream.getOrder() === order ? stream : stream.reverse();
     // Append _creationTime and _id to the index fields if they're not already there
     if (!indexFields.includes("_creationTime")) {
       // With one exception: if indexFields is ["_id"], we don't need to add _creationTime
@@ -1126,16 +1103,13 @@ class OrderByStream<
     this.staticFilter = stream.getEqualityIndexFilter().slice(0, streamIndexFields.length - indexFields.length);
   }
   getOrder(): "asc" | "desc" {
-    return this.order;
+    return this.stream.getOrder();
   }
   getEqualityIndexFilter(): Value[] {
     return this.stream.getEqualityIndexFilter().slice(this.staticFilter.length);
   }
   getIndexFields(): string[] {
     return this.indexFields;
-  }
-  reverse(): IndexStream<DataModel, T> {
-    return new OrderByStream(this.stream, this.indexFields, this.order === "asc" ? "desc" : "asc");
   }
   iterWithKeys(): AsyncIterable<
     [DocumentByName<DataModel, T> | null, IndexKey]
