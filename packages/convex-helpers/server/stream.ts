@@ -816,7 +816,7 @@ class ReflectIndexRange {
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
- * ])
+ * ], ["author"])
  * ```
  *
  * returns a stream of messages for user1, then user2, then user3.
