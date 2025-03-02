@@ -1,7 +1,7 @@
 import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { FilterStream, IndexKey, MergeStreams, stream } from "./stream.js";
+import { IndexKey, MergeStreams, stream } from "./stream.js";
 import { modules } from "./setup.test.js";
 import { v } from "convex/values";
 
@@ -205,6 +205,32 @@ describe("stream", () => {
     });
   });
 
+  test("merge streams desc", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
+      await ctx.db.insert("foo", { a: 2, b: 1, c: 3 });
+      await ctx.db.insert("foo", { a: 2, b: 4, c: 4 });
+      const query1 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1))
+        .order("desc");
+      const query2 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 2))
+        .order("desc");
+      const merged = new MergeStreams(query1, query2);
+      const result = await merged.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { a: 2, b: 4, c: 4 },
+        { a: 2, b: 1, c: 3 },
+        { a: 1, b: 3, c: 3 },
+        { a: 1, b: 2, c: 3 },
+      ]);
+    });
+  });
+
   test("filter stream", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
@@ -217,7 +243,7 @@ describe("stream", () => {
       const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2));
-      const filteredQuery = new FilterStream(query, async (doc) => doc.c === 4);
+      const filteredQuery = query.filterWith(async (doc) => doc.c === 4);
       const result = await filteredQuery.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 4 },
@@ -249,6 +275,39 @@ describe("stream", () => {
       expect(dropSystemFields(JSON.parse(limitedPage1.continueCursor))).toEqual(
         [1, 4, 4],
       );
+    });
+  });
+
+  test("merge orderBy streams", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
+      await ctx.db.insert("foo", { a: 2, b: 1, c: 3 });
+      await ctx.db.insert("foo", { a: 2, b: 4, c: 4 });
+      await ctx.db.insert("foo", { a: 3, b: 6, c: 5 });
+      const query1 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const query2 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 2));
+      const merged = new MergeStreams(query1.orderBy(["b", "c"], "asc"), query2.orderBy(["b", "c"], "asc"));
+      const result = await merged.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { a: 2, b: 1, c: 3 },
+        { a: 1, b: 2, c: 3 },
+        { a: 1, b: 3, c: 3 },
+        { a: 2, b: 4, c: 4 },
+      ]);
+      const mergedDesc = new MergeStreams(query1.orderBy(["b", "c"], "desc"), query2.orderBy(["b", "c"], "desc"));
+      const resultDesc = await mergedDesc.collect();
+      expect(resultDesc.map(stripSystemFields)).toEqual([
+        { a: 2, b: 4, c: 4 },
+        { a: 1, b: 3, c: 3 },
+        { a: 1, b: 2, c: 3 },
+        { a: 2, b: 1, c: 3 },
+      ]);
     });
   });
 });

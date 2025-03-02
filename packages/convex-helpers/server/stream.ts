@@ -199,12 +199,28 @@ abstract class IndexStream<
   T extends TableNamesInDataModel<DataModel>,
 > implements OrderedQuery<NamedTableInfo<DataModel, T>>
 {
+  // Methods that subclasses must implement so OrderedQuery can be implemented.
   abstract iterWithKeys(): AsyncIterable<
     [DocumentByName<DataModel, T> | null, IndexKey]
   >;
+  abstract narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
+
+  // Methods so subclasses can make sure streams are combined correctly.
   abstract getOrder(): "asc" | "desc";
   abstract getIndexFields(): string[];
-  abstract narrow(indexBounds: IndexBounds): IndexStream<DataModel, T>;
+  // Values that must match a prefix of the index key.
+  abstract getEqualityIndexFilter(): Value[];
+  abstract reverse(): IndexStream<DataModel, T>;
+
+  /**
+   * Methods for modifying the stream.
+   */
+  orderBy(indexFields: string[], order: "asc" | "desc"): IndexStream<DataModel, T> {
+    return new OrderByStream(this, indexFields, order);
+  }
+  filterWith(predicate: (doc: DocumentByInfo<NamedTableInfo<DataModel, T>>) => Promise<boolean>): IndexStream<DataModel, T> {
+    return new FilterStream(this, predicate);
+  }
 
   /**
    * Implementation of OrderedQuery
@@ -453,6 +469,12 @@ export class StreamQueryInitializer<
   getOrder(): "asc" | "desc" {
     return this.inner().getOrder();
   }
+  reverse(): IndexStream<DM<Schema>, T> {
+    return this.inner().reverse();
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.inner().getEqualityIndexFilter();
+  }
   getIndexFields(): string[] {
     return this.inner().getIndexFields();
   }
@@ -498,6 +520,12 @@ export class StreamQuery<
   }
   getOrder(): "asc" | "desc" {
     return this.inner().getOrder();
+  }
+  reverse(): IndexStream<DM<Schema>, T> {
+    return this.inner().reverse();
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.inner().getEqualityIndexFilter();
   }
   getIndexFields(): string[] {
     return this.inner().getIndexFields();
@@ -570,6 +598,12 @@ export class OrderedStreamQuery<
   }
   getOrder(): "asc" | "desc" {
     return this.order;
+  }
+  reverse(): IndexStream<DM<Schema>, T> {
+    return new OrderedStreamQuery(this.parent, this.order === "asc" ? "desc" : "asc");
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.parent.q.equalityIndexFilter;
   }
   getIndexFields(): string[] {
     return this.parent.q.indexFields;
@@ -664,6 +698,7 @@ class ReflectIndexRange {
   public lowerBoundInclusive: boolean = true;
   public upperBoundIndexKey: IndexKey | undefined = undefined;
   public upperBoundInclusive: boolean = true;
+  public equalityIndexFilter: Value[] = [];
   constructor(public indexFields: string[]) {}
   eq(field: string, value: Value) {
     if (!this.canLowerBound(field) || !this.canUpperBound(field)) {
@@ -673,6 +708,7 @@ class ReflectIndexRange {
     this.lowerBoundIndexKey.push(value);
     this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
     this.upperBoundIndexKey.push(value);
+    this.equalityIndexFilter.push(value);
     return this;
   }
   lt(field: string, value: Value) {
@@ -761,6 +797,20 @@ class ReflectIndexRange {
  * ```
  *
  * returns a stream of messages for user1, then user2, then user3.
+ *
+ * You can also use `orderBy` to change the indexed fields before merging, which changes the order of the merged stream.
+ * This only works if the "by_author" index is defined as being ordered by ["author", "_creationTime"],
+ * and each query does an equality lookup on "author", so each individual query before merging is in fact ordered by "_creationTime".
+ * 
+ * e.g. ```ts
+ * mergeStreams(
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")).orderBy(["_creationTime"], "desc"),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")).orderBy(["_creationTime"], "desc"),
+ *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")).orderBy(["_creationTime"], "desc"),
+ * )
+ * ```
+ * 
+ * returns a stream of messages from all three users, sorted by creation time descending.
  */
 export class MergeStreams<
   DataModel extends GenericDataModel,
@@ -768,21 +818,22 @@ export class MergeStreams<
 > extends IndexStream<DataModel, T> {
   private order: "asc" | "desc";
   private streams: IndexStream<DataModel, T>[];
+  private equalityIndexFilter: Value[];
+  private indexFields: string[];
   constructor(...streams: IndexStream<DataModel, T>[]) {
     super();
     this.streams = streams;
     if (streams.length === 0) {
       throw new Error("Cannot union empty array of streams");
     }
-    this.order = streams[0]!.getOrder();
-    for (const stream of streams) {
-      if (stream.getOrder() !== this.order) {
-        throw new Error("Cannot merge streams with different orders");
-      }
-    }
+    this.order = allSame(streams.map((stream) => stream.getOrder()), "Cannot merge streams with different orders. Consider using .orderBy()");
+    this.indexFields = allSame(streams.map((stream) => stream.getIndexFields()), "Cannot merge streams with different index fields. Consider using .orderBy()");
+    // Calculate common prefix of equality index filters.
+    this.equalityIndexFilter = commonPrefix(streams.map((stream) => stream.getEqualityIndexFilter()));
   }
   iterWithKeys() {
     const iterables = this.streams.map((stream) => stream.iterWithKeys());
+    const comparisonInversion = this.order === "asc" ? 1 : -1;
     return {
       [Symbol.asyncIterator]() {
         const iterators = iterables.map((iterable) =>
@@ -822,7 +873,7 @@ export class MergeStreams<
                 compareKeys(
                   { value: resultIndexKey, kind: "exact" },
                   { value: prevMin, kind: "exact" },
-                ) < 0
+                ) * comparisonInversion < 0
               ) {
                 minIndexKeyAndIndex = [resultIndexKey, i];
               }
@@ -843,14 +894,43 @@ export class MergeStreams<
   getOrder(): "asc" | "desc" {
     return this.order;
   }
+  reverse(): IndexStream<DataModel, T> {
+    return new MergeStreams(...this.streams.map((stream) => stream.reverse()));
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.equalityIndexFilter;
+  }
   getIndexFields(): string[] {
-    return this.streams[0]!.getIndexFields();
+    return this.indexFields;
   }
   narrow(indexBounds: IndexBounds) {
     return new MergeStreams(
       ...this.streams.map((stream) => stream.narrow(indexBounds)),
     );
   }
+}
+
+function allSame<T extends Value>(values: T[], errorMessage: string): T {
+  const first = values[0]!;
+  for (const value of values) {
+    if (compareValues(value, first)) {
+      throw new Error(errorMessage);
+    }
+  }
+  return first;
+}
+
+function commonPrefix(values: Value[][]) {
+  let commonPrefix = values[0]!;
+  for (const value of values) {
+    for (let i = 0; i < commonPrefix.length; i++) {
+      if (i >= value.length || compareValues(commonPrefix[i], value[i])) {
+        commonPrefix = commonPrefix.slice(0, i);
+        break;
+      }
+    }
+  }
+  return commonPrefix;
 }
 
 /**
@@ -868,32 +948,33 @@ export class MergeStreams<
  * is valid, but if the stream arguments were reversed, or the queries were
  * `.order("desc")`, it would be invalid.
  *
- * It's not recommended to use `concatStreams` directly, since it has the same
- * behavior as `mergeStreams`, but with fewer runtime checks.
+ * It's not recommended to use `ConcatStreams` directly, since it has the same
+ * behavior as `MergeStreams`, but with fewer runtime checks.
  */
-export class ConcatStreams<
+class ConcatStreams<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > extends IndexStream<DataModel, T> {
   private order: "asc" | "desc";
   private streams: IndexStream<DataModel, T>[];
+  private equalityIndexFilter: Value[];
+  private indexFields: string[];
   constructor(...streams: IndexStream<DataModel, T>[]) {
     super();
     this.streams = streams;
     if (streams.length === 0) {
       throw new Error("Cannot concat empty array of streams");
     }
-    this.order = streams[0]!.getOrder();
-    for (const stream of streams) {
-      if (stream.getOrder() !== this.order) {
-        throw new Error("Cannot concat streams with different orders");
-      }
-    }
+    this.order = allSame(streams.map((stream) => stream.getOrder()), "Cannot concat streams with different orders. Consider using .orderBy()");
+    this.indexFields = allSame(streams.map((stream) => stream.getIndexFields()), "Cannot concat streams with different index fields. Consider using .orderBy()");
+    this.equalityIndexFilter = commonPrefix(streams.map((stream) => stream.getEqualityIndexFilter()));
   }
   iterWithKeys(): AsyncIterable<
     [DocumentByName<DataModel, T> | null, IndexKey]
   > {
     const iterables = this.streams.map((stream) => stream.iterWithKeys());
+    const comparisonInversion = this.order === "asc" ? 1 : -1;
+    let previousIndexKey: IndexKey | undefined = undefined;
     return {
       [Symbol.asyncIterator]() {
         const iterators = iterables.map((iterable) =>
@@ -906,6 +987,17 @@ export class ConcatStreams<
               if (result.done) {
                 iterators.shift();
               } else {
+                const [_, indexKey] = result.value;
+                if (previousIndexKey !== undefined && compareKeys({
+                  value: previousIndexKey,
+                  kind: "exact",
+                }, {
+                  value: indexKey,
+                  kind: "exact",
+                }) * comparisonInversion > 0) {
+                  throw new Error(`ConcatStreams in wrong order: ${JSON.stringify(previousIndexKey)}, ${JSON.stringify(indexKey)}`);
+                }
+                previousIndexKey = indexKey;
                 return result;
               }
             }
@@ -918,8 +1010,16 @@ export class ConcatStreams<
   getOrder(): "asc" | "desc" {
     return this.order;
   }
+  reverse(): IndexStream<DataModel, T> {
+    return new ConcatStreams(
+      ...this.streams.reverse().map((stream) => stream.reverse()),
+    );
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.equalityIndexFilter;
+  }
   getIndexFields(): string[] {
-    return this.streams[0]!.getIndexFields();
+    return this.indexFields;
   }
   narrow(indexBounds: IndexBounds) {
     return new ConcatStreams(
@@ -933,7 +1033,7 @@ export class ConcatStreams<
  *
  * Watch out for sparse filters, as they may read unbounded amounts of data.
  */
-export class FilterStream<
+class FilterStream<
   DataModel extends GenericDataModel,
   T extends TableNamesInDataModel<DataModel>,
 > extends IndexStream<DataModel, T> {
@@ -974,11 +1074,97 @@ export class FilterStream<
   getOrder(): "asc" | "desc" {
     return this.stream.getOrder();
   }
+  reverse(): IndexStream<DataModel, T> {
+    return new FilterStream(this.stream.reverse(), this.predicate);
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.stream.getEqualityIndexFilter();
+  }
   getIndexFields(): string[] {
     return this.stream.getIndexFields();
   }
   narrow(indexBounds: IndexBounds) {
     return new FilterStream(this.stream.narrow(indexBounds), this.predicate);
+  }
+}
+
+class OrderByStream<
+  DataModel extends GenericDataModel,
+  T extends TableNamesInDataModel<DataModel>,
+> extends IndexStream<DataModel, T> {
+  private stream: IndexStream<DataModel, T>;
+  private staticFilter: Value[];
+  constructor(stream: IndexStream<DataModel, T>, private indexFields: string[], private order: "asc" | "desc") {
+    super();
+    this.stream = stream.getOrder() === order ? stream : stream.reverse();
+    // Append _creationTime and _id to the index fields if they're not already there
+    if (!indexFields.includes("_creationTime")) {
+      // With one exception: if indexFields is ["_id"], we don't need to add _creationTime
+      if (indexFields.length !== 1 || indexFields[0] !== "_id") {
+        indexFields.push("_creationTime");
+      }
+    }
+    if (!indexFields.includes("_id")) {
+      indexFields.push("_id");
+    }
+    // indexFields must be a suffix of the stream's index fields, and include
+    // all of the non-equality index fields.
+    const streamIndexFields = stream.getIndexFields();
+    if (indexFields.length > streamIndexFields.length) {
+      throw new Error(`indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`);
+    }
+    const streamIndexFieldsSuffix = streamIndexFields.slice(streamIndexFields.length - indexFields.length);
+    for (let i = 0; i < indexFields.length; i++) {
+      if (indexFields[i] !== streamIndexFieldsSuffix[i]) {
+        throw new Error(`indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`);
+      }
+    }
+    const nonEqualityIndexFields = streamIndexFields.slice(stream.getEqualityIndexFilter().length);
+    if (indexFields.length < nonEqualityIndexFields.length) {
+      throw new Error(`indexFields must include all of the stream's index fields used for ordering: ${JSON.stringify(indexFields)}, ${JSON.stringify(nonEqualityIndexFields)}`);
+    }
+    this.staticFilter = stream.getEqualityIndexFilter().slice(0, streamIndexFields.length - indexFields.length);
+  }
+  getOrder(): "asc" | "desc" {
+    return this.order;
+  }
+  getEqualityIndexFilter(): Value[] {
+    return this.stream.getEqualityIndexFilter().slice(this.staticFilter.length);
+  }
+  getIndexFields(): string[] {
+    return this.indexFields;
+  }
+  reverse(): IndexStream<DataModel, T> {
+    return new OrderByStream(this.stream, this.indexFields, this.order === "asc" ? "desc" : "asc");
+  }
+  iterWithKeys(): AsyncIterable<
+    [DocumentByName<DataModel, T> | null, IndexKey]
+  > {
+    const iterable = this.stream.iterWithKeys();
+    const staticFilter = this.staticFilter;
+    return {
+      [Symbol.asyncIterator]() {
+        const iterator = iterable[Symbol.asyncIterator]();
+        return {
+          async next() {
+            const result = await iterator.next();
+            if (result.done) {
+              return result;
+            }
+            const [doc, indexKey] = result.value;
+            return { done: false, value: [doc, indexKey.slice(staticFilter.length)] };
+          },
+        };
+      },
+    };
+  }
+  narrow(indexBounds: IndexBounds) {
+    return this.stream.narrow({
+      lowerBound: [...this.staticFilter, ...indexBounds.lowerBound],
+      lowerBoundInclusive: indexBounds.lowerBoundInclusive,
+      upperBound: [...this.staticFilter, ...indexBounds.upperBound],
+      upperBoundInclusive: indexBounds.upperBoundInclusive,
+    });
   }
 }
 
