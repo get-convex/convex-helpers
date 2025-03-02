@@ -172,13 +172,6 @@ function getIndexKey<
   return key;
 }
 
-export function reflect<Schema extends SchemaDefinition<any, boolean>>(
-  db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
-  schema: Schema,
-): ReflectDatabaseReader<Schema> {
-  return new ReflectDatabaseReader(db, schema);
-}
-
 /**
  * A "stream" is an async iterable of query results, ordered by an index on a table.
  *
@@ -194,8 +187,8 @@ export function reflect<Schema extends SchemaDefinition<any, boolean>>(
 export function stream<Schema extends SchemaDefinition<any, boolean>>(
   db: GenericDatabaseReader<DM<Schema>>,
   schema: Schema,
-): ReflectDatabaseReader<Schema> {
-  return reflect(db, schema);
+): StreamDatabaseReader<Schema> {
+  return new StreamDatabaseReader(db, schema);
 }
 
 /**
@@ -218,7 +211,9 @@ abstract class IndexStream<
    */
 
   filter(_predicate: any): never {
-    throw new Error("Cannot filter query stream. use filterStream instead.");
+    throw new Error(
+      "Cannot call .filter on query stream. use FilterStream instead.",
+    );
   }
   async paginate(
     opts: PaginationOptions & {
@@ -340,9 +335,8 @@ abstract class IndexStream<
   }
 }
 
-export class ReflectDatabaseReader<
-  Schema extends SchemaDefinition<any, boolean>,
-> implements GenericDatabaseReader<DM<Schema>>
+export class StreamDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
+  implements GenericDatabaseReader<DM<Schema>>
 {
   // TODO: support system tables
   public system: any = null;
@@ -354,8 +348,8 @@ export class ReflectDatabaseReader<
 
   query<TableName extends TableNamesInDataModel<DM<Schema>>>(
     tableName: TableName,
-  ): ReflectQueryInitializer<Schema, TableName> {
-    return new ReflectQueryInitializer(this, tableName);
+  ): StreamQueryInitializer<Schema, TableName> {
+    return new StreamQueryInitializer(this, tableName);
   }
   get(_id: any): any {
     throw new Error("get() not supported for `paginator`");
@@ -395,7 +389,7 @@ export type QueryReflection<
   ) => IndexRange;
 };
 
-export abstract class ReflectableQuery<
+export abstract class StreamableQuery<
   Schema extends SchemaDefinition<any, boolean>,
   T extends TableNamesInDataModel<DM<Schema>>,
   IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
@@ -403,20 +397,20 @@ export abstract class ReflectableQuery<
   abstract reflect(): QueryReflection<Schema, T, IndexName>;
 }
 
-export class ReflectQueryInitializer<
+export class StreamQueryInitializer<
     Schema extends SchemaDefinition<any, boolean>,
     T extends TableNamesInDataModel<DM<Schema>>,
   >
-  extends ReflectableQuery<Schema, T, "by_creation_time">
+  extends StreamableQuery<Schema, T, "by_creation_time">
   implements QueryInitializer<NamedTableInfo<DM<Schema>, T>>
 {
   constructor(
-    public parent: ReflectDatabaseReader<Schema>,
+    public parent: StreamDatabaseReader<Schema>,
     public table: T,
   ) {
     super();
   }
-  fullTableScan(): ReflectQuery<Schema, T, "by_creation_time"> {
+  fullTableScan(): StreamQuery<Schema, T, "by_creation_time"> {
     return this.withIndex("by_creation_time");
   }
   withIndex<IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>>(
@@ -427,7 +421,7 @@ export class ReflectQueryInitializer<
         NamedIndex<NamedTableInfo<DM<Schema>, T>, IndexName>
       >,
     ) => IndexRange,
-  ): ReflectQuery<Schema, T, IndexName> {
+  ): StreamQuery<Schema, T, IndexName> {
     const indexFields = getIndexFields<Schema, T>(
       this.table,
       indexName,
@@ -437,7 +431,7 @@ export class ReflectQueryInitializer<
     if (indexRange) {
       indexRange(q as any);
     }
-    return new ReflectQuery(this, indexName, q, indexRange);
+    return new StreamQuery(this, indexName, q, indexRange);
   }
   withSearchIndex(_indexName: any, _searchFilter: any): any {
     throw new Error("Cannot paginate withSearchIndex");
@@ -447,7 +441,7 @@ export class ReflectQueryInitializer<
   }
   order(
     order: "asc" | "desc",
-  ): OrderedReflectQuery<Schema, T, "by_creation_time"> {
+  ): OrderedStreamQuery<Schema, T, "by_creation_time"> {
     return this.inner().order(order);
   }
   reflect() {
@@ -467,16 +461,16 @@ export class ReflectQueryInitializer<
   }
 }
 
-export class ReflectQuery<
+export class StreamQuery<
     Schema extends SchemaDefinition<any, boolean>,
     T extends TableNamesInDataModel<DM<Schema>>,
     IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
   >
-  extends ReflectableQuery<Schema, T, IndexName>
+  extends StreamableQuery<Schema, T, IndexName>
   implements Query<NamedTableInfo<DM<Schema>, T>>
 {
   constructor(
-    public parent: ReflectQueryInitializer<Schema, T>,
+    public parent: StreamQueryInitializer<Schema, T>,
     public index: IndexName,
     public q: ReflectIndexRange,
     public indexRange:
@@ -491,7 +485,7 @@ export class ReflectQuery<
     super();
   }
   order(order: "asc" | "desc") {
-    return new OrderedReflectQuery(this, order);
+    return new OrderedStreamQuery(this, order);
   }
   inner() {
     return this.order("asc");
@@ -513,16 +507,16 @@ export class ReflectQuery<
   }
 }
 
-export class OrderedReflectQuery<
+export class OrderedStreamQuery<
     Schema extends SchemaDefinition<any, boolean>,
     T extends TableNamesInDataModel<DM<Schema>>,
     IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
   >
-  extends ReflectableQuery<Schema, T, IndexName>
+  extends StreamableQuery<Schema, T, IndexName>
   implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>
 {
   constructor(
-    public parent: ReflectQuery<Schema, T, IndexName>,
+    public parent: StreamQuery<Schema, T, IndexName>,
     public order: "asc" | "desc",
   ) {
     super();
@@ -652,10 +646,10 @@ export function streamIndexRange<
     bounds.lowerBoundInclusive ? "gte" : "gt",
     bounds.upperBoundInclusive ? "lte" : "lt",
   );
-  const subQueries: OrderedReflectQuery<Schema, T, IndexName>[] = [];
+  const subQueries: OrderedStreamQuery<Schema, T, IndexName>[] = [];
   for (const splitBound of splitBounds) {
     subQueries.push(
-      reflect(db, schema)
+      stream(db, schema)
         .query(table)
         .withIndex(index, rangeToQuery(splitBound))
         .order(order),
@@ -865,7 +859,7 @@ export class MergeStreams<
  * and are provided in the same order as the index ranges.
  *
  * e.g. ```ts
- * concatStreams(
+ * new ConcatStreams(
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
  * )

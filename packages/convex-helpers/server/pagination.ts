@@ -11,7 +11,7 @@ import {
 } from "convex/server";
 import {
   getIndexFields,
-  ReflectDatabaseReader,
+  StreamDatabaseReader,
   stream,
   streamIndexRange,
 } from "./stream.js";
@@ -209,7 +209,7 @@ export async function* streamQuery<
 export function paginator<Schema extends SchemaDefinition<any, boolean>>(
   db: GenericDatabaseReader<DataModelFromSchemaDefinition<Schema>>,
   schema: Schema,
-): ReflectDatabaseReader<Schema> {
+): StreamDatabaseReader<Schema> {
   return stream(db, schema);
 }
 

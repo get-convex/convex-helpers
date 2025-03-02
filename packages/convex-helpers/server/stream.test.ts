@@ -1,13 +1,7 @@
 import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import {
-  FilterStream,
-  IndexKey,
-  MergeStreams,
-  reflect,
-  stream,
-} from "./stream.js";
+import { FilterStream, IndexKey, MergeStreams, stream } from "./stream.js";
 import { modules } from "./setup.test.js";
 import { v } from "convex/values";
 
@@ -50,7 +44,7 @@ describe("reflect", () => {
   test("reflection", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const query = reflect(ctx.db, schema)
+      const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2))
         .order("desc");
@@ -72,7 +66,7 @@ describe("reflect", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
-      const query = reflect(ctx.db, schema)
+      const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2))
         .order("desc");
