@@ -954,7 +954,7 @@ export const list = query({
       });
     // The pagination happens after the filtering, so the page should have size
     // `paginationOpts.numItems`.
-    // To avoid reading too much data unexpectedly, set maximumRowsRead.
+    // To avoid reading too much data unexpectedly, you can optionally set maximumRowsRead.
     return await messagesByVerifiedAuthors.paginate({
       ...paginationOpts,
       maximumRowsRead: 100,
