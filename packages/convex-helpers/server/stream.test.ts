@@ -332,6 +332,10 @@ describe("stream", () => {
         { a: 2, b: 1, c: 3 },
       ]);
       expect(mergedPage2.isDone).toBe(true);
+
+      // You can't merge streams and exclude an index field that's still used
+      // for ordering.
+      expect(() => new MergedStream([query1, query2], ["c"])).toThrow();
     });
   });
 });

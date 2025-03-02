@@ -862,9 +862,12 @@ a union of multiple queries, filter out some of them, and paginate the result.
 
 - A "stream" is an async iterable of documents, ordered by indexed fields.
 
-The cool thing about a stream is you can merge two streams together
+The cool thing about a stream is you can merge multiple streams together
 to create a new stream, and you can filter documents out of a stream with a
-TypeScript predicate.
+TypeScript predicate. These operations preserve order, so the result is still
+a valid stream. You can merge and filter as much as you want, and finally treat
+it like a Convex query to get documents with `.first()`, `.collect()`, or
+`.paginate()`.
 
 For example, if you have a stream of "messages created by user1" and a stream
 of "messages created by user2", you can merge them together to get a stream of
@@ -876,12 +879,10 @@ Concrete functions you can use:
 
 - `stream` constructs a stream using the same syntax as `DatabaseReader`.
   - e.g. `stream(ctx.db, schema).query("messages").withIndex("by_author", (q) => q.eq("author", "user1"))`
-- `MergedStream` combines multiple streams into a new stream, ordered by the same index fields.
+- `MergedStream(streams, fields)` combines multiple streams into a new stream, ordered by the same index fields.
 - `.filterWith` filters out documents from a stream based on a TypeScript predicate.
-- `.orderBy` adjusts the indexed fields that the stream cares about.
-
-Once your stream is set up, you can get documents from it with the normal
-Convex query methods: `.first()`, `.collect()`, `.paginate()`, etc.
+- Once your stream is set up, you can get documents from it with the normal
+  Convex query methods: `.first()`, `.collect()`, `.paginate()`, etc.
 
 Beware if using `.paginate()` with streams in reactive queries, as it has the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
@@ -902,8 +903,8 @@ export const listForAuthors = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { authors, paginationOpts }) => {
-    // This is an array of streams, where each stream is messages by a single
-    // author.
+    // This is an array of streams, where each stream consists of messages by a
+    // single author.
     const authorStreams = authors.map((author) =>
       stream(ctx.db, schema)
         .query("messages")
@@ -915,6 +916,7 @@ export const listForAuthors = query({
       "author",
       "_creationTime",
     ]);
+    // Paginate the result.
     return await allAuthorsStream.paginate(paginationOpts);
   },
 });
@@ -964,7 +966,7 @@ export const list = query({
 Again, remember to use `endCursor` in reactive queries to keep pages contiguous
 (see [`paginator`](#paginator-manual-pagination-with-familiar-syntax)).
 
-3. Ignore a boolean field in an index.
+3. Order by a suffix of an index.
 
 Suppose you have an index on `["author", "unread"]` and you want to get the
 most recent 10 messages for an author, ignoring whether a messages is unread.
@@ -997,7 +999,7 @@ export const latestMessages = query({
       .order("desc");
     // Since each stream is ordered by ["_creationTime"], we can merge them and
     // maintain that ordering.
-    // We could instead choose to merge the streams ordered by ["unread", "_creationTime"]
+    // Aside: We could instead choose to merge the streams ordered by ["unread", "_creationTime"]
     // or ordered by ["author", "unread", "_creationTime"].
     // `allMessagesByCreationTime` is a single stream of all messages authored by
     // `args.author`, ordered by _creationTime descending.
