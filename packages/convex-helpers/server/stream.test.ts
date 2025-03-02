@@ -223,10 +223,7 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 2))
         .order("desc");
-      const merged = new MergedStream(
-        [query1, query2],
-        ["a", "b", "c"],
-      );
+      const merged = new MergedStream([query1, query2], ["a", "b", "c"]);
       const result = await merged.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 2, b: 4, c: 4 },

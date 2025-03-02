@@ -911,10 +911,10 @@ export const listForAuthors = query({
     );
     // Create a new stream of all messages authored by users in `args.authors`,
     // ordered by the "by_author" index (i.e. ["author", "_creationTime"]).
-    const allAuthorsStream = new MergedStream(
-      authorStreams,
-      ["author", "_creationTime"],
-    );
+    const allAuthorsStream = new MergedStream(authorStreams, [
+      "author",
+      "_creationTime",
+    ]);
     return await allAuthorsStream.paginate(paginationOpts);
   },
 });
@@ -937,10 +937,7 @@ options to limit the number of rows read. Let's see how to do
 pre-filtering with streams.
 
 ```ts
-import {
-  stream,
-  filterStream,
-} from "convex-helpers/server/stream";
+import { stream, filterStream } from "convex-helpers/server/stream";
 import schema from "./schema";
 
 export const list = query({

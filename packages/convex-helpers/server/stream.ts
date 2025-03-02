@@ -215,14 +215,14 @@ abstract class IndexStream<
 
   /**
    * Create a new stream with a TypeScript filter applied.
-   * 
+   *
    * This is similar to `db.query(tableName).filter(predicate)`, but it's more
    * general because it can call arbitrary TypeScript code, including more
    * database queries.
-   * 
+   *
    * All documents filtered out are still considered "read" from the database;
    * they are just excluded from the output stream.
-   * 
+   *
    * In contrast to `filter` from convex-helpers/server/filter, this filterWith
    * is applied *before* any pagination. That means if the filter excludes a lot
    * of documents, the `.paginate()` method will read a lot of documents until
@@ -824,7 +824,7 @@ class ReflectIndexRange {
  * You can also use `orderByIndexFields` to change the indexed fields before merging, which changes the order of the merged stream.
  * This only works if the streams are already ordered by `orderByIndexFields`,
  * which happens if each does a .eq(field, value) on all index fields before `orderByIndexFields`.
- * 
+ *
  * e.g. if the "by_author" index is defined as being ordered by ["author", "_creationTime"],
  * and each query does an equality lookup on "author", each individual query before merging is in fact ordered by "_creationTime".
  *
@@ -858,8 +858,8 @@ export class MergedStream<
       streams.map((stream) => stream.getOrder()),
       "Cannot merge streams with different orders",
     );
-    this.streams = streams.map((stream) =>
-      new OrderByStream(stream, orderByIndexFields),
+    this.streams = streams.map(
+      (stream) => new OrderByStream(stream, orderByIndexFields),
     );
     this.indexFields = allSame(
       this.streams.map((stream) => stream.getIndexFields()),
