@@ -809,7 +809,8 @@ class ReflectIndexRange {
 /**
  * Merge multiple streams, provided in any order, into a single stream.
  *
- * The streams will be merged into a stream of documents ordered by the index keys.
+ * The streams will be merged into a stream of documents ordered by the index keys,
+ * i.e. by "author" (then by the implicit "_creationTime").
  *
  * e.g. ```ts
  * new MergedStream([

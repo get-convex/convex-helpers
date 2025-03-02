@@ -43,6 +43,10 @@
       "types": "./react/cache/provider.d.ts",
       "default": "./react/cache/provider.js"
     },
+    "./server/compare": {
+      "types": "./server/compare.d.ts",
+      "default": "./server/compare.js"
+    },
     "./server/cors": {
       "types": "./server/cors.d.ts",
       "default": "./server/cors.js"
