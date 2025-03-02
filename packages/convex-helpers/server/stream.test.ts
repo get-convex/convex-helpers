@@ -278,7 +278,7 @@ describe("stream", () => {
     });
   });
 
-  test.only("merge orderBy streams", async () => {
+  test("merge orderBy streams", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
@@ -292,7 +292,10 @@ describe("stream", () => {
       const query2 = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 2));
-      const merged = new MergeStreams(query1.orderBy(["b", "c"]), query2.orderBy(["b", "c"]));
+      const merged = new MergeStreams(
+        query1.orderBy(["b", "c"]),
+        query2.orderBy(["b", "c"]),
+      );
       const result = await merged.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 2, b: 1, c: 3 },
@@ -311,14 +314,13 @@ describe("stream", () => {
         { a: 1, b: 2, c: 3 },
         { a: 2, b: 1, c: 3 },
       ]);
-
-      const mergedPage1 = await merged.paginate({
+      const mergedPage1 = await mergedDesc.paginate({
         numItems: 2,
         cursor: null,
       });
       expect(mergedPage1.page.map(stripSystemFields)).toEqual([
-        { a: 2, b: 1, c: 3 },
-        { a: 1, b: 2, c: 3 },
+        { a: 2, b: 4, c: 4 },
+        { a: 1, b: 3, c: 3 },
       ]);
       expect(mergedPage1.isDone).toBe(false);
       const mergedPage2 = await mergedDesc.paginate({
@@ -326,8 +328,8 @@ describe("stream", () => {
         cursor: mergedPage1.continueCursor,
       });
       expect(mergedPage2.page.map(stripSystemFields)).toEqual([
-        { a: 1, b: 3, c: 3 },
-        { a: 2, b: 4, c: 4 },
+        { a: 1, b: 2, c: 3 },
+        { a: 2, b: 1, c: 3 },
       ]);
       expect(mergedPage2.isDone).toBe(true);
     });

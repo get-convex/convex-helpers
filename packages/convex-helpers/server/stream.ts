@@ -217,7 +217,11 @@ abstract class IndexStream<
   orderBy(indexFields: string[]): IndexStream<DataModel, T> {
     return new OrderByStream(this, indexFields);
   }
-  filterWith(predicate: (doc: DocumentByInfo<NamedTableInfo<DataModel, T>>) => Promise<boolean>): IndexStream<DataModel, T> {
+  filterWith(
+    predicate: (
+      doc: DocumentByInfo<NamedTableInfo<DataModel, T>>,
+    ) => Promise<boolean>,
+  ): IndexStream<DataModel, T> {
     return new FilterStream(this, predicate);
   }
 
@@ -791,7 +795,7 @@ class ReflectIndexRange {
  * You can also use `orderBy` to change the indexed fields before merging, which changes the order of the merged stream.
  * This only works if the "by_author" index is defined as being ordered by ["author", "_creationTime"],
  * and each query does an equality lookup on "author", so each individual query before merging is in fact ordered by "_creationTime".
- * 
+ *
  * e.g. ```ts
  * mergeStreams(
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")).orderBy(["_creationTime"], "desc"),
@@ -799,7 +803,7 @@ class ReflectIndexRange {
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")).orderBy(["_creationTime"], "desc"),
  * )
  * ```
- * 
+ *
  * returns a stream of messages from all three users, sorted by creation time descending.
  */
 export class MergeStreams<
@@ -816,10 +820,18 @@ export class MergeStreams<
     if (streams.length === 0) {
       throw new Error("Cannot union empty array of streams");
     }
-    this.order = allSame(streams.map((stream) => stream.getOrder()), "Cannot merge streams with different orders. Consider using .orderBy()");
-    this.indexFields = allSame(streams.map((stream) => stream.getIndexFields()), "Cannot merge streams with different index fields. Consider using .orderBy()");
+    this.order = allSame(
+      streams.map((stream) => stream.getOrder()),
+      "Cannot merge streams with different orders. Consider using .orderBy()",
+    );
+    this.indexFields = allSame(
+      streams.map((stream) => stream.getIndexFields()),
+      "Cannot merge streams with different index fields. Consider using .orderBy()",
+    );
     // Calculate common prefix of equality index filters.
-    this.equalityIndexFilter = commonPrefix(streams.map((stream) => stream.getEqualityIndexFilter()));
+    this.equalityIndexFilter = commonPrefix(
+      streams.map((stream) => stream.getEqualityIndexFilter()),
+    );
   }
   iterWithKeys() {
     const iterables = this.streams.map((stream) => stream.iterWithKeys());
@@ -863,7 +875,9 @@ export class MergeStreams<
                 compareKeys(
                   { value: resultIndexKey, kind: "exact" },
                   { value: prevMin, kind: "exact" },
-                ) * comparisonInversion < 0
+                ) *
+                  comparisonInversion <
+                0
               ) {
                 minIndexKeyAndIndex = [resultIndexKey, i];
               }
@@ -952,9 +966,17 @@ class ConcatStreams<
     if (streams.length === 0) {
       throw new Error("Cannot concat empty array of streams");
     }
-    this.order = allSame(streams.map((stream) => stream.getOrder()), "Cannot concat streams with different orders. Consider using .orderBy()");
-    this.indexFields = allSame(streams.map((stream) => stream.getIndexFields()), "Cannot concat streams with different index fields. Consider using .orderBy()");
-    this.equalityIndexFilter = commonPrefix(streams.map((stream) => stream.getEqualityIndexFilter()));
+    this.order = allSame(
+      streams.map((stream) => stream.getOrder()),
+      "Cannot concat streams with different orders. Consider using .orderBy()",
+    );
+    this.indexFields = allSame(
+      streams.map((stream) => stream.getIndexFields()),
+      "Cannot concat streams with different index fields. Consider using .orderBy()",
+    );
+    this.equalityIndexFilter = commonPrefix(
+      streams.map((stream) => stream.getEqualityIndexFilter()),
+    );
   }
   iterWithKeys(): AsyncIterable<
     [DocumentByName<DataModel, T> | null, IndexKey]
@@ -975,14 +997,24 @@ class ConcatStreams<
                 iterators.shift();
               } else {
                 const [_, indexKey] = result.value;
-                if (previousIndexKey !== undefined && compareKeys({
-                  value: previousIndexKey,
-                  kind: "exact",
-                }, {
-                  value: indexKey,
-                  kind: "exact",
-                }) * comparisonInversion > 0) {
-                  throw new Error(`ConcatStreams in wrong order: ${JSON.stringify(previousIndexKey)}, ${JSON.stringify(indexKey)}`);
+                if (
+                  previousIndexKey !== undefined &&
+                  compareKeys(
+                    {
+                      value: previousIndexKey,
+                      kind: "exact",
+                    },
+                    {
+                      value: indexKey,
+                      kind: "exact",
+                    },
+                  ) *
+                    comparisonInversion >
+                    0
+                ) {
+                  throw new Error(
+                    `ConcatStreams in wrong order: ${JSON.stringify(previousIndexKey)}, ${JSON.stringify(indexKey)}`,
+                  );
                 }
                 previousIndexKey = indexKey;
                 return result;
@@ -1072,7 +1104,10 @@ class OrderByStream<
   T extends TableNamesInDataModel<DataModel>,
 > extends IndexStream<DataModel, T> {
   private staticFilter: Value[];
-  constructor(private stream: IndexStream<DataModel, T>, private indexFields: string[]) {
+  constructor(
+    private stream: IndexStream<DataModel, T>,
+    private indexFields: string[],
+  ) {
     super();
     // Append _creationTime and _id to the index fields if they're not already there
     if (!indexFields.includes("_creationTime")) {
@@ -1088,19 +1123,31 @@ class OrderByStream<
     // all of the non-equality index fields.
     const streamIndexFields = stream.getIndexFields();
     if (indexFields.length > streamIndexFields.length) {
-      throw new Error(`indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`);
+      throw new Error(
+        `indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`,
+      );
     }
-    const streamIndexFieldsSuffix = streamIndexFields.slice(streamIndexFields.length - indexFields.length);
+    const streamIndexFieldsSuffix = streamIndexFields.slice(
+      streamIndexFields.length - indexFields.length,
+    );
     for (let i = 0; i < indexFields.length; i++) {
       if (indexFields[i] !== streamIndexFieldsSuffix[i]) {
-        throw new Error(`indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`);
+        throw new Error(
+          `indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`,
+        );
       }
     }
-    const nonEqualityIndexFields = streamIndexFields.slice(stream.getEqualityIndexFilter().length);
+    const nonEqualityIndexFields = streamIndexFields.slice(
+      stream.getEqualityIndexFilter().length,
+    );
     if (indexFields.length < nonEqualityIndexFields.length) {
-      throw new Error(`indexFields must include all of the stream's index fields used for ordering: ${JSON.stringify(indexFields)}, ${JSON.stringify(nonEqualityIndexFields)}`);
+      throw new Error(
+        `indexFields must include all of the stream's index fields used for ordering: ${JSON.stringify(indexFields)}, ${JSON.stringify(nonEqualityIndexFields)}`,
+      );
     }
-    this.staticFilter = stream.getEqualityIndexFilter().slice(0, streamIndexFields.length - indexFields.length);
+    this.staticFilter = stream
+      .getEqualityIndexFilter()
+      .slice(0, streamIndexFields.length - indexFields.length);
   }
   getOrder(): "asc" | "desc" {
     return this.stream.getOrder();
@@ -1126,19 +1173,25 @@ class OrderByStream<
               return result;
             }
             const [doc, indexKey] = result.value;
-            return { done: false, value: [doc, indexKey.slice(staticFilter.length)] };
+            return {
+              done: false,
+              value: [doc, indexKey.slice(staticFilter.length)],
+            };
           },
         };
       },
     };
   }
   narrow(indexBounds: IndexBounds) {
-    return this.stream.narrow({
-      lowerBound: [...this.staticFilter, ...indexBounds.lowerBound],
-      lowerBoundInclusive: indexBounds.lowerBoundInclusive,
-      upperBound: [...this.staticFilter, ...indexBounds.upperBound],
-      upperBoundInclusive: indexBounds.upperBoundInclusive,
-    });
+    return new OrderByStream(
+      this.stream.narrow({
+        lowerBound: [...this.staticFilter, ...indexBounds.lowerBound],
+        lowerBoundInclusive: indexBounds.lowerBoundInclusive,
+        upperBound: [...this.staticFilter, ...indexBounds.upperBound],
+        upperBoundInclusive: indexBounds.upperBoundInclusive,
+      }),
+      this.indexFields,
+    );
   }
 }
 
