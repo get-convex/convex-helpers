@@ -2,10 +2,9 @@ import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import {
-  filterStream,
+  FilterStream,
   IndexKey,
-  mergeStreams,
-  queryStream,
+  MergeStreams,
   reflect,
   stream,
 } from "./stream.js";
@@ -28,7 +27,7 @@ function dropSystemFields(indexKey: IndexKey) {
   return indexKey.slice(0, -2);
 }
 function dropAndStripSystemFields(
-  item: IteratorResult<[GenericDocument, IndexKey]>,
+  item: IteratorResult<[GenericDocument | null, IndexKey]>,
 ) {
   return {
     done: item.done,
@@ -97,7 +96,7 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2))
         .order("desc");
-      expect(query.reflectOrder()).toBe("desc");
+      expect(query.getOrder()).toBe("desc");
       const iter = query.iterWithKeys()[Symbol.asyncIterator]();
       expect(dropAndStripSystemFields(await iter.next())).toEqual({
         done: false,
@@ -119,11 +118,10 @@ describe("stream", () => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
-      const initialQuery = stream(ctx.db, schema)
+      const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2))
         .order("desc");
-      const query = queryStream(initialQuery);
       const result = await query.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 3 },
@@ -140,10 +138,9 @@ describe("stream", () => {
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 5 });
-      const initialQuery = stream(ctx.db, schema)
+      const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2));
-      const query = queryStream(initialQuery);
       const resultPage1 = await query.paginate({ numItems: 2, cursor: null });
       expect(resultPage1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 3, c: 3 },
@@ -185,15 +182,15 @@ describe("stream", () => {
       const query3 = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).eq("b", 4).eq("c", 3));
-      const fullQuery = mergeStreams(query1, query2, query3);
-      const result = await queryStream(fullQuery).collect();
+      const fullQuery = new MergeStreams(query1, query2, query3);
+      const result = await fullQuery.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
         { a: 1, b: 4, c: 3 },
         { a: 1, b: 5, c: 4 },
         { a: 1, b: 6, c: 5 },
       ]);
-      const page1 = await queryStream(fullQuery).paginate({
+      const page1 = await fullQuery.paginate({
         numItems: 2,
         cursor: null,
       });
@@ -202,7 +199,7 @@ describe("stream", () => {
         { a: 1, b: 4, c: 3 },
       ]);
       expect(page1.isDone).toBe(false);
-      const page2 = await queryStream(fullQuery).paginate({
+      const page2 = await fullQuery.paginate({
         numItems: 3,
         cursor: page1.continueCursor,
       });
@@ -226,14 +223,14 @@ describe("stream", () => {
       const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2));
-      const filteredQuery = filterStream(query, async (doc) => doc.c === 4);
-      const result = await queryStream(filteredQuery).collect();
+      const filteredQuery = new FilterStream(query, async (doc) => doc.c === 4);
+      const result = await filteredQuery.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 4 },
         { a: 1, b: 5, c: 4 },
         { a: 1, b: 6, c: 4 },
       ]);
-      const page1 = await queryStream(filteredQuery).paginate({
+      const page1 = await filteredQuery.paginate({
         numItems: 2,
         cursor: null,
       });
@@ -243,7 +240,7 @@ describe("stream", () => {
       ]);
       expect(page1.isDone).toBe(false);
 
-      const limitedPage1 = await queryStream(filteredQuery).paginate({
+      const limitedPage1 = await filteredQuery.paginate({
         numItems: 2,
         cursor: null,
         maximumRowsRead: 2,
@@ -252,8 +249,12 @@ describe("stream", () => {
         { a: 1, b: 4, c: 4 },
       ]);
       expect(limitedPage1.pageStatus).toBe("SplitRequired");
-      expect(dropSystemFields(JSON.parse(limitedPage1.splitCursor!))).toEqual([1, 3, 3]);
-      expect(dropSystemFields(JSON.parse(limitedPage1.continueCursor))).toEqual([1, 4, 4]);
+      expect(dropSystemFields(JSON.parse(limitedPage1.splitCursor!))).toEqual([
+        1, 3, 3,
+      ]);
+      expect(dropSystemFields(JSON.parse(limitedPage1.continueCursor))).toEqual(
+        [1, 4, 4],
+      );
     });
   });
 });

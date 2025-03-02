@@ -858,7 +858,7 @@ export const list = query({
 These are helper functions for constructing and composing streams of query results.
 
 - A "query" implements the `OrderedQuery` interface from the "convex/server" package,
-so it has methods `.first()`, `.collect()`, `.paginate()`, etc.
+  so it has methods `.first()`, `.collect()`, `.paginate()`, etc.
 - A "stream" is an async iterable of documents, ordered by an index on a table.
 
 The cool thing about a stream is you can merge two streams together
@@ -950,9 +950,10 @@ export const list = query({
     );
     // The pagination happens after the filtering, so the page should have size
     // `paginationOpts.numItems`.
-    return await queryStream(messagesByVerifiedAuthors).paginate(
-      { ...paginationOpts, maximumRowsRead: 100 },
-    );
+    return await queryStream(messagesByVerifiedAuthors).paginate({
+      ...paginationOpts,
+      maximumRowsRead: 100,
+    });
   },
 });
 ```
