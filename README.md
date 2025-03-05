@@ -13,7 +13,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)
 | [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)
 | [Rate limiting](./packages/convex-helpers/README.md#rate-limiting)
-| [Sessions: client-generatead](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage)
+| [Sessions: client-generated](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage)
 | [Richer useQuery](./packages/convex-helpers/README.md#richer-usequery)
 | [Row-level security](./packages/convex-helpers/README.md#row-level-security)
 | [Zod validation](./packages/convex-helpers/README.md#zod-validation)
