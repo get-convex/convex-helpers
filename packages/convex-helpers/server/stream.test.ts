@@ -10,7 +10,13 @@ const schema = defineSchema({
     a: v.number(),
     b: v.number(),
     c: v.number(),
-  }).index("abc", ["a", "b", "c"]),
+  }).index("abc", ["a", "b", "c"])
+  .index("ac", ["a", "c"]),
+  bar: defineTable({
+    c: v.number(),
+    d: v.number(),
+    e: v.number(),
+  }).index("cde", ["c", "d", "e"]),
 });
 
 function stripSystemFields(doc: GenericDocument) {
@@ -336,6 +342,91 @@ describe("stream", () => {
       // You can't merge streams and exclude an index field that's still used
       // for ordering.
       expect(() => new MergedStream([query1, query2], ["c"])).toThrow();
+    });
+  });
+
+  test("merge streams between indexes", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      await ctx.db.insert("foo", { a: 2, b: 2, c: 5 });
+      await ctx.db.insert("foo", { a: 3, b: 1, c: 6 });
+      const query1 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 2).eq("b", 2));
+      const query2 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("ac", (q) => q.eq("a", 1));
+      const merged = new MergedStream([query1, query2], ["c"]);
+      const result = await merged.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 3 },
+        { a: 1, b: 3, c: 4 },
+        { a: 2, b: 2, c: 5 },
+      ]);
+    });
+  });
+
+  test("map stream", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      await ctx.db.insert("foo", { a: 2, b: 2, c: 5 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const mapped = query.map(async (doc) => `doc with c: ${doc.c}`);
+      const result = await mapped.collect();
+      expect(result).toEqual([
+        "doc with c: 3",
+        "doc with c: 4",
+      ]);
+      const page1 = await mapped.paginate({
+        numItems: 1,
+        cursor: null,
+      });
+      expect(page1.page).toEqual([
+        "doc with c: 3",
+      ]);
+      const page2 = await mapped.paginate({
+        numItems: 2,
+        cursor: page1.continueCursor,
+      });
+      expect(page2.page).toEqual([
+        "doc with c: 4",
+      ]);
+      expect(page2.isDone).toBe(true);
+    });
+  });
+
+  test("flatMap stream", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      await ctx.db.insert("foo", { a: 2, b: 2, c: 5 }); // excluded by index
+      // join table
+      await ctx.db.insert("bar", { c: 3, d: 4, e: 5 });
+      await ctx.db.insert("bar", { c: 3, d: 1, e: 2 });
+      await ctx.db.insert("bar", { c: 4, d: 2, e: 3 });
+      await ctx.db.insert("bar", { c: 5, d: 3, e: 4 }); // joined document excluded by index
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const flatMapped = query.flatMap(
+        async (doc) => stream(ctx.db, schema)
+          .query("bar").withIndex("cde", (q) => q.eq("c", doc.c))
+          .map(async (joinDoc) => ({ ...joinDoc, ...doc })),
+        ["c", "d", "e"],
+      );
+      const result = await flatMapped.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 3, d: 1, e: 2 },
+        { a: 1, b: 2, c: 3, d: 4, e: 5 },
+        { a: 1, b: 3, c: 4, d: 2, e: 3 },
+      ]);
     });
   });
 });
