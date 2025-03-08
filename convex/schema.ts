@@ -1,8 +1,22 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { migrationsTable } from "convex-helpers/server/migrations";
+import { nullable } from "convex-helpers/validators";
+
+export const vTriggerCondition = v.union(
+  v.object({
+    type: v.literal("RESERVATION_NEW"),
+  }),
+  v.object({
+    type: v.literal("RESERVATION_OLD"),
+    foo: v.string(),
+  }),
+);
 
 export default defineSchema({
+  test: defineTable({
+    triggerCondition: nullable(vTriggerCondition), //v.union(vTriggerCondition, v.number()),
+  }).index("triggerCondition_type", ["triggerCondition.type"]),
   users: defineTable({
     name: v.string(),
     age: v.number(),

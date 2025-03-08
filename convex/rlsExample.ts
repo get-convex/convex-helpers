@@ -9,10 +9,123 @@ import {
   wrapDatabaseReader,
   wrapDatabaseWriter,
 } from "convex-helpers/server/rowLevelSecurity";
-import { v } from "convex/values";
-import { DataModel } from "./_generated/dataModel";
-import { mutation, query, QueryCtx } from "./_generated/server";
+import { v, Value } from "convex/values";
+import { DataModel, Doc } from "./_generated/dataModel";
+import {
+  internalMutation,
+  mutation,
+  query,
+  QueryCtx,
+} from "./_generated/server";
 import schema from "./schema";
+import {
+  FieldTypeFromFieldPath,
+  FieldTypeFromFieldPathInner,
+  GenericDocument,
+} from "convex/server";
+
+type D = Doc<"test">;
+type F = FieldTypeFromFieldPath<D, "triggerCondition.type">;
+type FInnerTop = FieldTypeFromFieldPathInner<D, "triggerCondition.type">;
+type FInner = FieldTypeFromFieldPathInnerFixed<D, "triggerCondition.type">;
+type VUnion = ValueFromUnion<D, "triggerCondition", Record<never, never>>;
+type VunionExtends = VUnion extends GenericDocument ? true : false;
+
+export type FieldTypeFromFieldPathInnerFixed<
+  Document extends GenericDocument,
+  FieldPath extends string,
+> = FieldPath extends `${infer First}.${infer Second}`
+  ? ValueFromUnion<
+      Document,
+      First,
+      Record<never, never>
+    > extends infer FieldValue
+    ? FieldValue extends GenericDocument
+      ? FieldTypeFromFieldPath<FieldValue, Second>
+      : undefined
+    : undefined
+  : ValueFromUnion<Document, FieldPath, undefined>;
+
+type ValueFromUnion<T, Key, Default> = T extends T
+  ? Key extends keyof T
+    ? T[Key]
+    : Default
+  : never;
+
+export type FieldTypeFromFieldPathInner2<
+  Document extends GenericDocument,
+  FieldPath extends string,
+> = FieldPath extends `${infer First}.${infer Second}`
+  ? ValueFromUnion<
+      Document,
+      First,
+      Record<never, never>
+    > extends GenericDocument
+    ? FieldTypeFromFieldPath<
+        ValueFromUnion<Document, First, Record<never, never>>,
+        Second
+      >
+    : ValueFromUnion<Document, First, Record<never, never>> extends
+          | infer DocType
+          | Value
+          | undefined
+      ? DocType extends GenericDocument
+        ? FieldTypeFromFieldPath<DocType, Second>
+        : Value | undefined
+      : undefined
+  : ValueFromUnion<Document, FieldPath, undefined>;
+
+export type FieldTypeFromFieldPathInner3<
+  Document extends GenericDocument,
+  FieldPath extends string,
+> = FieldPath extends `${infer First}.${infer Second}`
+  ? ValueFromUnion<
+      Document,
+      First,
+      Record<never, never>
+    > extends GenericDocument
+    ? FieldTypeFromFieldPath<
+        ValueFromUnion<Document, First, Record<never, never>>,
+        Second
+      >
+    : ValueFromUnion<
+          Document,
+          First,
+          Record<never, never>
+        > extends infer FieldValue
+      ? FieldValue extends GenericDocument
+        ? FieldTypeFromFieldPath<FieldValue, Second>
+        : FieldValue extends Value | undefined
+          ? undefined
+          : undefined
+      : undefined
+  : ValueFromUnion<Document, FieldPath, undefined>;
+
+export type FieldTypeFromFieldPathInner4<
+  Document extends GenericDocument,
+  FieldPath extends string,
+> = FieldPath extends `${infer First}.${infer Second}`
+  ? ValueFromUnion<
+      Document,
+      First,
+      Record<never, never>
+    > extends infer FieldValue
+    ? FieldValue extends GenericDocument
+      ? FieldTypeFromFieldPath<FieldValue, Second>
+      : undefined
+    : undefined
+  : ValueFromUnion<Document, FieldPath, undefined>;
+
+export const test = internalMutation({
+  args: {},
+  handler: async (ctx, args) => {
+    await ctx.db
+      .query("test")
+      .withIndex("triggerCondition_type", (q) =>
+        q.eq("triggerCondition.type", "RESERVATION_NEW"),
+      );
+  },
+});
 
 async function rlsRules(ctx: QueryCtx) {
   const identity = await ctx.auth.getUserIdentity();
