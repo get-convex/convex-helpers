@@ -345,7 +345,11 @@ const handleCors = ({
       /**
        * First, execute the original handler
        */
-      const originalResponse = await originalHandler(ctx, request);
+      const innerHandler =
+        "_handler" in originalHandler
+          ? (originalHandler["_handler"] as PublicHttpAction)
+          : originalHandler;
+      const originalResponse = await innerHandler(ctx, request);
 
       /**
        * Second, get a copy of the original response's headers
