@@ -196,12 +196,11 @@ type GenericStreamItem = NonNullable<unknown>;
 /**
  * An "IndexStream" is an async iterable of query results, ordered by indexed fields.
  */
-abstract class IndexStream<T extends GenericStreamItem> implements GenericOrderedQuery<T>
+abstract class IndexStream<T extends GenericStreamItem>
+  implements GenericOrderedQuery<T>
 {
   // Methods that subclasses must implement so OrderedQuery can be implemented.
-  abstract iterWithKeys(): AsyncIterable<
-    [T | null, IndexKey]
-  >;
+  abstract iterWithKeys(): AsyncIterable<[T | null, IndexKey]>;
   abstract narrow(indexBounds: IndexBounds): IndexStream<T>;
 
   // Methods so subclasses can make sure streams are combined correctly.
@@ -228,23 +227,29 @@ abstract class IndexStream<T extends GenericStreamItem> implements GenericOrdere
    * it gets as many documents as it wants. If you run into issues with reading
    * too much data, you can pass `maximumRowsRead` to `paginate()`.
    */
-  filterWith(
-    predicate: (doc: T) => Promise<boolean>,
-  ): IndexStream<T> {
+  filterWith(predicate: (doc: T) => Promise<boolean>): IndexStream<T> {
     const order = this.getOrder();
-    return new FlatMapStream(this, async (doc: T) => {
-      const filtered = await predicate(doc) ? doc : null;
-      return new SingletonStream(filtered, order);
-    }, []);
+    return new FlatMapStream(
+      this,
+      async (doc: T) => {
+        const filtered = (await predicate(doc)) ? doc : null;
+        return new SingletonStream(filtered, order);
+      },
+      [],
+    );
   }
   map<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<U | null>,
   ): IndexStream<U> {
     const order = this.getOrder();
-    return new FlatMapStream(this, async (doc: T) => {
-      const mapped = await mapper(doc);
-      return new SingletonStream(mapped, order);
-    }, []);
+    return new FlatMapStream(
+      this,
+      async (doc: T) => {
+        const mapped = await mapper(doc);
+        return new SingletonStream(mapped, order);
+      },
+      [],
+    );
   }
   flatMap<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<IndexStream<U>>,
@@ -384,8 +389,7 @@ abstract class IndexStream<T extends GenericStreamItem> implements GenericOrdere
 /**
  * GenericOrderedQuery<DocumentByInfo<TableInfo>> is equivalent to OrderedQuery<TableInfo>
  */
-export interface GenericOrderedQuery<T>
-  extends AsyncIterable<T> {
+export interface GenericOrderedQuery<T> extends AsyncIterable<T> {
   /**
    * Load a page of `n` results and obtain a {@link Cursor} for loading more.
    *
@@ -401,9 +405,7 @@ export interface GenericOrderedQuery<T>
    * @returns A {@link PaginationResult} containing the page of results and a
    * cursor to continue paginating.
    */
-  paginate(
-    paginationOpts: PaginationOptions,
-  ): Promise<PaginationResult<T>>;
+  paginate(paginationOpts: PaginationOptions): Promise<PaginationResult<T>>;
 
   /**
    * Execute the query and return all of the results as an array.
@@ -500,13 +502,14 @@ export type QueryReflection<
 };
 
 export abstract class StreamableQuery<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
-> extends IndexStream<DocumentByInfo<NamedTableInfo<DM<Schema>, T>>>
-// this "implements" is redundant, since IndexStream implies it, but it acts as a type-time assertion.
-implements OrderedQuery<NamedTableInfo<DM<Schema>, T>> {
-
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+    IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  >
+  extends IndexStream<DocumentByInfo<NamedTableInfo<DM<Schema>, T>>>
+  // this "implements" is redundant, since IndexStream implies it, but it acts as a type-time assertion.
+  implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>
+{
   abstract reflect(): QueryReflection<Schema, T, IndexName>;
 }
 
@@ -909,10 +912,7 @@ export class MergedStream<T extends GenericStreamItem> extends IndexStream<T> {
   private streams: IndexStream<T>[];
   private equalityIndexFilter: Value[];
   private indexFields: string[];
-  constructor(
-    streams: IndexStream<T>[],
-    orderByIndexFields: string[],
-  ) {
+  constructor(streams: IndexStream<T>[], orderByIndexFields: string[]) {
     super();
     if (streams.length === 0) {
       throw new Error("Cannot union empty array of streams");
@@ -943,9 +943,10 @@ export class MergedStream<T extends GenericStreamItem> extends IndexStream<T> {
         );
         const results = Array.from(
           { length: iterators.length },
-          (): IteratorResult<
-            [T | null, IndexKey] | undefined
-          > => ({ done: false, value: undefined }),
+          (): IteratorResult<[T | null, IndexKey] | undefined> => ({
+            done: false,
+            value: undefined,
+          }),
         );
         return {
           async next() {
@@ -1076,9 +1077,7 @@ class ConcatStreams<T extends GenericStreamItem> extends IndexStream<T> {
       streams.map((stream) => stream.getEqualityIndexFilter()),
     );
   }
-  iterWithKeys(): AsyncIterable<
-    [T | null, IndexKey]
-  > {
+  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
     const iterables = this.streams.map((stream) => stream.iterWithKeys());
     const comparisonInversion = this.order === "asc" ? 1 : -1;
     let previousIndexKey: IndexKey | undefined = undefined;
@@ -1140,7 +1139,10 @@ class ConcatStreams<T extends GenericStreamItem> extends IndexStream<T> {
   }
 }
 
-class FlatMapStream<T extends GenericStreamItem, U extends GenericStreamItem> extends IndexStream<U> {
+class FlatMapStream<
+  T extends GenericStreamItem,
+  U extends GenericStreamItem,
+> extends IndexStream<U> {
   constructor(
     private stream: IndexStream<T>,
     private mapper: (doc: T) => Promise<IndexStream<U>>,
@@ -1157,10 +1159,10 @@ class FlatMapStream<T extends GenericStreamItem, U extends GenericStreamItem> ex
       [Symbol.asyncIterator]() {
         const iterator = iterable[Symbol.asyncIterator]();
         let currentT: {
-          t: T | null,
-          indexKey: IndexKey,
-          innerStream: IndexStream<U>,
-          innerIterator: AsyncIterator<[U | null, IndexKey]>,
+          t: T | null;
+          indexKey: IndexKey;
+          innerStream: IndexStream<U>;
+          innerIterator: AsyncIterator<[U | null, IndexKey]>;
         } | null = null;
         return {
           async next() {
@@ -1173,17 +1175,29 @@ class FlatMapStream<T extends GenericStreamItem, U extends GenericStreamItem> ex
                 const [t, indexKey] = result.value;
                 let innerStream: IndexStream<U>;
                 if (t === null) {
-                  innerStream = new SingletonStream<U>(null, outerStream.getOrder(), extraIndexFields);
+                  innerStream = new SingletonStream<U>(
+                    null,
+                    outerStream.getOrder(),
+                    extraIndexFields,
+                  );
                 } else {
                   innerStream = await mapper(t);
-                  allSame([innerStream.getIndexFields(), extraIndexFields], `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(extraIndexFields)}`);
-                  allSame([innerStream.getOrder(), outerStream.getOrder()], `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${outerStream.getOrder()}`);
+                  allSame(
+                    [innerStream.getIndexFields(), extraIndexFields],
+                    `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(extraIndexFields)}`,
+                  );
+                  allSame(
+                    [innerStream.getOrder(), outerStream.getOrder()],
+                    `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${outerStream.getOrder()}`,
+                  );
                 }
                 currentT = {
                   t,
                   indexKey,
                   innerStream,
-                  innerIterator: innerStream.iterWithKeys()[Symbol.asyncIterator](),
+                  innerIterator: innerStream
+                    .iterWithKeys()
+                    [Symbol.asyncIterator](),
                 };
               }
               const innerResult = await currentT.innerIterator.next();
@@ -1217,24 +1231,34 @@ class FlatMapStream<T extends GenericStreamItem, U extends GenericStreamItem> ex
     const innerUpperBound = indexBounds.upperBound.slice(outerLength);
     const outerIndexBounds = {
       lowerBound: outerLowerBound,
-      lowerBoundInclusive: innerLowerBound.length === 0 ? indexBounds.lowerBoundInclusive : true,
+      lowerBoundInclusive:
+        innerLowerBound.length === 0 ? indexBounds.lowerBoundInclusive : true,
       upperBound: outerUpperBound,
-      upperBoundInclusive: innerUpperBound.length === 0 ? indexBounds.upperBoundInclusive : true,
+      upperBoundInclusive:
+        innerUpperBound.length === 0 ? indexBounds.upperBoundInclusive : true,
     };
     const innerIndexBounds = {
       lowerBound: innerLowerBound,
-      lowerBoundInclusive: innerLowerBound.length === 0 ? true : indexBounds.lowerBoundInclusive,
+      lowerBoundInclusive:
+        innerLowerBound.length === 0 ? true : indexBounds.lowerBoundInclusive,
       upperBound: innerUpperBound,
-      upperBoundInclusive: innerUpperBound.length === 0 ? true : indexBounds.upperBoundInclusive,
+      upperBoundInclusive:
+        innerUpperBound.length === 0 ? true : indexBounds.upperBoundInclusive,
     };
-    return new FlatMapStream(this.stream.narrow(outerIndexBounds), async (t) => {
-      const innerStream = await this.mapper(t);
-      return innerStream.narrow(innerIndexBounds);
-    }, this.extraIndexFields);
+    return new FlatMapStream(
+      this.stream.narrow(outerIndexBounds),
+      async (t) => {
+        const innerStream = await this.mapper(t);
+        return innerStream.narrow(innerIndexBounds);
+      },
+      this.extraIndexFields,
+    );
   }
 }
 
-export class SingletonStream<T extends GenericStreamItem> extends IndexStream<T> {
+export class SingletonStream<
+  T extends GenericStreamItem,
+> extends IndexStream<T> {
   constructor(
     private value: T | null,
     private order: "asc" | "desc" = "asc",
@@ -1272,20 +1296,26 @@ export class SingletonStream<T extends GenericStreamItem> extends IndexStream<T>
     return this.equalityIndexFilter;
   }
   narrow(indexBounds: IndexBounds) {
-    const compareLowerBound = compareKeys({
-      value: indexBounds.lowerBound,
-      kind: indexBounds.lowerBoundInclusive ? "exact" : "successor",
-    }, {
-      value: this.indexKey,
-      kind: "exact",
-    });
-    const compareUpperBound = compareKeys({
-      value: this.indexKey,
-      kind: "exact",
-    }, {
-      value: indexBounds.upperBound,
-      kind: indexBounds.upperBoundInclusive ? "exact" : "predecessor",
-    });
+    const compareLowerBound = compareKeys(
+      {
+        value: indexBounds.lowerBound,
+        kind: indexBounds.lowerBoundInclusive ? "exact" : "successor",
+      },
+      {
+        value: this.indexKey,
+        kind: "exact",
+      },
+    );
+    const compareUpperBound = compareKeys(
+      {
+        value: this.indexKey,
+        kind: "exact",
+      },
+      {
+        value: indexBounds.upperBound,
+        kind: indexBounds.upperBoundInclusive ? "exact" : "predecessor",
+      },
+    );
     // If lowerBound <= this.indexKey <= upperBound, return this.value
     return new SingletonStream(
       compareLowerBound <= 0 && compareUpperBound <= 0 ? this.value : null,

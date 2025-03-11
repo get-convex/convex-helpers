@@ -10,8 +10,9 @@ const schema = defineSchema({
     a: v.number(),
     b: v.number(),
     c: v.number(),
-  }).index("abc", ["a", "b", "c"])
-  .index("ac", ["a", "c"]),
+  })
+    .index("abc", ["a", "b", "c"])
+    .index("ac", ["a", "c"]),
   bar: defineTable({
     c: v.number(),
     d: v.number(),
@@ -379,24 +380,17 @@ describe("stream", () => {
         .withIndex("abc", (q) => q.eq("a", 1));
       const mapped = query.map(async (doc) => `doc with c: ${doc.c}`);
       const result = await mapped.collect();
-      expect(result).toEqual([
-        "doc with c: 3",
-        "doc with c: 4",
-      ]);
+      expect(result).toEqual(["doc with c: 3", "doc with c: 4"]);
       const page1 = await mapped.paginate({
         numItems: 1,
         cursor: null,
       });
-      expect(page1.page).toEqual([
-        "doc with c: 3",
-      ]);
+      expect(page1.page).toEqual(["doc with c: 3"]);
       const page2 = await mapped.paginate({
         numItems: 2,
         cursor: page1.continueCursor,
       });
-      expect(page2.page).toEqual([
-        "doc with c: 4",
-      ]);
+      expect(page2.page).toEqual(["doc with c: 4"]);
       expect(page2.isDone).toBe(true);
     });
   });
@@ -416,9 +410,11 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1));
       const flatMapped = query.flatMap(
-        async (doc) => stream(ctx.db, schema)
-          .query("bar").withIndex("cde", (q) => q.eq("c", doc.c))
-          .map(async (joinDoc) => ({ ...joinDoc, ...doc })),
+        async (doc) =>
+          stream(ctx.db, schema)
+            .query("bar")
+            .withIndex("cde", (q) => q.eq("c", doc.c))
+            .map(async (joinDoc) => ({ ...joinDoc, ...doc })),
         ["c", "d", "e"],
       );
       const result = await flatMapped.collect();
