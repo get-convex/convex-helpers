@@ -332,6 +332,136 @@ export const pretendRequired = <T extends Validator<any, "required", any>>(
   optionalType: T,
 ): T => v.optional(optionalType) as unknown as T;
 
+/**
+ * Types of validators that are intersected type-level.
+ */
+type IntersectTypes<V extends Validator<any, any, any>[]> = V extends [
+  Validator<infer T, any, any>,
+  ...infer Rest,
+]
+  ? Rest extends Validator<any, any, any>[]
+    ? T & IntersectTypes<Rest>
+    : T
+  : unknown;
+
+/**
+ * Combine multiple validators into one that matches the intersection of their types.
+ * Supports merging for object and union validators. Not all validator combinations are supported.
+ */
+export function intersect<Validators extends Validator<any, any, any>[]>(
+  ...validators: Validators
+): Validator<
+  Validators extends [infer V, ...infer Rest]
+    ? V extends Validator<infer T, any, any>
+      ? Rest extends Validator<any, any, any>[]
+        ? T & IntersectTypes<Rest>
+        : T
+      : unknown
+    : unknown
+> {
+  function innerIntersect(
+    a: Validator<any, any, any>,
+    b: Validator<any, any, any>,
+  ): Validator<any, any, any> {
+    if (a.kind === "union") {
+      return v.union(
+        ...a.members.flatMap((m) => {
+          try {
+            return [innerIntersect(m, b)];
+          } catch {
+            return [];
+          }
+        }),
+      );
+    }
+    if (b.kind === "union") {
+      return v.union(
+        ...b.members.flatMap((m) => {
+          try {
+            return [innerIntersect(a, m)];
+          } catch {
+            return [];
+          }
+        }),
+      );
+    }
+    if (a.kind === "object" && b.kind === "object") {
+      const fields: PropertyValidators = {};
+      for (const key of new Set([
+        ...Object.keys(a.fields),
+        ...Object.keys(b.fields),
+      ])) {
+        const va = a.fields[key];
+        const vb = b.fields[key];
+        if (va && vb) {
+          fields[key] = innerIntersect(va, vb);
+        } else if (va) {
+          fields[key] = va;
+        } else if (vb) {
+          fields[key] = vb;
+        }
+      }
+      return v.object(fields);
+    }
+    if (a.kind === "literal" && b.kind === "literal") {
+      if (a.value === b.value) {
+        return a;
+      }
+      throw new Error("Literal values do not match");
+    }
+    if (a.kind === "literal") {
+      switch (b.kind) {
+        case "string":
+          if (typeof a.value === "string") return a;
+          break;
+        case "float64":
+          if (typeof a.value === "number") return a;
+          break;
+        case "int64":
+          if (typeof a.value === "bigint") return a;
+          break;
+        case "boolean":
+          if (typeof a.value === "boolean") return a;
+          break;
+        case "any":
+          return a;
+      }
+      throw new Error(
+        `Cannot intersect literal ${a.value} with validator kind ${b.kind}`,
+      );
+    }
+    if (b.kind === "literal") {
+      switch (a.kind) {
+        case "string":
+          if (typeof b.value === "string") return b;
+          break;
+        case "float64":
+          if (typeof b.value === "number") return b;
+          break;
+        case "int64":
+          if (typeof b.value === "bigint") return b;
+          break;
+        case "boolean":
+          if (typeof b.value === "boolean") return b;
+          break;
+        case "any":
+          return b;
+      }
+      throw new Error(
+        `Cannot intersect literal ${b.value} with validator kind ${a.kind}`,
+      );
+    }
+    throw new Error(
+      "Only object and union validators are supported in intersect",
+    );
+  }
+  const result = validators.reduce((a, b) => innerIntersect(a, b)) as any;
+  if (result.kind === "union" && result.members.length === 0) {
+    throw new Error("No valid intersection");
+  }
+  return result;
+}
+
 export class ValidationError extends Error {
   constructor(
     public expected: string,

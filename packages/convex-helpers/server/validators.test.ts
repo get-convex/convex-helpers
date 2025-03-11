@@ -21,6 +21,7 @@ import {
   pretendRequired,
   string,
   typedV,
+  intersect,
   ValidationError,
 } from "../validators.js";
 import { convexTest } from "convex-test";
@@ -48,6 +49,68 @@ export const testLiterals = internalQueryGeneric({
   handler: async (ctx, args) => {
     assert<Equals<typeof args.foo, "bar" | "baz">>;
   },
+});
+
+export const testIntersectLiteralType = internalQueryGeneric({
+  args: {
+    a: intersect(or(is("a"), is("b")), is("a")),
+  },
+  handler: async (ctx, args) => {
+    assert<Equals<typeof args.a, "a">>;
+  },
+});
+
+test("intersect combines object validators", () => {
+  const merged = intersect(
+    or(object({ kind: is("foo") }), object({ kind: is("bar") })),
+    object({ fieldA: number }),
+  );
+  expect(validate(merged, { kind: "foo", fieldA: 5 })).toBe(true);
+  expect(validate(merged, { kind: "bar", fieldA: 5 })).toBe(true);
+  expect(validate(merged, { kind: "foo" })).toBe(false);
+  expect(validate(merged, { kind: "bar", fieldA: "not a number" })).toBe(false);
+});
+
+test("intersect filters union of literals with literal witness", () => {
+  const vUnion = intersect(or(is("a"), is("b")), is("a"));
+  expect(validate(vUnion, "a")).toBe(true);
+  expect(validate(vUnion, "b")).toBe(false);
+});
+
+test("intersect of identical literals returns that literal", () => {
+  const v1 = is("foo");
+  const v2 = is("foo");
+  const vInter = intersect(v1, v2);
+  expect(validate(vInter, "foo")).toBe(true);
+});
+
+test("error thrown for non-overlapping literals", () => {
+  expect(() => intersect(is("a"), is("b"))).toThrowError(
+    "Literal values do not match",
+  );
+});
+
+test("intersect of two unions of literals computes their common members", () => {
+  const v = intersect(or(is("a"), is("b")), or(is("b"), is("c")));
+  expect(validate(v, "b")).toBe(true);
+  expect(validate(v, "a")).toBe(false);
+  expect(validate(v, "c")).toBe(false);
+});
+
+test("intersect throws when there is no valid intersection", () => {
+  expect(() => intersect(or(is("a"), is("b")), is("c"))).toThrowError(
+    "No valid intersection",
+  );
+});
+
+test("nested object fields with unions are combined", () => {
+  const v = intersect(
+    object({ x: or(is("foo"), is("bar")) }),
+    object({ x: or(is("foo"), is("baz")) }),
+  );
+  expect(validate(v, { x: "foo" })).toBe(true);
+  expect(validate(v, { x: "bar" })).toBe(false);
+  expect(validate(v, { x: "baz" })).toBe(false);
 });
 
 const emailValidator = brandedString("email");
