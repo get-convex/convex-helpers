@@ -41,9 +41,11 @@ export function getFunctionSpec(prod?: boolean, filePath?: string) {
       const outputFd = fs.openSync(tempFile, "w");
       const flags = prod ? ["--prod"] : [];
       const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+      const extraOpts = process.platform === "win32" ? { shell: true } : {};
       const result = spawnSync(npxCmd, ["convex", "function-spec", ...flags], {
         stdio: ["inherit", outputFd, "pipe"],
         encoding: "utf-8",
+        ...extraOpts,
       });
 
       fs.closeSync(outputFd);
