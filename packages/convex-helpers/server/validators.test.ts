@@ -69,6 +69,8 @@ test("intersect combines object validators", () => {
   expect(validate(merged, { kind: "bar", fieldA: 5 })).toBe(true);
   expect(validate(merged, { kind: "foo" })).toBe(false);
   expect(validate(merged, { kind: "bar", fieldA: "not a number" })).toBe(false);
+  expect(merged.kind).toBe("object");
+  expect(merged.fields.fieldA.kind).toBe("number");
 });
 
 test("intersect filters union of literals with literal witness", () => {
