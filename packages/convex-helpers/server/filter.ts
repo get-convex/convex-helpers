@@ -85,8 +85,8 @@ class QueryWithFilter<T extends GenericTableInfo>
         uniqueResult = result;
       } else {
         throw new Error(
-          `unique() query returned more than one result: 
-  [${uniqueResult._id}, ${result._id}, ...]`
+          `unique() query returned more than one result:
+  [${uniqueResult._id}, ${result._id}, ...]`,
         );
       }
     }
