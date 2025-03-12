@@ -27,7 +27,7 @@ import {
 
 async function asyncFilter<T>(
   arr: T[],
-  predicate: (d: T) => Promise<boolean> | boolean,
+  predicate: (d: T) => Promise<boolean> | boolean
 ): Promise<T[]> {
   const results = await Promise.all(arr.map(predicate));
   return arr.filter((_v, index) => results[index]);
@@ -53,7 +53,7 @@ class QueryWithFilter<T extends GenericTableInfo>
     return new QueryWithFilter(this.q.order(order), this.p);
   }
   async paginate(
-    paginationOpts: PaginationOptions,
+    paginationOpts: PaginationOptions
   ): Promise<PaginationResult<DocumentByInfo<T>>> {
     const result = await this.q.paginate(paginationOpts);
     return { ...result, page: await asyncFilter(result.page, this.p) };
@@ -85,7 +85,8 @@ class QueryWithFilter<T extends GenericTableInfo>
         uniqueResult = result;
       } else {
         throw new Error(
-          `unique() query returned more than one result. First pair of results: ${uniqueResult._id} and ${result._id}`
+          `unique() query returned more than one result: 
+    [${uniqueResult._id}, ${result[1]._id}, ...]`
         );
       }
     }
@@ -118,27 +119,27 @@ class QueryWithFilter<T extends GenericTableInfo>
     indexName: IndexName,
     indexRange?:
       | ((
-          q: IndexRangeBuilder<DocumentByInfo<T>, NamedIndex<T, IndexName>, 0>,
+          q: IndexRangeBuilder<DocumentByInfo<T>, NamedIndex<T, IndexName>, 0>
         ) => IndexRange)
-      | undefined,
+      | undefined
   ): Query<T> {
     return new QueryWithFilter(this.q.withIndex(indexName, indexRange), this.p);
   }
   withSearchIndex<IndexName extends keyof SearchIndexes<T>>(
     indexName: IndexName,
     searchFilter: (
-      q: SearchFilterBuilder<DocumentByInfo<T>, NamedSearchIndex<T, IndexName>>,
-    ) => SearchFilter,
+      q: SearchFilterBuilder<DocumentByInfo<T>, NamedSearchIndex<T, IndexName>>
+    ) => SearchFilter
   ): OrderedQuery<T> {
     return new QueryWithFilter(
       this.q.withSearchIndex(indexName, searchFilter),
-      this.p,
+      this.p
     );
   }
 }
 
 export type Predicate<T extends GenericTableInfo> = (
-  doc: DocumentByInfo<T>,
+  doc: DocumentByInfo<T>
 ) => Promise<boolean> | boolean;
 
 type QueryTableInfo<Q> = Q extends OrderedQuery<infer T> ? T : never;
@@ -187,10 +188,10 @@ type QueryTableInfo<Q> = Q extends OrderedQuery<infer T> ? T : never;
  */
 export function filter<Q extends OrderedQuery<GenericTableInfo>>(
   query: Q,
-  predicate: Predicate<QueryTableInfo<Q>>,
+  predicate: Predicate<QueryTableInfo<Q>>
 ): Q {
   return new QueryWithFilter<QueryTableInfo<Q>>(
     query as unknown as OrderedQuery<QueryTableInfo<Q>>,
-    predicate,
+    predicate
   ) as any as Q;
 }
