@@ -65,6 +65,11 @@ export const kitchenSinkValidator = {
   pipeline: z.number().pipe(z.coerce.string()),
 };
 
+const kitchenSinkOutput = {
+  ...kitchenSinkValidator,
+  pipeline: z.string(),
+};
+
 const schema = defineSchema({
   sink: defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", [
     "email",
@@ -94,12 +99,13 @@ export const kitchenSink = zQuery({
     return {
       args,
       json: (v.object(zodToConvexFields(kitchenSinkValidator)) as any).json,
+      foo: "bar",
     };
   },
-  // output: z
-  //   .object({
-  //     email: z.string().email(),
-  //   })
+  returns: z.object({
+    args: z.object(kitchenSinkOutput),
+    json: z.any(),
+  }),
   // You can add .strict() to fail if any more fields are passed
   // .strict(),
 });
