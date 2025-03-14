@@ -65,11 +65,6 @@ export const kitchenSinkValidator = {
   pipeline: z.number().pipe(z.coerce.string()),
 };
 
-const kitchenSinkOutput = {
-  ...kitchenSinkValidator,
-  pipeline: z.string(),
-};
-
 const schema = defineSchema({
   sink: defineTable(zodToConvexFields(kitchenSinkValidator)).index("email", [
     "email",
@@ -99,11 +94,14 @@ export const kitchenSink = zQuery({
     return {
       args,
       json: (v.object(zodToConvexFields(kitchenSinkValidator)) as any).json,
-      foo: "bar",
     };
   },
   returns: z.object({
-    args: z.object(kitchenSinkOutput),
+    args: z.object({
+      ...kitchenSinkValidator,
+      // round trip the pipeline
+      pipeline: z.string().pipe(z.coerce.number()),
+    }),
     json: z.any(),
   }),
   // You can add .strict() to fail if any more fields are passed
@@ -115,7 +113,33 @@ export const dateRoundTrip = zQuery({
   handler: async (ctx, args) => {
     return args.date;
   },
-  output: z.date().transform((d) => d.toISOString()),
+  // Using output since the output type differs from the input.
+  returns: z.date().transform((d) => d.toISOString()),
+});
+
+export const failsReturnsValidator = zQuery({
+  args: {},
+  returns: z.number(),
+  handler: async () => {
+    return "foo" as unknown as number;
+  },
+});
+
+export const zodOutputCompliance = zQuery({
+  args: {},
+  handler: async () => {
+    return {
+      default: undefined,
+      effect: "effect",
+      pipeline: 3,
+      extraArg: "extraArg",
+    };
+  },
+  returns: v.object({
+    default: z.string().default("default"),
+    effect: z.string().transform((s) => null),
+    pipeline: z.number().pipe(z.coerce.string()),
+  }),
 });
 
 /**
@@ -285,6 +309,8 @@ const testApi: ApiFromModules<{
   fns: {
     kitchenSink: typeof kitchenSink;
     dateRoundTrip: typeof dateRoundTrip;
+    failsReturnsValidator: typeof failsReturnsValidator;
+    zodOutputCompliance: typeof zodOutputCompliance;
     addC: typeof addC;
     addCU: typeof addCU;
     addCU2: typeof addCU2;
@@ -333,7 +359,6 @@ test("zod kitchen sink", async () => {
   expect(response.args).toMatchObject({
     ...omit(kitchenSink, ["optional"]),
     default: "default",
-    pipeline: "0",
   });
   expect(response.json).toMatchObject({
     type: "object",
@@ -490,6 +515,23 @@ test("zod date round trip", async () => {
   const date = new Date().toISOString();
   const response = await t.query(testApi.dateRoundTrip, { date });
   expect(response).toBe(date);
+});
+
+test("zod fails returns validator", async () => {
+  const t = convexTest(schema, modules);
+  await expect(() =>
+    t.query(testApi.failsReturnsValidator, {}),
+  ).rejects.toThrow();
+});
+
+test("zod output compliance", async () => {
+  const t = convexTest(schema, modules);
+  const response = await t.query(testApi.zodOutputCompliance, {});
+  expect(response).toMatchObject({
+    default: "default",
+    effect: null,
+    pipeline: "3",
+  });
 });
 
 describe("zod functions", () => {
