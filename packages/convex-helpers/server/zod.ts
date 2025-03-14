@@ -315,11 +315,11 @@ function customFnBuilder(
       }
       const convexValidator = zodToConvexFields(argsValidator);
       return builder({
-        ...returnValidator,
         args: {
           ...convexValidator,
           ...inputArgs,
         },
+        ...returnValidator,
         handler: async (ctx: any, allArgs: any) => {
           const added = await inputMod(
             ctx,
@@ -462,6 +462,10 @@ export type CustomBuilder<
               ? [Expand<A & ModMadeArgs>]
               : [ModMadeArgs]
           ) => ReturnValue;
+          /**
+           * If true, the function will not be validated by Convex,
+           * in case you're seeing performance issues with validating twice.
+           */
           skipConvexValidation?: boolean;
         } & (
           | {
