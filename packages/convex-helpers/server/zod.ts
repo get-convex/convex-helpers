@@ -365,42 +365,15 @@ type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
 
 export type ArgsArray = OneArgArray | [];
 
-type OptionalKeys<Fields extends Record<string, z.ZodTypeAny>> = {
-  [K in keyof Fields]: Fields[K] extends z.ZodOptional<z.ZodTypeAny>
-    ? K
-    : never;
-}[keyof Fields];
-
-type RequiredKeys<Fields extends Record<string, z.ZodTypeAny>> = Exclude<
-  keyof Fields,
-  OptionalKeys<Fields>
->;
-
-type InputObjectType<Fields extends Record<string, z.ZodTypeAny>> = Expand<
-  {
-    [K in OptionalKeys<Fields>]: z.input<Fields[K]>;
-  } & {
-    [K in RequiredKeys<Fields>]: z.input<Fields[K]>;
-  }
->;
-
 export type ReturnValueForOptionalZodValidator<
   ReturnsValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny> | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
   ? z.input<ReturnsValidator> | Promise<z.input<ReturnsValidator>>
   : [ReturnsValidator] extends [Record<string, z.ZodTypeAny>]
     ?
-        | InputObjectType<ReturnsValidator>
-        | Promise<InputObjectType<ReturnsValidator>>
+        | z.input<z.ZodObject<ReturnsValidator>>
+        | Promise<z.input<z.ZodObject<ReturnsValidator>>>
     : any;
-
-type OutputObjectType<Fields extends Record<string, z.ZodTypeAny>> = Expand<
-  {
-    [K in OptionalKeys<Fields>]: z.output<Fields[K]>;
-  } & {
-    [K in RequiredKeys<Fields>]: z.output<Fields[K]>;
-  }
->;
 
 export type OutputValueForOptionalZodValidator<
   ReturnsValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny> | void,
@@ -408,8 +381,8 @@ export type OutputValueForOptionalZodValidator<
   ? z.output<ReturnsValidator> | Promise<z.output<ReturnsValidator>>
   : [ReturnsValidator] extends [Record<string, z.ZodTypeAny>]
     ?
-        | OutputObjectType<ReturnsValidator>
-        | Promise<OutputObjectType<ReturnsValidator>>
+        | z.output<z.ZodObject<ReturnsValidator>>
+        | Promise<z.output<z.ZodObject<ReturnsValidator>>>
     : any;
 
 export type ArgsArrayForOptionalValidator<
