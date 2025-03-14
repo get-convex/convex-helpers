@@ -126,20 +126,23 @@ export const failsReturnsValidator = zQuery({
 });
 
 export const zodOutputCompliance = zQuery({
-  args: {},
-  handler: async () => {
+  // Note no args validator
+  handler: (ctx, args: { maybe?: string | undefined }) => {
     return {
       default: undefined,
       effect: "effect",
       pipeline: 3,
       extraArg: "extraArg",
+      maybe: args.maybe,
     };
   },
-  returns: v.object({
+  // Note inline record of zod validators works.
+  returns: {
     default: z.string().default("default"),
     effect: z.string().transform((s) => null),
     pipeline: z.number().pipe(z.coerce.string()),
-  }),
+    maybe: z.string().optional(),
+  },
 });
 
 /**
@@ -532,6 +535,18 @@ test("zod output compliance", async () => {
     effect: null,
     pipeline: "3",
   });
+  const responseWithMaybe = await t.query(testApi.zodOutputCompliance, {
+    maybe: "maybe",
+  });
+  expect(responseWithMaybe).toMatchObject({
+    maybe: "maybe",
+  });
+  // number should fail
+  await expect(() =>
+    t.query(testApi.zodOutputCompliance, {
+      maybe: 1,
+    }),
+  ).rejects.toThrow();
 });
 
 describe("zod functions", () => {

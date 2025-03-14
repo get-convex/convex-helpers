@@ -293,6 +293,9 @@ function customFnBuilder(
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
     let returns = fn.returns ?? fn.output;
+    if (returns && !(returns instanceof z.ZodType)) {
+      returns = z.object(returns);
+    }
 
     const returnValidator =
       fn.returns && !fn.skipConvexValidation
@@ -362,11 +365,52 @@ type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
 
 export type ArgsArray = OneArgArray | [];
 
+type OptionalKeys<Fields extends Record<string, z.ZodTypeAny>> = {
+  [K in keyof Fields]: Fields[K] extends z.ZodOptional<z.ZodTypeAny>
+    ? K
+    : never;
+}[keyof Fields];
+
+type RequiredKeys<Fields extends Record<string, z.ZodTypeAny>> = Exclude<
+  keyof Fields,
+  OptionalKeys<Fields>
+>;
+
+type InputObjectType<Fields extends Record<string, z.ZodTypeAny>> = Expand<
+  {
+    [K in OptionalKeys<Fields>]: z.input<Fields[K]>;
+  } & {
+    [K in RequiredKeys<Fields>]: z.input<Fields[K]>;
+  }
+>;
+
 export type ReturnValueForOptionalZodValidator<
-  ReturnsValidator extends z.ZodTypeAny | void,
+  ReturnsValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny> | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
   ? z.input<ReturnsValidator> | Promise<z.input<ReturnsValidator>>
-  : any;
+  : [ReturnsValidator] extends [Record<string, z.ZodTypeAny>]
+    ?
+        | InputObjectType<ReturnsValidator>
+        | Promise<InputObjectType<ReturnsValidator>>
+    : any;
+
+type OutputObjectType<Fields extends Record<string, z.ZodTypeAny>> = Expand<
+  {
+    [K in OptionalKeys<Fields>]: z.output<Fields[K]>;
+  } & {
+    [K in RequiredKeys<Fields>]: z.output<Fields[K]>;
+  }
+>;
+
+export type OutputValueForOptionalZodValidator<
+  ReturnsValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny> | void,
+> = [ReturnsValidator] extends [z.ZodTypeAny]
+  ? z.output<ReturnsValidator> | Promise<z.output<ReturnsValidator>>
+  : [ReturnsValidator] extends [Record<string, z.ZodTypeAny>]
+    ?
+        | OutputObjectType<ReturnsValidator>
+        | Promise<OutputObjectType<ReturnsValidator>>
+    : any;
 
 export type ArgsArrayForOptionalValidator<
   ArgsValidator extends ZodValidator | void,
@@ -409,7 +453,10 @@ export type CustomBuilder<
 > = {
   <
     ArgsValidator extends ZodValidator | void,
-    ReturnsZodValidator extends z.ZodTypeAny | void,
+    ReturnsZodValidator extends
+      | z.ZodTypeAny
+      | Record<string, z.ZodTypeAny>
+      | void,
     ReturnValue extends
       ReturnValueForOptionalZodValidator<ReturnsZodValidator> = any,
     OneOrZeroArgs extends
@@ -469,8 +516,8 @@ export type CustomBuilder<
           ? [Expand<A & ObjectType<ModArgsValidator>>]
           : [ObjectType<ModArgsValidator>]
     >,
-    ReturnsZodValidator extends z.ZodTypeAny
-      ? z.output<ReturnsZodValidator> | Promise<z.output<ReturnsZodValidator>>
+    ReturnsZodValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny>
+      ? OutputValueForOptionalZodValidator<ReturnsZodValidator>
       : ReturnValue
   >;
 };
