@@ -377,20 +377,20 @@ type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
 export type ArgsArray = OneArgArray | [];
 
 export type ReturnValueForOptionalZodValidator<
-  ReturnsValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny> | void,
+  ReturnsValidator extends z.ZodTypeAny | ZodValidator | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
   ? z.input<ReturnsValidator> | Promise<z.input<ReturnsValidator>>
-  : [ReturnsValidator] extends [Record<string, z.ZodTypeAny>]
+  : [ReturnsValidator] extends [ZodValidator]
     ?
         | z.input<z.ZodObject<ReturnsValidator>>
         | Promise<z.input<z.ZodObject<ReturnsValidator>>>
     : any;
 
 export type OutputValueForOptionalZodValidator<
-  ReturnsValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny> | void,
+  ReturnsValidator extends z.ZodTypeAny | ZodValidator | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
   ? z.output<ReturnsValidator> | Promise<z.output<ReturnsValidator>>
-  : [ReturnsValidator] extends [Record<string, z.ZodTypeAny>]
+  : [ReturnsValidator] extends [ZodValidator]
     ?
         | z.output<z.ZodObject<ReturnsValidator>>
         | Promise<z.output<z.ZodObject<ReturnsValidator>>>
@@ -441,10 +441,7 @@ export type CustomBuilder<
 > = {
   <
     ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
-    ReturnsZodValidator extends
-      | z.ZodTypeAny
-      | Record<string, z.ZodTypeAny>
-      | void,
+    ReturnsZodValidator extends z.ZodTypeAny | ZodValidator | void,
     ReturnValue extends
       ReturnValueForOptionalZodValidator<ReturnsZodValidator> = any,
     OneOrZeroArgs extends
@@ -510,7 +507,7 @@ export type CustomBuilder<
             ? [Expand<A & ObjectType<ModArgsValidator>>]
             : [ObjectType<ModArgsValidator>]
     >,
-    ReturnsZodValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny>
+    ReturnsZodValidator extends z.ZodTypeAny | ZodValidator
       ? OutputValueForOptionalZodValidator<ReturnsZodValidator>
       : ReturnValue
   >;
@@ -529,17 +526,16 @@ type ConvexUnionValidatorFromZod<T> = T extends z.ZodTypeAny[]
     >
   : never;
 
-type ConvexObjectValidatorFromZod<T extends Record<string, z.ZodTypeAny>> =
-  VObject<
-    ObjectType<{
-      [key in keyof T]: T[key] extends z.ZodTypeAny
-        ? ConvexValidatorFromZod<T[key]>
-        : never;
-    }>,
-    {
-      [key in keyof T]: ConvexValidatorFromZod<T[key]>;
-    }
-  >;
+type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
+  ObjectType<{
+    [key in keyof T]: T[key] extends z.ZodTypeAny
+      ? ConvexValidatorFromZod<T[key]>
+      : never;
+  }>,
+  {
+    [key in keyof T]: ConvexValidatorFromZod<T[key]>;
+  }
+>;
 
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
