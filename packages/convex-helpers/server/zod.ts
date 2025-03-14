@@ -292,9 +292,11 @@ function customFnBuilder(
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
+    const returns = fn.returns ? { returns: zodToConvex(fn.returns) } : null;
     if ("args" in fn) {
       const convexValidator = zodToConvexFields(fn.args);
       return builder({
+        ...returns,
         args: {
           ...convexValidator,
           ...inputArgs,
@@ -317,10 +319,11 @@ function customFnBuilder(
             { ...ctx, ...added.ctx },
             { ...parsed.data, ...added.args },
           );
-          if (fn.output) {
+          const returns = fn.returns ?? fn.output;
+          if (returns) {
             // We don't catch the error here. It's a developer error and we
             // don't want to risk exposing the unexpected value to the client.
-            return fn.output.parse(result);
+            return returns.parse(result);
           }
           return result;
         },
@@ -334,8 +337,16 @@ function customFnBuilder(
     }
     const handler = fn.handler ?? fn;
     return builder({
+      ...returns,
       handler: async (ctx: any, args: any) => {
         const added = await inputMod(ctx, args);
+        if (returns) {
+          // We don't catch the error here. It's a developer error and we
+          // don't want to risk exposing the unexpected value to the client.
+          return returns.parse(
+            handler({ ...ctx, ...added.ctx }, { ...args, ...added.args }),
+          );
+        }
         return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
       },
     });
