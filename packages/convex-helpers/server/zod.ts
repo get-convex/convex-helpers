@@ -302,7 +302,18 @@ function customFnBuilder(
         ? { returns: zodOutputToConvex(returns) }
         : null;
     if ("args" in fn && !fn.skipConvexValidation) {
-      const convexValidator = zodToConvexFields(fn.args);
+      let argsValidator = fn.args;
+      if (argsValidator instanceof z.ZodType) {
+        if (argsValidator instanceof z.ZodObject) {
+          argsValidator = argsValidator._def.shape();
+        } else {
+          throw new Error(
+            "Unsupported zod type as args validator: " +
+              argsValidator.constructor.name,
+          );
+        }
+      }
+      const convexValidator = zodToConvexFields(argsValidator);
       return builder({
         ...returnValidator,
         args: {
@@ -314,8 +325,8 @@ function customFnBuilder(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
           );
-          const rawArgs = pick(allArgs, Object.keys(fn.args));
-          const parsed = z.object(fn.args).safeParse(rawArgs);
+          const rawArgs = pick(allArgs, Object.keys(argsValidator));
+          const parsed = z.object(argsValidator).safeParse(rawArgs);
           if (!parsed.success) {
             throw new ConvexError({
               ZodError: JSON.parse(
@@ -386,15 +397,19 @@ export type OutputValueForOptionalZodValidator<
     : any;
 
 export type ArgsArrayForOptionalValidator<
-  ArgsValidator extends ZodValidator | void,
+  ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
 > = [ArgsValidator] extends [ZodValidator]
   ? [z.output<z.ZodObject<ArgsValidator>>]
-  : ArgsArray;
+  : [ArgsValidator] extends [z.ZodObject<any>]
+    ? [z.output<ArgsValidator>]
+    : ArgsArray;
 export type DefaultArgsForOptionalValidator<
-  ArgsValidator extends ZodValidator | void,
+  ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
 > = [ArgsValidator] extends [ZodValidator]
   ? [z.output<z.ZodObject<ArgsValidator>>]
-  : OneArgArray;
+  : [ArgsValidator] extends [z.ZodObject<any>]
+    ? [z.output<ArgsValidator>]
+    : OneArgArray;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
 
@@ -425,7 +440,7 @@ export type CustomBuilder<
   Visibility extends FunctionVisibility,
 > = {
   <
-    ArgsValidator extends ZodValidator | void,
+    ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
     ReturnsZodValidator extends
       | z.ZodTypeAny
       | Record<string, z.ZodTypeAny>
@@ -485,9 +500,11 @@ export type CustomBuilder<
               z.input<z.ZodObject<ArgsValidator>> & ObjectType<ModArgsValidator>
             >,
           ]
-        : OneOrZeroArgs extends [infer A]
-          ? [Expand<A & ObjectType<ModArgsValidator>>]
-          : [ObjectType<ModArgsValidator>]
+        : [ArgsValidator] extends [z.ZodObject<any>]
+          ? [Expand<z.input<ArgsValidator> & ObjectType<ModArgsValidator>>]
+          : OneOrZeroArgs extends [infer A]
+            ? [Expand<A & ObjectType<ModArgsValidator>>]
+            : [ObjectType<ModArgsValidator>]
     >,
     ReturnsZodValidator extends z.ZodTypeAny | Record<string, z.ZodTypeAny>
       ? OutputValueForOptionalZodValidator<ReturnsZodValidator>

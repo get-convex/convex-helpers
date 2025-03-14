@@ -145,6 +145,14 @@ export const zodOutputCompliance = zQuery({
   },
 });
 
+export const zodArgsObject = zQuery({
+  args: z.object({ a: z.string() }),
+  handler: async (ctx, args) => {
+    return args;
+  },
+  returns: z.object({ a: z.string() }),
+});
+
 /**
  * Testing custom zod function modifications.
  */
@@ -314,6 +322,7 @@ const testApi: ApiFromModules<{
     dateRoundTrip: typeof dateRoundTrip;
     failsReturnsValidator: typeof failsReturnsValidator;
     zodOutputCompliance: typeof zodOutputCompliance;
+    zodArgsObject: typeof zodArgsObject;
     addC: typeof addC;
     addCU: typeof addCU;
     addCU2: typeof addCU2;
@@ -546,6 +555,16 @@ test("zod output compliance", async () => {
     t.query(testApi.zodOutputCompliance, {
       maybe: 1,
     }),
+  ).rejects.toThrow();
+});
+
+test("zod args object", async () => {
+  const t = convexTest(schema, modules);
+  expect(await t.query(testApi.zodArgsObject, { a: "foo" })).toMatchObject({
+    a: "foo",
+  });
+  await expect(() =>
+    t.query(testApi.zodArgsObject, { a: 1 } as any),
   ).rejects.toThrow();
 });
 
