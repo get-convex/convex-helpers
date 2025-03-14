@@ -295,8 +295,10 @@ function customFnBuilder(
     let returns = fn.returns ?? fn.output;
 
     const returnValidator =
-      returns ? { returns: zodOutputToConvex(returns) } : null;
-    if ("args" in fn) {
+      fn.returns && !fn.skipConvexValidation
+        ? { returns: zodOutputToConvex(returns) }
+        : null;
+    if ("args" in fn && !fn.skipConvexValidation) {
       const convexValidator = zodToConvexFields(fn.args);
       return builder({
         ...returnValidator,
@@ -331,7 +333,7 @@ function customFnBuilder(
         },
       });
     }
-    if (Object.keys(inputArgs).length > 0) {
+    if (Object.keys(inputArgs).length > 0 && !fn.skipConvexValidation) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
           "modifier, you must declare the arguments for the function too.",
@@ -425,6 +427,7 @@ export type CustomBuilder<
               ? [Expand<A & ModMadeArgs>]
               : [ModMadeArgs]
           ) => ReturnValue;
+          skipConvexValidation?: boolean;
         } & (
           | {
               /**
