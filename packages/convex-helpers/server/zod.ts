@@ -467,6 +467,7 @@ export type CustomBuilder<
         } & (
           | {
               /**
+               * @deprecated Use `returns` instead.
                * Older version of `returns` that does not also do convex
                * validation on the output value of the funciton.
                * Note: you can't pass an object directly without wrapping it
