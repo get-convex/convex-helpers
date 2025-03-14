@@ -853,14 +853,15 @@ export const list = query({
 });
 ```
 
-## Composable streams of query results
+## Composable Streams of query results
 
 In Convex queries, you can read data from many tables in many ways, and combine
 the data before returning to to the client. However, some patterns aren't so
 easy without these helpers. In particular, these helpers will allow you to take
 a union of multiple queries, filter out some of them, and paginate the result.
 
-- A "stream" is an async iterable of documents, ordered by indexed fields.
+- A "stream" is an [async iterable](https://javascript.info/async-iterators-generators)
+  of documents, ordered by indexed fields.
 
 The cool thing about a stream is you can merge multiple streams together
 to create a new stream, and you can filter documents out of a stream with a
@@ -880,6 +881,8 @@ Concrete functions you can use:
 - `stream` constructs a stream using the same syntax as `DatabaseReader`.
   - e.g. `stream(ctx.db, schema).query("messages").withIndex("by_author", (q) => q.eq("author", "user1"))`
 - `MergedStream(streams, fields)` combines multiple streams into a new stream, ordered by the same index fields.
+- `.flatMap` expands each document into its own stream, and they all get chained together.
+- `.map` modifies each stream item, preserving order.
 - `.filterWith` filters out documents from a stream based on a TypeScript predicate.
 - Once your stream is set up, you can get documents from it with the normal
   Convex query methods: `.first()`, `.collect()`, `.paginate()`, etc.
@@ -939,7 +942,7 @@ options to limit the number of rows read. Let's see how to do
 pre-filtering with streams.
 
 ```ts
-import { stream, filterStream } from "convex-helpers/server/stream";
+import { stream } from "convex-helpers/server/stream";
 import schema from "./schema";
 
 export const list = query({
@@ -976,11 +979,7 @@ Normally this would require a separate index on `["author"]`, or doing two
 requests and manually picking the 10 most recent. But with streams, it's cleaner:
 
 ```ts
-import {
-  stream,
-  MergedStream,
-  filterStream,
-} from "convex-helpers/server/stream";
+import { stream, MergedStream } from "convex-helpers/server/stream";
 import schema from "./schema";
 // schema has messages: defineTable(...).index("by_author", ["author", "unread"])
 
@@ -1008,6 +1007,45 @@ export const latestMessages = query({
       ["_creationTime"],
     );
     return await allMessagesByCreationTime.take(10);
+  },
+});
+```
+
+4. Join tables.
+
+Suppose you have a table of channels, and another table of messages. You want to
+paginate all messages, grouped by channel that the user has access to. You
+could do this from the client with a `usePaginatedQuery` for each channel,
+or you can do it with streams, like so:
+
+```ts
+import { stream } from "convex-helpers/server/stream";
+import schema from "./schema";
+// schema has
+//   channelMemberships: defineTable(...).index("user", ["user", "channel"])
+//   channels: defineTable(...)
+//   messages: defineTable(...).index("channel", ["channel"])
+// And we're returning a paginated stream of { ...channel, ...message }
+// ordered by [channel._id, message._creationTime]
+
+export const latestMessages = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { author, paginationOpts }) => {
+    const channelMemberships = stream(ctx.db, schema)
+      .query("channelMemberships")
+      .withIndex("user", q => q.eq("user", await getAuthedUserId(ctx)));
+    // Map membership to the channel info (including channel name, etc.)
+    const channels = channelMemberships.map(async (membership) => {
+      return (await ctx.db.get(membership.channel))!;
+    });
+    // For each channel, expand it into the messages in that channel,
+    // with the channel's fields also included.
+    const messages = channels.flatMap(async (channel) => stream(ctx.db, stream)
+      .query("messages")
+      .withIndex("channel", q => q.eq("channel", channel._id))
+      .map(async (message) => { ...channel, ...message })
+    );
+    return await messages.paginate(paginationOpts);
   },
 });
 ```
