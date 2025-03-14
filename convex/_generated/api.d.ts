@@ -14,7 +14,6 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as addIt from "../addIt.js";
-import type * as corsHttpRouterExample from "../corsHttpRouterExample.js";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
 import type * as migrationsExample from "../migrationsExample.js";
@@ -36,7 +35,6 @@ import type * as triggersExample from "../triggersExample.js";
  */
 declare const fullApi: ApiFromModules<{
   addIt: typeof addIt;
-  corsHttpRouterExample: typeof corsHttpRouterExample;
   counter: typeof counter;
   http: typeof http;
   migrationsExample: typeof migrationsExample;
