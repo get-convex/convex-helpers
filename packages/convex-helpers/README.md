@@ -143,76 +143,17 @@ needing to add any tables to your schema. (`npm i @convex-dev/migrations`)
 See the [Stack post on migrations](https://stack.convex.dev/migrating-data-with-mutations)
 and the [migration primer Stack post](https://stack.convex.dev/intro-to-migrations).
 
-In `convex/schema.ts` (if you want persistence):
+To see the library code and usage, see the [migrations.ts file](./server/migrations.ts).
+
+Example migration:
 
 ```ts
-// In convex/schema.ts
-import { migrationsTable } from "convex-helpers/server/migrations";
-export default defineSchema({
-  migrations: migrationsTable,
-  // other tables...
-});
-```
-
-You can pick any table name for this, but it should match `migrationTable` used below.
-
-In `convex/migrations.ts` (or wherever you want to define them):
-
-```ts
-import { makeMigration } from "convex-helpers/server/migrations";
-import { internalMutation } from "./_generated/server";
-
-const migration = makeMigration(internalMutation, {
-  migrationTable: "migrations",
-});
-
 export const myMigration = migration({
   table: "users",
   migrateOne: async (ctx, doc) => {
     await ctx.db.patch(doc._id, { newField: "value" });
   },
 });
-```
-
-To run from the CLI / dashboard:
-You can run this manually from the CLI or dashboard:
-
-```sh
-# Start or resume a migration. No-ops if it's already done:
-npx convex run migrations:myMigration '{fn: "migrations:myMigration"}'
-```
-
-Or call it directly within a function:
-
-```ts
-import { startMigration } from "convex-helpers/server/migrations";
-
-//... within a mutation or action
-await startMigration(ctx, internal.migrations.myMigration, {
-  startCursor: null, // optional override
-  batchSize: 10, // optional override
-});
-```
-
-Or define many to run in series (skips already completed migrations / rows):
-
-```ts
-import { startMigrationsSerially } from "convex-helpers/server/migrations";
-import { internalMutation } from "./_generated/server";
-
-export default internalMutation(async (ctx) => {
-  await startMigrationsSerially(ctx, [
-    internal.migrations.myMigration,
-    internal.migrations.myOtherMigration,
-    //...
-  ]);
-});
-```
-
-If this default export is in `convex/migrations.ts` you can run:
-
-```sh
-npx convex run migrations --prod
 ```
 
 ## Rate limiting
