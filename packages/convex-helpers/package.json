@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.71",
+  "version": "0.1.72-alpha.0",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
@@ -42,6 +42,10 @@
     "./react/cache/provider": {
       "types": "./react/cache/provider.d.ts",
       "default": "./react/cache/provider.js"
+    },
+    "./server/compare": {
+      "types": "./server/compare.d.ts",
+      "default": "./server/compare.js"
     },
     "./server/cors": {
       "types": "./server/cors.d.ts",
@@ -90,6 +94,10 @@
     "./server/sessions": {
       "types": "./server/sessions.d.ts",
       "default": "./server/sessions.js"
+    },
+    "./server/stream": {
+      "types": "./server/stream.d.ts",
+      "default": "./server/stream.js"
     },
     "./server/triggers": {
       "types": "./server/triggers.d.ts",

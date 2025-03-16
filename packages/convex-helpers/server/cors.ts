@@ -76,50 +76,66 @@ type RouteSpecWithCors = RouteSpec & CorsConfig;
  * @param allowedOrigins An array of allowed origins for CORS.
  * @returns A function to use instead of http.route when you want CORS.
  */
-export const corsRouter = (http: HttpRouter, corsConfig?: CorsConfig) => ({
-  http,
-  route: (routeSpec: RouteSpecWithCors): void => {
-    const tempRouter = httpRouter();
-    tempRouter.exactRoutes = http.exactRoutes;
-    tempRouter.prefixRoutes = http.prefixRoutes;
+export const corsRouter = (http: HttpRouter, corsConfig?: CorsConfig) => {
+  const allowedExactMethodsByPath: Map<string, Set<string>> = new Map();
+  const allowedPrefixMethodsByPath: Map<string, Set<string>> = new Map();
+  return {
+    http,
+    route: (routeSpec: RouteSpecWithCors): void => {
+      const tempRouter = httpRouter();
+      tempRouter.exactRoutes = http.exactRoutes;
+      tempRouter.prefixRoutes = http.prefixRoutes;
 
-    const config = {
-      ...corsConfig,
-      ...routeSpec,
-    };
+      const config = {
+        ...corsConfig,
+        ...routeSpec,
+      };
 
-    const httpCorsHandler = handleCors({
-      originalHandler: routeSpec.handler,
-      allowedMethods: [routeSpec.method],
-      ...config,
-    });
-    /**
-     * Figure out what kind of route we're adding: exact or prefix and handle
-     * accordingly.
-     */
-    if ("path" in routeSpec) {
-      tempRouter.route({
-        path: routeSpec.path,
-        method: routeSpec.method,
-        handler: httpCorsHandler,
+      const httpCorsHandler = handleCors({
+        originalHandler: routeSpec.handler,
+        allowedMethods: [routeSpec.method],
+        ...config,
       });
-      handleExactRoute(tempRouter, routeSpec, config);
-    } else {
-      tempRouter.route({
-        pathPrefix: routeSpec.pathPrefix,
-        method: routeSpec.method,
-        handler: httpCorsHandler,
-      });
-      handlePrefixRoute(tempRouter, routeSpec, config);
-    }
+      /**
+       * Figure out what kind of route we're adding: exact or prefix and handle
+       * accordingly.
+       */
+      if ("path" in routeSpec) {
+        let methods = allowedExactMethodsByPath.get(routeSpec.path);
+        if (!methods) {
+          methods = new Set<string>();
+          allowedExactMethodsByPath.set(routeSpec.path, methods);
+        }
+        methods.add(routeSpec.method);
+        tempRouter.route({
+          path: routeSpec.path,
+          method: routeSpec.method,
+          handler: httpCorsHandler,
+        });
+        handleExactRoute(tempRouter, routeSpec, config, Array.from(methods));
+      } else {
+        let methods = allowedPrefixMethodsByPath.get(routeSpec.pathPrefix);
+        if (!methods) {
+          methods = new Set<string>();
+          allowedPrefixMethodsByPath.set(routeSpec.pathPrefix, methods);
+        }
+        methods.add(routeSpec.method);
+        tempRouter.route({
+          pathPrefix: routeSpec.pathPrefix,
+          method: routeSpec.method,
+          handler: httpCorsHandler,
+        });
+        handlePrefixRoute(tempRouter, routeSpec, config, Array.from(methods));
+      }
 
-    /**
-     * Copy the routes from the temporary router to the main router.
-     */
-    http.exactRoutes = new Map(tempRouter.exactRoutes);
-    http.prefixRoutes = new Map(tempRouter.prefixRoutes);
-  },
-});
+      /**
+       * Copy the routes from the temporary router to the main router.
+       */
+      http.exactRoutes = new Map(tempRouter.exactRoutes);
+      http.prefixRoutes = new Map(tempRouter.prefixRoutes);
+    },
+  };
+};
 
 /**
  * Handles exact route matching and adds OPTIONS handler.
@@ -130,30 +146,14 @@ function handleExactRoute(
   tempRouter: HttpRouter,
   routeSpec: RouteSpecWithPath,
   config: CorsConfig,
+  allowedMethods: string[],
 ): void {
-  /**
-   * exactRoutes is defined as a Map<string, Map<string, PublicHttpAction>>
-   * where the KEY is the PATH and the VALUE is a map of methods and handlers
-   */
   const currentMethodsForPath = tempRouter.exactRoutes.get(routeSpec.path);
-
-  /**
-   * createOptionsHandlerForMethods is a helper function that creates
-   * an OPTIONS handler for all registered HTTP methods for the given path
-   */
-  const optionsHandler = createOptionsHandlerForMethods(
-    Array.from(currentMethodsForPath?.keys() ?? []),
-    config,
-  );
-
   /**
    * Add the OPTIONS handler for the given path
    */
+  const optionsHandler = createOptionsHandlerForMethods(allowedMethods, config);
   currentMethodsForPath?.set("OPTIONS", optionsHandler);
-
-  /**
-   * Add the updated methods for the given path to the exactRoutes map
-   */
   tempRouter.exactRoutes.set(routeSpec.path, new Map(currentMethodsForPath));
 }
 
@@ -166,29 +166,20 @@ function handlePrefixRoute(
   tempRouter: HttpRouter,
   routeSpec: RouteSpecWithPathPrefix,
   config: CorsConfig,
+  allowedMethods: string[],
 ): void {
   /**
    * prefixRoutes is structured differently than exactRoutes. It's defined as
    * a Map<string, Map<string, PublicHttpAction>> where the KEY is the
    * METHOD and the VALUE is a map of paths and handlers.
    */
-  const currentMethods = tempRouter.prefixRoutes.keys();
-  const optionsHandler = createOptionsHandlerForMethods(
-    Array.from(currentMethods ?? []),
-    config,
-  );
+  const optionsHandler = createOptionsHandlerForMethods(allowedMethods, config);
 
-  /**
-   * Add the OPTIONS handler for the given path prefix
-   */
   const optionsPrefixes =
     tempRouter.prefixRoutes.get("OPTIONS") ||
     new Map<string, PublicHttpAction>();
   optionsPrefixes.set(routeSpec.pathPrefix, optionsHandler);
 
-  /**
-   * Add the updated methods for the given path to the prefixRoutes map
-   */
   tempRouter.prefixRoutes.set("OPTIONS", optionsPrefixes);
 }
 
@@ -354,7 +345,11 @@ const handleCors = ({
       /**
        * First, execute the original handler
        */
-      const originalResponse = await originalHandler(ctx, request);
+      const innerHandler =
+        "_handler" in originalHandler
+          ? (originalHandler["_handler"] as PublicHttpAction)
+          : originalHandler;
+      const originalResponse = await innerHandler(ctx, request);
 
       /**
        * Second, get a copy of the original response's headers

@@ -40,9 +40,12 @@ export function getFunctionSpec(prod?: boolean, filePath?: string) {
     try {
       const outputFd = fs.openSync(tempFile, "w");
       const flags = prod ? ["--prod"] : [];
-      const result = spawnSync("npx", ["convex", "function-spec", ...flags], {
+      const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+      const extraOpts = process.platform === "win32" ? { shell: true } : {};
+      const result = spawnSync(npxCmd, ["convex", "function-spec", ...flags], {
         stdio: ["inherit", outputFd, "pipe"],
         encoding: "utf-8",
+        ...extraOpts,
       });
 
       fs.closeSync(outputFd);
@@ -53,13 +56,16 @@ export function getFunctionSpec(prod?: boolean, filePath?: string) {
 
       content = fs.readFileSync(tempFile, "utf-8");
     } catch (e) {
+      if (e instanceof Error) {
+        console.error(e.message);
+      }
       console.error(
         chalk.red(
           "\nError retrieving function spec from your Convex deployment. " +
             "Confirm that you \nare running this command from within a Convex project.\n",
         ),
       );
-      process.exit(1);
+      throw e;
     } finally {
       try {
         fs.unlinkSync(tempFile);

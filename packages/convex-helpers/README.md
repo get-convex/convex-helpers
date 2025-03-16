@@ -853,6 +853,165 @@ export const list = query({
 });
 ```
 
+## Composable streams of query results
+
+In Convex queries, you can read data from many tables in many ways, and combine
+the data before returning to to the client. However, some patterns aren't so
+easy without these helpers. In particular, these helpers will allow you to take
+a union of multiple queries, filter out some of them, and paginate the result.
+
+- A "stream" is an async iterable of documents, ordered by indexed fields.
+
+The cool thing about a stream is you can merge multiple streams together
+to create a new stream, and you can filter documents out of a stream with a
+TypeScript predicate. These operations preserve order, so the result is still
+a valid stream. You can merge and filter as much as you want, and finally treat
+it like a Convex query to get documents with `.first()`, `.collect()`, or
+`.paginate()`.
+
+For example, if you have a stream of "messages created by user1" and a stream
+of "messages created by user2", you can merge them together to get a stream of
+"messages created by user1 or user2". And you can filter the merged stream to
+get a stream of "messages created by user1 or user2 that are unread". Then you
+can paginate the result.
+
+Concrete functions you can use:
+
+- `stream` constructs a stream using the same syntax as `DatabaseReader`.
+  - e.g. `stream(ctx.db, schema).query("messages").withIndex("by_author", (q) => q.eq("author", "user1"))`
+- `MergedStream(streams, fields)` combines multiple streams into a new stream, ordered by the same index fields.
+- `.filterWith` filters out documents from a stream based on a TypeScript predicate.
+- Once your stream is set up, you can get documents from it with the normal
+  Convex query methods: `.first()`, `.collect()`, `.paginate()`, etc.
+
+Beware if using `.paginate()` with streams in reactive queries, as it has the
+same problems as [`paginator` and `getPage`](#manual-pagination): you need to
+pass in `endCursor` to prevent holes or overlaps between the pages.
+
+**Motivating examples:**
+
+1. For a fixed set of authors, paginate all messages by those authors.
+
+```ts
+import { stream, MergedStream } from "convex-helpers/server/stream";
+import schema from "./schema";
+// schema has messages: defineTable(...).withIndex("by_author", ["author"])
+
+export const listForAuthors = query({
+  args: {
+    authors: v.array(v.id("users")),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { authors, paginationOpts }) => {
+    // This is an array of streams, where each stream consists of messages by a
+    // single author.
+    const authorStreams = authors.map((author) =>
+      stream(ctx.db, schema)
+        .query("messages")
+        .withIndex("by_author", (q) => q.eq("author", author)),
+    );
+    // Create a new stream of all messages authored by users in `args.authors`,
+    // ordered by the "by_author" index (i.e. ["author", "_creationTime"]).
+    const allAuthorsStream = new MergedStream(authorStreams, [
+      "author",
+      "_creationTime",
+    ]);
+    // Paginate the result.
+    return await allAuthorsStream.paginate(paginationOpts);
+  },
+});
+```
+
+2. Paginate all messages whose authors match a complex predicate.
+
+There are actually two ways to do this. One uses "post-filter" pagination,
+where the filter is applied after fetching a fixed number of documents. To do that, you can
+use the `filter` helper described [above](#filter). The advantage is that the
+queries read bounded data, but the disadvantage is that the returned pages might
+be small or empty.
+
+The other does "pre-filter" pagination, where the filter is applied before
+picking the page size. Doing this with a filter that excludes most documents may
+result in slow queries or errors because it's reading too much data, but if the
+predicate often returns true, it's perfectly fine. To avoid edge cases where you
+accidentally read too much data, you can pass `maximumRowsRead` in pagination
+options to limit the number of rows read. Let's see how to do
+pre-filtering with streams.
+
+```ts
+import { stream, filterStream } from "convex-helpers/server/stream";
+import schema from "./schema";
+
+export const list = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const allMessagesStream = stream(ctx.db, schema)
+      .query("messages")
+      .order("desc")
+      .filterWith(async (message) => {
+        const author = await ctx.db.get(message.author);
+        return author !== null && author.verified;
+      });
+    // The pagination happens after the filtering, so the page should have size
+    // `paginationOpts.numItems`.
+    // To avoid reading too much data unexpectedly, you can optionally set maximumRowsRead.
+    return await messagesByVerifiedAuthors.paginate({
+      ...paginationOpts,
+      maximumRowsRead: 100,
+    });
+  },
+});
+```
+
+Again, remember to use `endCursor` in reactive queries to keep pages contiguous
+(see [`paginator`](#paginator-manual-pagination-with-familiar-syntax)).
+
+3. Order by a suffix of an index.
+
+Suppose you have an index on `["author", "unread"]` and you want to get the
+most recent 10 messages for an author, ignoring whether a messages is unread.
+The index implicitly ends in `"_creationTime"`, so this should be possible.
+
+Normally this would require a separate index on `["author"]`, or doing two
+requests and manually picking the 10 most recent. But with streams, it's cleaner:
+
+```ts
+import {
+  stream,
+  MergedStream,
+  filterStream,
+} from "convex-helpers/server/stream";
+import schema from "./schema";
+// schema has messages: defineTable(...).index("by_author", ["author", "unread"])
+
+export const latestMessages = query({
+  args: { author: v.id("users") },
+  handler: async (ctx, { author }) => {
+    // These are two streams of messages, each ordered by _creationTime descending.
+    // The first has read messages, the second has unread messages.
+    const readMessages = stream(ctx.db, schema)
+      .query("messages")
+      .withIndex("by_author", (q) => q.eq("author", author).eq("unread", false))
+      .order("desc");
+    const unreadMessages = stream(ctx.db, schema)
+      .query("messages")
+      .withIndex("by_author", (q) => q.eq("author", author).eq("unread", true))
+      .order("desc");
+    // Since each stream is ordered by ["_creationTime"], we can merge them and
+    // maintain that ordering.
+    // Aside: We could instead choose to merge the streams ordered by ["unread", "_creationTime"]
+    // or ordered by ["author", "unread", "_creationTime"].
+    // `allMessagesByCreationTime` is a single stream of all messages authored by
+    // `args.author`, ordered by _creationTime descending.
+    const allMessagesByCreationTime = new MergedStream(
+      [readMessages, unreadMessages],
+      ["_creationTime"],
+    );
+    return await allMessagesByCreationTime.take(10);
+  },
+});
+```
+
 ## Query Caching
 
 Utilize a query cache implementation which persists subscriptions to the

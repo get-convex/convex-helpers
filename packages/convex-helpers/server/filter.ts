@@ -84,7 +84,10 @@ class QueryWithFilter<T extends GenericTableInfo>
       if (uniqueResult === null) {
         uniqueResult = result;
       } else {
-        throw new Error("not unique");
+        throw new Error(
+          `unique() query returned more than one result:
+  [${uniqueResult._id}, ${result._id}, ...]`,
+        );
       }
     }
     return uniqueResult;
