@@ -26,7 +26,7 @@ export type IndexKey = Value[];
 // Helper functions
 //
 
-function exclType(boundType: "gt" | "lt" | "gte" | "lte") {
+function makeExclusive(boundType: "gt" | "lt" | "gte" | "lte") {
   if (boundType === "gt" || boundType === "gte") {
     return "gt";
   }
@@ -90,14 +90,14 @@ function splitRange(
   const startRanges: Bound[][] = [];
   while (startBound.length > 1) {
     startRanges.push(makeCompare(startBoundType, startBound));
-    startBoundType = exclType(startBoundType);
+    startBoundType = makeExclusive(startBoundType);
     startBound = startBound.slice(0, -1);
   }
   // Stage 3.
   const endRanges: Bound[][] = [];
   while (endBound.length > 1) {
     endRanges.push(makeCompare(endBoundType, endBound));
-    endBoundType = exclType(endBoundType);
+    endBoundType = makeExclusive(endBoundType);
     endBound = endBound.slice(0, -1);
   }
   endRanges.reverse();
