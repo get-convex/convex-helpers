@@ -253,10 +253,13 @@ abstract class IndexStream<T extends GenericStreamItem>
   }
   flatMap<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<IndexStream<U>>,
-    extraIndexFields: string[] = [],
+    extraIndexFields: string[],
   ): IndexStream<U> {
     normalizeIndexFields(extraIndexFields);
     return new FlatMapStream(this, mapper, extraIndexFields);
+  }
+  distinct(distinctIndexFields: string[]): IndexStream<T> {
+    return new DistinctStream(this, distinctIndexFields);
   }
 
   /// Implementation of OrderedQuery
@@ -1340,6 +1343,19 @@ function normalizeIndexFields(indexFields: string[]) {
   }
 }
 
+// Given a stream ordered by `indexFields`, where the first `equalityIndexLength`
+// fields are bounded by equality filters, return a generator of the possible
+// index fields used for ordering.
+function* getOrderingIndexFields<T extends GenericStreamItem>(
+  stream: IndexStream<T>,
+): Generator<string[]> {
+  const streamEqualityIndexLength = stream.getEqualityIndexFilter().length;
+  const streamIndexFields = stream.getIndexFields();
+  for (let i = 0; i <= streamEqualityIndexLength; i++) {
+    yield streamIndexFields.slice(i);
+  }
+}
+
 class OrderByStream<T extends GenericStreamItem> extends IndexStream<T> {
   private staticFilter: Value[];
   constructor(
@@ -1351,27 +1367,18 @@ class OrderByStream<T extends GenericStreamItem> extends IndexStream<T> {
     // indexFields must be a suffix of the stream's index fields, and include
     // all of the non-equality index fields.
     const streamIndexFields = stream.getIndexFields();
-    if (indexFields.length > streamIndexFields.length) {
+    const orderingIndexFields = Array.from(getOrderingIndexFields(stream));
+    if (
+      !orderingIndexFields.some((orderingIndexFields) =>
+        equalIndexFields(orderingIndexFields, indexFields),
+      )
+    ) {
       throw new Error(
-        `indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`,
-      );
-    }
-    const streamIndexFieldsSuffix = streamIndexFields.slice(
-      streamIndexFields.length - indexFields.length,
-    );
-    for (let i = 0; i < indexFields.length; i++) {
-      if (indexFields[i] !== streamIndexFieldsSuffix[i]) {
-        throw new Error(
-          `indexFields must be a suffix of the stream's index fields: ${JSON.stringify(indexFields)}, ${JSON.stringify(streamIndexFields)}`,
-        );
-      }
-    }
-    const nonEqualityIndexFields = streamIndexFields.slice(
-      stream.getEqualityIndexFilter().length,
-    );
-    if (indexFields.length < nonEqualityIndexFields.length) {
-      throw new Error(
-        `indexFields must include all of the stream's index fields used for ordering: ${JSON.stringify(indexFields)}, ${JSON.stringify(nonEqualityIndexFields)}`,
+        `indexFields must be some sequence of fields the stream is ordered by: ${JSON.stringify(
+          indexFields,
+        )}, ${JSON.stringify(
+          streamIndexFields,
+        )} (${stream.getEqualityIndexFilter().length} equality fields)`,
       );
     }
     this.staticFilter = stream
@@ -1420,6 +1427,133 @@ class OrderByStream<T extends GenericStreamItem> extends IndexStream<T> {
       this.indexFields,
     );
   }
+}
+
+/**
+ * Get the first item from the original stream for each distinct value of the
+ * selected index fields.
+ *
+ * e.g. if the stream has an equality filter on `a`, and index fields `[a, b, c]`,
+ * we can do `stream.distinct(["b"])` to get a stream of the first item for
+ * each distinct value of `b`.
+ * Similarly, you could do `stream.distinct(["a", "b"])` with the same result,
+ * or `stream.distinct(["a", "b", "c"])` to get the original stream.
+ *
+ * This stream efficiently skips past items with the same value for the selected
+ * distinct index fields.
+ *
+ * This can be used to perform a loose index scan.
+ */
+class DistinctStream<T extends GenericStreamItem> extends IndexStream<T> {
+  private distinctIndexFieldsLength: number;
+
+  constructor(
+    private stream: IndexStream<T>,
+    private distinctIndexFields: string[],
+  ) {
+    super();
+    // distinctIndexFields must be a prefix of the stream's ordering index fields
+    let distinctIndexFieldsLength: number | undefined = undefined;
+    for (const orderingIndexFields of getOrderingIndexFields(stream)) {
+      const prefix = orderingIndexFields.slice(0, distinctIndexFields.length);
+      if (equalIndexFields(prefix, distinctIndexFields)) {
+        const equalityLength =
+          stream.getIndexFields().length - orderingIndexFields.length;
+        distinctIndexFieldsLength = equalityLength + distinctIndexFields.length;
+        break;
+      }
+    }
+    if (distinctIndexFieldsLength === undefined) {
+      throw new Error(
+        `distinctIndexFields must be a prefix of the stream's ordering index fields: ${JSON.stringify(
+          distinctIndexFields,
+        )}, ${JSON.stringify(stream.getIndexFields())} (${stream.getEqualityIndexFilter().length} equality fields)`,
+      );
+    }
+    this.distinctIndexFieldsLength = distinctIndexFieldsLength;
+  }
+  override iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
+    const stream = this.stream;
+    const distinctIndexFieldsLength = this.distinctIndexFieldsLength;
+    return {
+      [Symbol.asyncIterator]() {
+        let currentStream = stream;
+        let currentIterator = currentStream
+          .iterWithKeys()
+          [Symbol.asyncIterator]();
+        return {
+          async next() {
+            const result = await currentIterator.next();
+            if (result.done) {
+              return { done: true, value: undefined };
+            }
+            const [doc, indexKey] = result.value;
+            if (doc === null) {
+              // If the original stream has a post-filter `.filterWith`, we will
+              // iterate over filtered items -- possibly many with the same set of
+              // distinct index fields -- before finding the first item for the set
+              // of distinct index fields.
+              // So it's recommended to put `.filterWith` after `.distinct`.
+              return { done: false, value: [null, indexKey] };
+            }
+            const distinctIndexKey = indexKey.slice(
+              0,
+              distinctIndexFieldsLength,
+            );
+            if (stream.getOrder() === "asc") {
+              currentStream = currentStream.narrow({
+                lowerBound: distinctIndexKey,
+                lowerBoundInclusive: false,
+                upperBound: [],
+                upperBoundInclusive: true,
+              });
+            } else {
+              currentStream = currentStream.narrow({
+                lowerBound: [],
+                lowerBoundInclusive: true,
+                upperBound: distinctIndexKey,
+                upperBoundInclusive: false,
+              });
+            }
+            currentIterator = currentStream
+              .iterWithKeys()
+              [Symbol.asyncIterator]();
+            return result;
+          },
+        };
+      },
+    };
+  }
+  override narrow(indexBounds: IndexBounds): IndexStream<T> {
+    return new DistinctStream(
+      this.stream.narrow(indexBounds),
+      this.distinctIndexFields,
+    );
+  }
+  override getOrder(): "asc" | "desc" {
+    return this.stream.getOrder();
+  }
+  override getIndexFields(): string[] {
+    return this.stream.getIndexFields();
+  }
+  override getEqualityIndexFilter(): Value[] {
+    return this.stream.getEqualityIndexFilter();
+  }
+}
+
+function equalIndexFields(
+  indexFields1: string[],
+  indexFields2: string[],
+): boolean {
+  if (indexFields1.length !== indexFields2.length) {
+    return false;
+  }
+  for (let i = 0; i < indexFields1.length; i++) {
+    if (indexFields1[i] !== indexFields2[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 type Key = {

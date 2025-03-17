@@ -425,4 +425,60 @@ describe("stream", () => {
       ]);
     });
   });
+
+  test("distinct stream", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
+      await ctx.db.insert("foo", { a: 2, b: 5, c: 6 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const distinct = query.distinct(["b"]);
+      const result = await distinct.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 3 },
+        { a: 1, b: 3, c: 4 },
+        { a: 1, b: 4, c: 1 },
+      ]);
+    });
+  });
+
+  /*
+  SELECT * FROM foo WHERE a = 1 AND b > 1 AND b < 5 AND c > 3
+  */
+  test("loose index scan", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 4 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 6 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 4 });
+      await ctx.db.insert("foo", { a: 2, b: 5, c: 6 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1).gt("b", 1).lt("b", 5))
+        .distinct(["b"])
+        .flatMap(
+          async (doc) =>
+            stream(ctx.db, schema)
+              .query("foo")
+              .withIndex("abc", (q) => q.eq("a", 1).eq("b", doc.b).gt("c", 3)),
+          ["a", "b", "c"],
+        );
+      const result = await query.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 5 },
+        { a: 1, b: 2, c: 6 },
+        { a: 1, b: 3, c: 4 },
+      ]);
+    });
+  });
 });
