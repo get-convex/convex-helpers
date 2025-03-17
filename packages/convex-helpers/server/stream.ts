@@ -16,6 +16,7 @@ import {
   Query,
   QueryInitializer,
   SchemaDefinition,
+  SystemDataModel,
   TableNamesInDataModel,
 } from "convex/server";
 import { compareValues } from "./compare.js";
@@ -476,12 +477,14 @@ export class StreamDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
   implements GenericDatabaseReader<DM<Schema>>
 {
   // TODO: support system tables
-  public system: any = null;
+  public system: GenericDatabaseReader<SystemDataModel>["system"];
 
   constructor(
     public db: GenericDatabaseReader<DM<Schema>>,
     public schema: Schema,
-  ) {}
+  ) {
+    this.system = db.system;
+  }
 
   query<TableName extends TableNamesInDataModel<DM<Schema>>>(
     tableName: TableName,
