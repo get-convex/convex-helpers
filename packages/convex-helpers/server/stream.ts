@@ -126,6 +126,16 @@ function rangeToQuery(range: Bound[]) {
   };
 }
 
+/**
+ * Get the ordered list of fields for a given table's index based on the schema.
+ *
+ * - For "by_creation_time", returns ["_creationTime", "_id"].
+ * - For "by_id", returns ["_id"].
+ * - Otherwise, looks up the named index in the schema and returns its fields
+ *   followed by ["_creationTime", "_id"].
+ * e.g. for an index defined like `.index("abc", ["a", "b"])`,
+ * returns ["a", "b", "_creationTime", "_id"].
+ */
 export function getIndexFields<
   Schema extends SchemaDefinition<any, boolean>,
   T extends TableNamesInDataModel<DM<Schema>>,
@@ -752,6 +762,9 @@ export class OrderedStreamQuery<
   }
 }
 
+/**
+ * Create a stream of documents using the given index and bounds.
+ */
 export function streamIndexRange<
   Schema extends SchemaDefinition<any, boolean>,
   T extends TableNamesInDataModel<DM<Schema>>,
