@@ -156,12 +156,20 @@ export class DatabaseWriterWithTriggers<
   } = GenericMutationCtx<DataModel>,
 > implements GenericDatabaseWriter<DataModel>
 {
+  #ctx: Ctx;
+  #innerDb: GenericDatabaseWriter<DataModel>;
+  #triggers: Triggers<DataModel, Ctx>;
+  #isWithinTrigger: boolean;
   constructor(
-    private ctx: Ctx,
-    private innerDb: GenericDatabaseWriter<DataModel>,
-    private triggers: Triggers<DataModel, Ctx>,
-    private isWithinTrigger: boolean = false,
+    ctx: Ctx,
+    innerDb: GenericDatabaseWriter<DataModel>,
+    triggers: Triggers<DataModel, Ctx>,
+    isWithinTrigger: boolean = false,
   ) {
+    this.#ctx = ctx;
+    this.#innerDb = innerDb;
+    this.#triggers = triggers;
+    this.#isWithinTrigger = isWithinTrigger;
     this.system = innerDb.system;
   }
 
@@ -169,12 +177,12 @@ export class DatabaseWriterWithTriggers<
     table: TableName,
     value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<GenericId<TableName>> {
-    if (!this.triggers.registered[table]) {
-      return await this.innerDb.insert(table, value);
+    if (!this.#triggers.registered[table]) {
+      return await this.#innerDb.insert(table, value);
     }
     return await this._execThenTrigger(table, async () => {
-      const id = await this.innerDb.insert(table, value);
-      const newDoc = (await this.innerDb.get(id))!;
+      const id = await this.#innerDb.insert(table, value);
+      const newDoc = (await this.#innerDb.get(id))!;
       return [id, { operation: "insert", id, oldDoc: null, newDoc }];
     });
   }
@@ -184,12 +192,12 @@ export class DatabaseWriterWithTriggers<
   ): Promise<void> {
     const tableName = this._tableNameFromId(id);
     if (!tableName) {
-      return await this.innerDb.patch(id, value);
+      return await this.#innerDb.patch(id, value);
     }
     return await this._execThenTrigger(tableName, async () => {
-      const oldDoc = (await this.innerDb.get(id))!;
-      await this.innerDb.patch(id, value);
-      const newDoc = (await this.innerDb.get(id))!;
+      const oldDoc = (await this.#innerDb.get(id))!;
+      await this.#innerDb.patch(id, value);
+      const newDoc = (await this.#innerDb.get(id))!;
       return [undefined, { operation: "update", id, oldDoc, newDoc }];
     });
   }
@@ -199,23 +207,23 @@ export class DatabaseWriterWithTriggers<
   ): Promise<void> {
     const tableName = this._tableNameFromId(id);
     if (!tableName) {
-      return await this.innerDb.replace(id, value);
+      return await this.#innerDb.replace(id, value);
     }
     return await this._execThenTrigger(tableName, async () => {
-      const oldDoc = (await this.innerDb.get(id))!;
-      await this.innerDb.replace(id, value);
-      const newDoc = (await this.innerDb.get(id))!;
+      const oldDoc = (await this.#innerDb.get(id))!;
+      await this.#innerDb.replace(id, value);
+      const newDoc = (await this.#innerDb.get(id))!;
       return [undefined, { operation: "update", id, oldDoc, newDoc }];
     });
   }
   async delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
     const tableName = this._tableNameFromId(id);
     if (!tableName) {
-      return await this.innerDb.delete(id);
+      return await this.#innerDb.delete(id);
     }
     return await this._execThenTrigger(tableName, async () => {
-      const oldDoc = (await this.innerDb.get(id))!;
-      await this.innerDb.delete(id);
+      const oldDoc = (await this.#innerDb.get(id))!;
+      await this.#innerDb.delete(id);
       return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
     });
   }
@@ -224,9 +232,9 @@ export class DatabaseWriterWithTriggers<
   _tableNameFromId<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
   ): TableName | null {
-    for (const tableName of Object.keys(this.triggers.registered)) {
+    for (const tableName of Object.keys(this.#triggers.registered)) {
       if (
-        this.innerDb.normalizeId(
+        this.#innerDb.normalizeId(
           tableName as TableNamesInDataModel<DataModel>,
           id,
         )
@@ -243,16 +251,16 @@ export class DatabaseWriterWithTriggers<
     return await innerWriteLock.withLock(async () => {
       const [result, change] = await f();
       const recursiveCtx = {
-        ...this.ctx,
+        ...this.#ctx,
         db: new DatabaseWriterWithTriggers(
-          this.ctx,
-          this.innerDb,
-          this.triggers,
+          this.#ctx,
+          this.#innerDb,
+          this.#triggers,
           true,
         ),
-        innerDb: this.innerDb,
+        innerDb: this.#innerDb,
       };
-      for (const trigger of this.triggers.registered[tableName]!) {
+      for (const trigger of this.#triggers.registered[tableName]!) {
         triggerQueue.push(async () => {
           await trigger(recursiveCtx, change);
         });
@@ -265,7 +273,7 @@ export class DatabaseWriterWithTriggers<
     tableName: TableName,
     f: () => Promise<[R, Change<DataModel, TableName>]>,
   ): Promise<R> {
-    if (this.isWithinTrigger) {
+    if (this.#isWithinTrigger) {
       return await this._queueTriggers(tableName, f);
     }
     return await outerWriteLock.withLock(async () => {
@@ -294,17 +302,17 @@ export class DatabaseWriterWithTriggers<
   get<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
   ): Promise<DocumentByName<DataModel, TableName> | null> {
-    return this.innerDb.get(id);
+    return this.#innerDb.get(id);
   }
   query<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
-    return this.innerDb.query(tableName);
+    return this.#innerDb.query(tableName);
   }
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     id: string,
   ): GenericId<TableName> | null {
-    return this.innerDb.normalizeId(tableName, id);
+    return this.#innerDb.normalizeId(tableName, id);
   }
 }
