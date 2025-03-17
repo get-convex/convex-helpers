@@ -1232,7 +1232,7 @@ class FlatMapStreamIterator<
     this.#mapper = mapper;
     this.#mappedIndexFields = mappedIndexFields;
   }
-  emptyInnerStream(): QueryStream<U> {
+  singletonSkipInnerStream(): QueryStream<U> {
     // If the outer stream is a filtered value, yield a singleton
     // filtered value from the inner stream, with index key of nulls.
     const indexKey = this.#mappedIndexFields.map(() => null);
@@ -1248,7 +1248,7 @@ class FlatMapStreamIterator<
     const [t, indexKey] = item;
     let innerStream: QueryStream<U>;
     if (t === null) {
-      innerStream = this.emptyInnerStream();
+      innerStream = this.singletonSkipInnerStream();
     } else {
       innerStream = await this.#mapper(t);
       if (
@@ -1285,7 +1285,7 @@ class FlatMapStreamIterator<
       // The inner stream was completely empty, so we should inject a null
       // (which will be skipped by everything except the maximumRowsRead count)
       // to account for the cost of the outer stream.
-      this.#currentOuterItem.innerIterator = this.emptyInnerStream()
+      this.#currentOuterItem.innerIterator = this.singletonSkipInnerStream()
         .iterWithKeys()
         [Symbol.asyncIterator]();
       return await this.next();
