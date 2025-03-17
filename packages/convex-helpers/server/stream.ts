@@ -1231,14 +1231,14 @@ class FlatMapStreamIterator<
     this.#mapper = mapper;
     this.#extraIndexFields = extraIndexFields;
   }
-  private emptyInnerStream(): QueryStream<U> {
+  emptyInnerStream(): QueryStream<U> {
     return new SingletonStream<U>(
       null,
       this.#stream.getOrder(),
       this.#extraIndexFields,
     );
   }
-  private async setCurrentOuterItem(item: [T | null, IndexKey]) {
+  async setCurrentOuterItem(item: [T | null, IndexKey]) {
     const [t, indexKey] = item;
     let innerStream: QueryStream<U>;
     if (t === null) {
@@ -1277,6 +1277,7 @@ class FlatMapStreamIterator<
     const result = await this.#currentOuterItem.innerIterator.next();
     if (result.done && this.#currentOuterItem.count === 0) {
       // The inner stream was completely empty, so we should inject a null
+      // (which will be skipped by everything except the maximumRowsRead count)
       // to account for the cost of the outer stream.
       this.#currentOuterItem.innerIterator = this.emptyInnerStream()
         .iterWithKeys()
