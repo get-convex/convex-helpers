@@ -505,6 +505,19 @@ describe("stream", () => {
       expect(page.isDone).toBe(false);
     });
   });
+  test("flatMap ignores null outer items", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      const result = await stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1))
+        .filterWith(async () => false)
+        .flatMap(async (doc) => null as any, ["a", "b", "c"])
+        .collect();
+      expect(result).toEqual([]);
+    });
+  });
 
   test("distinct stream", async () => {
     const t = convexTest(schema, modules);
