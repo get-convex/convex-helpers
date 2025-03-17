@@ -261,12 +261,24 @@ abstract class QueryStream<T extends GenericStreamItem>
       [],
     );
   }
+  /**
+   * Similar to flatMap on an array, but iterate over a stream, and the for each
+   * element, iterate over the stream created by the mapper function.
+   *
+   * Ordered by the original stream order, then the mapped stream. Similar to
+   * how ["a", "b"].flatMap(letter => [letter, letter]) => ["a", "a", "b", "b"]
+   *
+   * @param mapper A function that takes a document and returns a new stream.
+   * @param mappedIndexFields The index fields of the streams created by mapper.
+   * @returns A stream of documents returned by the mapper streams,
+   *   grouped by the documents in the original stream.
+   */
   flatMap<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<QueryStream<U>>,
-    extraIndexFields: string[],
+    mappedIndexFields: string[],
   ): QueryStream<U> {
-    normalizeIndexFields(extraIndexFields);
-    return new FlatMapStream(this, mapper, extraIndexFields);
+    normalizeIndexFields(mappedIndexFields);
+    return new FlatMapStream(this, mapper, mappedIndexFields);
   }
   distinct(distinctIndexFields: string[]): QueryStream<T> {
     return new DistinctStream(this, distinctIndexFields);
@@ -1175,22 +1187,22 @@ class FlatMapStream<
 > extends QueryStream<U> {
   #stream: QueryStream<T>;
   #mapper: (doc: T) => Promise<QueryStream<U>>;
-  #extraIndexFields: string[];
+  #mappedIndexFields: string[];
   constructor(
     stream: QueryStream<T>,
     mapper: (doc: T) => Promise<QueryStream<U>>,
-    extraIndexFields: string[],
+    mappedIndexFields: string[],
   ) {
     super();
     this.#stream = stream;
     this.#mapper = mapper;
-    this.#extraIndexFields = extraIndexFields;
+    this.#mappedIndexFields = mappedIndexFields;
   }
   iterWithKeys(): AsyncIterable<[U | null, IndexKey]> {
     const outerStream = this.#stream;
     const iterable = outerStream.iterWithKeys();
     const mapper = this.#mapper;
-    const extraIndexFields = this.#extraIndexFields;
+    const mappedIndexFields = this.#mappedIndexFields;
     return {
       [Symbol.asyncIterator]() {
         const iterator = iterable[Symbol.asyncIterator]();
@@ -1214,13 +1226,13 @@ class FlatMapStream<
                   innerStream = new SingletonStream<U>(
                     null,
                     outerStream.getOrder(),
-                    extraIndexFields,
+                    mappedIndexFields,
                   );
                 } else {
                   innerStream = await mapper(t);
                   allSame(
-                    [innerStream.getIndexFields(), extraIndexFields],
-                    `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(extraIndexFields)}`,
+                    [innerStream.getIndexFields(), mappedIndexFields],
+                    `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(mappedIndexFields)}`,
                   );
                   allSame(
                     [innerStream.getOrder(), outerStream.getOrder()],
@@ -1257,7 +1269,7 @@ class FlatMapStream<
     return this.#stream.getEqualityIndexFilter();
   }
   getIndexFields(): string[] {
-    return [...this.#stream.getIndexFields(), ...this.#extraIndexFields];
+    return [...this.#stream.getIndexFields(), ...this.#mappedIndexFields];
   }
   narrow(indexBounds: IndexBounds) {
     const outerLength = this.#stream.getIndexFields().length;
@@ -1287,7 +1299,7 @@ class FlatMapStream<
         const innerStream = await this.#mapper(t);
         return innerStream.narrow(innerIndexBounds);
       },
-      this.#extraIndexFields,
+      this.#mappedIndexFields,
     );
   }
 }
