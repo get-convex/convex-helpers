@@ -1026,7 +1026,10 @@ import schema from "./schema";
 //   messages: defineTable(...).index("channelId", ["channelId"])
 
 // Return a paginated stream of { ...channel, ...message }
-// ordered by [channel._id, message._creationTime]
+// ordered by
+// [channelMembership.channelId, channelMembership._creationTime, message.channelId, message._creationTime],
+// i.e. ordered by [channel._id, message._creationTime]
+// if we assume the channelMemberships.userId index is unique
 export const latestMessages = query({
   args: { paginationOpts: paginationOptsValidator },
   handler: async (ctx, { paginationOpts }) => {
@@ -1044,7 +1047,8 @@ export const latestMessages = query({
       stream(ctx.db, stream)
         .query("messages")
         .withIndex("channelId", q => q.eq("channelId", channel._id))
-        .map(async (message) => { ...channel, ...message })
+        .map(async (message) => { ...channel, ...message }),
+      ["channelId", "_creationTime"]
     );
     return await messages.paginate(paginationOpts);
   },
