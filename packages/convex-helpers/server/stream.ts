@@ -249,6 +249,12 @@ abstract class QueryStream<T extends GenericStreamItem>
       [],
     );
   }
+  /**
+   * Create a new stream where each element is the result of applying the mapper
+   * function to the elements of the original stream.
+   *
+   * Similar to how [1, 2, 3].map(x => x * 2) => [2, 4, 6]
+   */
   map<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<U | null>,
   ): QueryStream<U> {
@@ -281,6 +287,22 @@ abstract class QueryStream<T extends GenericStreamItem>
     normalizeIndexFields(mappedIndexFields);
     return new FlatMapStream(this, mapper, mappedIndexFields);
   }
+
+  /**
+   * Get the first item from the original stream for each distinct value of the
+   * selected index fields.
+   *
+   * e.g. if the stream has an equality filter on `a`, and index fields `[a, b, c]`,
+   * we can do `stream.distinct(["b"])` to get a stream of the first item for
+   * each distinct value of `b`.
+   * Similarly, you could do `stream.distinct(["a", "b"])` with the same result,
+   * or `stream.distinct(["a", "b", "c"])` to get the original stream.
+   *
+   * This stream efficiently skips past items with the same value for the selected
+   * distinct index fields.
+   *
+   * This can be used to perform a loose index scan.
+   */
   distinct(distinctIndexFields: string[]): QueryStream<T> {
     return new DistinctStream(this, distinctIndexFields);
   }
@@ -1490,21 +1512,6 @@ class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
   }
 }
 
-/**
- * Get the first item from the original stream for each distinct value of the
- * selected index fields.
- *
- * e.g. if the stream has an equality filter on `a`, and index fields `[a, b, c]`,
- * we can do `stream.distinct(["b"])` to get a stream of the first item for
- * each distinct value of `b`.
- * Similarly, you could do `stream.distinct(["a", "b"])` with the same result,
- * or `stream.distinct(["a", "b", "c"])` to get the original stream.
- *
- * This stream efficiently skips past items with the same value for the selected
- * distinct index fields.
- *
- * This can be used to perform a loose index scan.
- */
 class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
   #distinctIndexFieldsLength: number;
   #stream: QueryStream<T>;
