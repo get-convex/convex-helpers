@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, test, expect, vi, assert } from "vitest";
 import { corsRouter } from "./cors";
 import { defineSchema, httpActionGeneric, HttpRouter } from "convex/server";
 import { modules } from "./setup.test.js";
@@ -116,6 +116,31 @@ describe("corsRouter internals", () => {
     const optionsHandler = routeMap?.get("OPTIONS");
 
     expect(optionsHandler).toBeDefined();
+  });
+  test("OPTIONS handler only includes CORS-enabled methods", async () => {
+    const http = new HttpRouter();
+    const cors = corsRouter(http);
+    const handler = vi.fn();
+    http.route({
+      path: "/foo",
+      method: "POST",
+      handler: httpActionGeneric(handler),
+    });
+    cors.route({
+      path: "/foo",
+      method: "GET",
+      handler: httpActionGeneric(handler),
+    });
+    const routeMap = http.exactRoutes.get("/foo");
+    const optionsHandler = routeMap?.get("OPTIONS");
+    expect(optionsHandler).toBeDefined();
+    assert(optionsHandler);
+    const request = new Request("http://example.com/foo", {
+      method: "OPTIONS",
+    });
+    const callable = (optionsHandler as any)._handler as typeof optionsHandler;
+    const response = await callable(null as any, request);
+    expect(response.headers.get("access-control-allow-methods")).toBe("GET");
   });
 });
 
