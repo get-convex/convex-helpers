@@ -253,7 +253,7 @@ abstract class IndexStream<T extends GenericStreamItem>
   }
   flatMap<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<IndexStream<U>>,
-    extraIndexFields: string[] = [],
+    extraIndexFields: string[],
   ): IndexStream<U> {
     normalizeIndexFields(extraIndexFields);
     return new FlatMapStream(this, mapper, extraIndexFields);
@@ -1139,6 +1139,81 @@ class ConcatStreams<T extends GenericStreamItem> extends IndexStream<T> {
   }
 }
 
+class FlatMapStreamIterator<
+  T extends GenericStreamItem,
+  U extends GenericStreamItem,
+> implements AsyncIterator<[U | null, IndexKey]> {
+  private outerIterator: AsyncIterator<[T | null, IndexKey]>;
+  private currentOuterItem: {
+    t: T | null;
+    indexKey: IndexKey;
+    innerIterator: AsyncIterator<[U | null, IndexKey]>;
+    count: number;
+  } | null = null;
+  constructor(
+    private stream: IndexStream<T>,
+    private mapper: (doc: T) => Promise<IndexStream<U>>,
+    private extraIndexFields: string[],
+  ) {
+    this.outerIterator = stream.iterWithKeys()[Symbol.asyncIterator]();
+  }
+  private emptyInnerStream(): IndexStream<U> {
+    return new SingletonStream<U>(
+      null,
+      this.stream.getOrder(),
+      this.extraIndexFields,
+    );
+  }
+  private async setCurrentOuterItem(item: [T | null, IndexKey]) {
+    const [t, indexKey] = item;
+    let innerStream: IndexStream<U>;
+    if (t === null) {
+      innerStream = this.emptyInnerStream();
+    } else {
+      innerStream = await this.mapper(t);
+      allSame(
+        [innerStream.getIndexFields(), this.extraIndexFields],
+        `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(this.extraIndexFields)}`,
+      );
+      allSame(
+        [innerStream.getOrder(), this.stream.getOrder()],
+        `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${this.stream.getOrder()}`,
+      );
+    }
+    this.currentOuterItem = {
+      t,
+      indexKey,
+      innerIterator: innerStream.iterWithKeys()[Symbol.asyncIterator](),
+      count: 0,
+    };
+  }
+  async next(): Promise<IteratorResult<[U | null, IndexKey]>> {
+    if (this.currentOuterItem === null) {
+      const result = await this.outerIterator.next();
+      if (result.done) {
+        return { done: true, value: undefined };
+      }
+      await this.setCurrentOuterItem(result.value);
+      return await this.next();
+    }
+    const result = await this.currentOuterItem.innerIterator.next();
+    if (result.done && this.currentOuterItem.count === 0) {
+      // The inner stream was completely empty, so we should inject a null
+      // to account for the cost of the outer stream.
+      this.currentOuterItem.innerIterator = this.emptyInnerStream().iterWithKeys()[Symbol.asyncIterator]();
+      return await this.next();
+    }
+    if (result.done) {
+      this.currentOuterItem = null;
+      return await this.next();
+    }
+    const [u, indexKey] = result.value;
+    this.currentOuterItem.count++;
+    const fullIndexKey = [...this.currentOuterItem.indexKey, ...indexKey];
+    return { done: false, value: [u, fullIndexKey] };
+  }
+}
+
 class FlatMapStream<
   T extends GenericStreamItem,
   U extends GenericStreamItem,
@@ -1151,66 +1226,12 @@ class FlatMapStream<
     super();
   }
   iterWithKeys(): AsyncIterable<[U | null, IndexKey]> {
-    const outerStream = this.stream;
-    const iterable = outerStream.iterWithKeys();
+    const stream = this.stream;
     const mapper = this.mapper;
     const extraIndexFields = this.extraIndexFields;
     return {
       [Symbol.asyncIterator]() {
-        const iterator = iterable[Symbol.asyncIterator]();
-        let currentT: {
-          t: T | null;
-          indexKey: IndexKey;
-          innerStream: IndexStream<U>;
-          innerIterator: AsyncIterator<[U | null, IndexKey]>;
-        } | null = null;
-        return {
-          async next() {
-            while (true) {
-              if (currentT === null) {
-                const result = await iterator.next();
-                if (result.done) {
-                  return result;
-                }
-                const [t, indexKey] = result.value;
-                let innerStream: IndexStream<U>;
-                if (t === null) {
-                  innerStream = new SingletonStream<U>(
-                    null,
-                    outerStream.getOrder(),
-                    extraIndexFields,
-                  );
-                } else {
-                  innerStream = await mapper(t);
-                  allSame(
-                    [innerStream.getIndexFields(), extraIndexFields],
-                    `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(extraIndexFields)}`,
-                  );
-                  allSame(
-                    [innerStream.getOrder(), outerStream.getOrder()],
-                    `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${outerStream.getOrder()}`,
-                  );
-                }
-                currentT = {
-                  t,
-                  indexKey,
-                  innerStream,
-                  innerIterator: innerStream
-                    .iterWithKeys()
-                    [Symbol.asyncIterator](),
-                };
-              }
-              const innerResult = await currentT.innerIterator.next();
-              if (innerResult.done) {
-                currentT = null;
-                continue;
-              }
-              const [u, indexKey] = innerResult.value;
-              const fullIndexKey = [...currentT.indexKey, ...indexKey];
-              return { done: false, value: [u, fullIndexKey] };
-            }
-          },
-        };
+        return new FlatMapStreamIterator(stream, mapper, extraIndexFields);
       },
     };
   }
@@ -1263,14 +1284,14 @@ export class SingletonStream<
     private value: T | null,
     private order: "asc" | "desc" = "asc",
     private indexFields: string[] = [],
-    private indexKey: IndexKey = [],
-    private equalityIndexFilter: Value[] = [],
   ) {
     super();
   }
   iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
     const value = this.value;
-    const indexKey = this.indexKey;
+    // A singleton stream can be ordered by any index fields and any index
+    // values, so we use nulls for the index key.
+    const indexKey = this.indexFields.map(() => null);
     return {
       [Symbol.asyncIterator]() {
         let sent = false;
@@ -1293,22 +1314,26 @@ export class SingletonStream<
     return this.indexFields;
   }
   getEqualityIndexFilter(): Value[] {
-    return this.equalityIndexFilter;
+    // Since the singleton stream yields a single value with index key of nulls,
+    // all of its values have the same index key, so it can be used as
+    // an equality filter.
+    return this.indexFields.map(() => null);
   }
   narrow(indexBounds: IndexBounds) {
+    const indexKey = this.indexFields.map(() => null);
     const compareLowerBound = compareKeys(
       {
         value: indexBounds.lowerBound,
         kind: indexBounds.lowerBoundInclusive ? "exact" : "successor",
       },
       {
-        value: this.indexKey,
+        value: indexKey,
         kind: "exact",
       },
     );
     const compareUpperBound = compareKeys(
       {
-        value: this.indexKey,
+        value: indexKey,
         kind: "exact",
       },
       {
@@ -1321,8 +1346,6 @@ export class SingletonStream<
       compareLowerBound <= 0 && compareUpperBound <= 0 ? this.value : null,
       this.order,
       this.indexFields,
-      this.indexKey,
-      this.equalityIndexFilter,
     );
   }
 }

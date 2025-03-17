@@ -1043,7 +1043,8 @@ export const latestMessages = query({
     const messages = channels.flatMap(async (channel) => stream(ctx.db, stream)
       .query("messages")
       .withIndex("channel", q => q.eq("channel", channel._id))
-      .map(async (message) => { ...channel, ...message })
+      .map(async (message) => { ...channel, ...message }),
+      ["channel", "_creationTime"],
     );
     return await messages.paginate(paginationOpts);
   },
