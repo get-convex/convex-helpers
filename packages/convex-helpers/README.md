@@ -896,7 +896,7 @@ pass in `endCursor` to prevent holes or overlaps between the pages.
 1. For a fixed set of authors, paginate all messages by those authors.
 
 ```ts
-import { stream, MergedStream } from "convex-helpers/server/stream";
+import { stream, mergedStream } from "convex-helpers/server/stream";
 import schema from "./schema";
 // schema has messages: defineTable(...).withIndex("by_author", ["author"])
 
@@ -915,7 +915,7 @@ export const listForAuthors = query({
     );
     // Create a new stream of all messages authored by users in `args.authors`,
     // ordered by the "by_author" index (i.e. ["author", "_creationTime"]).
-    const allAuthorsStream = new MergedStream(authorStreams, [
+    const allAuthorsStream = mergedStream(authorStreams, [
       "author",
       "_creationTime",
     ]);

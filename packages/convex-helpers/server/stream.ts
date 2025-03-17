@@ -194,14 +194,14 @@ export function stream<Schema extends SchemaDefinition<any, boolean>>(
 type GenericStreamItem = NonNullable<unknown>;
 
 /**
- * An "IndexStream" is an async iterable of query results, ordered by indexed fields.
+ * A "QueryStream" is an async iterable of query results, ordered by indexed fields.
  */
-abstract class IndexStream<T extends GenericStreamItem>
+abstract class QueryStream<T extends GenericStreamItem>
   implements GenericOrderedQuery<T>
 {
   // Methods that subclasses must implement so OrderedQuery can be implemented.
   abstract iterWithKeys(): AsyncIterable<[T | null, IndexKey]>;
-  abstract narrow(indexBounds: IndexBounds): IndexStream<T>;
+  abstract narrow(indexBounds: IndexBounds): QueryStream<T>;
 
   // Methods so subclasses can make sure streams are combined correctly.
   abstract getOrder(): "asc" | "desc";
@@ -227,7 +227,7 @@ abstract class IndexStream<T extends GenericStreamItem>
    * it gets as many documents as it wants. If you run into issues with reading
    * too much data, you can pass `maximumRowsRead` to `paginate()`.
    */
-  filterWith(predicate: (doc: T) => Promise<boolean>): IndexStream<T> {
+  filterWith(predicate: (doc: T) => Promise<boolean>): QueryStream<T> {
     const order = this.getOrder();
     return new FlatMapStream(
       this,
@@ -240,7 +240,7 @@ abstract class IndexStream<T extends GenericStreamItem>
   }
   map<U extends GenericStreamItem>(
     mapper: (doc: T) => Promise<U | null>,
-  ): IndexStream<U> {
+  ): QueryStream<U> {
     const order = this.getOrder();
     return new FlatMapStream(
       this,
@@ -252,9 +252,9 @@ abstract class IndexStream<T extends GenericStreamItem>
     );
   }
   flatMap<U extends GenericStreamItem>(
-    mapper: (doc: T) => Promise<IndexStream<U>>,
-    extraIndexFields: string[] = [],
-  ): IndexStream<U> {
+    mapper: (doc: T) => Promise<QueryStream<U>>,
+    extraIndexFields: string[],
+  ): QueryStream<U> {
     normalizeIndexFields(extraIndexFields);
     return new FlatMapStream(this, mapper, extraIndexFields);
   }
@@ -506,8 +506,8 @@ export abstract class StreamableQuery<
     T extends TableNamesInDataModel<DM<Schema>>,
     IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
   >
-  extends IndexStream<DocumentByInfo<NamedTableInfo<DM<Schema>, T>>>
-  // this "implements" is redundant, since IndexStream implies it, but it acts as a type-time assertion.
+  extends QueryStream<DocumentByInfo<NamedTableInfo<DM<Schema>, T>>>
+  // this "implements" is redundant, since QueryStream implies it, but it acts as a type-time assertion.
   implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>
 {
   abstract reflect(): QueryReflection<Schema, T, IndexName>;
@@ -580,6 +580,7 @@ export class StreamQueryInitializer<
   }
 }
 
+// Not to be confused with QueryStream or StreamableQuery.
 export class StreamQuery<
     Schema extends SchemaDefinition<any, boolean>,
     T extends TableNamesInDataModel<DM<Schema>>,
@@ -762,7 +763,7 @@ export function streamIndexRange<
   index: IndexName,
   bounds: IndexBounds,
   order: "asc" | "desc",
-): IndexStream<DocumentByName<DM<Schema>, T>> {
+): QueryStream<DocumentByName<DM<Schema>, T>> {
   const indexFields = getIndexFields(table, index, schema);
   const splitBounds = splitRange(
     indexFields,
@@ -881,7 +882,7 @@ class ReflectIndexRange {
  * i.e. by "author" (then by the implicit "_creationTime").
  *
  * e.g. ```ts
- * new MergedStream([
+ * mergedStream([
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
@@ -898,7 +899,7 @@ class ReflectIndexRange {
  * and each query does an equality lookup on "author", each individual query before merging is in fact ordered by "_creationTime".
  *
  * e.g. ```ts
- * new MergedStream([
+ * mergedStream([
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user3")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
@@ -907,12 +908,19 @@ class ReflectIndexRange {
  *
  * This returns a stream of messages from all three users, sorted by creation time.
  */
-export class MergedStream<T extends GenericStreamItem> extends IndexStream<T> {
+export function mergedStream<T extends GenericStreamItem>(
+  streams: QueryStream<T>[],
+  orderByIndexFields: string[],
+): QueryStream<T> {
+  return new MergedStream(streams, orderByIndexFields);
+}
+
+class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
   private order: "asc" | "desc";
-  private streams: IndexStream<T>[];
+  private streams: QueryStream<T>[];
   private equalityIndexFilter: Value[];
   private indexFields: string[];
-  constructor(streams: IndexStream<T>[], orderByIndexFields: string[]) {
+  constructor(streams: QueryStream<T>[], orderByIndexFields: string[]) {
     super();
     if (streams.length === 0) {
       throw new Error("Cannot union empty array of streams");
@@ -1054,12 +1062,12 @@ function commonPrefix(values: Value[][]) {
  * It's not recommended to use `ConcatStreams` directly, since it has the same
  * behavior as `MergedStream`, but with fewer runtime checks.
  */
-class ConcatStreams<T extends GenericStreamItem> extends IndexStream<T> {
+class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
   private order: "asc" | "desc";
-  private streams: IndexStream<T>[];
+  private streams: QueryStream<T>[];
   private equalityIndexFilter: Value[];
   private indexFields: string[];
-  constructor(...streams: IndexStream<T>[]) {
+  constructor(...streams: QueryStream<T>[]) {
     super();
     this.streams = streams;
     if (streams.length === 0) {
@@ -1142,10 +1150,10 @@ class ConcatStreams<T extends GenericStreamItem> extends IndexStream<T> {
 class FlatMapStream<
   T extends GenericStreamItem,
   U extends GenericStreamItem,
-> extends IndexStream<U> {
+> extends QueryStream<U> {
   constructor(
-    private stream: IndexStream<T>,
-    private mapper: (doc: T) => Promise<IndexStream<U>>,
+    private stream: QueryStream<T>,
+    private mapper: (doc: T) => Promise<QueryStream<U>>,
     private extraIndexFields: string[],
   ) {
     super();
@@ -1161,7 +1169,7 @@ class FlatMapStream<
         let currentT: {
           t: T | null;
           indexKey: IndexKey;
-          innerStream: IndexStream<U>;
+          innerStream: QueryStream<U>;
           innerIterator: AsyncIterator<[U | null, IndexKey]>;
         } | null = null;
         return {
@@ -1173,7 +1181,7 @@ class FlatMapStream<
                   return result;
                 }
                 const [t, indexKey] = result.value;
-                let innerStream: IndexStream<U>;
+                let innerStream: QueryStream<U>;
                 if (t === null) {
                   innerStream = new SingletonStream<U>(
                     null,
@@ -1258,7 +1266,7 @@ class FlatMapStream<
 
 export class SingletonStream<
   T extends GenericStreamItem,
-> extends IndexStream<T> {
+> extends QueryStream<T> {
   constructor(
     private value: T | null,
     private order: "asc" | "desc" = "asc",
@@ -1340,10 +1348,10 @@ function normalizeIndexFields(indexFields: string[]) {
   }
 }
 
-class OrderByStream<T extends GenericStreamItem> extends IndexStream<T> {
+class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
   private staticFilter: Value[];
   constructor(
-    private stream: IndexStream<T>,
+    private stream: QueryStream<T>,
     private indexFields: string[],
   ) {
     super();

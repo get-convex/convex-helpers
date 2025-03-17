@@ -1,7 +1,7 @@
 import { defineTable, defineSchema, GenericDocument } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { IndexKey, MergedStream, stream } from "./stream.js";
+import { IndexKey, mergedStream, stream } from "./stream.js";
 import { modules } from "./setup.test.js";
 import { v } from "convex/values";
 
@@ -183,7 +183,7 @@ describe("stream", () => {
       const query3 = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).eq("b", 4).eq("c", 3));
-      const fullQuery = new MergedStream(
+      const fullQuery = mergedStream(
         [query1, query2, query3],
         ["a", "b", "c"],
       );
@@ -230,7 +230,7 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 2))
         .order("desc");
-      const merged = new MergedStream([query1, query2], ["a", "b", "c"]);
+      const merged = mergedStream([query1, query2], ["a", "b", "c"]);
       const result = await merged.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 2, b: 4, c: 4 },
@@ -302,7 +302,7 @@ describe("stream", () => {
       const query2 = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 2));
-      const merged = new MergedStream([query1, query2], ["b", "c"]);
+      const merged = mergedStream([query1, query2], ["b", "c"]);
       const result = await merged.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 2, b: 1, c: 3 },
@@ -310,7 +310,7 @@ describe("stream", () => {
         { a: 1, b: 3, c: 3 },
         { a: 2, b: 4, c: 4 },
       ]);
-      const mergedDesc = new MergedStream(
+      const mergedDesc = mergedStream(
         [query1.order("desc"), query2.order("desc")],
         ["b", "c"],
       );
@@ -342,7 +342,7 @@ describe("stream", () => {
 
       // You can't merge streams and exclude an index field that's still used
       // for ordering.
-      expect(() => new MergedStream([query1, query2], ["c"])).toThrow();
+      expect(() => mergedStream([query1, query2], ["c"])).toThrow();
     });
   });
 
@@ -359,7 +359,7 @@ describe("stream", () => {
       const query2 = stream(ctx.db, schema)
         .query("foo")
         .withIndex("ac", (q) => q.eq("a", 1));
-      const merged = new MergedStream([query1, query2], ["c"]);
+      const merged = mergedStream([query1, query2], ["c"]);
       const result = await merged.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
