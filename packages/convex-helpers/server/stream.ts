@@ -1211,6 +1211,7 @@ class FlatMapStreamIterator<
   U extends GenericStreamItem,
 > implements AsyncIterator<[U | null, IndexKey]>
 {
+  #outerStream: QueryStream<T>;
   #outerIterator: AsyncIterator<[T | null, IndexKey]>;
   #currentOuterItem: {
     t: T | null;
@@ -1218,24 +1219,24 @@ class FlatMapStreamIterator<
     innerIterator: AsyncIterator<[U | null, IndexKey]>;
     count: number;
   } | null = null;
-  #stream: QueryStream<T>;
   #mapper: (doc: T) => Promise<QueryStream<U>>;
-  #extraIndexFields: string[];
+  #mappedIndexFields: string[];
+
   constructor(
-    stream: QueryStream<T>,
+    outerStream: QueryStream<T>,
     mapper: (doc: T) => Promise<QueryStream<U>>,
-    extraIndexFields: string[],
+    mappedIndexFields: string[],
   ) {
-    this.#outerIterator = stream.iterWithKeys()[Symbol.asyncIterator]();
-    this.#stream = stream;
+    this.#outerIterator = outerStream.iterWithKeys()[Symbol.asyncIterator]();
+    this.#outerStream = outerStream;
     this.#mapper = mapper;
-    this.#extraIndexFields = extraIndexFields;
+    this.#mappedIndexFields = mappedIndexFields;
   }
   emptyInnerStream(): QueryStream<U> {
     return new SingletonStream<U>(
       null,
-      this.#stream.getOrder(),
-      this.#extraIndexFields,
+      this.#outerStream.getOrder(),
+      this.#mappedIndexFields,
     );
   }
   async setCurrentOuterItem(item: [T | null, IndexKey]) {
@@ -1246,15 +1247,15 @@ class FlatMapStreamIterator<
     } else {
       innerStream = await this.#mapper(t);
       if (
-        !equalIndexFields(innerStream.getIndexFields(), this.#extraIndexFields)
+        !equalIndexFields(innerStream.getIndexFields(), this.#mappedIndexFields)
       ) {
         throw new Error(
-          `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(this.#extraIndexFields)}`,
+          `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(this.#mappedIndexFields)}`,
         );
       }
-      if (innerStream.getOrder() !== this.#stream.getOrder()) {
+      if (innerStream.getOrder() !== this.#outerStream.getOrder()) {
         throw new Error(
-          `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${this.#stream.getOrder()}`,
+          `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${this.#outerStream.getOrder()}`,
         );
       }
     }
@@ -1313,12 +1314,12 @@ class FlatMapStream<
     this.#mappedIndexFields = mappedIndexFields;
   }
   iterWithKeys(): AsyncIterable<[U | null, IndexKey]> {
-    const stream = this.#stream;
+    const outerStream = this.#stream;
     const mapper = this.#mapper;
     const mappedIndexFields = this.#mappedIndexFields;
     return {
       [Symbol.asyncIterator]() {
-        return new FlatMapStreamIterator(stream, mapper, mappedIndexFields);
+        return new FlatMapStreamIterator(outerStream, mapper, mappedIndexFields);
       },
     };
   }
