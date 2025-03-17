@@ -579,9 +579,7 @@ describe("stream", () => {
       });
       // for b=2, the flatmap is empty, so it's as if b=2 were filtered out
       // by filterWith -- it counts towards the maximumRowsRead.
-      expect(page1.page.map(stripSystemFields)).toEqual([
-        { a: 1, b: 3, c: 5 },
-      ]);
+      expect(page1.page.map(stripSystemFields)).toEqual([{ a: 1, b: 3, c: 5 }]);
     });
   });
 });

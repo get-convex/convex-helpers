@@ -1319,7 +1319,11 @@ class FlatMapStream<
     const mappedIndexFields = this.#mappedIndexFields;
     return {
       [Symbol.asyncIterator]() {
-        return new FlatMapStreamIterator(outerStream, mapper, mappedIndexFields);
+        return new FlatMapStreamIterator(
+          outerStream,
+          mapper,
+          mappedIndexFields,
+        );
       },
     };
   }
