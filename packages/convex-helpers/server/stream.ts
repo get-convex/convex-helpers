@@ -1700,5 +1700,7 @@ function compareKeys(key1: Key, key2: Key): number {
   if (key1.kind === "successor") {
     return 1;
   }
+  // Note: we're being cautious here, but we aren't checking above that the type
+  // of key2.kind is valid...
   throw new Error(`Unexpected key kind: ${key1.kind as any}`);
 }
