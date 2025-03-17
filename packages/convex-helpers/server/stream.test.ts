@@ -547,14 +547,14 @@ describe("stream", () => {
   test("loose index scan", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      await ctx.db.insert("foo", { a: 1, b: 1, c: 4 });
-      await ctx.db.insert("foo", { a: 1, b: 2, c: 1 });
-      await ctx.db.insert("foo", { a: 1, b: 2, c: 5 });
-      await ctx.db.insert("foo", { a: 1, b: 2, c: 6 });
-      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
-      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
-      await ctx.db.insert("foo", { a: 1, b: 5, c: 4 });
-      await ctx.db.insert("foo", { a: 2, b: 5, c: 6 });
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 4 }); // excluded by outer
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 1 }); // excluded by inner
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 1 }); // excluded by inner
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 5 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 6 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 4 });
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 4 }); // excluded by outer
+      await ctx.db.insert("foo", { a: 2, b: 5, c: 6 }); // excluded by outer
       const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 1).lt("b", 5))
@@ -568,10 +568,18 @@ describe("stream", () => {
         );
       const result = await query.collect();
       expect(result.map(stripSystemFields)).toEqual([
-        { a: 1, b: 2, c: 5 },
-        { a: 1, b: 2, c: 6 },
-        { a: 1, b: 3, c: 4 },
+        { a: 1, b: 3, c: 5 },
+        { a: 1, b: 3, c: 6 },
+        { a: 1, b: 4, c: 4 },
       ]);
+      const page1 = await query.paginate({
+        numItems: 2,
+        cursor: null,
+        maximumRowsRead: 2,
+      });
+      // for b=2, the flatmap is empty, so it's as if b=2 were filtered out
+      // by filterWith -- it counts towards the maximumRowsRead.
+      expect(page1.page.map(stripSystemFields)).toEqual([{ a: 1, b: 3, c: 5 }]);
     });
   });
 });

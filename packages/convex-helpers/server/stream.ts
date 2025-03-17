@@ -1206,6 +1206,101 @@ class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
   }
 }
 
+class FlatMapStreamIterator<
+  T extends GenericStreamItem,
+  U extends GenericStreamItem,
+> implements AsyncIterator<[U | null, IndexKey]>
+{
+  #outerStream: QueryStream<T>;
+  #outerIterator: AsyncIterator<[T | null, IndexKey]>;
+  #currentOuterItem: {
+    t: T | null;
+    indexKey: IndexKey;
+    innerIterator: AsyncIterator<[U | null, IndexKey]>;
+    count: number;
+  } | null = null;
+  #mapper: (doc: T) => Promise<QueryStream<U>>;
+  #mappedIndexFields: string[];
+
+  constructor(
+    outerStream: QueryStream<T>,
+    mapper: (doc: T) => Promise<QueryStream<U>>,
+    mappedIndexFields: string[],
+  ) {
+    this.#outerIterator = outerStream.iterWithKeys()[Symbol.asyncIterator]();
+    this.#outerStream = outerStream;
+    this.#mapper = mapper;
+    this.#mappedIndexFields = mappedIndexFields;
+  }
+  singletonSkipInnerStream(): QueryStream<U> {
+    // If the outer stream is a filtered value, yield a singleton
+    // filtered value from the inner stream, with index key of nulls.
+    const indexKey = this.#mappedIndexFields.map(() => null);
+    return new SingletonStream<U>(
+      null,
+      this.#outerStream.getOrder(),
+      this.#mappedIndexFields,
+      indexKey,
+      indexKey,
+    );
+  }
+  async setCurrentOuterItem(item: [T | null, IndexKey]) {
+    const [t, indexKey] = item;
+    let innerStream: QueryStream<U>;
+    if (t === null) {
+      innerStream = this.singletonSkipInnerStream();
+    } else {
+      innerStream = await this.#mapper(t);
+      if (
+        !equalIndexFields(innerStream.getIndexFields(), this.#mappedIndexFields)
+      ) {
+        throw new Error(
+          `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(this.#mappedIndexFields)}`,
+        );
+      }
+      if (innerStream.getOrder() !== this.#outerStream.getOrder()) {
+        throw new Error(
+          `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${this.#outerStream.getOrder()}`,
+        );
+      }
+    }
+    this.#currentOuterItem = {
+      t,
+      indexKey,
+      innerIterator: innerStream.iterWithKeys()[Symbol.asyncIterator](),
+      count: 0,
+    };
+  }
+  async next(): Promise<IteratorResult<[U | null, IndexKey]>> {
+    if (this.#currentOuterItem === null) {
+      const result = await this.#outerIterator.next();
+      if (result.done) {
+        return { done: true, value: undefined };
+      }
+      await this.setCurrentOuterItem(result.value);
+      return await this.next();
+    }
+    const result = await this.#currentOuterItem.innerIterator.next();
+    if (result.done) {
+      if (this.#currentOuterItem.count > 0) {
+        this.#currentOuterItem = null;
+      } else {
+        // The inner stream was completely empty, so we should inject a null
+        // (which will be skipped by everything except the maximumRowsRead count)
+        // to account for the cost of the outer stream.
+        this.#currentOuterItem.innerIterator = this.singletonSkipInnerStream()
+          .iterWithKeys()
+          [Symbol.asyncIterator]();
+      }
+      return await this.next();
+    }
+    const [u, indexKey] = result.value;
+    this.#currentOuterItem.count++;
+    const fullIndexKey = [...this.#currentOuterItem.indexKey, ...indexKey];
+    return { done: false, value: [u, fullIndexKey] };
+  }
+}
+
 class FlatMapStream<
   T extends GenericStreamItem,
   U extends GenericStreamItem,
@@ -1225,70 +1320,15 @@ class FlatMapStream<
   }
   iterWithKeys(): AsyncIterable<[U | null, IndexKey]> {
     const outerStream = this.#stream;
-    const iterable = outerStream.iterWithKeys();
     const mapper = this.#mapper;
     const mappedIndexFields = this.#mappedIndexFields;
     return {
       [Symbol.asyncIterator]() {
-        const iterator = iterable[Symbol.asyncIterator]();
-        let currentT: {
-          t: T | null;
-          indexKey: IndexKey;
-          innerStream: QueryStream<U>;
-          innerIterator: AsyncIterator<[U | null, IndexKey]>;
-        } | null = null;
-        return {
-          async next() {
-            while (true) {
-              if (currentT === null) {
-                const result = await iterator.next();
-                if (result.done) {
-                  return result;
-                }
-                const [t, indexKey] = result.value;
-                let innerStream: QueryStream<U>;
-                if (t === null) {
-                  // If the outer stream is a filtered value, yield a singleton
-                  // filtered value from the inner stream, with index key of nulls.
-                  const indexKey = mappedIndexFields.map(() => null);
-                  innerStream = new SingletonStream<U>(
-                    null,
-                    outerStream.getOrder(),
-                    mappedIndexFields,
-                    indexKey,
-                    indexKey,
-                  );
-                } else {
-                  innerStream = await mapper(t);
-                  allSame(
-                    [innerStream.getIndexFields(), mappedIndexFields],
-                    `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(mappedIndexFields)}`,
-                  );
-                  allSame(
-                    [innerStream.getOrder(), outerStream.getOrder()],
-                    `FlatMapStream: inner stream has different order than outer stream: ${innerStream.getOrder()} vs ${outerStream.getOrder()}`,
-                  );
-                }
-                currentT = {
-                  t,
-                  indexKey,
-                  innerStream,
-                  innerIterator: innerStream
-                    .iterWithKeys()
-                    [Symbol.asyncIterator](),
-                };
-              }
-              const innerResult = await currentT.innerIterator.next();
-              if (innerResult.done) {
-                currentT = null;
-                continue;
-              }
-              const [u, indexKey] = innerResult.value;
-              const fullIndexKey = [...currentT.indexKey, ...indexKey];
-              return { done: false, value: [u, fullIndexKey] };
-            }
-          },
-        };
+        return new FlatMapStreamIterator(
+          outerStream,
+          mapper,
+          mappedIndexFields,
+        );
       },
     };
   }
