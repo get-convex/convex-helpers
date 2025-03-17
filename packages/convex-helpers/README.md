@@ -854,34 +854,37 @@ export const list = query({
 });
 ```
 
-## Composable Streams of query results
+## Composable QueryStreams
 
 In Convex queries, you can read data from many tables in many ways, and combine
 the data before returning to to the client. However, some patterns aren't so
 easy without these helpers. In particular, these helpers will allow you to take
-a union of multiple queries, filter out some of them, and paginate the result.
+a union of multiple queries, filter out some of them, join with other tables,
+and paginate the result.
 
-- A "stream" is an [async iterable](https://javascript.info/async-iterators-generators)
+- A `QueryStream` is an
+  [async iterable](https://javascript.info/async-iterators-generators)
   of documents, ordered by indexed fields.
 
-The cool thing about a stream is you can merge multiple streams together
-to create a new stream, and you can filter documents out of a stream with a
-TypeScript predicate. These operations preserve order, so the result is still
-a valid stream. You can merge and filter as much as you want, and finally treat
-it like a Convex query to get documents with `.first()`, `.collect()`, or
-`.paginate()`.
+The cool thing about QueryStreams is you can make more QueryStreams from them,
+with operations equivalent to SQL's `UNION ALL`, `WHERE`, and
+`JOIN`. These operations preserve order, so the result
+is still a valid QueryStream. You can combine streams as much as you want, and
+finally treat it like a Convex query to get documents with `.first()`,
+`.collect()`, or `.paginate()`.
 
 For example, if you have a stream of "messages created by user1" and a stream
 of "messages created by user2", you can get a stream of
 "messages created by user1 or user2" where the messages are interleaved
-by creation time (or whatever the order is of the index you're using). You can then filter the merged stream to get a stream of "messages created by user1 or user2 that are unread". Then you
+by creation time (or whatever the order is of the index you're using). You can
+then filter the merged stream to get a stream of "messages created by user1 or user2 that are unread". Then you
 can paginate the result.
 
 Concrete functions you can use:
 
 - `stream` constructs a stream using the same syntax as `DatabaseReader`.
   - e.g. `stream(ctx.db, schema).query("messages").withIndex("by_author", (q) => q.eq("author", "user1"))`
-- `MergedStream(streams, fields)` combines multiple streams into a new stream, ordered by the same index fields.
+- `mergedStream(streams, fields)` combines multiple streams into a new stream, ordered by the same index fields.
 - `.flatMap` expands each document into its own stream, and they all get chained together.
 - `.map` modifies each stream item, preserving order.
 - `.filterWith` filters out documents from a stream based on a TypeScript predicate.

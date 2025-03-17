@@ -183,10 +183,7 @@ describe("stream", () => {
       const query3 = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).eq("b", 4).eq("c", 3));
-      const fullQuery = mergedStream(
-        [query1, query2, query3],
-        ["a", "b", "c"],
-      );
+      const fullQuery = mergedStream([query1, query2, query3], ["a", "b", "c"]);
       const result = await fullQuery.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 2, c: 3 },
