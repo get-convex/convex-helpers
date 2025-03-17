@@ -19,6 +19,7 @@ Table of contents:
 - [Validator utilities](#validator-utilities)
 - [Filter db queries with JS](#filter)
 - [Manual pagination](#manual-pagination)
+- [Stream and combine data from multiple queries](#composable-streams-of-query-results)
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
 - [TypeScript API Generator](#typescript-api-generation)
 - [OpenAPI Spec Generator](#open-api-spec-generation)
@@ -871,9 +872,9 @@ it like a Convex query to get documents with `.first()`, `.collect()`, or
 `.paginate()`.
 
 For example, if you have a stream of "messages created by user1" and a stream
-of "messages created by user2", you can merge them together to get a stream of
-"messages created by user1 or user2". And you can filter the merged stream to
-get a stream of "messages created by user1 or user2 that are unread". Then you
+of "messages created by user2", you can get a stream of
+"messages created by user1 or user2" where the messages are interleaved
+by creation time (or whatever the order is of the index you're using). You can then filter the merged stream to get a stream of "messages created by user1 or user2 that are unread". Then you
 can paginate the result.
 
 Concrete functions you can use:
@@ -891,9 +892,7 @@ Beware if using `.paginate()` with streams in reactive queries, as it has the
 same problems as [`paginator` and `getPage`](#manual-pagination): you need to
 pass in `endCursor` to prevent holes or overlaps between the pages.
 
-**Motivating examples:**
-
-1. For a fixed set of authors, paginate all messages by those authors.
+### Example 1: Paginate all messages by a fixed set of authors
 
 ```ts
 import { stream, mergedStream } from "convex-helpers/server/stream";
@@ -925,7 +924,7 @@ export const listForAuthors = query({
 });
 ```
 
-2. Paginate all messages whose authors match a complex predicate.
+### Example 2: Paginate all messages whose authors match a complex predicate.
 
 There are actually two ways to do this. One uses "post-filter" pagination,
 where the filter is applied after fetching a fixed number of documents. To do that, you can
@@ -966,14 +965,12 @@ export const list = query({
 });
 ```
 
-Again, remember to use `endCursor` in reactive queries to keep pages contiguous
-(see [`paginator`](#paginator-manual-pagination-with-familiar-syntax)).
+As with any usage of [`paginator`](#paginator-manual-pagination-with-familiar-syntax), remember to use `endCursor` in reactive queries to keep pages contiguous.
 
-3. Order by a suffix of an index.
+### Example 3: Order by a suffix of an index.
 
 Suppose you have an index on `["author", "unread"]` and you want to get the
 most recent 10 messages for an author, ignoring whether a messages is unread.
-The index implicitly ends in `"_creationTime"`, so this should be possible.
 
 Normally this would require a separate index on `["author"]`, or doing two
 requests and manually picking the 10 most recent. But with streams, it's cleaner:
@@ -998,8 +995,10 @@ export const latestMessages = query({
       .order("desc");
     // Since each stream is ordered by ["_creationTime"], we can merge them and
     // maintain that ordering.
+
     // Aside: We could instead choose to merge the streams ordered by ["unread", "_creationTime"]
     // or ordered by ["author", "unread", "_creationTime"].
+
     // `allMessagesByCreationTime` is a single stream of all messages authored by
     // `args.author`, ordered by _creationTime descending.
     const allMessagesByCreationTime = new MergedStream(
@@ -1011,39 +1010,41 @@ export const latestMessages = query({
 });
 ```
 
-4. Join tables.
+### Example 4: Join tables.
 
-Suppose you have a table of channels, and another table of messages. You want to
-paginate all messages, grouped by channel that the user has access to. You
-could do this from the client with a `usePaginatedQuery` for each channel,
+Suppose you have a table of channels, and another table of messages.
+You want to paginate all messages in a user's channels, grouped by channel.
+You could do this from the client with a `usePaginatedQuery` for each channel,
 or you can do it with streams, like so:
 
 ```ts
 import { stream } from "convex-helpers/server/stream";
 import schema from "./schema";
-// schema has
-//   channelMemberships: defineTable(...).index("user", ["user", "channel"])
+// schema has:
+//   channelMemberships: defineTable(...).index("userId", ["userId", "channelId"])
 //   channels: defineTable(...)
-//   messages: defineTable(...).index("channel", ["channel"])
-// And we're returning a paginated stream of { ...channel, ...message }
-// ordered by [channel._id, message._creationTime]
+//   messages: defineTable(...).index("channelId", ["channelId"])
 
+// Return a paginated stream of { ...channel, ...message }
+// ordered by [channel._id, message._creationTime]
 export const latestMessages = query({
   args: { paginationOpts: paginationOptsValidator },
-  handler: async (ctx, { author, paginationOpts }) => {
+  handler: async (ctx, { paginationOpts }) => {
+    // Get the channels the user is a member of
     const channelMemberships = stream(ctx.db, schema)
       .query("channelMemberships")
-      .withIndex("user", q => q.eq("user", await getAuthedUserId(ctx)));
+      .withIndex("userId", q => q.eq("userId", await getAuthedUserId(ctx)));
     // Map membership to the channel info (including channel name, etc.)
     const channels = channelMemberships.map(async (membership) => {
-      return (await ctx.db.get(membership.channel))!;
+      return (await ctx.db.get(membership.channelId))!;
     });
     // For each channel, expand it into the messages in that channel,
     // with the channel's fields also included.
-    const messages = channels.flatMap(async (channel) => stream(ctx.db, stream)
-      .query("messages")
-      .withIndex("channel", q => q.eq("channel", channel._id))
-      .map(async (message) => { ...channel, ...message })
+    const messages = channels.flatMap(async (channel) =>
+      stream(ctx.db, stream)
+        .query("messages")
+        .withIndex("channelId", q => q.eq("channelId", channel._id))
+        .map(async (message) => { ...channel, ...message })
     );
     return await messages.paginate(paginationOpts);
   },
