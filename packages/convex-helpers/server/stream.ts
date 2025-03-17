@@ -798,7 +798,7 @@ export function streamIndexRange<
 }
 
 class ReflectIndexRange {
-  private hasSuffix = false;
+  #hasSuffix = false;
   public lowerBoundIndexKey: IndexKey | undefined = undefined;
   public lowerBoundInclusive: boolean = true;
   public upperBoundIndexKey: IndexKey | undefined = undefined;
@@ -806,7 +806,7 @@ class ReflectIndexRange {
   public equalityIndexFilter: Value[] = [];
   constructor(public indexFields: string[]) {}
   eq(field: string, value: Value) {
-    if (!this.canLowerBound(field) || !this.canUpperBound(field)) {
+    if (!this.#canLowerBound(field) || !this.#canUpperBound(field)) {
       throw new Error(`Cannot use eq on field '${field}'`);
     }
     this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
@@ -817,51 +817,54 @@ class ReflectIndexRange {
     return this;
   }
   lt(field: string, value: Value) {
-    if (!this.canUpperBound(field)) {
+    if (!this.#canUpperBound(field)) {
       throw new Error(`Cannot use lt on field '${field}'`);
     }
     this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
     this.upperBoundIndexKey.push(value);
     this.upperBoundInclusive = false;
-    this.hasSuffix = true;
+    this.#hasSuffix = true;
     return this;
   }
   lte(field: string, value: Value) {
-    if (!this.canUpperBound(field)) {
+    if (!this.#canUpperBound(field)) {
       throw new Error(`Cannot use lte on field '${field}'`);
     }
     this.upperBoundIndexKey = this.upperBoundIndexKey ?? [];
     this.upperBoundIndexKey.push(value);
-    this.hasSuffix = true;
+    this.#hasSuffix = true;
     return this;
   }
   gt(field: string, value: Value) {
-    if (!this.canLowerBound(field)) {
+    if (!this.#canLowerBound(field)) {
       throw new Error(`Cannot use gt on field '${field}'`);
     }
     this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
     this.lowerBoundIndexKey.push(value);
     this.lowerBoundInclusive = false;
-    this.hasSuffix = true;
+    this.#hasSuffix = true;
     return this;
   }
   gte(field: string, value: Value) {
-    if (!this.canLowerBound(field)) {
+    if (!this.#canLowerBound(field)) {
       throw new Error(`Cannot use gte on field '${field}'`);
     }
     this.lowerBoundIndexKey = this.lowerBoundIndexKey ?? [];
     this.lowerBoundIndexKey.push(value);
-    this.hasSuffix = true;
+    this.#hasSuffix = true;
     return this;
   }
-  private canLowerBound(field: string) {
+  #canLowerBound(field: string) {
     const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
     const currentUpperBoundLength = this.upperBoundIndexKey?.length ?? 0;
     if (currentLowerBoundLength > currentUpperBoundLength) {
       // Already have a lower bound.
       return false;
     }
-    if (currentLowerBoundLength === currentUpperBoundLength && this.hasSuffix) {
+    if (
+      currentLowerBoundLength === currentUpperBoundLength &&
+      this.#hasSuffix
+    ) {
       // Already have a lower bound and an upper bound.
       return false;
     }
@@ -870,14 +873,17 @@ class ReflectIndexRange {
       this.indexFields[currentLowerBoundLength] === field
     );
   }
-  private canUpperBound(field: string) {
+  #canUpperBound(field: string) {
     const currentLowerBoundLength = this.lowerBoundIndexKey?.length ?? 0;
     const currentUpperBoundLength = this.upperBoundIndexKey?.length ?? 0;
     if (currentUpperBoundLength > currentLowerBoundLength) {
       // Already have an upper bound.
       return false;
     }
-    if (currentLowerBoundLength === currentUpperBoundLength && this.hasSuffix) {
+    if (
+      currentLowerBoundLength === currentUpperBoundLength &&
+      this.#hasSuffix
+    ) {
       // Already have a lower bound and an upper bound.
       return false;
     }
@@ -928,35 +934,35 @@ export function mergedStream<T extends GenericStreamItem>(
   return new MergedStream(streams, orderByIndexFields);
 }
 
-class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
-  private order: "asc" | "desc";
-  private streams: QueryStream<T>[];
-  private equalityIndexFilter: Value[];
-  private indexFields: string[];
+export class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
+  #order: "asc" | "desc";
+  #streams: QueryStream<T>[];
+  #equalityIndexFilter: Value[];
+  #indexFields: string[];
   constructor(streams: QueryStream<T>[], orderByIndexFields: string[]) {
     super();
     if (streams.length === 0) {
       throw new Error("Cannot union empty array of streams");
     }
-    this.order = allSame(
+    this.#order = allSame(
       streams.map((stream) => stream.getOrder()),
       "Cannot merge streams with different orders",
     );
-    this.streams = streams.map(
+    this.#streams = streams.map(
       (stream) => new OrderByStream(stream, orderByIndexFields),
     );
-    this.indexFields = allSame(
-      this.streams.map((stream) => stream.getIndexFields()),
+    this.#indexFields = allSame(
+      this.#streams.map((stream) => stream.getIndexFields()),
       "Cannot merge streams with different index fields. Consider using .orderBy()",
     );
     // Calculate common prefix of equality index filters.
-    this.equalityIndexFilter = commonPrefix(
-      this.streams.map((stream) => stream.getEqualityIndexFilter()),
+    this.#equalityIndexFilter = commonPrefix(
+      this.#streams.map((stream) => stream.getEqualityIndexFilter()),
     );
   }
   iterWithKeys() {
-    const iterables = this.streams.map((stream) => stream.iterWithKeys());
-    const comparisonInversion = this.order === "asc" ? 1 : -1;
+    const iterables = this.#streams.map((stream) => stream.iterWithKeys());
+    const comparisonInversion = this.#order === "asc" ? 1 : -1;
     return {
       [Symbol.asyncIterator]() {
         const iterators = iterables.map((iterable) =>
@@ -1018,18 +1024,18 @@ class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
     };
   }
   getOrder(): "asc" | "desc" {
-    return this.order;
+    return this.#order;
   }
   getEqualityIndexFilter(): Value[] {
-    return this.equalityIndexFilter;
+    return this.#equalityIndexFilter;
   }
   getIndexFields(): string[] {
-    return this.indexFields;
+    return this.#indexFields;
   }
   narrow(indexBounds: IndexBounds) {
     return new MergedStream(
-      this.streams.map((stream) => stream.narrow(indexBounds)),
-      this.indexFields,
+      this.#streams.map((stream) => stream.narrow(indexBounds)),
+      this.#indexFields,
     );
   }
 }
@@ -1076,31 +1082,31 @@ function commonPrefix(values: Value[][]) {
  * behavior as `MergedStream`, but with fewer runtime checks.
  */
 class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
-  private order: "asc" | "desc";
-  private streams: QueryStream<T>[];
-  private equalityIndexFilter: Value[];
-  private indexFields: string[];
+  #order: "asc" | "desc";
+  #streams: QueryStream<T>[];
+  #equalityIndexFilter: Value[];
+  #indexFields: string[];
   constructor(...streams: QueryStream<T>[]) {
     super();
-    this.streams = streams;
+    this.#streams = streams;
     if (streams.length === 0) {
       throw new Error("Cannot concat empty array of streams");
     }
-    this.order = allSame(
+    this.#order = allSame(
       streams.map((stream) => stream.getOrder()),
       "Cannot concat streams with different orders. Consider using .orderBy()",
     );
-    this.indexFields = allSame(
+    this.#indexFields = allSame(
       streams.map((stream) => stream.getIndexFields()),
       "Cannot concat streams with different index fields. Consider using .orderBy()",
     );
-    this.equalityIndexFilter = commonPrefix(
+    this.#equalityIndexFilter = commonPrefix(
       streams.map((stream) => stream.getEqualityIndexFilter()),
     );
   }
   iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
-    const iterables = this.streams.map((stream) => stream.iterWithKeys());
-    const comparisonInversion = this.order === "asc" ? 1 : -1;
+    const iterables = this.#streams.map((stream) => stream.iterWithKeys());
+    const comparisonInversion = this.#order === "asc" ? 1 : -1;
     let previousIndexKey: IndexKey | undefined = undefined;
     return {
       [Symbol.asyncIterator]() {
@@ -1145,17 +1151,17 @@ class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
     };
   }
   getOrder(): "asc" | "desc" {
-    return this.order;
+    return this.#order;
   }
   getEqualityIndexFilter(): Value[] {
-    return this.equalityIndexFilter;
+    return this.#equalityIndexFilter;
   }
   getIndexFields(): string[] {
-    return this.indexFields;
+    return this.#indexFields;
   }
   narrow(indexBounds: IndexBounds) {
     return new ConcatStreams(
-      ...this.streams.map((stream) => stream.narrow(indexBounds)),
+      ...this.#streams.map((stream) => stream.narrow(indexBounds)),
     );
   }
 }
@@ -1164,18 +1170,24 @@ class FlatMapStream<
   T extends GenericStreamItem,
   U extends GenericStreamItem,
 > extends QueryStream<U> {
+  #stream: QueryStream<T>;
+  #mapper: (doc: T) => Promise<QueryStream<U>>;
+  #extraIndexFields: string[];
   constructor(
-    private stream: QueryStream<T>,
-    private mapper: (doc: T) => Promise<QueryStream<U>>,
-    private extraIndexFields: string[],
+    stream: QueryStream<T>,
+    mapper: (doc: T) => Promise<QueryStream<U>>,
+    extraIndexFields: string[],
   ) {
     super();
+    this.#stream = stream;
+    this.#mapper = mapper;
+    this.#extraIndexFields = extraIndexFields;
   }
   iterWithKeys(): AsyncIterable<[U | null, IndexKey]> {
-    const outerStream = this.stream;
+    const outerStream = this.#stream;
     const iterable = outerStream.iterWithKeys();
-    const mapper = this.mapper;
-    const extraIndexFields = this.extraIndexFields;
+    const mapper = this.#mapper;
+    const extraIndexFields = this.#extraIndexFields;
     return {
       [Symbol.asyncIterator]() {
         const iterator = iterable[Symbol.asyncIterator]();
@@ -1236,16 +1248,16 @@ class FlatMapStream<
     };
   }
   getOrder(): "asc" | "desc" {
-    return this.stream.getOrder();
+    return this.#stream.getOrder();
   }
   getEqualityIndexFilter(): Value[] {
-    return this.stream.getEqualityIndexFilter();
+    return this.#stream.getEqualityIndexFilter();
   }
   getIndexFields(): string[] {
-    return [...this.stream.getIndexFields(), ...this.extraIndexFields];
+    return [...this.#stream.getIndexFields(), ...this.#extraIndexFields];
   }
   narrow(indexBounds: IndexBounds) {
-    const outerLength = this.stream.getIndexFields().length;
+    const outerLength = this.#stream.getIndexFields().length;
     const outerLowerBound = indexBounds.lowerBound.slice(0, outerLength);
     const outerUpperBound = indexBounds.upperBound.slice(0, outerLength);
     const innerLowerBound = indexBounds.lowerBound.slice(outerLength);
@@ -1267,12 +1279,12 @@ class FlatMapStream<
         innerUpperBound.length === 0 ? true : indexBounds.upperBoundInclusive,
     };
     return new FlatMapStream(
-      this.stream.narrow(outerIndexBounds),
+      this.#stream.narrow(outerIndexBounds),
       async (t) => {
-        const innerStream = await this.mapper(t);
+        const innerStream = await this.#mapper(t);
         return innerStream.narrow(innerIndexBounds);
       },
-      this.extraIndexFields,
+      this.#extraIndexFields,
     );
   }
 }
@@ -1280,18 +1292,28 @@ class FlatMapStream<
 export class SingletonStream<
   T extends GenericStreamItem,
 > extends QueryStream<T> {
+  #value: T | null;
+  #order: "asc" | "desc";
+  #indexFields: string[];
+  #indexKey: IndexKey;
+  #equalityIndexFilter: Value[];
   constructor(
-    private value: T | null,
-    private order: "asc" | "desc" = "asc",
-    private indexFields: string[] = [],
-    private indexKey: IndexKey = [],
-    private equalityIndexFilter: Value[] = [],
+    value: T | null,
+    order: "asc" | "desc" = "asc",
+    indexFields: string[] = [],
+    indexKey: IndexKey = [],
+    equalityIndexFilter: Value[] = [],
   ) {
     super();
+    this.#value = value;
+    this.#order = order;
+    this.#indexFields = indexFields;
+    this.#indexKey = indexKey;
+    this.#equalityIndexFilter = equalityIndexFilter;
   }
   iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
-    const value = this.value;
-    const indexKey = this.indexKey;
+    const value = this.#value;
+    const indexKey = this.#indexKey;
     return {
       [Symbol.asyncIterator]() {
         let sent = false;
@@ -1308,13 +1330,13 @@ export class SingletonStream<
     };
   }
   getOrder(): "asc" | "desc" {
-    return this.order;
+    return this.#order;
   }
   getIndexFields(): string[] {
-    return this.indexFields;
+    return this.#indexFields;
   }
   getEqualityIndexFilter(): Value[] {
-    return this.equalityIndexFilter;
+    return this.#equalityIndexFilter;
   }
   narrow(indexBounds: IndexBounds) {
     const compareLowerBound = compareKeys(
@@ -1323,13 +1345,13 @@ export class SingletonStream<
         kind: indexBounds.lowerBoundInclusive ? "exact" : "successor",
       },
       {
-        value: this.indexKey,
+        value: this.#indexKey,
         kind: "exact",
       },
     );
     const compareUpperBound = compareKeys(
       {
-        value: this.indexKey,
+        value: this.#indexKey,
         kind: "exact",
       },
       {
@@ -1339,11 +1361,11 @@ export class SingletonStream<
     );
     // If lowerBound <= this.indexKey <= upperBound, return this.value
     return new SingletonStream(
-      compareLowerBound <= 0 && compareUpperBound <= 0 ? this.value : null,
-      this.order,
-      this.indexFields,
-      this.indexKey,
-      this.equalityIndexFilter,
+      compareLowerBound <= 0 && compareUpperBound <= 0 ? this.#value : null,
+      this.#order,
+      this.#indexFields,
+      this.#indexKey,
+      this.#equalityIndexFilter,
     );
   }
 }
@@ -1362,13 +1384,14 @@ function normalizeIndexFields(indexFields: string[]) {
 }
 
 class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
-  private staticFilter: Value[];
-  constructor(
-    private stream: QueryStream<T>,
-    private indexFields: string[],
-  ) {
+  #staticFilter: Value[];
+  #stream: QueryStream<T>;
+  #indexFields: string[];
+  constructor(stream: QueryStream<T>, indexFields: string[]) {
     super();
-    normalizeIndexFields(this.indexFields);
+    this.#stream = stream;
+    this.#indexFields = indexFields;
+    normalizeIndexFields(this.#indexFields);
     // indexFields must be a suffix of the stream's index fields, and include
     // all of the non-equality index fields.
     const streamIndexFields = stream.getIndexFields();
@@ -1395,22 +1418,24 @@ class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
         `indexFields must include all of the stream's index fields used for ordering: ${JSON.stringify(indexFields)}, ${JSON.stringify(nonEqualityIndexFields)}`,
       );
     }
-    this.staticFilter = stream
+    this.#staticFilter = stream
       .getEqualityIndexFilter()
       .slice(0, streamIndexFields.length - indexFields.length);
   }
   getOrder(): "asc" | "desc" {
-    return this.stream.getOrder();
+    return this.#stream.getOrder();
   }
   getEqualityIndexFilter(): Value[] {
-    return this.stream.getEqualityIndexFilter().slice(this.staticFilter.length);
+    return this.#stream
+      .getEqualityIndexFilter()
+      .slice(this.#staticFilter.length);
   }
   getIndexFields(): string[] {
-    return this.indexFields;
+    return this.#indexFields;
   }
   iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
-    const iterable = this.stream.iterWithKeys();
-    const staticFilter = this.staticFilter;
+    const iterable = this.#stream.iterWithKeys();
+    const staticFilter = this.#staticFilter;
     return {
       [Symbol.asyncIterator]() {
         const iterator = iterable[Symbol.asyncIterator]();
@@ -1432,13 +1457,13 @@ class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
   }
   narrow(indexBounds: IndexBounds) {
     return new OrderByStream(
-      this.stream.narrow({
-        lowerBound: [...this.staticFilter, ...indexBounds.lowerBound],
+      this.#stream.narrow({
+        lowerBound: [...this.#staticFilter, ...indexBounds.lowerBound],
         lowerBoundInclusive: indexBounds.lowerBoundInclusive,
-        upperBound: [...this.staticFilter, ...indexBounds.upperBound],
+        upperBound: [...this.#staticFilter, ...indexBounds.upperBound],
         upperBoundInclusive: indexBounds.upperBoundInclusive,
       }),
-      this.indexFields,
+      this.#indexFields,
     );
   }
 }
