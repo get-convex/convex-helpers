@@ -244,7 +244,7 @@ abstract class QueryStream<T extends GenericStreamItem>
       this,
       async (doc: T) => {
         const filtered = (await predicate(doc)) ? doc : null;
-        return new SingletonStream(filtered, order);
+        return new SingletonStream(filtered, order, [], [], []);
       },
       [],
     );
@@ -263,7 +263,7 @@ abstract class QueryStream<T extends GenericStreamItem>
       this,
       async (doc: T) => {
         const mapped = await mapper(doc);
-        return new SingletonStream(mapped, order);
+        return new SingletonStream(mapped, order, [], [], []);
       },
       [],
     );
@@ -1233,10 +1233,15 @@ class FlatMapStreamIterator<
     this.#mappedIndexFields = mappedIndexFields;
   }
   emptyInnerStream(): QueryStream<U> {
+    // If the outer stream is a filtered value, yield a singleton
+    // filtered value from the inner stream, with index key of nulls.
+    const indexKey = this.#mappedIndexFields.map(() => null);
     return new SingletonStream<U>(
       null,
       this.#outerStream.getOrder(),
       this.#mappedIndexFields,
+      indexKey,
+      indexKey,
     );
   }
   async setCurrentOuterItem(item: [T | null, IndexKey]) {
@@ -1380,19 +1385,23 @@ export class SingletonStream<
   constructor(
     value: T | null,
     order: "asc" | "desc" = "asc",
-    indexFields: string[] = [],
+    indexFields: string[],
+    indexKey: IndexKey,
+    equalityIndexFilter: Value[],
   ) {
     super();
     this.#value = value;
     this.#order = order;
     this.#indexFields = indexFields;
-    // A singleton stream can be ordered by any index fields and any index
-    // values, so we use nulls for the index key.
-    this.#indexKey = indexFields.map(() => null);
-    // Since the singleton stream yields a single value with index key of nulls,
-    // all of its values have the same index key, so it can be used as
-    // an equality filter.
-    this.#equalityIndexFilter = indexFields.map(() => null);
+    this.#indexKey = indexKey;
+    this.#equalityIndexFilter = equalityIndexFilter;
+    if (indexKey.length !== indexFields.length) {
+      throw new Error(
+        `indexKey must have the same length as indexFields: ${JSON.stringify(
+          indexKey,
+        )} vs ${JSON.stringify(indexFields)}`,
+      );
+    }
   }
   iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
     const value = this.#value;
@@ -1421,7 +1430,7 @@ export class SingletonStream<
   getEqualityIndexFilter(): Value[] {
     return this.#equalityIndexFilter;
   }
-  narrow(indexBounds: IndexBounds) {
+  narrow(indexBounds: IndexBounds): QueryStream<T> {
     const compareLowerBound = compareKeys(
       {
         value: indexBounds.lowerBound,
@@ -1443,11 +1452,55 @@ export class SingletonStream<
       },
     );
     // If lowerBound <= this.indexKey <= upperBound, return this.value
-    return new SingletonStream(
-      compareLowerBound <= 0 && compareUpperBound <= 0 ? this.#value : null,
-      this.#order,
-      this.#indexFields,
-    );
+    if (compareLowerBound <= 0 && compareUpperBound <= 0) {
+      return new SingletonStream(
+        this.#value,
+        this.#order,
+        this.#indexFields,
+        this.#indexKey,
+        this.#equalityIndexFilter,
+      );
+    }
+    return new EmptyStream(this.#order, this.#indexFields);
+  }
+}
+
+/**
+ * This is a completely empty stream that yields no values, and in particular
+ * does not count towards maximumRowsRead.
+ * Compare to SingletonStream(null, ...), which yields no values but does count
+ * towards maximumRowsRead.
+ */
+export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
+  #order: "asc" | "desc";
+  #indexFields: string[];
+  constructor(order: "asc" | "desc", indexFields: string[]) {
+    super();
+    this.#order = order;
+    this.#indexFields = indexFields;
+  }
+  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
+    return {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            return { done: true, value: undefined };
+          },
+        };
+      },
+    };
+  }
+  getOrder(): "asc" | "desc" {
+    return this.#order;
+  }
+  getIndexFields(): string[] {
+    return this.#indexFields;
+  }
+  getEqualityIndexFilter(): Value[] {
+    return [];
+  }
+  narrow(_indexBounds: IndexBounds) {
+    return this;
   }
 }
 
