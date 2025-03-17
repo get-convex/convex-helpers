@@ -244,7 +244,7 @@ abstract class QueryStream<T extends GenericStreamItem>
       this,
       async (doc: T) => {
         const filtered = (await predicate(doc)) ? doc : null;
-        return new SingletonStream(filtered, order);
+        return new SingletonStream(filtered, order, [], [], []);
       },
       [],
     );
@@ -263,7 +263,7 @@ abstract class QueryStream<T extends GenericStreamItem>
       this,
       async (doc: T) => {
         const mapped = await mapper(doc);
-        return new SingletonStream(mapped, order);
+        return new SingletonStream(mapped, order, [], [], []);
       },
       [],
     );
@@ -1248,10 +1248,15 @@ class FlatMapStream<
                 const [t, indexKey] = result.value;
                 let innerStream: QueryStream<U>;
                 if (t === null) {
+                  // If the outer stream is a filtered value, yield a singleton
+                  // filtered value from the inner stream, with index key of nulls.
+                  const indexKey = mappedIndexFields.map(() => null);
                   innerStream = new SingletonStream<U>(
                     null,
                     outerStream.getOrder(),
                     mappedIndexFields,
+                    indexKey,
+                    indexKey,
                   );
                 } else {
                   innerStream = await mapper(t);
@@ -1340,9 +1345,9 @@ export class SingletonStream<
   constructor(
     value: T | null,
     order: "asc" | "desc" = "asc",
-    indexFields: string[] = [],
-    indexKey: IndexKey = [],
-    equalityIndexFilter: Value[] = [],
+    indexFields: string[],
+    indexKey: IndexKey,
+    equalityIndexFilter: Value[],
   ) {
     super();
     this.#value = value;
@@ -1350,6 +1355,13 @@ export class SingletonStream<
     this.#indexFields = indexFields;
     this.#indexKey = indexKey;
     this.#equalityIndexFilter = equalityIndexFilter;
+    if (indexKey.length !== indexFields.length) {
+      throw new Error(
+        `indexKey must have the same length as indexFields: ${JSON.stringify(
+          indexKey,
+        )} vs ${JSON.stringify(indexFields)}`,
+      );
+    }
   }
   iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
     const value = this.#value;
@@ -1378,7 +1390,7 @@ export class SingletonStream<
   getEqualityIndexFilter(): Value[] {
     return this.#equalityIndexFilter;
   }
-  narrow(indexBounds: IndexBounds) {
+  narrow(indexBounds: IndexBounds): QueryStream<T> {
     const compareLowerBound = compareKeys(
       {
         value: indexBounds.lowerBound,
@@ -1400,13 +1412,55 @@ export class SingletonStream<
       },
     );
     // If lowerBound <= this.indexKey <= upperBound, return this.value
-    return new SingletonStream(
-      compareLowerBound <= 0 && compareUpperBound <= 0 ? this.#value : null,
-      this.#order,
-      this.#indexFields,
-      this.#indexKey,
-      this.#equalityIndexFilter,
-    );
+    if (compareLowerBound <= 0 && compareUpperBound <= 0) {
+      return new SingletonStream(
+        this.#value,
+        this.#order,
+        this.#indexFields,
+        this.#indexKey,
+        this.#equalityIndexFilter,
+      );
+    }
+    return new EmptyStream(this.#order, this.#indexFields);
+  }
+}
+
+/**
+ * This is a completely empty stream that yields no values, and in particular
+ * does not count towards maximumRowsRead.
+ * Compare to SingletonStream(null, ...), which yields no values but does count
+ * towards maximumRowsRead.
+ */
+export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
+  #order: "asc" | "desc";
+  #indexFields: string[];
+  constructor(order: "asc" | "desc", indexFields: string[]) {
+    super();
+    this.#order = order;
+    this.#indexFields = indexFields;
+  }
+  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
+    return {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            return { done: true, value: undefined };
+          },
+        };
+      },
+    };
+  }
+  getOrder(): "asc" | "desc" {
+    return this.#order;
+  }
+  getIndexFields(): string[] {
+    return this.#indexFields;
+  }
+  getEqualityIndexFilter(): Value[] {
+    return [];
+  }
+  narrow(_indexBounds: IndexBounds) {
+    return this;
   }
 }
 
