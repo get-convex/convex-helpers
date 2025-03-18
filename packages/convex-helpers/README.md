@@ -19,7 +19,7 @@ Table of contents:
 - [Validator utilities](#validator-utilities)
 - [Filter db queries with JS](#filter)
 - [Manual pagination](#manual-pagination)
-- [Stream and combine data from multiple queries](#composable-streams-of-query-results)
+- [Stream and combine data from multiple queries](#composable-querystreams)
 - [Query caching with ConvexQueryCacheProvider](#query-caching)
 - [TypeScript API Generator](#typescript-api-generation)
 - [OpenAPI Spec Generator](#open-api-spec-generation)
