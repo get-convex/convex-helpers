@@ -11,7 +11,13 @@ import { Equals, assert, omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { zBrand, zCustomQuery, zid, zodToConvexFields } from "./zod.js";
+import {
+  zBrand,
+  zCustomQuery,
+  zid,
+  zodOutputToConvex,
+  zodToConvexFields,
+} from "./zod.js";
 import { customCtx } from "./customFunctions.js";
 import { v, VString } from "convex/values";
 import { z } from "zod";
@@ -96,10 +102,14 @@ export const kitchenSink = zQuery({
       json: (v.object(zodToConvexFields(kitchenSinkValidator)) as any).json,
     };
   },
-  // output: z
-  //   .object({
-  //     email: z.string().email(),
-  //   })
+  returns: z.object({
+    args: z.object({
+      ...kitchenSinkValidator,
+      // round trip the pipeline
+      pipeline: z.string().pipe(z.coerce.number()),
+    }),
+    json: z.any(),
+  }),
   // You can add .strict() to fail if any more fields are passed
   // .strict(),
 });
@@ -109,7 +119,50 @@ export const dateRoundTrip = zQuery({
   handler: async (ctx, args) => {
     return args.date;
   },
-  output: z.date().transform((d) => d.toISOString()),
+  // Using output since the output type differs from the input.
+  returns: z.date().transform((d) => d.toISOString()),
+});
+
+export const failsReturnsValidator = zQuery({
+  args: {},
+  returns: z.number(),
+  handler: async () => {
+    return "foo" as unknown as number;
+  },
+});
+
+export const zodOutputCompliance = zQuery({
+  // Note no args validator
+  handler: (ctx, args: { optionalString?: string | undefined }) => {
+    return {
+      undefinedBecomesFooString: undefined,
+      stringBecomesNull: "bar",
+      threeBecomesString: 3,
+      extraArg: "extraArg",
+      optionalString: args.optionalString,
+      arrayWithDefaultFoo: [undefined],
+      objectWithDefaultFoo: { foo: undefined },
+      unionOfDefaultFoo: undefined,
+    };
+  },
+  // Note inline record of zod validators works.
+  returns: {
+    undefinedBecomesFooString: z.string().default("foo"),
+    stringBecomesNull: z.string().transform((s) => null),
+    threeBecomesString: z.number().pipe(z.coerce.string()),
+    optionalString: z.string().optional(),
+    arrayWithDefaultFoo: z.array(z.string().default("foo")),
+    objectWithDefaultFoo: z.object({ foo: z.string().default("foo") }),
+    unionOfDefaultFoo: z.union([z.string().default("foo"), z.number()]),
+  },
+});
+
+export const zodArgsObject = zQuery({
+  args: z.object({ a: z.string() }),
+  handler: async (ctx, args) => {
+    return args;
+  },
+  returns: z.object({ a: z.string() }),
 });
 
 /**
@@ -279,6 +332,9 @@ const testApi: ApiFromModules<{
   fns: {
     kitchenSink: typeof kitchenSink;
     dateRoundTrip: typeof dateRoundTrip;
+    failsReturnsValidator: typeof failsReturnsValidator;
+    zodOutputCompliance: typeof zodOutputCompliance;
+    zodArgsObject: typeof zodArgsObject;
     addC: typeof addC;
     addCU: typeof addCU;
     addCU2: typeof addCU2;
@@ -327,7 +383,6 @@ test("zod kitchen sink", async () => {
   expect(response.args).toMatchObject({
     ...omit(kitchenSink, ["optional"]),
     default: "default",
-    pipeline: "0",
   });
   expect(response.json).toMatchObject({
     type: "object",
@@ -484,6 +539,66 @@ test("zod date round trip", async () => {
   const date = new Date().toISOString();
   const response = await t.query(testApi.dateRoundTrip, { date });
   expect(response).toBe(date);
+});
+
+test("zod fails returns validator", async () => {
+  const t = convexTest(schema, modules);
+  await expect(() =>
+    t.query(testApi.failsReturnsValidator, {}),
+  ).rejects.toThrow();
+});
+
+test("output validators work for arrays objects and unions", async () => {
+  const array = zodOutputToConvex(z.array(z.string().default("foo")));
+  expect(array.kind).toBe("array");
+  expect(array.element.kind).toBe("string");
+  expect(array.element.isOptional).toBe("required");
+  const object = zodOutputToConvex(
+    z.object({ foo: z.string().default("foo") }),
+  );
+  expect(object.kind).toBe("object");
+  expect(object.fields.foo.kind).toBe("string");
+  expect(object.fields.foo.isOptional).toBe("required");
+  const union = zodOutputToConvex(z.union([z.string(), z.number().default(0)]));
+  expect(union.kind).toBe("union");
+  expect(union.members[0].kind).toBe("string");
+  expect(union.members[1].kind).toBe("float64");
+  expect(union.members[1].isOptional).toBe("required");
+});
+
+test("zod output compliance", async () => {
+  const t = convexTest(schema, modules);
+  const response = await t.query(testApi.zodOutputCompliance, {});
+  expect(response).toMatchObject({
+    undefinedBecomesFooString: "foo",
+    stringBecomesNull: null,
+    threeBecomesString: "3",
+    arrayWithDefaultFoo: ["foo"],
+    objectWithDefaultFoo: { foo: "foo" },
+    unionOfDefaultFoo: "foo",
+  });
+  const responseWithMaybe = await t.query(testApi.zodOutputCompliance, {
+    optionalString: "optionalString",
+  });
+  expect(responseWithMaybe).toMatchObject({
+    optionalString: "optionalString",
+  });
+  // number should fail
+  await expect(() =>
+    t.query(testApi.zodOutputCompliance, {
+      optionalString: 1,
+    }),
+  ).rejects.toThrow();
+});
+
+test("zod args object", async () => {
+  const t = convexTest(schema, modules);
+  expect(await t.query(testApi.zodArgsObject, { a: "foo" })).toMatchObject({
+    a: "foo",
+  });
+  await expect(() =>
+    t.query(testApi.zodArgsObject, { a: 1 } as any),
+  ).rejects.toThrow();
 });
 
 describe("zod functions", () => {

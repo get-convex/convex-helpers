@@ -28,3 +28,4 @@ jobs:
           npm run lint
           npm run build
           npm run test
+          npx convex codegen && git diff --exit-code
