@@ -1092,7 +1092,12 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
       return v.array(inner) as ConvexValidatorFromZodOutput<Z>;
     case "ZodObject":
       return v.object(
-        zodToConvexFields(zod._def.shape()),
+        Object.fromEntries(
+          Object.entries(zod._def.shape()).map(([k, v]) => [
+            k,
+            zodOutputToConvex(v as z.ZodTypeAny),
+          ]),
+        ),
       ) as ConvexValidatorFromZodOutput<Z>;
     case "ZodUnion":
     case "ZodDiscriminatedUnion":

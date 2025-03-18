@@ -11,7 +11,13 @@ import { Equals, assert, omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { zBrand, zCustomQuery, zid, zodToConvexFields } from "./zod.js";
+import {
+  zBrand,
+  zCustomQuery,
+  zid,
+  zodOutputToConvex,
+  zodToConvexFields,
+} from "./zod.js";
 import { customCtx } from "./customFunctions.js";
 import { v, VString } from "convex/values";
 import { z } from "zod";
@@ -127,21 +133,27 @@ export const failsReturnsValidator = zQuery({
 
 export const zodOutputCompliance = zQuery({
   // Note no args validator
-  handler: (ctx, args: { maybe?: string | undefined }) => {
+  handler: (ctx, args: { optionalString?: string | undefined }) => {
     return {
-      default: undefined,
-      effect: "effect",
-      pipeline: 3,
+      undefinedBecomesFooString: undefined,
+      stringBecomesNull: "bar",
+      threeBecomesString: 3,
       extraArg: "extraArg",
-      maybe: args.maybe,
+      optionalString: args.optionalString,
+      arrayWithDefaultFoo: [undefined],
+      objectWithDefaultFoo: { foo: undefined },
+      unionOfDefaultFoo: undefined,
     };
   },
   // Note inline record of zod validators works.
   returns: {
-    default: z.string().default("default"),
-    effect: z.string().transform((s) => null),
-    pipeline: z.number().pipe(z.coerce.string()),
-    maybe: z.string().optional(),
+    undefinedBecomesFooString: z.string().default("foo"),
+    stringBecomesNull: z.string().transform((s) => null),
+    threeBecomesString: z.number().pipe(z.coerce.string()),
+    optionalString: z.string().optional(),
+    arrayWithDefaultFoo: z.array(z.string().default("foo")),
+    objectWithDefaultFoo: z.object({ foo: z.string().default("foo") }),
+    unionOfDefaultFoo: z.union([z.string().default("foo"), z.number()]),
   },
 });
 
@@ -536,24 +548,45 @@ test("zod fails returns validator", async () => {
   ).rejects.toThrow();
 });
 
+test("output validators work for arrays objects and unions", async () => {
+  const array = zodOutputToConvex(z.array(z.string().default("foo")));
+  expect(array.kind).toBe("array");
+  expect(array.element.kind).toBe("string");
+  expect(array.element.isOptional).toBe("required");
+  const object = zodOutputToConvex(
+    z.object({ foo: z.string().default("foo") }),
+  );
+  expect(object.kind).toBe("object");
+  expect(object.fields.foo.kind).toBe("string");
+  expect(object.fields.foo.isOptional).toBe("required");
+  const union = zodOutputToConvex(z.union([z.string(), z.number().default(0)]));
+  expect(union.kind).toBe("union");
+  expect(union.members[0].kind).toBe("string");
+  expect(union.members[1].kind).toBe("float64");
+  expect(union.members[1].isOptional).toBe("required");
+});
+
 test("zod output compliance", async () => {
   const t = convexTest(schema, modules);
   const response = await t.query(testApi.zodOutputCompliance, {});
   expect(response).toMatchObject({
-    default: "default",
-    effect: null,
-    pipeline: "3",
+    undefinedBecomesFooString: "foo",
+    stringBecomesNull: null,
+    threeBecomesString: "3",
+    arrayWithDefaultFoo: ["foo"],
+    objectWithDefaultFoo: { foo: "foo" },
+    unionOfDefaultFoo: "foo",
   });
   const responseWithMaybe = await t.query(testApi.zodOutputCompliance, {
-    maybe: "maybe",
+    optionalString: "optionalString",
   });
   expect(responseWithMaybe).toMatchObject({
-    maybe: "maybe",
+    optionalString: "optionalString",
   });
   // number should fail
   await expect(() =>
     t.query(testApi.zodOutputCompliance, {
-      maybe: 1,
+      optionalString: 1,
     }),
   ).rejects.toThrow();
 });
