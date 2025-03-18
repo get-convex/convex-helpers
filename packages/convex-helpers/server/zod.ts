@@ -1092,11 +1092,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
       return v.array(inner) as ConvexValidatorFromZodOutput<Z>;
     case "ZodObject":
       return v.object(
-        Object.fromEntries(
-          Object.entries(zod._def.shape()).map(([k, v]) => [
-            k,
-            zodOutputToConvex(v as z.ZodTypeAny),
-          ]),
+        zodOutputToConvexFields(zod._def.shape()),
         ),
       ) as ConvexValidatorFromZodOutput<Z>;
     case "ZodUnion":
@@ -1198,6 +1194,21 @@ export function zodToConvexFields<Z extends ZodValidator>(zod: Z) {
   return Object.fromEntries(
     Object.entries(zod).map(([k, v]) => [k, zodToConvex(v)]),
   ) as { [k in keyof Z]: ConvexValidatorFromZod<Z[k]> };
+}
+
+/**
+ * Like zodOutputToConvex, but it takes in a bare object, as expected by Convex
+ * function arguments, or the argument to defineTable.
+ * This is different from zodToConvexFields because it generates the Convex
+ * validator for the output of the zod validator, not the input.
+ *
+ * @param zod Object with string keys and Zod validators as values
+ * @returns Object with the same keys, but with Convex validators as values
+ */
+export function zodOutputToConvexFields<Z extends ZodValidator>(zod: Z) {
+  return Object.fromEntries(
+    Object.entries(zod).map(([k, v]) => [k, zodOutputToConvex(v)]),
+  ) as { [k in keyof Z]: ConvexValidatorFromZodOutput<Z[k]> };
 }
 
 interface ZidDef<TableName extends string> extends ZodTypeDef {
