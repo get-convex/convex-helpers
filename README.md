@@ -22,6 +22,7 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 | [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)
 | [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
 | [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)
+| [Stream and combine data from multiple queries](./packages/convex-helpers/README.md#composable-querystreams)
 | [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)
 | [TypeScript API Generator](./packages/convex-helpers/README.md#typescript-api-generation)
 | [OpenAPI Spec Generator](./packages/convex-helpers/README.md#open-api-spec-generation)
