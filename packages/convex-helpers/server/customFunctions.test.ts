@@ -14,6 +14,7 @@ import {
   actionGeneric,
   anyApi,
   DataModelFromSchemaDefinition,
+  DefaultFunctionArgs,
   defineSchema,
   defineTable,
   GenericDatabaseReader,
@@ -21,6 +22,7 @@ import {
   mutationGeneric,
   QueryBuilder,
   queryGeneric,
+  RegisteredQuery,
   type ApiFromModules,
   type Auth,
 } from "convex/server";
@@ -351,11 +353,11 @@ export const outerRemoves = outerRemover({
 /**
  * Test helpers
  */
-function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
-  _f: T,
-  _a: A,
-  _v: R,
-) {}
+function queryMatches<
+  A extends DefaultFunctionArgs,
+  R,
+  T extends RegisteredQuery<"public", A, R>,
+>(_f: T, _a: A, _v: R) {}
 
 const testApi: ApiFromModules<{
   fns: {
