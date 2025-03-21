@@ -122,7 +122,6 @@ export const dateRoundTrip = zQuery({
   handler: async (ctx, args) => {
     return args.date;
   },
-  // Using output since the output type differs from the input.
   returns: z.date().transform((d) => d.toISOString()),
 });
 

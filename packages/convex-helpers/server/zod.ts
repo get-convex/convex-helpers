@@ -456,7 +456,7 @@ export type CustomBuilder<
 > = {
   <
     ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
-    ReturnsZodValidator extends z.ZodTypeAny | ZodValidator | void,
+    ReturnsZodValidator extends z.ZodTypeAny | ZodValidator | void = void,
     ReturnValue extends
       ReturnValueForOptionalZodValidator<ReturnsZodValidator> = any,
     OneOrZeroArgs extends
@@ -523,9 +523,9 @@ export type CustomBuilder<
             ? [Expand<A & ObjectType<ModArgsValidator>>]
             : [ObjectType<ModArgsValidator>]
     >,
-    ReturnsZodValidator extends z.ZodTypeAny | ZodValidator
-      ? OutputValueForOptionalZodValidator<ReturnsZodValidator>
-      : ReturnValue
+    ReturnsZodValidator extends void
+      ? ReturnValue
+      : OutputValueForOptionalZodValidator<ReturnsZodValidator>
   >;
 };
 
