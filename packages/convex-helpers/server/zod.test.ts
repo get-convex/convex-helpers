@@ -6,6 +6,8 @@ import {
   QueryBuilder,
   anyApi,
   ApiFromModules,
+  RegisteredQuery,
+  DefaultFunctionArgs,
 } from "convex/server";
 import { Equals, assert, omit } from "../index.js";
 import { convexTest } from "convex-test";
@@ -335,11 +337,11 @@ queryMatches(badRedefine, { b: 3, a: never }, { argsA: 2 }); // !!!
 /**
  * Test helpers
  */
-function queryMatches<A, R, T extends (ctx: any, args: A) => R | Promise<R>>(
-  _f: T,
-  _a: A,
-  _v: R,
-) {}
+function queryMatches<
+  A extends DefaultFunctionArgs,
+  R,
+  T extends RegisteredQuery<"public", A, R>,
+>(_f: T, _a: A, _v: R) {}
 
 const testApi: ApiFromModules<{
   fns: {
