@@ -345,10 +345,12 @@ const handleCors = ({
       /**
        * First, execute the original handler
        */
-      const innerHandler =
-        "_handler" in originalHandler
-          ? (originalHandler["_handler"] as PublicHttpAction)
-          : originalHandler;
+      const innerHandler = ("_handler" in originalHandler
+        ? (originalHandler["_handler"] as PublicHttpAction)
+        : originalHandler) as unknown as (
+        ctx: GenericActionCtx<any>,
+        request: Request,
+      ) => Promise<Response>;
       const originalResponse = await innerHandler(ctx, request);
 
       /**

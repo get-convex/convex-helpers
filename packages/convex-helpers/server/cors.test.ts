@@ -1,6 +1,11 @@
 import { describe, test, expect, vi, assert } from "vitest";
 import { corsRouter } from "./cors";
-import { defineSchema, httpActionGeneric, HttpRouter } from "convex/server";
+import {
+  defineSchema,
+  GenericActionCtx,
+  httpActionGeneric,
+  HttpRouter,
+} from "convex/server";
 import { modules } from "./setup.test.js";
 import { convexTest } from "convex-test";
 
@@ -138,7 +143,10 @@ describe("corsRouter internals", () => {
     const request = new Request("http://example.com/foo", {
       method: "OPTIONS",
     });
-    const callable = (optionsHandler as any)._handler as typeof optionsHandler;
+    const callable = (optionsHandler as any)._handler as (
+      ctx: GenericActionCtx<any>,
+      request: Request,
+    ) => Promise<Response>;
     const response = await callable(null as any, request);
     expect(response.headers.get("access-control-allow-methods")).toBe("GET");
   });
