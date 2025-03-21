@@ -1,7 +1,7 @@
 # convex-helpers
 
 A collection of useful code to complement the official packages.
-This directory has a project with examples of using convex-helpers. You can
+This directory has a project with examples of using convex-helpers. You can 
 find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 ## Index
