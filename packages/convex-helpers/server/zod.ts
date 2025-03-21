@@ -58,6 +58,21 @@ export const zid = <
 ) => new Zid({ typeName: "ConvexId", tableName });
 
 /**
+ * Useful to get the input context type for a custom function using zod.
+ */
+export type ZCustomCtx<Builder> =
+  Builder extends CustomBuilder<
+    any,
+    any,
+    infer ModCtx,
+    any,
+    infer InputCtx,
+    any
+  >
+    ? Overwrite<InputCtx, ModCtx>
+    : never;
+
+/**
  * zCustomQuery is like customQuery, but allows validation via zod.
  * You can define custom behavior on top of `query` or `internalQuery`
  * by passing a function that modifies the ctx and args. Or NoOp to do nothing.

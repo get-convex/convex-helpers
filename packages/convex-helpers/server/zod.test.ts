@@ -13,6 +13,7 @@ import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import {
   zBrand,
+  ZCustomCtx,
   zCustomQuery,
   zid,
   zodOutputToConvex,
@@ -163,6 +164,18 @@ export const zodArgsObject = zQuery({
     return args;
   },
   returns: z.object({ a: z.string() }),
+});
+
+// example of helper function
+type ZodQueryCtx = ZCustomCtx<typeof zQuery>;
+const myArgs = z.object({ a: z.string() });
+const myHandler = async (ctx: ZodQueryCtx, args: z.infer<typeof myArgs>) => {
+  return "foo";
+};
+export const viaHelper = zQuery({
+  args: myArgs,
+  handler: myHandler,
+  returns: z.string(),
 });
 
 /**
