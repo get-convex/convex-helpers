@@ -1,0 +1,22 @@
+name: Check CLA in PR description
+
+on:
+  pull_request:
+    # Run when PRs are opened, reopened, edited or updated with new commits
+    types: [opened, reopened, synchronize, edited]
+
+jobs:
+  check-cla:
+    name: Check CLA in PR description
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate PR has CLA confirmation
+        # Exclude automated PRs from bots
+        if: ${{ (startsWith(github.head_ref, 'dependabot') || startsWith(github.head_ref, 'renovate')) == false }}
+        env:
+          PR_DESCRIPTION: ${{ github.event.pull_request.body }}
+        run: |
+          ./scripts/check_cla.py
