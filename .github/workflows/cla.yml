@@ -9,10 +9,10 @@ jobs:
   check-cla:
     name: Check CLA in PR description
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Validate PR has CLA confirmation
         # Exclude automated PRs from bots
         if: ${{ (startsWith(github.head_ref, 'dependabot') || startsWith(github.head_ref, 'renovate')) == false }}
