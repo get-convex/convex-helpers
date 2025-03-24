@@ -377,7 +377,7 @@ function customFnBuilder(
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.
           return returns.parse(
-            handler({ ...ctx, ...added.ctx }, { ...args, ...added.args }),
+            await handler({ ...ctx, ...added.ctx }, { ...args, ...added.args }),
           );
         }
         return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });

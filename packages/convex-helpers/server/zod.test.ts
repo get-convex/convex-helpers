@@ -133,6 +133,13 @@ export const failsReturnsValidator = zQuery({
   },
 });
 
+export const returnsWithoutArgs = zQuery({
+  returns: z.number(),
+  handler: async () => {
+    return 1;
+  },
+});
+
 export const zodOutputCompliance = zQuery({
   // Note no args validator
   handler: (ctx, args: { optionalString?: string | undefined }) => {
@@ -347,6 +354,7 @@ const testApi: ApiFromModules<{
     kitchenSink: typeof kitchenSink;
     dateRoundTrip: typeof dateRoundTrip;
     failsReturnsValidator: typeof failsReturnsValidator;
+    returnsWithoutArgs: typeof returnsWithoutArgs;
     zodOutputCompliance: typeof zodOutputCompliance;
     zodArgsObject: typeof zodArgsObject;
     addC: typeof addC;
@@ -560,6 +568,12 @@ test("zod fails returns validator", async () => {
   await expect(() =>
     t.query(testApi.failsReturnsValidator, {}),
   ).rejects.toThrow();
+});
+
+test("zod returns without args works", async () => {
+  const t = convexTest(schema, modules);
+  const response = await t.query(testApi.returnsWithoutArgs, {});
+  expect(response).toBe(1);
 });
 
 test("output validators work for arrays objects and unions", async () => {
