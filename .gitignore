@@ -109,3 +109,4 @@ dist
 .tern-port
 tsconfig.tsbuildinfo
 convex-local-backend*
+.mypy_cache
