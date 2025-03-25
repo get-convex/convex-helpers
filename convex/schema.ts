@@ -32,4 +32,5 @@ export default defineSchema({
   sum_table: defineTable({ sum: v.number() }),
   notes: defineTable({ session: v.string(), note: v.string() }),
   migrations: migrationsTable,
+  searchAgents: defineTable({ name: v.string() }),
 });

@@ -24,6 +24,8 @@ import type * as rlsExample from "../rlsExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 import type * as triggersExample from "../triggersExample.js";
+import type * as zod2 from "../zod2.js";
+import type * as zodExample from "../zodExample.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -45,6 +47,8 @@ declare const fullApi: ApiFromModules<{
   sessionsExample: typeof sessionsExample;
   testingFunctions: typeof testingFunctions;
   triggersExample: typeof triggersExample;
+  zod2: typeof zod2;
+  zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
