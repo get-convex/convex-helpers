@@ -831,16 +831,18 @@ test("convexToZod basic types", () => {
 test("convexToZod complex types", () => {
   const arrayValidator = convexToZod(v.array(v.string()));
   expect(arrayValidator.constructor.name).toBe("ZodArray");
-  
-  const objectValidator = convexToZod(v.object({ a: v.string(), b: v.number() }));
+
+  const objectValidator = convexToZod(
+    v.object({ a: v.string(), b: v.number() }),
+  );
   expect(objectValidator.constructor.name).toBe("ZodObject");
-  
+
   const unionValidator = convexToZod(v.union(v.string(), v.number()));
   expect(unionValidator.constructor.name).toBe("ZodUnion");
-  
+
   const literalValidator = convexToZod(v.literal("hi"));
   expect(literalValidator.constructor.name).toBe("ZodLiteral");
-  
+
   const recordValidator = convexToZod(v.record(v.string(), v.number()));
   expect(recordValidator.constructor.name).toBe("ZodRecord");
 });
@@ -851,11 +853,11 @@ test("convexToZodFields", () => {
     age: v.number(),
     isActive: v.boolean(),
     tags: v.array(v.string()),
-    metadata: v.object({ createdBy: v.string() })
+    metadata: v.object({ createdBy: v.string() }),
   };
-  
+
   const zodFields = convexToZodFields(fields);
-  
+
   expect(zodFields.name.constructor.name).toBe("ZodString");
   expect(zodFields.age.constructor.name).toBe("ZodNumber");
   expect(zodFields.isActive.constructor.name).toBe("ZodBoolean");
@@ -868,24 +870,24 @@ test("convexToZod round trip", () => {
   const zodString = convexToZod(stringValidator);
   const roundTripString = zodToConvex(zodString);
   expect(roundTripString.kind).toBe(stringValidator.kind);
-  
+
   const numberValidator = v.number();
   const zodNumber = convexToZod(numberValidator);
   const roundTripNumber = zodToConvex(zodNumber);
   expect(roundTripNumber.kind).toBe(numberValidator.kind);
-  
+
   const objectValidator = v.object({
     a: v.string(),
     b: v.number(),
     c: v.boolean(),
-    d: v.array(v.string())
+    d: v.array(v.string()),
   });
-  
+
   const zodObject = convexToZod(objectValidator);
   const roundTripObject = zodToConvex(zodObject);
-  
+
   expect(roundTripObject.kind).toBe(objectValidator.kind);
-  
+
   const idValidator = v.id("users");
   const zodId = convexToZod(idValidator);
   const roundTripId = zodToConvex(zodId);

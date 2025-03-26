@@ -1303,7 +1303,7 @@ export function zBrand<
  * @returns Zod validator (e.g. `z.string()`)
  */
 export function convexToZod<V extends GenericValidator>(
-  convex: V
+  convex: V,
 ): z.ZodTypeAny {
   switch (convex.kind) {
     case "id":
@@ -1330,8 +1330,14 @@ export function convexToZod<V extends GenericValidator>(
     }
     case "union": {
       const unionValidator = convex as VUnion<any, any, any, any>;
-      const memberValidators = unionValidator.members.map((member: GenericValidator) => convexToZod(member));
-      return z.union([memberValidators[0], memberValidators[1], ...memberValidators.slice(2)]);
+      const memberValidators = unionValidator.members.map(
+        (member: GenericValidator) => convexToZod(member),
+      );
+      return z.union([
+        memberValidators[0],
+        memberValidators[1],
+        ...memberValidators.slice(2),
+      ]);
     }
     case "literal": {
       const literalValidator = convex as VLiteral<any>;
@@ -1341,7 +1347,7 @@ export function convexToZod<V extends GenericValidator>(
       const recordValidator = convex as VRecord<any, any, any, any, any>;
       return z.record(
         convexToZod(recordValidator.key),
-        convexToZod(recordValidator.value)
+        convexToZod(recordValidator.value),
       );
     }
     default:
@@ -1361,6 +1367,6 @@ export function convexToZod<V extends GenericValidator>(
  */
 export function convexToZodFields<C extends PropertyValidators>(convex: C) {
   return Object.fromEntries(
-    Object.entries(convex).map(([k, v]) => [k, convexToZod(v)])
+    Object.entries(convex).map(([k, v]) => [k, convexToZod(v)]),
   ) as { [k in keyof C]: z.ZodTypeAny };
 }
