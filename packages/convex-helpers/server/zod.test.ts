@@ -893,3 +893,63 @@ test("convexToZod round trip", () => {
   const roundTripId = zodToConvex(zodId);
   expect(roundTripId.kind).toBe(idValidator.kind);
 });
+
+test("convexToZod validation", () => {
+  const stringValidator = v.string();
+  const zodString = convexToZod(stringValidator);
+  
+  expect(zodString.parse("hello")).toBe("hello");
+  
+  expect(() => zodString.parse(123)).toThrow();
+  
+  const numberValidator = v.number();
+  const zodNumber = convexToZod(numberValidator);
+  
+  expect(zodNumber.parse(123)).toBe(123);
+  
+  expect(() => zodNumber.parse("hello")).toThrow();
+  
+  const boolValidator = v.boolean();
+  const zodBool = convexToZod(boolValidator);
+  
+  expect(zodBool.parse(true)).toBe(true);
+  
+  expect(() => zodBool.parse("true")).toThrow();
+  
+  const arrayValidator = v.array(v.string());
+  const zodArray = convexToZod(arrayValidator);
+  
+  expect(zodArray.parse(["a", "b", "c"])).toEqual(["a", "b", "c"]);
+  
+  expect(() => zodArray.parse(["a", 123, "c"])).toThrow();
+  
+  const objectValidator = v.object({
+    name: v.string(),
+    age: v.number(),
+    active: v.boolean(),
+  });
+  const zodObject = convexToZod(objectValidator);
+  
+  const validObject = {
+    name: "John",
+    age: 30,
+    active: true,
+  };
+  expect(zodObject.parse(validObject)).toEqual(validObject);
+  
+  const invalidObject = {
+    name: "John",
+    age: "thirty",
+    active: true,
+  };
+  expect(() => zodObject.parse(invalidObject)).toThrow();
+  
+  const unionValidator = v.union(v.string(), v.number());
+  const zodUnion = convexToZod(unionValidator);
+  
+  expect(zodUnion.parse("hello")).toBe("hello");
+  
+  expect(zodUnion.parse(123)).toBe(123);
+  
+  expect(() => zodUnion.parse(true)).toThrow();
+});
