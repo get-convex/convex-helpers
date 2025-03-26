@@ -1307,9 +1307,9 @@ export function convexToZod<V extends GenericValidator>(
   convexValidator: V,
 ): z.ZodType<Infer<V>> {
   const isOptional = (convexValidator as any).isOptional === "optional";
-  
+
   let zodValidator: z.ZodTypeAny;
-  
+
   switch (convexValidator.kind) {
     case "id":
       zodValidator = zid((convexValidator as VId<any>).tableName);
@@ -1376,7 +1376,7 @@ export function convexToZod<V extends GenericValidator>(
     default:
       throw new Error(`Unknown convex validator type: ${convexValidator.kind}`);
   }
-  
+
   return isOptional ? z.optional(zodValidator) : zodValidator;
 }
 
