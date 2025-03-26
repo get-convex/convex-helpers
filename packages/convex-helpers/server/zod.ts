@@ -1345,7 +1345,13 @@ export function convexToZod<V extends GenericValidator>(
       return z.literal(literalValidator.value);
     }
     case "record": {
-      const recordValidator = convexValidator as VRecord<any, any, any, any, any>;
+      const recordValidator = convexValidator as VRecord<
+        any,
+        any,
+        any,
+        any,
+        any
+      >;
       return z.record(
         convexToZod(recordValidator.key),
         convexToZod(recordValidator.value),
@@ -1366,7 +1372,9 @@ export function convexToZod<V extends GenericValidator>(
  * @param convexValidators Object with string keys and Convex validators as values
  * @returns Object with the same keys, but with Zod validators as values
  */
-export function convexToZodFields<C extends PropertyValidators>(convexValidators: C) {
+export function convexToZodFields<C extends PropertyValidators>(
+  convexValidators: C,
+) {
   return Object.fromEntries(
     Object.entries(convexValidators).map(([k, v]) => [k, convexToZod(v)]),
   ) as { [k in keyof C]: z.ZodType<Infer<C[k]>> };

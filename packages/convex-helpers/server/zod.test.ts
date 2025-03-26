@@ -870,19 +870,25 @@ test("convexToZod round trip", () => {
   const zodString = convexToZod(stringValidator);
   const roundTripString = zodToConvex(zodString) as VString;
   expect(roundTripString.kind).toBe(stringValidator.kind);
-  
+
   type StringType = z.infer<typeof zodString>;
   type ConvexStringType = Infer<typeof stringValidator>;
-  sameType<StringType, ConvexStringType>('' as StringType, '' as ConvexStringType);
+  sameType<StringType, ConvexStringType>(
+    "" as StringType,
+    "" as ConvexStringType,
+  );
 
   const numberValidator = v.number();
   const zodNumber = convexToZod(numberValidator);
   const roundTripNumber = zodToConvex(zodNumber) as VFloat64;
   expect(roundTripNumber.kind).toBe(numberValidator.kind);
-  
+
   type NumberType = z.infer<typeof zodNumber>;
   type ConvexNumberType = Infer<typeof numberValidator>;
-  sameType<NumberType, ConvexNumberType>(0 as NumberType, 0 as ConvexNumberType);
+  sameType<NumberType, ConvexNumberType>(
+    0 as NumberType,
+    0 as ConvexNumberType,
+  );
 
   const objectValidator = v.object({
     a: v.string(),
@@ -894,77 +900,80 @@ test("convexToZod round trip", () => {
   const zodObject = convexToZod(objectValidator);
   const roundTripObject = zodToConvex(zodObject) as VObject<any, any>;
   expect(roundTripObject.kind).toBe(objectValidator.kind);
-  
+
   type ObjectType = z.infer<typeof zodObject>;
   type ConvexObjectType = Infer<typeof objectValidator>;
-  sameType<ObjectType, ConvexObjectType>({} as ObjectType, {} as ConvexObjectType);
+  sameType<ObjectType, ConvexObjectType>(
+    {} as ObjectType,
+    {} as ConvexObjectType,
+  );
 
   const idValidator = v.id("users");
   const zodId = convexToZod(idValidator);
   const roundTripId = zodToConvex(zodId) as VId<"users">;
   expect(roundTripId.kind).toBe(idValidator.kind);
-  
+
   type IdType = z.infer<typeof zodId>;
   type ConvexIdType = Infer<typeof idValidator>;
-  sameType<IdType, ConvexIdType>('' as IdType, '' as ConvexIdType);
+  sameType<IdType, ConvexIdType>("" as IdType, "" as ConvexIdType);
 });
 
 test("convexToZod validation", () => {
   const stringValidator = v.string();
   const zodString = convexToZod(stringValidator);
-  
+
   expect(zodString.parse("hello")).toBe("hello");
-  
+
   expect(() => zodString.parse(123)).toThrow();
-  
+
   const numberValidator = v.number();
   const zodNumber = convexToZod(numberValidator);
-  
+
   expect(zodNumber.parse(123)).toBe(123);
-  
+
   expect(() => zodNumber.parse("hello")).toThrow();
-  
+
   const boolValidator = v.boolean();
   const zodBool = convexToZod(boolValidator);
-  
+
   expect(zodBool.parse(true)).toBe(true);
-  
+
   expect(() => zodBool.parse("true")).toThrow();
-  
+
   const arrayValidator = v.array(v.string());
   const zodArray = convexToZod(arrayValidator);
-  
+
   expect(zodArray.parse(["a", "b", "c"])).toEqual(["a", "b", "c"]);
-  
+
   expect(() => zodArray.parse(["a", 123, "c"])).toThrow();
-  
+
   const objectValidator = v.object({
     name: v.string(),
     age: v.number(),
     active: v.boolean(),
   });
   const zodObject = convexToZod(objectValidator);
-  
+
   const validObject = {
     name: "John",
     age: 30,
     active: true,
   };
   expect(zodObject.parse(validObject)).toEqual(validObject);
-  
+
   const invalidObject = {
     name: "John",
     age: "thirty",
     active: true,
   };
   expect(() => zodObject.parse(invalidObject)).toThrow();
-  
+
   const unionValidator = v.union(v.string(), v.number());
   const zodUnion = convexToZod(unionValidator);
-  
+
   expect(zodUnion.parse("hello")).toBe("hello");
-  
+
   expect(zodUnion.parse(123)).toBe(123);
-  
+
   expect(() => zodUnion.parse(true)).toThrow();
 });
