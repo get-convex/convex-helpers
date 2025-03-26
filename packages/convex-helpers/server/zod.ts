@@ -1299,15 +1299,15 @@ export function zBrand<
 
 /**
  * Turn a Convex validator into a Zod validator.
- * @param convex Convex validator can be any validator from "convex/values" e.g. `v.string()`
+ * @param convexValidator Convex validator can be any validator from "convex/values" e.g. `v.string()`
  * @returns Zod validator (e.g. `z.string()`)
  */
 export function convexToZod<V extends GenericValidator>(
-  convex: V,
+  convexValidator: V,
 ): z.ZodTypeAny {
-  switch (convex.kind) {
+  switch (convexValidator.kind) {
     case "id":
-      return zid((convex as VId<any>).tableName);
+      return zid((convexValidator as VId<any>).tableName);
     case "string":
       return z.string();
     case "float64":
@@ -1321,15 +1321,15 @@ export function convexToZod<V extends GenericValidator>(
     case "any":
       return z.any();
     case "array": {
-      const arrayValidator = convex as VArray<any, any>;
+      const arrayValidator = convexValidator as VArray<any, any>;
       return z.array(convexToZod(arrayValidator.element));
     }
     case "object": {
-      const objectValidator = convex as VObject<any, any>;
+      const objectValidator = convexValidator as VObject<any, any>;
       return z.object(convexToZodFields(objectValidator.fields));
     }
     case "union": {
-      const unionValidator = convex as VUnion<any, any, any, any>;
+      const unionValidator = convexValidator as VUnion<any, any, any, any>;
       const memberValidators = unionValidator.members.map(
         (member: GenericValidator) => convexToZod(member),
       );
@@ -1340,21 +1340,21 @@ export function convexToZod<V extends GenericValidator>(
       ]);
     }
     case "literal": {
-      const literalValidator = convex as VLiteral<any>;
+      const literalValidator = convexValidator as VLiteral<any>;
       return z.literal(literalValidator.value);
     }
     case "record": {
-      const recordValidator = convex as VRecord<any, any, any, any, any>;
+      const recordValidator = convexValidator as VRecord<any, any, any, any, any>;
       return z.record(
         convexToZod(recordValidator.key),
         convexToZod(recordValidator.value),
       );
     }
     default:
-      if ((convex as any).isOptional === "optional") {
-        return z.optional(convexToZod((convex as any).inner));
+      if ((convexValidator as any).isOptional === "optional") {
+        return z.optional(convexToZod((convexValidator as any).inner));
       }
-      throw new Error(`Unknown convex validator type: ${convex.kind}`);
+      throw new Error(`Unknown convex validator type: ${convexValidator.kind}`);
   }
 }
 
@@ -1362,11 +1362,11 @@ export function convexToZod<V extends GenericValidator>(
  * Like convexToZod, but it takes in a bare object, as expected by Convex
  * function arguments, or the argument to defineTable.
  *
- * @param convex Object with string keys and Convex validators as values
+ * @param convexValidators Object with string keys and Convex validators as values
  * @returns Object with the same keys, but with Zod validators as values
  */
-export function convexToZodFields<C extends PropertyValidators>(convex: C) {
+export function convexToZodFields<C extends PropertyValidators>(convexValidators: C) {
   return Object.fromEntries(
-    Object.entries(convex).map(([k, v]) => [k, convexToZod(v)]),
+    Object.entries(convexValidators).map(([k, v]) => [k, convexToZod(v)]),
   ) as { [k in keyof C]: z.ZodTypeAny };
 }
