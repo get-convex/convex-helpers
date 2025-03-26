@@ -1059,7 +1059,7 @@ test("convexToZod optional values", () => {
   
   const optionalArrayValidator = v.optional(v.array(v.string()));
   const zodOptionalArray = convexToZod(optionalArrayValidator);
-  const roundTripOptionalArray = zodToConvex(zodOptionalArray);
+  const roundTripOptionalArray = zodToConvex(zodOptionalArray) as unknown as { isOptional: string };
   
-  expect((roundTripOptionalArray as any).isOptional).toBe("optional");
+  expect(roundTripOptionalArray.isOptional).toBe("optional");
 });
