@@ -977,3 +977,89 @@ test("convexToZod validation", () => {
 
   expect(() => zodUnion.parse(true)).toThrow();
 });
+
+test("convexToZod optional values", () => {
+  const optionalStringValidator = v.optional(v.string());
+  const zodOptionalString = convexToZod(optionalStringValidator);
+  
+  expect(zodOptionalString.constructor.name).toBe("ZodOptional");
+  
+  expect(zodOptionalString.parse("hello")).toBe("hello");
+  expect(zodOptionalString.parse(undefined)).toBe(undefined);
+  expect(() => zodOptionalString.parse(123)).toThrow();
+  
+  type OptionalStringType = z.infer<typeof zodOptionalString>;
+  type ConvexOptionalStringType = Infer<typeof optionalStringValidator>;
+  sameType<OptionalStringType, ConvexOptionalStringType>(
+    "" as OptionalStringType,
+    "" as ConvexOptionalStringType
+  );
+  sameType<OptionalStringType, string | undefined>(
+    undefined as OptionalStringType,
+    undefined as string | undefined
+  );
+  
+  const optionalNumberValidator = v.optional(v.number());
+  const zodOptionalNumber = convexToZod(optionalNumberValidator);
+  
+  expect(zodOptionalNumber.constructor.name).toBe("ZodOptional");
+  
+  expect(zodOptionalNumber.parse(123)).toBe(123);
+  expect(zodOptionalNumber.parse(undefined)).toBe(undefined);
+  expect(() => zodOptionalNumber.parse("hello")).toThrow();
+  
+  type OptionalNumberType = z.infer<typeof zodOptionalNumber>;
+  type ConvexOptionalNumberType = Infer<typeof optionalNumberValidator>;
+  sameType<OptionalNumberType, ConvexOptionalNumberType>(
+    0 as OptionalNumberType,
+    0 as ConvexOptionalNumberType
+  );
+  
+  const optionalObjectValidator = v.optional(
+    v.object({
+      name: v.string(),
+      age: v.number(),
+    })
+  );
+  const zodOptionalObject = convexToZod(optionalObjectValidator);
+  
+  expect(zodOptionalObject.constructor.name).toBe("ZodOptional");
+  
+  const validObj = { name: "John", age: 30 };
+  expect(zodOptionalObject.parse(validObj)).toEqual(validObj);
+  expect(zodOptionalObject.parse(undefined)).toBe(undefined);
+  expect(() => zodOptionalObject.parse({ name: "John", age: "30" })).toThrow();
+  
+  type OptionalObjectType = z.infer<typeof zodOptionalObject>;
+  type ConvexOptionalObjectType = Infer<typeof optionalObjectValidator>;
+  sameType<OptionalObjectType, ConvexOptionalObjectType>(
+    { name: "", age: 0 } as OptionalObjectType,
+    { name: "", age: 0 } as ConvexOptionalObjectType
+  );
+  
+  const objectWithOptionalFieldsValidator = v.object({
+    name: v.string(),
+    age: v.optional(v.number()),
+    address: v.optional(v.string()),
+  });
+  const zodObjectWithOptionalFields = convexToZod(objectWithOptionalFieldsValidator);
+  
+  expect(zodObjectWithOptionalFields.parse({ name: "John" })).toEqual({ name: "John" });
+  expect(zodObjectWithOptionalFields.parse({ name: "John", age: 30 })).toEqual({ name: "John", age: 30 });
+  expect(zodObjectWithOptionalFields.parse({ name: "John", age: 30, address: "123 Main St" }))
+    .toEqual({ name: "John", age: 30, address: "123 Main St" });
+  expect(() => zodObjectWithOptionalFields.parse({ age: 30 })).toThrow();
+  
+  type ObjectWithOptionalFieldsType = z.infer<typeof zodObjectWithOptionalFields>;
+  type ConvexObjectWithOptionalFieldsType = Infer<typeof objectWithOptionalFieldsValidator>;
+  sameType<ObjectWithOptionalFieldsType, ConvexObjectWithOptionalFieldsType>(
+    { name: "" } as ObjectWithOptionalFieldsType,
+    { name: "" } as ConvexObjectWithOptionalFieldsType
+  );
+  
+  const optionalArrayValidator = v.optional(v.array(v.string()));
+  const zodOptionalArray = convexToZod(optionalArrayValidator);
+  const roundTripOptionalArray = zodToConvex(zodOptionalArray);
+  
+  expect(roundTripOptionalArray.isOptional).toBe("optional");
+});

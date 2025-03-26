@@ -1306,43 +1306,58 @@ export function zBrand<
 export function convexToZod<V extends GenericValidator>(
   convexValidator: V,
 ): z.ZodType<Infer<V>> {
+  const isOptional = (convexValidator as any).isOptional === "optional";
+  
+  let zodValidator: z.ZodTypeAny;
+  
   switch (convexValidator.kind) {
     case "id":
-      return zid((convexValidator as VId<any>).tableName);
+      zodValidator = zid((convexValidator as VId<any>).tableName);
+      break;
     case "string":
-      return z.string();
+      zodValidator = z.string();
+      break;
     case "float64":
-      return z.number();
+      zodValidator = z.number();
+      break;
     case "int64":
-      return z.bigint();
+      zodValidator = z.bigint();
+      break;
     case "boolean":
-      return z.boolean();
+      zodValidator = z.boolean();
+      break;
     case "null":
-      return z.null();
+      zodValidator = z.null();
+      break;
     case "any":
-      return z.any();
+      zodValidator = z.any();
+      break;
     case "array": {
       const arrayValidator = convexValidator as VArray<any, any>;
-      return z.array(convexToZod(arrayValidator.element));
+      zodValidator = z.array(convexToZod(arrayValidator.element));
+      break;
     }
     case "object": {
       const objectValidator = convexValidator as VObject<any, any>;
-      return z.object(convexToZodFields(objectValidator.fields));
+      zodValidator = z.object(convexToZodFields(objectValidator.fields));
+      break;
     }
     case "union": {
       const unionValidator = convexValidator as VUnion<any, any, any, any>;
       const memberValidators = unionValidator.members.map(
         (member: GenericValidator) => convexToZod(member),
       );
-      return z.union([
+      zodValidator = z.union([
         memberValidators[0],
         memberValidators[1],
         ...memberValidators.slice(2),
       ]);
+      break;
     }
     case "literal": {
       const literalValidator = convexValidator as VLiteral<any>;
-      return z.literal(literalValidator.value);
+      zodValidator = z.literal(literalValidator.value);
+      break;
     }
     case "record": {
       const recordValidator = convexValidator as VRecord<
@@ -1352,17 +1367,17 @@ export function convexToZod<V extends GenericValidator>(
         any,
         any
       >;
-      return z.record(
+      zodValidator = z.record(
         convexToZod(recordValidator.key),
         convexToZod(recordValidator.value),
       );
+      break;
     }
     default:
-      if ((convexValidator as any).isOptional === "optional") {
-        return z.optional(convexToZod((convexValidator as any).inner));
-      }
       throw new Error(`Unknown convex validator type: ${convexValidator.kind}`);
   }
+  
+  return isOptional ? z.optional(zodValidator) : zodValidator;
 }
 
 /**
