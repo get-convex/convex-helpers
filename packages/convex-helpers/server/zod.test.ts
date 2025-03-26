@@ -20,6 +20,9 @@ import {
   zid,
   zodOutputToConvex,
   zodToConvexFields,
+  zodToConvex,
+  convexToZod,
+  convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
 import { v, VString } from "convex/values";
@@ -814,3 +817,75 @@ assert(true as Equals<z.output<typeof i>, bigint & z.BRAND<"brand">>);
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
 }
+
+test("convexToZod basic types", () => {
+  expect(convexToZod(v.string()).constructor.name).toBe("ZodString");
+  expect(convexToZod(v.number()).constructor.name).toBe("ZodNumber");
+  expect(convexToZod(v.int64()).constructor.name).toBe("ZodBigInt");
+  expect(convexToZod(v.boolean()).constructor.name).toBe("ZodBoolean");
+  expect(convexToZod(v.null()).constructor.name).toBe("ZodNull");
+  expect(convexToZod(v.any()).constructor.name).toBe("ZodAny");
+  expect(convexToZod(v.id("users")).constructor.name).toBe("Zid");
+});
+
+test("convexToZod complex types", () => {
+  const arrayValidator = convexToZod(v.array(v.string()));
+  expect(arrayValidator.constructor.name).toBe("ZodArray");
+  
+  const objectValidator = convexToZod(v.object({ a: v.string(), b: v.number() }));
+  expect(objectValidator.constructor.name).toBe("ZodObject");
+  
+  const unionValidator = convexToZod(v.union(v.string(), v.number()));
+  expect(unionValidator.constructor.name).toBe("ZodUnion");
+  
+  const literalValidator = convexToZod(v.literal("hi"));
+  expect(literalValidator.constructor.name).toBe("ZodLiteral");
+  
+  const recordValidator = convexToZod(v.record(v.string(), v.number()));
+  expect(recordValidator.constructor.name).toBe("ZodRecord");
+});
+
+test("convexToZodFields", () => {
+  const fields = {
+    name: v.string(),
+    age: v.number(),
+    isActive: v.boolean(),
+    tags: v.array(v.string()),
+    metadata: v.object({ createdBy: v.string() })
+  };
+  
+  const zodFields = convexToZodFields(fields);
+  
+  expect(zodFields.name.constructor.name).toBe("ZodString");
+  expect(zodFields.age.constructor.name).toBe("ZodNumber");
+  expect(zodFields.isActive.constructor.name).toBe("ZodBoolean");
+  expect(zodFields.tags.constructor.name).toBe("ZodArray");
+  expect(zodFields.metadata.constructor.name).toBe("ZodObject");
+});
+
+test("convexToZod round trip", () => {
+  const original = v.object({
+    a: v.string(),
+    b: v.number(),
+    c: v.boolean(),
+    d: v.array(v.string()),
+    e: v.id("users")
+  });
+  
+  const zod = convexToZod(original);
+  const roundTrip = zodToConvex(zod);
+  
+  expect(roundTrip.kind).toBe(original.kind);
+  
+  if (roundTrip.kind === "object" && original.kind === "object") {
+    const roundTripObj = roundTrip as typeof original;
+    expect(Object.keys(roundTripObj.fields)).toEqual(Object.keys(original.fields));
+    expect(roundTripObj.fields.a.kind).toBe(original.fields.a.kind);
+    expect(roundTripObj.fields.b.kind).toBe(original.fields.b.kind);
+    expect(roundTripObj.fields.c.kind).toBe(original.fields.c.kind);
+    expect(roundTripObj.fields.d.kind).toBe(original.fields.d.kind);
+    expect(roundTripObj.fields.e.kind).toBe(original.fields.e.kind);
+  } else {
+    fail("Round trip did not preserve object type");
+  }
+});
