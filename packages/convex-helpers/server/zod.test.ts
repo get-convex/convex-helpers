@@ -20,9 +20,12 @@ import {
   zid,
   zodOutputToConvex,
   zodToConvexFields,
+  zodToConvex,
+  convexToZod,
+  convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import { v, VString } from "convex/values";
+import { v, VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { z } from "zod";
 
 // This is an example of how to make a version of `zid` that
@@ -814,3 +817,267 @@ assert(true as Equals<z.output<typeof i>, bigint & z.BRAND<"brand">>);
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
 }
+
+test("convexToZod basic types", () => {
+  expect(convexToZod(v.string()).constructor.name).toBe("ZodString");
+  expect(convexToZod(v.number()).constructor.name).toBe("ZodNumber");
+  expect(convexToZod(v.int64()).constructor.name).toBe("ZodBigInt");
+  expect(convexToZod(v.boolean()).constructor.name).toBe("ZodBoolean");
+  expect(convexToZod(v.null()).constructor.name).toBe("ZodNull");
+  expect(convexToZod(v.any()).constructor.name).toBe("ZodAny");
+  expect(convexToZod(v.id("users")).constructor.name).toBe("Zid");
+});
+
+test("convexToZod complex types", () => {
+  const arrayValidator = convexToZod(v.array(v.string()));
+  expect(arrayValidator.constructor.name).toBe("ZodArray");
+
+  const objectValidator = convexToZod(
+    v.object({ a: v.string(), b: v.number() }),
+  );
+  expect(objectValidator.constructor.name).toBe("ZodObject");
+
+  const unionValidator = convexToZod(v.union(v.string(), v.number()));
+  expect(unionValidator.constructor.name).toBe("ZodUnion");
+
+  const literalValidator = convexToZod(v.literal("hi"));
+  expect(literalValidator.constructor.name).toBe("ZodLiteral");
+
+  const recordValidator = convexToZod(v.record(v.string(), v.number()));
+  expect(recordValidator.constructor.name).toBe("ZodRecord");
+});
+
+test("convexToZodFields", () => {
+  const fields = {
+    name: v.string(),
+    age: v.number(),
+    isActive: v.boolean(),
+    tags: v.array(v.string()),
+    metadata: v.object({ createdBy: v.string() }),
+  };
+
+  const zodFields = convexToZodFields(fields);
+
+  expect(zodFields.name.constructor.name).toBe("ZodString");
+  expect(zodFields.age.constructor.name).toBe("ZodNumber");
+  expect(zodFields.isActive.constructor.name).toBe("ZodBoolean");
+  expect(zodFields.tags.constructor.name).toBe("ZodArray");
+  expect(zodFields.metadata.constructor.name).toBe("ZodObject");
+});
+
+test("convexToZod round trip", () => {
+  const stringValidator = v.string();
+  const zodString = convexToZod(stringValidator);
+  const roundTripString = zodToConvex(zodString) as VString;
+  expect(roundTripString.kind).toBe(stringValidator.kind);
+
+  type StringType = z.infer<typeof zodString>;
+  type ConvexStringType = Infer<typeof stringValidator>;
+  sameType<StringType, ConvexStringType>(
+    "" as StringType,
+    "" as ConvexStringType,
+  );
+
+  const numberValidator = v.number();
+  const zodNumber = convexToZod(numberValidator);
+  const roundTripNumber = zodToConvex(zodNumber) as VFloat64;
+  expect(roundTripNumber.kind).toBe(numberValidator.kind);
+
+  type NumberType = z.infer<typeof zodNumber>;
+  type ConvexNumberType = Infer<typeof numberValidator>;
+  sameType<NumberType, ConvexNumberType>(
+    0 as NumberType,
+    0 as ConvexNumberType,
+  );
+
+  const objectValidator = v.object({
+    a: v.string(),
+    b: v.number(),
+    c: v.boolean(),
+    d: v.array(v.string()),
+  });
+
+  const zodObject = convexToZod(objectValidator);
+  const roundTripObject = zodToConvex(zodObject) as VObject<any, any>;
+  expect(roundTripObject.kind).toBe(objectValidator.kind);
+
+  type ObjectType = z.infer<typeof zodObject>;
+  type ConvexObjectType = Infer<typeof objectValidator>;
+  sameType<ObjectType, ConvexObjectType>(
+    {} as ObjectType,
+    {} as ConvexObjectType,
+  );
+
+  const idValidator = v.id("users");
+  const zodId = convexToZod(idValidator);
+  const roundTripId = zodToConvex(zodId) as VId<"users">;
+  expect(roundTripId.kind).toBe(idValidator.kind);
+
+  type IdType = z.infer<typeof zodId>;
+  type ConvexIdType = Infer<typeof idValidator>;
+  sameType<IdType, ConvexIdType>("" as IdType, "" as ConvexIdType);
+});
+
+test("convexToZod validation", () => {
+  const stringValidator = v.string();
+  const zodString = convexToZod(stringValidator);
+
+  expect(zodString.parse("hello")).toBe("hello");
+
+  expect(() => zodString.parse(123)).toThrow();
+
+  const numberValidator = v.number();
+  const zodNumber = convexToZod(numberValidator);
+
+  expect(zodNumber.parse(123)).toBe(123);
+
+  expect(() => zodNumber.parse("hello")).toThrow();
+
+  const boolValidator = v.boolean();
+  const zodBool = convexToZod(boolValidator);
+
+  expect(zodBool.parse(true)).toBe(true);
+
+  expect(() => zodBool.parse("true")).toThrow();
+
+  const arrayValidator = v.array(v.string());
+  const zodArray = convexToZod(arrayValidator);
+
+  expect(zodArray.parse(["a", "b", "c"])).toEqual(["a", "b", "c"]);
+
+  expect(() => zodArray.parse(["a", 123, "c"])).toThrow();
+
+  const objectValidator = v.object({
+    name: v.string(),
+    age: v.number(),
+    active: v.boolean(),
+  });
+  const zodObject = convexToZod(objectValidator);
+
+  const validObject = {
+    name: "John",
+    age: 30,
+    active: true,
+  };
+  expect(zodObject.parse(validObject)).toEqual(validObject);
+
+  const invalidObject = {
+    name: "John",
+    age: "thirty",
+    active: true,
+  };
+  expect(() => zodObject.parse(invalidObject)).toThrow();
+
+  const unionValidator = v.union(v.string(), v.number());
+  const zodUnion = convexToZod(unionValidator);
+
+  expect(zodUnion.parse("hello")).toBe("hello");
+
+  expect(zodUnion.parse(123)).toBe(123);
+
+  expect(() => zodUnion.parse(true)).toThrow();
+});
+
+test("convexToZod optional values", () => {
+  const optionalStringValidator = v.optional(v.string());
+  const zodOptionalString = convexToZod(optionalStringValidator);
+
+  expect(zodOptionalString.constructor.name).toBe("ZodOptional");
+
+  expect(zodOptionalString.parse("hello")).toBe("hello");
+  expect(zodOptionalString.parse(undefined)).toBe(undefined);
+  expect(() => zodOptionalString.parse(123)).toThrow();
+
+  type OptionalStringType = z.infer<typeof zodOptionalString>;
+  type ConvexOptionalStringType = Infer<typeof optionalStringValidator>;
+  sameType<OptionalStringType, ConvexOptionalStringType>(
+    "" as OptionalStringType,
+    "" as ConvexOptionalStringType,
+  );
+  sameType<OptionalStringType, string | undefined>(
+    undefined as OptionalStringType,
+    undefined as string | undefined,
+  );
+
+  const optionalNumberValidator = v.optional(v.number());
+  const zodOptionalNumber = convexToZod(optionalNumberValidator);
+
+  expect(zodOptionalNumber.constructor.name).toBe("ZodOptional");
+
+  expect(zodOptionalNumber.parse(123)).toBe(123);
+  expect(zodOptionalNumber.parse(undefined)).toBe(undefined);
+  expect(() => zodOptionalNumber.parse("hello")).toThrow();
+
+  type OptionalNumberType = z.infer<typeof zodOptionalNumber>;
+  type ConvexOptionalNumberType = Infer<typeof optionalNumberValidator>;
+  sameType<OptionalNumberType, ConvexOptionalNumberType>(
+    0 as OptionalNumberType,
+    0 as ConvexOptionalNumberType,
+  );
+
+  const optionalObjectValidator = v.optional(
+    v.object({
+      name: v.string(),
+      age: v.number(),
+    }),
+  );
+  const zodOptionalObject = convexToZod(optionalObjectValidator);
+
+  expect(zodOptionalObject.constructor.name).toBe("ZodOptional");
+
+  const validObj = { name: "John", age: 30 };
+  expect(zodOptionalObject.parse(validObj)).toEqual(validObj);
+  expect(zodOptionalObject.parse(undefined)).toBe(undefined);
+  expect(() => zodOptionalObject.parse({ name: "John", age: "30" })).toThrow();
+
+  type OptionalObjectType = z.infer<typeof zodOptionalObject>;
+  type ConvexOptionalObjectType = Infer<typeof optionalObjectValidator>;
+  sameType<OptionalObjectType, ConvexOptionalObjectType>(
+    { name: "", age: 0 } as OptionalObjectType,
+    { name: "", age: 0 } as ConvexOptionalObjectType,
+  );
+
+  const objectWithOptionalFieldsValidator = v.object({
+    name: v.string(),
+    age: v.optional(v.number()),
+    address: v.optional(v.string()),
+  });
+  const zodObjectWithOptionalFields = convexToZod(
+    objectWithOptionalFieldsValidator,
+  );
+
+  expect(zodObjectWithOptionalFields.parse({ name: "John" })).toEqual({
+    name: "John",
+  });
+  expect(zodObjectWithOptionalFields.parse({ name: "John", age: 30 })).toEqual({
+    name: "John",
+    age: 30,
+  });
+  expect(
+    zodObjectWithOptionalFields.parse({
+      name: "John",
+      age: 30,
+      address: "123 Main St",
+    }),
+  ).toEqual({ name: "John", age: 30, address: "123 Main St" });
+  expect(() => zodObjectWithOptionalFields.parse({ age: 30 })).toThrow();
+
+  type ObjectWithOptionalFieldsType = z.infer<
+    typeof zodObjectWithOptionalFields
+  >;
+  type ConvexObjectWithOptionalFieldsType = Infer<
+    typeof objectWithOptionalFieldsValidator
+  >;
+  sameType<ObjectWithOptionalFieldsType, ConvexObjectWithOptionalFieldsType>(
+    { name: "" } as ObjectWithOptionalFieldsType,
+    { name: "" } as ConvexObjectWithOptionalFieldsType,
+  );
+
+  const optionalArrayValidator = v.optional(v.array(v.string()));
+  const zodOptionalArray = convexToZod(optionalArrayValidator);
+  const roundTripOptionalArray = zodToConvex(zodOptionalArray) as unknown as {
+    isOptional: string;
+  };
+
+  expect(roundTripOptionalArray.isOptional).toBe("optional");
+});
