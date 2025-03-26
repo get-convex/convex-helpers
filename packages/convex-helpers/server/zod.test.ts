@@ -25,7 +25,7 @@ import {
   convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import { v, VString, Infer } from "convex/values";
+import { v, VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { z } from "zod";
 
 // This is an example of how to make a version of `zid` that
