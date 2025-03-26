@@ -3,6 +3,7 @@ import {
   v,
   ConvexError,
   GenericId,
+  Infer,
   ObjectType,
   PropertyValidators,
   Value,
@@ -1300,11 +1301,11 @@ export function zBrand<
 /**
  * Turn a Convex validator into a Zod validator.
  * @param convexValidator Convex validator can be any validator from "convex/values" e.g. `v.string()`
- * @returns Zod validator (e.g. `z.string()`)
+ * @returns Zod validator (e.g. `z.string()`) with inferred type matching the Convex validator
  */
 export function convexToZod<V extends GenericValidator>(
   convexValidator: V,
-): z.ZodTypeAny {
+): z.ZodType<Infer<V>> {
   switch (convexValidator.kind) {
     case "id":
       return zid((convexValidator as VId<any>).tableName);
@@ -1368,5 +1369,5 @@ export function convexToZod<V extends GenericValidator>(
 export function convexToZodFields<C extends PropertyValidators>(convexValidators: C) {
   return Object.fromEntries(
     Object.entries(convexValidators).map(([k, v]) => [k, convexToZod(v)]),
-  ) as { [k in keyof C]: z.ZodTypeAny };
+  ) as { [k in keyof C]: z.ZodType<Infer<C[k]>> };
 }

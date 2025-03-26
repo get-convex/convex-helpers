@@ -870,11 +870,19 @@ test("convexToZod round trip", () => {
   const zodString = convexToZod(stringValidator);
   const roundTripString = zodToConvex(zodString);
   expect(roundTripString.kind).toBe(stringValidator.kind);
+  
+  type StringType = z.infer<typeof zodString>;
+  type ConvexStringType = Infer<typeof stringValidator>;
+  sameType<StringType, ConvexStringType>('' as StringType, '' as ConvexStringType);
 
   const numberValidator = v.number();
   const zodNumber = convexToZod(numberValidator);
   const roundTripNumber = zodToConvex(zodNumber);
   expect(roundTripNumber.kind).toBe(numberValidator.kind);
+  
+  type NumberType = z.infer<typeof zodNumber>;
+  type ConvexNumberType = Infer<typeof numberValidator>;
+  sameType<NumberType, ConvexNumberType>(0 as NumberType, 0 as ConvexNumberType);
 
   const objectValidator = v.object({
     a: v.string(),
@@ -887,11 +895,19 @@ test("convexToZod round trip", () => {
   const roundTripObject = zodToConvex(zodObject);
 
   expect(roundTripObject.kind).toBe(objectValidator.kind);
+  
+  type ObjectType = z.infer<typeof zodObject>;
+  type ConvexObjectType = Infer<typeof objectValidator>;
+  sameType<ObjectType, ConvexObjectType>({} as ObjectType, {} as ConvexObjectType);
 
   const idValidator = v.id("users");
   const zodId = convexToZod(idValidator);
   const roundTripId = zodToConvex(zodId);
   expect(roundTripId.kind).toBe(idValidator.kind);
+  
+  type IdType = z.infer<typeof zodId>;
+  type ConvexIdType = Infer<typeof idValidator>;
+  sameType<IdType, ConvexIdType>('' as IdType, '' as ConvexIdType);
 });
 
 test("convexToZod validation", () => {
