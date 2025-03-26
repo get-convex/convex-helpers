@@ -878,13 +878,15 @@ test("convexToZod round trip", () => {
   expect(roundTrip.kind).toBe(original.kind);
   
   if (roundTrip.kind === "object" && original.kind === "object") {
-    const roundTripObj = roundTrip as typeof original;
-    expect(Object.keys(roundTripObj.fields)).toEqual(Object.keys(original.fields));
-    expect(roundTripObj.fields.a.kind).toBe(original.fields.a.kind);
-    expect(roundTripObj.fields.b.kind).toBe(original.fields.b.kind);
-    expect(roundTripObj.fields.c.kind).toBe(original.fields.c.kind);
-    expect(roundTripObj.fields.d.kind).toBe(original.fields.d.kind);
-    expect(roundTripObj.fields.e.kind).toBe(original.fields.e.kind);
+    const roundTripFields = roundTrip.fields;
+    const originalFields = original.fields;
+    
+    expect(Object.keys(roundTripFields)).toEqual(Object.keys(originalFields));
+    expect(roundTripFields.a.kind).toBe(originalFields.a.kind);
+    expect(roundTripFields.b.kind).toBe(originalFields.b.kind);
+    expect(roundTripFields.c.kind).toBe(originalFields.c.kind);
+    expect(roundTripFields.d.kind).toBe(originalFields.d.kind);
+    expect(roundTripFields.e.kind).toBe(originalFields.e.kind);
   } else {
     fail("Round trip did not preserve object type");
   }
