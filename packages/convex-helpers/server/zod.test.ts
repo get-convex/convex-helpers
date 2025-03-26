@@ -1061,5 +1061,5 @@ test("convexToZod optional values", () => {
   const zodOptionalArray = convexToZod(optionalArrayValidator);
   const roundTripOptionalArray = zodToConvex(zodOptionalArray);
   
-  expect(roundTripOptionalArray.isOptional).toBe("optional");
+  expect((roundTripOptionalArray as any).isOptional).toBe("optional");
 });
