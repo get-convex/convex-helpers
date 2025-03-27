@@ -379,6 +379,10 @@ const testApi: ApiFromModules<{
     create: typeof create;
     outerAdds: typeof outerAdds;
     outerRemoves: typeof outerRemoves;
+    successFn: typeof successFn;
+    errorFn: typeof errorFn;
+    mutationFn: typeof mutationFn;
+    actionFn: typeof actionFn;
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -558,5 +562,62 @@ describe("nested custom functions", () => {
     await expect(() =>
       t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
     ).rejects.toThrow("Validator error: Expected `string`");
+  });
+});
+
+describe("finally callback", () => {
+  test("finally callback is called with result and context", async () => {
+    const finallyMock = vi.fn();
+    const ctx = { foo: "bar" };
+    const args = { test: "value" };
+    const result = { success: true };
+    
+    const handler = async () => result;
+    
+    const mod = {
+      args: {},
+      input: async () => ({ ctx: {}, args: {} }),
+      finally: finallyMock
+    };
+    
+    let actualResult;
+    let actualError;
+    try {
+      actualResult = await handler(ctx, args);
+    } catch (e) {
+      actualError = e;
+      throw e;
+    } finally {
+      if (mod.finally) {
+        await mod.finally({ ctx, result: actualResult, error: actualError });
+      }
+    }
+    
+    expect(finallyMock).toHaveBeenCalledWith({
+      ctx,
+      result,
+      error: undefined
+    });
+    
+    finallyMock.mockClear();
+    const testError = new Error("Test error");
+    const errorHandler = async () => {
+      throw testError;
+    };
+    
+    try {
+      await errorHandler();
+    } catch (e) {
+    } finally {
+      if (mod.finally) {
+        await mod.finally({ ctx, result: undefined, error: testError });
+      }
+    }
+    
+    expect(finallyMock).toHaveBeenCalledWith({
+      ctx,
+      result: undefined,
+      error: testError
+    });
   });
 });
