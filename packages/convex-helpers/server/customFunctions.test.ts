@@ -571,7 +571,7 @@ describe("finally callback", () => {
     const args = { test: "value" };
     const result = { success: true };
     
-    const handler = async () => result;
+    const handler = async (_ctx, _args) => result;
     
     const mod = {
       args: {},
