@@ -60,10 +60,9 @@ export type Mod<
   ) =>
     | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
     | { ctx: ModCtx; args: ModMadeArgs };
-  finally?: (params: {
-    ctx: Ctx & ModCtx;
-    result?: any;
-    error?: any;
+  finally?: (ctx: Ctx & ModCtx, params: {
+    result?: unknown;
+    error?: unknown;
   }) => void | Promise<void>;
 };
 
@@ -93,7 +92,7 @@ export const NoOp = {
   input() {
     return { args: {}, ctx: {} };
   },
-  finally() {},
+
 };
 
 /**
@@ -356,7 +355,7 @@ function customFnBuilder(
             throw e;
           } finally {
             if (mod.finally) {
-              await mod.finally({ ctx: finalCtx, result, error });
+              await mod.finally(finalCtx, { result, error });
             }
           }
         },
@@ -383,7 +382,7 @@ function customFnBuilder(
           throw e;
         } finally {
           if (mod.finally) {
-            await mod.finally({ ctx: finalCtx, result, error });
+            await mod.finally(finalCtx, { result, error });
           }
         }
       },
