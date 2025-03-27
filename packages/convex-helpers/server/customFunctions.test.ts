@@ -379,10 +379,7 @@ const testApi: ApiFromModules<{
     create: typeof create;
     outerAdds: typeof outerAdds;
     outerRemoves: typeof outerRemoves;
-    successFn: typeof successFn;
-    errorFn: typeof errorFn;
-    mutationFn: typeof mutationFn;
-    actionFn: typeof actionFn;
+
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -567,7 +564,9 @@ describe("nested custom functions", () => {
 
 describe("finally callback", () => {
   test("finally callback is called with result and context", async () => {
-    const finallyMock = vi.fn();
+    let finallyCalled = false;
+    let finallyParams = null;
+    
     const ctx = { foo: "bar" };
     const args = { test: "value" };
     const result = { success: true };
@@ -577,7 +576,10 @@ describe("finally callback", () => {
     const mod = {
       args: {},
       input: async () => ({ ctx: {}, args: {} }),
-      finally: finallyMock
+      finally: (params) => {
+        finallyCalled = true;
+        finallyParams = params;
+      }
     };
     
     let actualResult;
@@ -593,13 +595,16 @@ describe("finally callback", () => {
       }
     }
     
-    expect(finallyMock).toHaveBeenCalledWith({
+    expect(finallyCalled).toBe(true);
+    expect(finallyParams).toEqual({
       ctx,
       result,
       error: undefined
     });
     
-    finallyMock.mockClear();
+    finallyCalled = false;
+    finallyParams = null;
+    
     const testError = new Error("Test error");
     const errorHandler = async () => {
       throw testError;
@@ -614,7 +619,8 @@ describe("finally callback", () => {
       }
     }
     
-    expect(finallyMock).toHaveBeenCalledWith({
+    expect(finallyCalled).toBe(true);
+    expect(finallyParams).toEqual({
       ctx,
       result: undefined,
       error: testError
