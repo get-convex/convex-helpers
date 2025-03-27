@@ -60,7 +60,11 @@ export type Mod<
   ) =>
     | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
     | { ctx: ModCtx; args: ModMadeArgs };
-  finally?: (params: { ctx: Ctx & ModCtx; result?: any; error?: any }) => void | Promise<void>;
+  finally?: (params: {
+    ctx: Ctx & ModCtx;
+    result?: any;
+    error?: any;
+  }) => void | Promise<void>;
 };
 
 /**

@@ -379,7 +379,6 @@ const testApi: ApiFromModules<{
     create: typeof create;
     outerAdds: typeof outerAdds;
     outerRemoves: typeof outerRemoves;
-
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -566,22 +565,22 @@ describe("finally callback", () => {
   test("finally callback is called with result and context", async () => {
     let finallyCalled = false;
     let finallyParams = null;
-    
+
     const ctx = { foo: "bar" };
     const args = { test: "value" };
     const result = { success: true };
-    
+
     const handler = async (_ctx, _args) => result;
-    
+
     const mod = {
       args: {},
       input: async () => ({ ctx: {}, args: {} }),
       finally: (params) => {
         finallyCalled = true;
         finallyParams = params;
-      }
+      },
     };
-    
+
     let actualResult;
     let actualError;
     try {
@@ -594,22 +593,22 @@ describe("finally callback", () => {
         await mod.finally({ ctx, result: actualResult, error: actualError });
       }
     }
-    
+
     expect(finallyCalled).toBe(true);
     expect(finallyParams).toEqual({
       ctx,
       result,
-      error: undefined
+      error: undefined,
     });
-    
+
     finallyCalled = false;
     finallyParams = null;
-    
+
     const testError = new Error("Test error");
     const errorHandler = async () => {
       throw testError;
     };
-    
+
     try {
       await errorHandler();
     } catch (e) {
@@ -618,12 +617,12 @@ describe("finally callback", () => {
         await mod.finally({ ctx, result: undefined, error: testError });
       }
     }
-    
+
     expect(finallyCalled).toBe(true);
     expect(finallyParams).toEqual({
       ctx,
       result: undefined,
-      error: testError
+      error: testError,
     });
   });
 });
