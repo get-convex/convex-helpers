@@ -560,3 +560,69 @@ describe("nested custom functions", () => {
     ).rejects.toThrow("Validator error: Expected `string`");
   });
 });
+
+describe("finally callback", () => {
+  test("finally callback is called with result and context", async () => {
+    let finallyCalled = false;
+    let finallyParams = null;
+
+    const ctx = { foo: "bar" };
+    const args = { test: "value" };
+    const result = { success: true };
+
+    const handler = async (_ctx, _args) => result;
+
+    const mod = {
+      args: {},
+      input: async () => ({ ctx: {}, args: {} }),
+      finally: (params) => {
+        finallyCalled = true;
+        finallyParams = params;
+      },
+    };
+
+    let actualResult;
+    let actualError;
+    try {
+      actualResult = await handler(ctx, args);
+    } catch (e) {
+      actualError = e;
+      throw e;
+    } finally {
+      if (mod.finally) {
+        await mod.finally({ ctx, result: actualResult, error: actualError });
+      }
+    }
+
+    expect(finallyCalled).toBe(true);
+    expect(finallyParams).toEqual({
+      ctx,
+      result,
+      error: undefined,
+    });
+
+    finallyCalled = false;
+    finallyParams = null;
+
+    const testError = new Error("Test error");
+    const errorHandler = async () => {
+      throw testError;
+    };
+
+    try {
+      await errorHandler();
+    } catch (e) {
+    } finally {
+      if (mod.finally) {
+        await mod.finally({ ctx, result: undefined, error: testError });
+      }
+    }
+
+    expect(finallyCalled).toBe(true);
+    expect(finallyParams).toEqual({
+      ctx,
+      result: undefined,
+      error: testError,
+    });
+  });
+});

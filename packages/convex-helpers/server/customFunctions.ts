@@ -60,6 +60,10 @@ export type Mod<
   ) =>
     | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
     | { ctx: ModCtx; args: ModMadeArgs };
+  finally?: (ctx: Ctx & ModCtx, params: {
+    result?: unknown;
+    error?: unknown;
+  }) => void | Promise<void>;
 };
 
 /**
@@ -88,6 +92,7 @@ export const NoOp = {
   input() {
     return { args: {}, ctx: {} };
   },
+
 };
 
 /**
@@ -339,7 +344,20 @@ function customFnBuilder(
             pick(allArgs, Object.keys(inputArgs)) as any,
           );
           const args = omit(allArgs, Object.keys(inputArgs));
-          return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+          const finalCtx = { ...ctx, ...added.ctx };
+          let result;
+          let error;
+          try {
+            result = await handler(finalCtx, { ...args, ...added.args });
+            return result;
+          } catch (e) {
+            error = e;
+            throw e;
+          } finally {
+            if (mod.finally) {
+              await mod.finally(finalCtx, { result, error });
+            }
+          }
         },
       });
     }
@@ -353,7 +371,20 @@ function customFnBuilder(
       returns: fn.returns,
       handler: async (ctx: any, args: any) => {
         const added = await inputMod(ctx, args);
-        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+        const finalCtx = { ...ctx, ...added.ctx };
+        let result;
+        let error;
+        try {
+          result = await handler(finalCtx, { ...args, ...added.args });
+          return result;
+        } catch (e) {
+          error = e;
+          throw e;
+        } finally {
+          if (mod.finally) {
+            await mod.finally(finalCtx, { result, error });
+          }
+        }
       },
     });
   };
