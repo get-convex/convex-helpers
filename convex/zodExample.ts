@@ -68,16 +68,3 @@ export const internalAction = zCustomAction(convexInternalAction, {
     return { ctx: { ...ctx, posthogDistinctId }, args: {} };
   },
 });
-
-export const get = internalQuery({
-  args: {
-    searchAgentId: zid("searchAgents"),
-  },
-  handler: async (ctx, { searchAgentId }) => {
-    const { db } = ctx;
-
-    const searchAgent = await db.get(searchAgentId);
-
-    return searchAgent;
-  },
-});

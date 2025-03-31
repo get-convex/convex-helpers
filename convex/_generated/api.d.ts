@@ -25,6 +25,7 @@ import type * as sessionsExample from "../sessionsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 import type * as triggersExample from "../triggersExample.js";
 import type * as zod2 from "../zod2.js";
+import type * as zod3 from "../zod3.js";
 import type * as zodExample from "../zodExample.js";
 
 /**
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   testingFunctions: typeof testingFunctions;
   triggersExample: typeof triggersExample;
   zod2: typeof zod2;
+  zod3: typeof zod3;
   zodExample: typeof zodExample;
 }>;
 export declare const api: FilterApi<
