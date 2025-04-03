@@ -1,4 +1,3 @@
-import { Equals, assert } from "../index.js";
 import {
   customAction,
   CustomCtx,
@@ -27,7 +26,14 @@ import {
   type Auth,
 } from "convex/server";
 import { v } from "convex/values";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import {
+  afterEach,
+  assertType,
+  beforeEach,
+  describe,
+  expect,
+  test,
+} from "vitest";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
@@ -228,7 +234,7 @@ const consumeArg = customQuery(query, {
 export const consume = consumeArg({
   args: {},
   handler: async (ctx, emptyArgs) => {
-    assert<Equals<typeof emptyArgs, {}>>(); // !!!
+    assertType<{}>(emptyArgs); // !!!
     return { ctxA: ctx.a };
   },
 });
@@ -239,14 +245,14 @@ queryMatches(consume, { a: "" }, { ctxA: "" });
 // These are all errors, as expected
 // const consumeUnvalidated = consumeArg({
 //   handler: async (ctx, emptyArgs: {}) => {
-//     assert<Equals<typeof emptyArgs, {}>>(); // !!!
+//     assertType<{}>(emptyArgs); // !!!
 //     return { ctxA: ctx.a };
 //   },
 // });
 // queryMatches(consumeUnvalidated, { a: "" }, { ctxA: "" });
 // const consumeUnvalidatedWithArgs = consumeArg(
 //   async (ctx, args: { b: number }) => {
-//     assert<Equals<typeof args, { b: number }>>(); // !!!
+//     assertType<{ b: number }>(args); // !!!
 //     return { ctxA: ctx.a };
 //   }
 // );

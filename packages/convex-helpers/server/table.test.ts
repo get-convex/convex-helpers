@@ -1,4 +1,4 @@
-import { assert, omit, pick, pruneNull } from "../index.js";
+import { omit, pick, pruneNull } from "../index.js";
 import { Table } from "../server.js";
 import { partial } from "../validators.js";
 import { convexTest } from "convex-test";
@@ -13,7 +13,7 @@ import {
   QueryBuilder,
 } from "convex/server";
 import { v } from "convex/values";
-import { expect, test } from "vitest";
+import { assertType, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 
 // Define a table with system fields _id and _creationTime. This also returns
@@ -75,7 +75,7 @@ export const docAsParam = internalQuery({
 export const insert = internalMutation({
   args: Example.withoutSystemFields,
   handler: async (ctx, args) => {
-    assert<keyof typeof args extends "_id" ? false : true>();
+    assertType<keyof typeof args extends "_id" ? false : true>(true);
     return ctx.db.insert(Example.name, args);
   },
 });

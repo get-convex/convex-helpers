@@ -1,4 +1,3 @@
-import { assert, Equals } from "../index.js";
 import {
   any,
   array,
@@ -36,7 +35,7 @@ import {
   QueryBuilder,
 } from "convex/server";
 import { Infer, ObjectType } from "convex/values";
-import { expect, test } from "vitest";
+import { assertType, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
 import { validate } from "../validators.js";
@@ -46,7 +45,7 @@ export const testLiterals = internalQueryGeneric({
     foo: literals("bar", "baz"),
   },
   handler: async (ctx, args) => {
-    assert<Equals<typeof args.foo, "bar" | "baz">>;
+    assertType<"bar" | "baz">(args.foo);
   },
 });
 

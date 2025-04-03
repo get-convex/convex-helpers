@@ -142,17 +142,19 @@ export type Equals<X, Y> =
     : false;
 
 /**
- * A utility for both compile-time type assertions and runtime assertions.
+ * A utility to validate truthiness at runtime, providing a type guard
  *
  * @example
  * ```ts
- * // Compile-time assertion
- * assert<Equals<1, 1>>();
+ * const x: string | null = getValue();
+ * assert(x);
+ * // x is now of type string
  * ```
  * @param arg A value to assert the truthiness of.
+ * @param message An optional message to throw if the value is not truthy.
  */
-export function assert<T extends true>(arg?: T) {
-  // no need to do anything! we're just asserting at compile time that the type
-  // parameter is true.
-  if (arg !== undefined && !arg) throw new Error(`Assertion failed: ${arg}`);
+export function assert(value: unknown, message?: string): asserts value {
+  if (!value) {
+    throw new Error(message);
+  }
 }
