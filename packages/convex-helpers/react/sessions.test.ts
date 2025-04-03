@@ -1,8 +1,10 @@
-import { expectTypeOf } from "vitest";
+import { expectTypeOf, test } from "vitest";
 import type { FunctionReference } from "convex/server";
 import type { SessionArgsArray, SessionQueryArgsArray } from "./sessions";
 import type { EmptyObject } from "..";
 import type { SessionId } from "../server/sessions";
+
+test("noop", () => {});
 
 expectTypeOf<
   SessionQueryArgsArray<
