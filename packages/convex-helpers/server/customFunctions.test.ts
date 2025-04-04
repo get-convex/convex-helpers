@@ -27,7 +27,7 @@ import {
   type Auth,
 } from "convex/server";
 import { v } from "convex/values";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
@@ -601,11 +601,13 @@ describe("finally callback", () => {
     });
     
     await t.run(async (ctx) => {
+      let error: Error | undefined;
       try {
         await (errorFn as any)._handler(ctx, {});
-        fail("Should have thrown an error");
+        expect.fail("Should have thrown an error");
       } catch (e) {
-        expect(e.message).toContain("Test error");
+        error = e as Error;
+        expect(error.message).toContain("Test error");
       }
       
       expect(finallyMock).toHaveBeenCalledWith(
