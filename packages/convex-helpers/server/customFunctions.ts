@@ -346,17 +346,17 @@ function customFnBuilder(
           const args = omit(allArgs, Object.keys(inputArgs));
           const finalCtx = { ...ctx, ...added.ctx };
           let result;
-          let error;
           try {
             result = await handler(finalCtx, { ...args, ...added.args });
+            if (mod.finally) {
+              await mod.finally(finalCtx, { result });
+            }
             return result;
           } catch (e) {
-            error = e;
-            throw e;
-          } finally {
             if (mod.finally) {
-              await mod.finally(finalCtx, { result, error });
+              await mod.finally(finalCtx, { error: e });
             }
+            throw e;
           }
         },
       });
@@ -373,17 +373,17 @@ function customFnBuilder(
         const added = await inputMod(ctx, args);
         const finalCtx = { ...ctx, ...added.ctx };
         let result;
-        let error;
         try {
           result = await handler(finalCtx, { ...args, ...added.args });
+          if (mod.finally) {
+            await mod.finally(finalCtx, { result });
+          }
           return result;
         } catch (e) {
-          error = e;
-          throw e;
-        } finally {
           if (mod.finally) {
-            await mod.finally(finalCtx, { result, error });
+            await mod.finally(finalCtx, { error: e });
           }
+          throw e;
         }
       },
     });
