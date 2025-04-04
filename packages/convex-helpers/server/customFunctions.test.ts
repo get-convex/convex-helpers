@@ -601,12 +601,11 @@ describe("finally callback", () => {
     });
     
     await t.run(async (ctx) => {
-      let error: Error | undefined;
       try {
         await (errorFn as any)._handler(ctx, {});
         expect.fail("Should have thrown an error");
-      } catch (e) {
-        error = e as Error;
+      } catch (e: unknown) {
+        const error = e as Error;
         expect(error.message).toContain("Test error");
       }
       
