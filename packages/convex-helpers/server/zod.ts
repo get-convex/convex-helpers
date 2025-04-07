@@ -1298,6 +1298,9 @@ export function zBrand<
   return validator.brand(brand);
 }
 
+/** Simple type conversion from a Convex validator to a Zod validator. */
+export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
+
 /**
  * Turn a Convex validator into a Zod validator.
  * @param convexValidator Convex validator can be any validator from "convex/values" e.g. `v.string()`
