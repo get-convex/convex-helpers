@@ -1,4 +1,4 @@
-import {
+import type {
   QueryBuilder,
   MutationBuilder,
   WithoutSystemFields,
@@ -6,16 +6,19 @@ import {
   RegisteredMutation,
   RegisteredQuery,
   FunctionVisibility,
-  paginationOptsValidator,
   PaginationResult,
   SchemaDefinition,
   GenericSchema,
   TableNamesInDataModel,
   DataModelFromSchemaDefinition,
+} from "convex/server";
+import {
+  paginationOptsValidator,
   internalQueryGeneric,
   internalMutationGeneric,
 } from "convex/server";
-import { GenericId, Infer, v } from "convex/values";
+import type { GenericId, Infer } from "convex/values";
+import { v } from "convex/values";
 import { partial } from "../validators.js";
 /**
  * Create CRUD operations for a table.

@@ -1,4 +1,4 @@
-import { Value } from "convex/values";
+import type { Value } from "convex/values";
 
 // Returns -1 if k1 < k2
 // Returns 0 if k1 === k2

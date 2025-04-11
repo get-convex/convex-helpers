@@ -1,15 +1,11 @@
-import {
-  ConvexProvider,
-  OptionalRestArgsOrSkip,
-  RequestForQueries,
-  useQueries as useQueriesCore,
-} from "convex/react";
-import {
+import type { OptionalRestArgsOrSkip, RequestForQueries } from "convex/react";
+import { ConvexProvider, useQueries as useQueriesCore } from "convex/react";
+import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
-  getFunctionName,
 } from "convex/server";
+import { getFunctionName } from "convex/server";
 import { useContext, useEffect, useMemo } from "react";
 import { ConvexQueryCacheContext } from "./provider.js";
 import { convexToJson } from "convex/values";

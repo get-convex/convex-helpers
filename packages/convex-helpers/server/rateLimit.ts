@@ -105,13 +105,13 @@ await rateLimit(ctx, {
  */
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
-import {
-  defineTable,
+import type {
   GenericDatabaseReader,
   GenericDatabaseWriter,
   DataModelFromSchemaDefinition,
   SchemaDefinition,
 } from "convex/server";
+import { defineTable } from "convex/server";
 
 /**
  * A token bucket limits the rate of requests by continuously adding tokens to

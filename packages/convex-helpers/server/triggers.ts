@@ -1,4 +1,4 @@
-import {
+import type {
   DocumentByName,
   GenericDatabaseWriter,
   GenericDataModel,
@@ -9,7 +9,7 @@ import {
   WithOptionalSystemFields,
   WithoutSystemFields,
 } from "convex/server";
-import { GenericId } from "convex/values";
+import type { GenericId } from "convex/values";
 
 /**
  * This function will be called when a document in the table changes.

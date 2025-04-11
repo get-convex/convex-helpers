@@ -92,9 +92,8 @@ npx convex run migrations --prod
  * Ideas for the future:
  * - Allow scheduling multiple batches at once. Maybe partition by time.
  */
-import {
+import type {
   DataModelFromSchemaDefinition,
-  defineTable,
   DocumentByInfo,
   DocumentByName,
   FunctionReference,
@@ -102,8 +101,6 @@ import {
   GenericDatabaseWriter,
   GenericDataModel,
   GenericMutationCtx,
-  getFunctionName,
-  makeFunctionReference,
   MutationBuilder,
   NamedTableInfo,
   OrderedQuery,
@@ -113,8 +110,15 @@ import {
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
-import { GenericId, ObjectType, v } from "convex/values";
-import { asyncMap, ErrorMessage } from "../index.js";
+import {
+  defineTable,
+  getFunctionName,
+  makeFunctionReference,
+} from "convex/server";
+import type { GenericId, ObjectType } from "convex/values";
+import { v } from "convex/values";
+import type { ErrorMessage } from "../index.js";
+import { asyncMap } from "../index.js";
 import { pretendRequired } from "../validators.js";
 
 export const DEFAULT_BATCH_SIZE = 100;

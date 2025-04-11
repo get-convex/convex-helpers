@@ -1,18 +1,16 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { crud } from "./crud.js";
-import {
-  anyApi,
+import type {
   ApiFromModules,
   DataModelFromSchemaDefinition,
-  defineSchema,
-  defineTable,
   MutationBuilder,
   QueryBuilder,
 } from "convex/server";
+import { anyApi, defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { internalQueryGeneric, internalMutationGeneric } from "convex/server";
-import { modules } from "./setup.test";
+import { modules } from "./setup.test.js";
 import { customCtx, customMutation, customQuery } from "./customFunctions.js";
 
 const ExampleFields = {

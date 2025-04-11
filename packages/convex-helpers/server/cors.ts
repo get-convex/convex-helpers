@@ -12,16 +12,14 @@
  * accessible to web applications hosted on different domains while
  * maintaining proper CORS configuration.
  */
-import {
+import type {
   GenericActionCtx,
-  httpActionGeneric,
-  httpRouter,
-  HttpRouter,
   PublicHttpAction,
   RouteSpec,
   RouteSpecWithPath,
   RouteSpecWithPathPrefix,
 } from "convex/server";
+import { httpActionGeneric, httpRouter, HttpRouter } from "convex/server";
 
 export const DEFAULT_EXPOSED_HEADERS = [
   // For Range requests
@@ -214,7 +212,8 @@ export default corsRouter;
  * to web applications hosted on different domains.
  */
 
-import { ROUTABLE_HTTP_METHODS, RoutableMethod } from "convex/server";
+import type { RoutableMethod } from "convex/server";
+import { ROUTABLE_HTTP_METHODS } from "convex/server";
 
 const SECONDS_IN_A_DAY = 60 * 60 * 24;
 

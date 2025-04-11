@@ -1,8 +1,9 @@
 import fs from "fs";
 import { Command, Option } from "commander";
-import { ValidatorJSON } from "convex/values";
+import type { ValidatorJSON } from "convex/values";
 import chalk from "chalk";
-import { AnalyzedFunction, FunctionSpec, getFunctionSpec } from "./utils.js";
+import type { AnalyzedFunction, FunctionSpec } from "./utils.js";
+import { getFunctionSpec } from "./utils.js";
 import prettier from "prettier";
 
 export const openApiSpec = new Command("open-api-spec")

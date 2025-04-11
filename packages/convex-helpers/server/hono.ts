@@ -19,13 +19,15 @@
  * export default new HttpRouterWithHono(app);
  * ```
  */
+import type {
+  PublicHttpAction,
+  RoutableMethod,
+  GenericActionCtx,
+} from "convex/server";
 import {
   httpActionGeneric,
   HttpRouter,
-  PublicHttpAction,
-  RoutableMethod,
   ROUTABLE_HTTP_METHODS,
-  GenericActionCtx,
 } from "convex/server";
 import { Hono } from "hono";
 export { Hono };
