@@ -10,6 +10,8 @@ import type { SessionId } from "./sessions.js";
 import { vSessionId } from "./sessions.js";
 import { convexTest } from "convex-test";
 import type {
+  ApiFromModules,
+  Auth,
   ActionBuilder,
   DataModelFromSchemaDefinition,
   DefaultFunctionArgs,
@@ -25,8 +27,6 @@ import {
   defineTable,
   mutationGeneric,
   queryGeneric,
-  type ApiFromModules,
-  type Auth,
 } from "convex/server";
 import { v } from "convex/values";
 import {
