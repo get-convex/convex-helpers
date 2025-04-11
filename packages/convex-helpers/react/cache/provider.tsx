@@ -1,7 +1,8 @@
 "use client";
 import { useConvex, ConvexReactClient } from "convex/react";
-import { FunctionArgs, FunctionReference } from "convex/server";
-import { createContext, FC, PropsWithChildren, useMemo } from "react";
+import type { FunctionArgs, FunctionReference } from "convex/server";
+import type { FC, PropsWithChildren } from "react";
+import { createContext, useMemo } from "react";
 
 export const ConvexQueryCacheContext = createContext({
   registry: null as CacheRegistry | null,

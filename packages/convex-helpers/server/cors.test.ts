@@ -1,11 +1,7 @@
 import { describe, test, expect, vi, assert } from "vitest";
-import { corsRouter } from "./cors";
-import {
-  defineSchema,
-  GenericActionCtx,
-  httpActionGeneric,
-  HttpRouter,
-} from "convex/server";
+import { corsRouter } from "./cors.js";
+import type { GenericActionCtx } from "convex/server";
+import { defineSchema, httpActionGeneric, HttpRouter } from "convex/server";
 import { modules } from "./setup.test.js";
 import { convexTest } from "convex-test";
 

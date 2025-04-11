@@ -31,7 +31,7 @@ import type {
 } from "convex/server";
 import { useQuery, useMutation, useAction } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
-import { EmptyObject, BetterOmit } from "../index.js";
+import type { EmptyObject, BetterOmit } from "../index.js";
 
 export type UseStorage<T> = (
   key: string,

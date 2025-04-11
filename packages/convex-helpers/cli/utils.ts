@@ -1,7 +1,7 @@
 import fs from "fs";
 import { spawnSync } from "child_process";
 import chalk from "chalk";
-import { ValidatorJSON } from "convex/values";
+import type { ValidatorJSON } from "convex/values";
 import path from "path";
 import os from "os";
 

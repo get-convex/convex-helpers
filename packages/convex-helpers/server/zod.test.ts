@@ -1,21 +1,19 @@
-import {
-  defineTable,
-  defineSchema,
+import type {
   DataModelFromSchemaDefinition,
-  queryGeneric,
   QueryBuilder,
-  anyApi,
   ApiFromModules,
   RegisteredQuery,
   DefaultFunctionArgs,
 } from "convex/server";
-import { Equals, omit } from "../index.js";
+import { defineTable, defineSchema, queryGeneric, anyApi } from "convex/server";
+import type { Equals } from "../index.js";
+import { omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
+import type { ZCustomCtx } from "./zod.js";
 import {
   zBrand,
-  ZCustomCtx,
   zCustomQuery,
   zid,
   zodOutputToConvex,
@@ -25,7 +23,8 @@ import {
   convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import { v, VString, VFloat64, VObject, VId, Infer } from "convex/values";
+import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
+import { v } from "convex/values";
 import { z } from "zod";
 
 // This is an example of how to make a version of `zid` that

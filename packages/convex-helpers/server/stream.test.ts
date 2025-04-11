@@ -1,7 +1,9 @@
-import { defineTable, defineSchema, GenericDocument } from "convex/server";
+import type { GenericDocument } from "convex/server";
+import { defineTable, defineSchema } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { IndexKey, mergedStream, stream, streamIndexRange } from "./stream.js";
+import type { IndexKey } from "./stream.js";
+import { mergedStream, stream, streamIndexRange } from "./stream.js";
 import { modules } from "./setup.test.js";
 import { v } from "convex/values";
 

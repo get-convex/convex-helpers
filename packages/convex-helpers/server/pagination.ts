@@ -1,5 +1,5 @@
-import { Value } from "convex/values";
-import {
+import type { Value } from "convex/values";
+import type {
   DataModelFromSchemaDefinition,
   DocumentByName,
   GenericDataModel,

@@ -10,15 +10,14 @@
  *   as taking in an authentication parameter like an API key or session ID.
  *   These arguments must be sent up by the client along with each request.
  */
-import {
+import type {
   GenericValidator,
   ObjectType,
   PropertyValidators,
   Validator,
-  asObjectValidator,
-  v,
 } from "convex/values";
-import {
+import { asObjectValidator, v } from "convex/values";
+import type {
   ActionBuilder,
   ArgsArrayForOptionalValidator,
   ArgsArrayToObject,

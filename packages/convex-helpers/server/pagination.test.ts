@@ -1,9 +1,12 @@
-import { defineTable, defineSchema, GenericDocument } from "convex/server";
+import type { GenericDocument } from "convex/server";
+import { defineTable, defineSchema } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
-import { IndexKey, getPage, paginator } from "./pagination.js";
+import type { IndexKey } from "./pagination.js";
+import { getPage, paginator } from "./pagination.js";
 import { modules } from "./setup.test.js";
-import { GenericId, v } from "convex/values";
+import type { GenericId } from "convex/values";
+import { v } from "convex/values";
 
 const schema = defineSchema({
   foo: defineTable({

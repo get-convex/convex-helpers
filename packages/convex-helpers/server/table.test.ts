@@ -2,15 +2,17 @@ import { omit, pick, pruneNull } from "../index.js";
 import { Table } from "../server.js";
 import { partial } from "../validators.js";
 import { convexTest } from "convex-test";
-import {
-  anyApi,
+import type {
   ApiFromModules,
   DataModelFromSchemaDefinition,
+  MutationBuilder,
+  QueryBuilder,
+} from "convex/server";
+import {
+  anyApi,
   defineSchema,
   internalMutationGeneric,
   internalQueryGeneric,
-  MutationBuilder,
-  QueryBuilder,
 } from "convex/server";
 import { v } from "convex/values";
 import { assertType, expect, test } from "vitest";

@@ -1,8 +1,9 @@
 import fs from "fs";
 import { Command, Option } from "commander";
-import { ValidatorJSON, RecordKeyValidatorJSON } from "convex/values";
+import type { ValidatorJSON, RecordKeyValidatorJSON } from "convex/values";
 import chalk from "chalk";
-import { FunctionSpec, getFunctionSpec } from "./utils.js";
+import type { FunctionSpec } from "./utils.js";
+import { getFunctionSpec } from "./utils.js";
 import prettier from "prettier";
 
 export const tsApiSpec = new Command("ts-api-spec")

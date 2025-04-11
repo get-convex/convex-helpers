@@ -1,15 +1,14 @@
 import { defineTable, defineSchema } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test, vi } from "vitest";
+import type { RateLimitConfig, RateLimitError } from "./rateLimit.js";
 import {
   defineRateLimits,
   rateLimitTables,
   checkRateLimit,
   rateLimit,
   resetRateLimit,
-  RateLimitConfig,
   isRateLimitError,
-  RateLimitError,
 } from "./rateLimit.js";
 import { modules } from "./setup.test.js";
 import { ConvexError } from "convex/values";

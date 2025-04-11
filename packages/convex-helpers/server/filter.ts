@@ -5,7 +5,7 @@
  *
  */
 
-import {
+import type {
   DocumentByInfo,
   GenericTableInfo,
   PaginationOptions,
@@ -20,10 +20,11 @@ import {
   NamedIndex,
   NamedSearchIndex,
   Query,
-  SearchFilter,
   SearchFilterBuilder,
   SearchIndexes,
 } from "convex/server";
+
+import { SearchFilter } from "convex/server";
 
 async function asyncFilter<T>(
   arr: T[],

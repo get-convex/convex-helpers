@@ -52,15 +52,16 @@
  * See the associated [Stack post](https://stack.convex.dev/track-sessions-without-cookies)
  * for more information.
  */
-import {
+import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
   GenericActionCtx,
   GenericDataModel,
 } from "convex/server";
-import { Validator, v } from "convex/values";
-import { BetterOmit, EmptyObject } from "../index.js";
+import type { Validator } from "convex/values";
+import { v } from "convex/values";
+import type { BetterOmit, EmptyObject } from "../index.js";
 
 // Branded string type for session IDs.
 export type SessionId = string & { __SessionId: true };

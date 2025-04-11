@@ -23,18 +23,20 @@ import {
   ValidationError,
 } from "../validators.js";
 import { convexTest } from "convex-test";
-import {
-  anyApi,
+import type {
   ApiFromModules,
   DataModelFromSchemaDefinition,
+  MutationBuilder,
+  QueryBuilder,
+} from "convex/server";
+import {
+  anyApi,
   defineSchema,
   defineTable,
   internalMutationGeneric,
   internalQueryGeneric,
-  MutationBuilder,
-  QueryBuilder,
 } from "convex/server";
-import { Infer, ObjectType } from "convex/values";
+import type { Infer, ObjectType } from "convex/values";
 import { assertType, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";

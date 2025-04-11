@@ -1,5 +1,6 @@
-import { Value, convexToJson, jsonToConvex } from "convex/values";
-import {
+import type { Value } from "convex/values";
+import { convexToJson, jsonToConvex } from "convex/values";
+import type {
   DataModelFromSchemaDefinition,
   DocumentByInfo,
   DocumentByName,
