@@ -46,6 +46,12 @@ import { omit, pick } from "../index.js";
  * provided for the modified function. All returned ctx and args will show up
  * in the type signature for the modified function.
  * To remove something from `ctx`, you can return it as `undefined`.
+ * 
+ * The `input` function can also return a `finally` callback that will be called
+ * after the function executes with either the result or error. This is useful for
+ * cleanup operations or logging that should happen regardless of whether the
+ * function succeeds or fails. The `finally` callback has access to resources
+ * created during input processing.
  */
 export type Mod<
   Ctx extends Record<string, any>,
@@ -116,7 +122,17 @@ export const NoOp = {
  *     const user = await getUserOrNull(ctx);
  *     const session = await db.get(sessionId);
  *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
- *     return { ctx: { db, user, session }, args: {} };
+ *     return { 
+ *       ctx: { db, user, session }, 
+ *       args: {},
+ *       finally: ({ result, error }) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         if (error) {
+ *           console.error("Error in query:", error);
+ *         }
+ *       }
+ *     };
  *   },
  * });
  *
@@ -188,7 +204,17 @@ export function customQuery<
  *     const user = await getUserOrNull(ctx);
  *     const session = await db.get(sessionId);
  *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
- *     return { ctx: { db, user, session }, args: {} };
+ *     return { 
+ *       ctx: { db, user, session }, 
+ *       args: {},
+ *       finally: ({ result, error }) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         if (error) {
+ *           console.error("Error in mutation:", error);
+ *         }
+ *       }
+ *     };
  *   },
  * });
  *
@@ -267,7 +293,21 @@ export function customMutation<
  *       throw new Error("Invalid secret key");
  *     }
  *     const user = await ctx.runQuery(internal.users.getUser, {});
- *     return { ctx: { user }, args: {} };
+ *     // Create resources that can be used in the finally callback
+ *     const logger = createLogger();
+ *     return { 
+ *       ctx: { user }, 
+ *       args: {},
+ *       finally: ({ result, error }) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         if (error) {
+ *           logger.error("Action failed:", error);
+ *         } else {
+ *           logger.info("Action completed successfully");
+ *         }
+ *       }
+ *     };
  *   },
  * });
  *
