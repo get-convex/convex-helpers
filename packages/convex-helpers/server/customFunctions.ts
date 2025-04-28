@@ -58,19 +58,19 @@ export type Mod<
     ctx: Ctx,
     args: ObjectType<ModArgsValidator>,
   ) =>
-    | Promise<{ 
-        ctx: ModCtx; 
+    | Promise<{
+        ctx: ModCtx;
         args: ModMadeArgs;
-        finally?: (params: { 
-          result?: unknown; 
+        finally?: (params: {
+          result?: unknown;
           error?: unknown;
         }) => void | Promise<void>;
       }>
-    | { 
-        ctx: ModCtx; 
+    | {
+        ctx: ModCtx;
         args: ModMadeArgs;
-        finally?: (params: { 
-          result?: unknown; 
+        finally?: (params: {
+          result?: unknown;
           error?: unknown;
         }) => void | Promise<void>;
       };
@@ -102,7 +102,6 @@ export const NoOp = {
   input() {
     return { args: {}, ctx: {} };
   },
-
 };
 
 /**
