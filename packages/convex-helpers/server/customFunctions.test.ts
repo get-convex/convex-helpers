@@ -568,10 +568,13 @@ describe("finally callback", () => {
     
     const withFinally = customQuery(query, {
       args: {},
-      input: async () => ({ ctx: { foo: "bar" }, args: {} }),
-      finally: (ctx, params) => {
-        finallyMock(ctx, params);
-      }
+      input: async () => ({ 
+        ctx: { foo: "bar" }, 
+        args: {},
+        finally: (params) => {
+          finallyMock(params);
+        }
+      }),
     });
     
     const successFn = withFinally({
@@ -586,7 +589,6 @@ describe("finally callback", () => {
       expect(result).toEqual({ success: true, foo: "bar" });
       
       expect(finallyMock).toHaveBeenCalledWith(
-        expect.objectContaining({ foo: "bar" }),
         { result: { success: true, foo: "bar" } }
       );
     });
@@ -610,7 +612,6 @@ describe("finally callback", () => {
       }
       
       expect(finallyMock).toHaveBeenCalledWith(
-        expect.objectContaining({ foo: "bar" }),
         { error: expect.objectContaining({ message: expect.stringContaining("Test error") }) }
       );
     });
@@ -622,10 +623,13 @@ describe("finally callback", () => {
     
     const withFinally = customMutation(mutation, {
       args: {},
-      input: async () => ({ ctx: { foo: "bar" }, args: {} }),
-      finally: (ctx, params) => {
-        finallyMock(ctx, params);
-      }
+      input: async () => ({ 
+        ctx: { foo: "bar" }, 
+        args: {},
+        finally: (params) => {
+          finallyMock(params);
+        }
+      }),
     });
     
     const mutationFn = withFinally({
@@ -640,7 +644,6 @@ describe("finally callback", () => {
       expect(result).toEqual({ updated: true, foo: "bar" });
       
       expect(finallyMock).toHaveBeenCalledWith(
-        expect.objectContaining({ foo: "bar" }),
         { result: { updated: true, foo: "bar" } }
       );
     });
@@ -652,10 +655,13 @@ describe("finally callback", () => {
     
     const withFinally = customAction(action, {
       args: {},
-      input: async () => ({ ctx: { foo: "bar" }, args: {} }),
-      finally: (ctx, params) => {
-        finallyMock(ctx, params);
-      }
+      input: async () => ({ 
+        ctx: { foo: "bar" }, 
+        args: {},
+        finally: (params) => {
+          finallyMock(params);
+        }
+      }),
     });
     
     const actionFn = withFinally({
@@ -670,7 +676,6 @@ describe("finally callback", () => {
       expect(result).toEqual({ executed: true, foo: "bar" });
       
       expect(finallyMock).toHaveBeenCalledWith(
-        expect.objectContaining({ foo: "bar" }),
         { result: { executed: true, foo: "bar" } }
       );
     });

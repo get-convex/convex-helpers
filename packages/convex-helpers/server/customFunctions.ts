@@ -58,12 +58,22 @@ export type Mod<
     ctx: Ctx,
     args: ObjectType<ModArgsValidator>,
   ) =>
-    | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
-    | { ctx: ModCtx; args: ModMadeArgs };
-  finally?: (ctx: Ctx & ModCtx, params: {
-    result?: unknown;
-    error?: unknown;
-  }) => void | Promise<void>;
+    | Promise<{ 
+        ctx: ModCtx; 
+        args: ModMadeArgs;
+        finally?: (params: { 
+          result?: unknown; 
+          error?: unknown;
+        }) => void | Promise<void>;
+      }>
+    | { 
+        ctx: ModCtx; 
+        args: ModMadeArgs;
+        finally?: (params: { 
+          result?: unknown; 
+          error?: unknown;
+        }) => void | Promise<void>;
+      };
 };
 
 /**
@@ -348,13 +358,13 @@ function customFnBuilder(
           let result;
           try {
             result = await handler(finalCtx, { ...args, ...added.args });
-            if (mod.finally) {
-              await mod.finally(finalCtx, { result });
+            if (added.finally) {
+              await added.finally({ result });
             }
             return result;
           } catch (e) {
-            if (mod.finally) {
-              await mod.finally(finalCtx, { error: e });
+            if (added.finally) {
+              await added.finally({ error: e });
             }
             throw e;
           }
@@ -375,13 +385,13 @@ function customFnBuilder(
         let result;
         try {
           result = await handler(finalCtx, { ...args, ...added.args });
-          if (mod.finally) {
-            await mod.finally(finalCtx, { result });
+          if (added.finally) {
+            await added.finally({ result });
           }
           return result;
         } catch (e) {
-          if (mod.finally) {
-            await mod.finally(finalCtx, { error: e });
+          if (added.finally) {
+            await added.finally({ error: e });
           }
           throw e;
         }
