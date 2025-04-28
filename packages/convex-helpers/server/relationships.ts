@@ -1,4 +1,4 @@
-import {
+import type {
   FieldTypeFromFieldPath,
   TableNamesInDataModel,
   GenericDataModel,
@@ -10,7 +10,7 @@ import {
   IndexNames,
   FieldPaths,
 } from "convex/server";
-import { GenericId } from "convex/values";
+import type { GenericId } from "convex/values";
 import { asyncMap, nullThrows } from "../index.js";
 
 /**

@@ -1,7 +1,6 @@
-import { ZodFirstPartyTypeKind, ZodTypeDef, z } from "zod";
-import {
-  v,
-  ConvexError,
+import type { ZodTypeDef } from "zod";
+import { ZodFirstPartyTypeKind, z } from "zod";
+import type {
   GenericId,
   Infer,
   ObjectType,
@@ -23,7 +22,8 @@ import {
   Validator,
   VRecord,
 } from "convex/values";
-import {
+import { ConvexError, v } from "convex/values";
+import type {
   FunctionVisibility,
   GenericDataModel,
   GenericActionCtx,
@@ -36,7 +36,8 @@ import {
   DefaultFunctionArgs,
   ArgsArrayToObject,
 } from "convex/server";
-import { Mod, NoOp, Registration } from "./customFunctions.js";
+import type { Mod, Registration } from "./customFunctions.js";
+import { NoOp } from "./customFunctions.js";
 import { pick } from "../index.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
@@ -554,7 +555,7 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
   }
 >;
 
-type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
+export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
   // and the ConvexValidatorFromZodOutput type
   Z extends Zid<infer TableName>
@@ -621,7 +622,11 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                           >["fieldPaths"]
                                         >
                                       : never
-                                    : Z extends z.ZodEffects<infer Inner>
+                                    : Z extends z.ZodEffects<
+                                          infer Inner,
+                                          unknown,
+                                          unknown
+                                        >
                                       ? ConvexValidatorFromZod<Inner>
                                       : Z extends z.ZodOptional<infer Inner>
                                         ? ConvexValidatorFromZod<Inner> extends GenericValidator
@@ -1297,6 +1302,9 @@ export function zBrand<
 >(validator: T, brand?: B): ZodBrandedInputAndOutput<T, B> {
   return validator.brand(brand);
 }
+
+/** Simple type conversion from a Convex validator to a Zod validator. */
+export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
 
 /**
  * Turn a Convex validator into a Zod validator.

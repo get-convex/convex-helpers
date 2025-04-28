@@ -21,11 +21,12 @@
     "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
     "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'",
     "arethetypeswrong": "cd packages/convex-helpers/dist && attw $(npm pack) --ignore-rules cjs-resolves-to-esm",
-    "publish": "./publish.sh"
+    "alpha": "./publish.sh alpha",
+    "release": "./publish.sh"
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.21.0",
+    "convex": "^1.22.0",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^19.0.0",
@@ -36,22 +37,22 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.17.4",
     "@edge-runtime/vm": "5.0.0",
-    "@redocly/cli": "1.34.0",
-    "@testing-library/react": "16.2.0",
+    "@redocly/cli": "1.34.2",
+    "@testing-library/react": "16.3.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.14",
     "@types/node": "22.13.10",
-    "@types/react": "19.0.12",
-    "@types/react-dom": "19.0.4",
-    "@vitejs/plugin-react": "4.3.4",
-    "@vitest/coverage-v8": "3.0.9",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "@vitejs/plugin-react": "4.4.1",
+    "@vitest/coverage-v8": "3.1.2",
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.36",
-    "eslint": "9.23.0",
-    "jsdom": "26.0.0",
+    "eslint": "9.25.1",
+    "jsdom": "26.1.0",
     "npm-run-all2": "7.0.2",
-    "typescript": "5.8.2",
-    "vite": "6.2.3",
-    "vitest": "3.0.9"
+    "typescript": "5.8.3",
+    "vite": "6.3.3",
+    "vitest": "3.1.2"
   }
 }

@@ -1,21 +1,19 @@
-import {
-  defineTable,
-  defineSchema,
+import type {
   DataModelFromSchemaDefinition,
-  queryGeneric,
   QueryBuilder,
-  anyApi,
   ApiFromModules,
   RegisteredQuery,
   DefaultFunctionArgs,
 } from "convex/server";
-import { Equals, assert, omit } from "../index.js";
+import { defineTable, defineSchema, queryGeneric, anyApi } from "convex/server";
+import type { Equals } from "../index.js";
+import { omit } from "../index.js";
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
+import type { ConvexValidatorFromZod, ZCustomCtx } from "./zod.js";
 import {
   zBrand,
-  ZCustomCtx,
   zCustomQuery,
   zid,
   zodOutputToConvex,
@@ -25,7 +23,15 @@ import {
   convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import { v, VString, VFloat64, VObject, VId, Infer } from "convex/values";
+import type {
+  VString,
+  VFloat64,
+  VObject,
+  VId,
+  Infer,
+  VOptional,
+} from "convex/values";
+import { v } from "convex/values";
 import { z } from "zod";
 
 // This is an example of how to make a version of `zid` that
@@ -268,7 +274,7 @@ const consumeArg = zCustomQuery(query, {
 export const consume = consumeArg({
   args: {},
   handler: async (ctx, emptyArgs) => {
-    assert<Equals<typeof emptyArgs, {}>>(); // !!!
+    assertType<{}>(emptyArgs); // !!!
     return { ctxA: ctx.a };
   },
 });
@@ -704,115 +710,105 @@ describe("zod functions", () => {
  * Test type translation
  */
 
-assert(
-  sameType(
-    zodToConvexFields({
-      s: z.string().email().max(5),
-      n: z.number(),
-      nan: z.nan(),
-      optional: z.number().optional(),
-      optional2: z.optional(z.number()),
-      record: z.record(z.string(), z.number()),
-      default: z.number().default(0),
-      nullable: z.number().nullable(),
-      null: z.null(),
-      bi: z.bigint(),
-      bool: z.boolean(),
-      literal: z.literal("hi"),
-      branded: z.string().brand("branded"),
+expectTypeOf(
+  zodToConvexFields({
+    s: z.string().email().max(5),
+    n: z.number(),
+    nan: z.nan(),
+    optional: z.number().optional(),
+    optional2: z.optional(z.number()),
+    record: z.record(z.string(), z.number()),
+    default: z.number().default(0),
+    nullable: z.number().nullable(),
+    null: z.null(),
+    bi: z.bigint(),
+    bool: z.boolean(),
+    literal: z.literal("hi"),
+    branded: z.string().brand("branded"),
+  }),
+).toEqualTypeOf({
+  s: v.string(),
+  n: v.number(),
+  nan: v.number(),
+  optional: v.optional(v.number()),
+  optional2: v.optional(v.number()),
+  record: v.record(v.string(), v.number()),
+  default: v.optional(v.number()),
+  nullable: v.union(v.number(), v.null()),
+  null: v.null(),
+  bi: v.int64(),
+  bool: v.boolean(),
+  literal: v.literal("hi"),
+  branded: v.string() as VString<string & z.BRAND<"branded">>,
+});
+
+expectTypeOf(
+  zodToConvexFields({
+    simpleArray: z.array(z.boolean()),
+    tuple: z.tuple([z.boolean(), z.boolean()]),
+    enum: z.enum(["a", "b"]),
+    obj: z.object({ a: z.string(), b: z.object({ c: z.array(z.number()) }) }),
+    union: z.union([z.string(), z.object({ c: z.array(z.number()) })]),
+    discUnion: z.discriminatedUnion("type", [
+      z.object({ type: z.literal("a"), a: z.string() }),
+      z.object({ type: z.literal("b"), b: z.number() }),
+    ]),
+  }),
+).toEqualTypeOf({
+  simpleArray: v.array(v.boolean()),
+  tuple: v.array(v.boolean()),
+  enum: v.union(v.literal("a"), v.literal("b")),
+  obj: v.object({ a: v.string(), b: v.object({ c: v.array(v.number()) }) }),
+  union: v.union(v.string(), v.object({ c: v.array(v.number()) })),
+  discUnion: v.union(
+    v.object({
+      type: v.literal("a"),
+      a: v.string(),
     }),
-    {
-      s: v.string(),
-      n: v.number(),
-      nan: v.number(),
-      optional: v.optional(v.number()),
-      optional2: v.optional(v.number()),
-      record: v.record(v.string(), v.number()),
-      default: v.optional(v.number()),
-      nullable: v.union(v.number(), v.null()),
-      null: v.null(),
-      bi: v.int64(),
-      bool: v.boolean(),
-      literal: v.literal("hi"),
-      branded: v.string() as VString<string & z.BRAND<"branded">>,
-    },
-  ),
-);
-assert(
-  sameType(
-    zodToConvexFields({
-      simpleArray: z.array(z.boolean()),
-      tuple: z.tuple([z.boolean(), z.boolean()]),
-      enum: z.enum(["a", "b"]),
-      obj: z.object({ a: z.string(), b: z.object({ c: z.array(z.number()) }) }),
-      union: z.union([z.string(), z.object({ c: z.array(z.number()) })]),
-      discUnion: z.discriminatedUnion("type", [
-        z.object({ type: z.literal("a"), a: z.string() }),
-        z.object({ type: z.literal("b"), b: z.number() }),
-      ]),
+    v.object({
+      type: v.literal("b"),
+      b: v.number(),
     }),
-    {
-      simpleArray: v.array(v.boolean()),
-      tuple: v.array(v.boolean()),
-      enum: v.union(v.literal("a"), v.literal("b")),
-      obj: v.object({ a: v.string(), b: v.object({ c: v.array(v.number()) }) }),
-      union: v.union(v.string(), v.object({ c: v.array(v.number()) })),
-      discUnion: v.union(
-        v.object({
-          type: v.literal("a"),
-          a: v.string(),
-        }),
-        v.object({
-          type: v.literal("b"),
-          b: v.number(),
-        }),
-      ),
-    },
   ),
-);
-assert(
-  sameType(
-    zodToConvexFields({
-      transformed: z.transformer(z.string(), {
-        type: "refinement",
-        refinement: () => true,
-      }),
-      lazy: z.lazy(() => z.string()),
-      pipe: z.number().pipe(z.string().email()),
-      ro: z.string().readonly(),
-      unknown: z.unknown(),
-      any: z.any(),
+});
+
+expectTypeOf(
+  zodToConvexFields({
+    transformed: z.transformer(z.string(), {
+      type: "refinement",
+      refinement: () => true,
     }),
-    {
-      transformed: v.string(),
-      lazy: v.string(),
-      pipe: v.number(),
-      ro: v.string(),
-      unknown: v.any(),
-      any: v.any(),
-    },
-  ),
-);
+    lazy: z.lazy(() => z.string()),
+    pipe: z.number().pipe(z.string().email()),
+    ro: z.string().readonly(),
+    unknown: z.unknown(),
+    any: z.any(),
+  }),
+).toEqualTypeOf({
+  transformed: v.string(),
+  lazy: v.string(),
+  pipe: v.number(),
+  ro: v.string(),
+  unknown: v.any(),
+  any: v.any(),
+});
 // Validate that our double-branded type is correct.
-assert(
-  sameType(
-    zodToConvexFields({
-      branded2: zBrand(z.string(), "branded2"),
-    }),
-    {
-      branded2: v.string() as VString<string & z.BRAND<"branded2">>,
-    },
-  ),
-);
+expectTypeOf(
+  zodToConvexFields({
+    branded2: zBrand(z.string(), "branded2"),
+  }),
+).toEqualTypeOf({
+  branded2: v.string() as VString<string & z.BRAND<"branded2">>,
+});
 const s = zBrand(z.string(), "brand");
 const n = zBrand(z.number(), "brand");
 const i = zBrand(z.bigint(), "brand");
-assert(true as Equals<z.input<typeof s>, string & z.BRAND<"brand">>);
-assert(true as Equals<z.output<typeof s>, string & z.BRAND<"brand">>);
-assert(true as Equals<z.input<typeof n>, number & z.BRAND<"brand">>);
-assert(true as Equals<z.output<typeof n>, number & z.BRAND<"brand">>);
-assert(true as Equals<z.input<typeof i>, bigint & z.BRAND<"brand">>);
-assert(true as Equals<z.output<typeof i>, bigint & z.BRAND<"brand">>);
+expectTypeOf<z.input<typeof s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
+expectTypeOf<z.input<typeof n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
+expectTypeOf<z.input<typeof i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
 
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
@@ -1080,4 +1076,23 @@ test("convexToZod optional values", () => {
   };
 
   expect(roundTripOptionalArray.isOptional).toBe("optional");
+});
+
+test("zod with preprocess works", () => {
+  const zEmptyStrToUndefined = z.preprocess((arg) => {
+    if (typeof arg === "string" && arg === "") {
+      return undefined;
+    } else {
+      return arg;
+    }
+  }, z.string().optional());
+  expect(zEmptyStrToUndefined.parse("")).toBeUndefined();
+  expect(zEmptyStrToUndefined.parse("hello")).toBe("hello");
+
+  expectTypeOf<
+    ConvexValidatorFromZod<typeof zEmptyStrToUndefined>
+  >().toEqualTypeOf<VOptional<VString>>();
+  const convexValidator = zodToConvex(zEmptyStrToUndefined);
+  expect(convexValidator.isOptional).toBe("optional");
+  expect(convexValidator.kind).toBe("string");
 });

@@ -2,13 +2,15 @@ import { convexTest } from "convex-test";
 import { v } from "convex/values";
 import { describe, expect, test } from "vitest";
 import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
-import {
+import type {
   Auth,
   DataModelFromSchemaDefinition,
-  defineSchema,
-  defineTable,
   GenericDatabaseWriter,
   MutationBuilder,
+} from "convex/server";
+import {
+  defineSchema,
+  defineTable,
   mutationGeneric,
   queryGeneric,
 } from "convex/server";

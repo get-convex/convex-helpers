@@ -1,5 +1,4 @@
-import {
-  defineTable,
+import type {
   QueryBuilder,
   MutationBuilder,
   GenericDataModel,
@@ -8,11 +7,12 @@ import {
   RegisteredMutation,
   RegisteredQuery,
   FunctionVisibility,
-  paginationOptsValidator,
   PaginationResult,
 } from "convex/server";
-import { GenericId, Infer, ObjectType, Validator, v } from "convex/values";
-import { Expand } from "./index.js";
+import { defineTable, paginationOptsValidator } from "convex/server";
+import type { GenericId, Infer, ObjectType, Validator } from "convex/values";
+import { v } from "convex/values";
+import type { Expand } from "./index.js";
 import { partial } from "./validators.js";
 
 /**

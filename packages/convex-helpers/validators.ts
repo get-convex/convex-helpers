@@ -1,4 +1,4 @@
-import {
+import type {
   GenericValidator,
   ObjectType,
   PropertyValidators,
@@ -7,10 +7,10 @@ import {
   VString,
   VUnion,
   Validator,
-  v,
 } from "convex/values";
-import { Expand } from "./index.js";
-import {
+import { v } from "convex/values";
+import type { Expand } from "./index.js";
+import type {
   DataModelFromSchemaDefinition,
   GenericDatabaseReader,
   GenericDataModel,

@@ -1,5 +1,5 @@
 import { ConvexClient } from "convex/browser";
-import {
+import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,

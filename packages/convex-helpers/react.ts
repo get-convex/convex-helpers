@@ -1,15 +1,9 @@
-import {
-  OptionalRestArgsOrSkip,
-  useQueries,
-  useQuery as useQueryOriginal,
-} from "convex/react";
-import {
-  FunctionReference,
-  FunctionReturnType,
-  getFunctionName,
-} from "convex/server";
+import type { OptionalRestArgsOrSkip } from "convex/react";
+import { useQueries, useQuery as useQueryOriginal } from "convex/react";
+import type { FunctionReference, FunctionReturnType } from "convex/server";
+import { getFunctionName } from "convex/server";
 import { useMemo } from "react";
-import { EmptyObject } from "./index.js";
+import type { EmptyObject } from "./index.js";
 
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query

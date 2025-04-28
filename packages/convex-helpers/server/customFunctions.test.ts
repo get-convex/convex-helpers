@@ -1,30 +1,32 @@
-import { Equals, assert } from "../index.js";
+import type { CustomCtx } from "./customFunctions.js";
 import {
   customAction,
-  CustomCtx,
   customCtx,
   customMutation,
   customQuery,
 } from "./customFunctions.js";
 import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
-import { SessionId, vSessionId } from "./sessions.js";
+import type { SessionId } from "./sessions.js";
+import { vSessionId } from "./sessions.js";
 import { convexTest } from "convex-test";
-import {
+import type {
+  ApiFromModules,
+  Auth,
   ActionBuilder,
-  actionGeneric,
-  anyApi,
   DataModelFromSchemaDefinition,
   DefaultFunctionArgs,
-  defineSchema,
-  defineTable,
   GenericDatabaseReader,
   MutationBuilder,
-  mutationGeneric,
   QueryBuilder,
-  queryGeneric,
   RegisteredQuery,
-  type ApiFromModules,
-  type Auth,
+} from "convex/server";
+import {
+  actionGeneric,
+  anyApi,
+  defineSchema,
+  defineTable,
+  mutationGeneric,
+  queryGeneric,
 } from "convex/server";
 import { v } from "convex/values";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -228,7 +230,7 @@ const consumeArg = customQuery(query, {
 export const consume = consumeArg({
   args: {},
   handler: async (ctx, emptyArgs) => {
-    assert<Equals<typeof emptyArgs, {}>>(); // !!!
+    assertType<{}>(emptyArgs); // !!!
     return { ctxA: ctx.a };
   },
 });
@@ -239,14 +241,14 @@ queryMatches(consume, { a: "" }, { ctxA: "" });
 // These are all errors, as expected
 // const consumeUnvalidated = consumeArg({
 //   handler: async (ctx, emptyArgs: {}) => {
-//     assert<Equals<typeof emptyArgs, {}>>(); // !!!
+//     assertType<{}>(emptyArgs); // !!!
 //     return { ctxA: ctx.a };
 //   },
 // });
 // queryMatches(consumeUnvalidated, { a: "" }, { ctxA: "" });
 // const consumeUnvalidatedWithArgs = consumeArg(
 //   async (ctx, args: { b: number }) => {
-//     assert<Equals<typeof args, { b: number }>>(); // !!!
+//     assertType<{ b: number }>(args); // !!!
 //     return { ctxA: ctx.a };
 //   }
 // );

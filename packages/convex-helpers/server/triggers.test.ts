@@ -1,14 +1,16 @@
 import { customCtx, customMutation } from "./customFunctions.js";
 import { Triggers } from "./triggers.js";
 import { convexTest } from "convex-test";
+import type {
+  ApiFromModules,
+  DataModelFromSchemaDefinition,
+  MutationBuilder,
+} from "convex/server";
 import {
   anyApi,
-  DataModelFromSchemaDefinition,
   defineSchema,
   defineTable,
-  MutationBuilder,
   mutationGeneric,
-  ApiFromModules,
 } from "convex/server";
 import { v } from "convex/values";
 import { expect, test } from "vitest";

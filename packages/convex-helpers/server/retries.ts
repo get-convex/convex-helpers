@@ -3,16 +3,19 @@
  * Convex action until it succeeds. An action should only be retried if it is
  * safe to do so, i.e., if it's idempotent or doesn't have any unsafe side effects.
  */
-import {
+import type {
   FunctionReference,
   FunctionVisibility,
   Scheduler,
+  DefaultFunctionArgs,
+} from "convex/server";
+import {
+  internalMutationGeneric,
   getFunctionName,
   makeFunctionReference,
-  DefaultFunctionArgs,
-  internalMutationGeneric,
 } from "convex/server";
-import { v, ObjectType } from "convex/values";
+import type { ObjectType } from "convex/values";
+import { v } from "convex/values";
 import { omit } from "../index.js";
 
 const DEFAULTS = {

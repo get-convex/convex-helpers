@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.77-alpha.1",
+  "version": "0.1.80",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
@@ -152,6 +152,7 @@
     "convex": "^1.13.0",
     "hono": "^4.0.5",
     "react": "^17.0.2 || ^18.0.0 || ^19.0.0",
+    "typescript": "^5.5",
     "zod": "^3.22.4"
   },
   "peerDependenciesMeta": {
@@ -159,6 +160,9 @@
       "optional": true
     },
     "react": {
+      "optional": true
+    },
+    "typescript": {
       "optional": true
     },
     "zod": {

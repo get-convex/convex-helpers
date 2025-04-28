@@ -31,7 +31,7 @@ import type {
 } from "convex/server";
 import { useQuery, useMutation, useAction } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
-import { EmptyObject, BetterOmit, assert, Equals } from "../index.js";
+import type { EmptyObject, BetterOmit } from "../index.js";
 
 export type UseStorage<T> = (
   key: string,
@@ -56,15 +56,16 @@ type SessionFunction<
   Args extends any = any,
 > = FunctionReference<T, "public", { sessionId: SessionId } & Args, any>;
 
-type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
+export type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
   keyof FunctionArgs<Fn> extends "sessionId"
     ? [args?: EmptyObject | "skip"]
     : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
 
-type SessionArgsArray<Fn extends SessionFunction<"mutation" | "action">> =
-  keyof FunctionArgs<Fn> extends "sessionId"
-    ? [args?: EmptyObject]
-    : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
+export type SessionArgsArray<
+  Fn extends SessionFunction<"mutation" | "action">,
+> = keyof FunctionArgs<Fn> extends "sessionId"
+  ? [args?: EmptyObject]
+  : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
 
 /**
  * Context for a Convex session, creating a server session and providing the id.
@@ -305,46 +306,3 @@ export function useSessionStorage(
   );
   return [value, setValue] as const;
 }
-
-assert<
-  Equals<
-    SessionQueryArgsArray<
-      FunctionReference<
-        "query",
-        "public",
-        { arg: string; sessionId: SessionId | null },
-        any
-      >
-    >,
-    [{ arg: string } | "skip"]
-  >
->();
-assert<
-  Equals<
-    SessionQueryArgsArray<
-      FunctionReference<"query", "public", { sessionId: SessionId | null }, any>
-    >,
-    [args?: EmptyObject | "skip" | undefined]
-  >
->();
-assert<
-  Equals<
-    SessionArgsArray<
-      FunctionReference<
-        "mutation",
-        "public",
-        { arg: string; sessionId: SessionId },
-        any
-      >
-    >,
-    [{ arg: string }]
-  >
->();
-assert<
-  Equals<
-    SessionArgsArray<
-      FunctionReference<"mutation", "public", { sessionId: SessionId }, any>
-    >,
-    [args?: EmptyObject | undefined]
-  >
->();
