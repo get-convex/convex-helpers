@@ -36,7 +36,7 @@ import {
   describe,
   expect,
   test,
-  vi
+  vi,
 } from "vitest";
 import { modules } from "./setup.test.js";
 
