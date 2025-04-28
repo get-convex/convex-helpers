@@ -21,7 +21,8 @@
     "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
     "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'",
     "arethetypeswrong": "cd packages/convex-helpers/dist && attw $(npm pack) --ignore-rules cjs-resolves-to-esm",
-    "publish": "./publish.sh"
+    "alpha": "./publish.sh alpha",
+    "release": "./publish.sh"
   },
   "dependencies": {
     "classnames": "^2.3.2",

@@ -43,7 +43,8 @@ Run commands from this folder (root of repo).
 **NOTE**: make sure you aren't running `npm run dev` anywhere when you're
 publishing to avoid races with re-generating files while publishing.
 
-In general you can run `./publish.sh` to go through the publish workflow.
+In general you can run `./publish.sh` to go through the publish workflow, or
+`npm run release` to do a release.
 It will prompt you for a new version. If you've already adjusted the version,
 you can just hit enter.
 
@@ -53,7 +54,8 @@ tag the commit with the version, and push the current branch & that tag.
 
 ### Alpha releases
 
-For alpha releases, you can run `./publish.sh alpha`.
+For alpha releases, you can run `./publish.sh alpha` or `npm run alpha`.
+
 Or run this beforehand to bump the version:
 `npm version prerelease --preid alpha && git add package*`.
 Only use alpha, otherwise npm won't tag it correctly and it might suggest it as
