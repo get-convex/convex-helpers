@@ -29,7 +29,15 @@ import {
   queryGeneric,
 } from "convex/server";
 import { v } from "convex/values";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  afterEach,
+  assertType,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi
+} from "vitest";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
