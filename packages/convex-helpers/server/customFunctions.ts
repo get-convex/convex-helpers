@@ -45,6 +45,12 @@ import { omit, pick } from "../index.js";
  * provided for the modified function. All returned ctx and args will show up
  * in the type signature for the modified function.
  * To remove something from `ctx`, you can return it as `undefined`.
+ *
+ * The `input` function can also return a `finally` callback that will be called
+ * after the function executes with either the result or error. This is useful for
+ * cleanup operations or logging that should happen regardless of whether the
+ * function succeeds or fails. The `finally` callback has access to resources
+ * created during input processing.
  */
 export type Mod<
   Ctx extends Record<string, any>,
@@ -57,8 +63,22 @@ export type Mod<
     ctx: Ctx,
     args: ObjectType<ModArgsValidator>,
   ) =>
-    | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
-    | { ctx: ModCtx; args: ModMadeArgs };
+    | Promise<{
+        ctx: ModCtx;
+        args: ModMadeArgs;
+        finally?: (params: {
+          result?: unknown;
+          error?: unknown;
+        }) => void | Promise<void>;
+      }>
+    | {
+        ctx: ModCtx;
+        args: ModMadeArgs;
+        finally?: (params: {
+          result?: unknown;
+          error?: unknown;
+        }) => void | Promise<void>;
+      };
 };
 
 /**
@@ -101,7 +121,17 @@ export const NoOp = {
  *     const user = await getUserOrNull(ctx);
  *     const session = await db.get(sessionId);
  *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
- *     return { ctx: { db, user, session }, args: {} };
+ *     return {
+ *       ctx: { db, user, session },
+ *       args: {},
+ *       finally: ({ result, error }) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         if (error) {
+ *           console.error("Error in query:", error);
+ *         }
+ *       }
+ *     };
  *   },
  * });
  *
@@ -173,7 +203,17 @@ export function customQuery<
  *     const user = await getUserOrNull(ctx);
  *     const session = await db.get(sessionId);
  *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
- *     return { ctx: { db, user, session }, args: {} };
+ *     return {
+ *       ctx: { db, user, session },
+ *       args: {},
+ *       finally: ({ result, error }) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         if (error) {
+ *           console.error("Error in mutation:", error);
+ *         }
+ *       }
+ *     };
  *   },
  * });
  *
@@ -252,7 +292,21 @@ export function customMutation<
  *       throw new Error("Invalid secret key");
  *     }
  *     const user = await ctx.runQuery(internal.users.getUser, {});
- *     return { ctx: { user }, args: {} };
+ *     // Create resources that can be used in the finally callback
+ *     const logger = createLogger();
+ *     return {
+ *       ctx: { user },
+ *       args: {},
+ *       finally: ({ result, error }) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         if (error) {
+ *           logger.error("Action failed:", error);
+ *         } else {
+ *           logger.info("Action completed successfully");
+ *         }
+ *       }
+ *     };
  *   },
  * });
  *
@@ -338,7 +392,20 @@ function customFnBuilder(
             pick(allArgs, Object.keys(inputArgs)) as any,
           );
           const args = omit(allArgs, Object.keys(inputArgs));
-          return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+          const finalCtx = { ...ctx, ...added.ctx };
+          let result;
+          try {
+            result = await handler(finalCtx, { ...args, ...added.args });
+            if (added.finally) {
+              await added.finally({ result });
+            }
+            return result;
+          } catch (e) {
+            if (added.finally) {
+              await added.finally({ error: e });
+            }
+            throw e;
+          }
         },
       });
     }
@@ -352,7 +419,20 @@ function customFnBuilder(
       returns: fn.returns,
       handler: async (ctx: any, args: any) => {
         const added = await inputMod(ctx, args);
-        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+        const finalCtx = { ...ctx, ...added.ctx };
+        let result;
+        try {
+          result = await handler(finalCtx, { ...args, ...added.args });
+          if (added.finally) {
+            await added.finally({ result });
+          }
+          return result;
+        } catch (e) {
+          if (added.finally) {
+            await added.finally({ error: e });
+          }
+          throw e;
+        }
       },
     });
   };
