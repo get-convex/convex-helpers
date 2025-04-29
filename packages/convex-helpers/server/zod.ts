@@ -555,7 +555,7 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
   }
 >;
 
-export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
+type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
   // and the ConvexValidatorFromZodOutput type
   Z extends Zid<infer TableName>
@@ -622,11 +622,7 @@ export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                           >["fieldPaths"]
                                         >
                                       : never
-                                    : Z extends z.ZodEffects<
-                                          infer Inner,
-                                          unknown,
-                                          unknown
-                                        >
+                                    : Z extends z.ZodEffects<infer Inner>
                                       ? ConvexValidatorFromZod<Inner>
                                       : Z extends z.ZodOptional<infer Inner>
                                         ? ConvexValidatorFromZod<Inner> extends GenericValidator

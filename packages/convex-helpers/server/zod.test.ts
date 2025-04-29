@@ -11,7 +11,7 @@ import { omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
-import type { ConvexValidatorFromZod, ZCustomCtx } from "./zod.js";
+import type { ZCustomCtx } from "./zod.js";
 import {
   zBrand,
   zCustomQuery,
@@ -23,14 +23,7 @@ import {
   convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import type {
-  VString,
-  VFloat64,
-  VObject,
-  VId,
-  Infer,
-  VOptional,
-} from "convex/values";
+import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { v } from "convex/values";
 import { z } from "zod";
 
@@ -1076,23 +1069,4 @@ test("convexToZod optional values", () => {
   };
 
   expect(roundTripOptionalArray.isOptional).toBe("optional");
-});
-
-test("zod with preprocess works", () => {
-  const zEmptyStrToUndefined = z.preprocess((arg) => {
-    if (typeof arg === "string" && arg === "") {
-      return undefined;
-    } else {
-      return arg;
-    }
-  }, z.string().optional());
-  expect(zEmptyStrToUndefined.parse("")).toBeUndefined();
-  expect(zEmptyStrToUndefined.parse("hello")).toBe("hello");
-
-  expectTypeOf<
-    ConvexValidatorFromZod<typeof zEmptyStrToUndefined>
-  >().toEqualTypeOf<VOptional<VString>>();
-  const convexValidator = zodToConvex(zEmptyStrToUndefined);
-  expect(convexValidator.isOptional).toBe("optional");
-  expect(convexValidator.kind).toBe("string");
 });
