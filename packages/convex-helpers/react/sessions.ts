@@ -308,34 +308,11 @@ export function useSessionStorage(
 }
 
 /**
- * Compare with {@link useState}, but also persists the value in localStorage.
- * @param key Key to use for localStorage.
- * @param initialValue If there is no value in storage, use this.
- * @returns The value and a function to update it.
+ * Simple storage interface that matches localStorage/sessionStorage.
  */
-function useLocalStorage(key: string, initialValue: SessionId | undefined) {
-  let value = initialValue;
-  let setValue = (newValue: SessionId) => {
-    value = newValue;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(key, newValue);
-    }
-  };
-
-  if (typeof localStorage !== "undefined") {
-    const existing = localStorage.getItem(key);
-    if (existing) {
-      if (existing === "undefined") {
-        value = undefined;
-      } else {
-        value = existing as SessionId;
-      }
-    } else if (initialValue !== undefined) {
-      localStorage.setItem(key, initialValue);
-    }
-  }
-
-  return [value, setValue] as const;
+interface Storage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
 }
 
 /**
@@ -357,7 +334,7 @@ export class ConvexSessionClient {
   private client: any; // ConvexClient from convex/browser
   private sessionId: SessionId;
   private storageKey: string;
-  private setStoredSessionId: (value: SessionId) => void;
+  private storage: Storage | null;
 
   /**
    * Create a new ConvexSessionClient.
@@ -365,33 +342,36 @@ export class ConvexSessionClient {
    * @param client The ConvexClient to wrap
    * @param options Optional configuration
    * @param options.sessionId Initial session ID (will generate one if not provided)
-   * @param options.useStorage Storage function to use (defaults to localStorage)
+   * @param options.storage Storage interface to use (defaults to localStorage if available)
    * @param options.storageKey Key to use for storage (defaults to "convex-session-id")
    */
   constructor(
     client: any,
     options?: {
       sessionId?: SessionId;
-      useStorage?: UseStorage<SessionId | undefined>;
+      storage?: Storage;
       storageKey?: string;
     },
   ) {
     this.client = client;
     this.storageKey = options?.storageKey ?? "convex-session-id";
 
-    // Get or set the ID from our desired storage location
-    const useStorageFunc = options?.useStorage ?? useLocalStorage;
-    const [storedId, setStoredId] = useStorageFunc(
-      this.storageKey,
-      options?.sessionId ?? this.generateSessionId(),
-    );
+    this.storage =
+      options?.storage ||
+      (typeof localStorage !== "undefined" ? localStorage : null);
 
-    this.sessionId = storedId!;
-    this.setStoredSessionId = setStoredId;
+    let storedId: SessionId | undefined;
+    if (this.storage) {
+      const stored = this.storage.getItem(this.storageKey);
+      if (stored && stored !== "undefined") {
+        storedId = stored as SessionId;
+      }
+    }
 
-    if (!this.sessionId) {
-      const newId = this.generateSessionId();
-      this.setSessionId(newId);
+    this.sessionId = options?.sessionId || storedId || this.generateSessionId();
+
+    if (this.storage && (!storedId || storedId !== this.sessionId)) {
+      this.storage.setItem(this.storageKey, this.sessionId);
     }
   }
 
@@ -416,7 +396,9 @@ export class ConvexSessionClient {
    */
   setSessionId(sessionId: SessionId): void {
     this.sessionId = sessionId;
-    this.setStoredSessionId(sessionId);
+    if (this.storage) {
+      this.storage.setItem(this.storageKey, sessionId);
+    }
   }
 
   /**
