@@ -5,6 +5,7 @@ import { HonoExample } from "./components/HonoExample";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { CacheExample } from "./components/CacheExample";
 import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
+import { PaginatedQueryExample } from "./components/PaginatedQueryExample";
 // Used for the session example if you want to store sessionId in local storage
 // import { useLocalStorage } from "usehooks-ts";
 
@@ -25,6 +26,7 @@ export default function App() {
           <SessionsExample />
           <HonoExample />
           <CacheExample />
+          <PaginatedQueryExample />
         </ConvexQueryCacheProvider>
       </SessionProvider>
     </main>
