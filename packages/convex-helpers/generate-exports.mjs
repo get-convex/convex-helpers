@@ -13,7 +13,7 @@ function directoryContents(dirname) {
     .map((filename) => path.join(dirname, filename));
 }
 
-const EntryPointDirectories = ["react", "react/cache", "server"];
+const EntryPointDirectories = ["react", "react/cache", "server", "client"];
 function entryPointFiles() {
   return [
     "./index.ts",
