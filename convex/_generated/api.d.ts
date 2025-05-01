@@ -17,6 +17,7 @@ import type * as addIt from "../addIt.js";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
 import type * as migrationsExample from "../migrationsExample.js";
+import type * as paginatedQueryExample from "../paginatedQueryExample.js";
 import type * as presence from "../presence.js";
 import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as retriesExample from "../retriesExample.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   counter: typeof counter;
   http: typeof http;
   migrationsExample: typeof migrationsExample;
+  paginatedQueryExample: typeof paginatedQueryExample;
   presence: typeof presence;
   relationshipsExample: typeof relationshipsExample;
   retriesExample: typeof retriesExample;
