@@ -29,9 +29,17 @@ import type {
   FunctionReturnType,
   OptionalRestArgs,
 } from "convex/server";
-import { useQuery, useMutation, useAction } from "convex/react";
+import {
+  useQuery,
+  useMutation,
+  useAction,
+  ConvexReactClient,
+  type ConvexReactClientOptions,
+} from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
+
+export const DEFAULT_STORAGE_KEY = "convex-session-id";
 
 export type UseStorage<T> = (
   key: string,
@@ -94,7 +102,7 @@ export const SessionProvider: React.FC<{
   ssrFriendly?: boolean;
   children?: React.ReactNode;
 }> = ({ useStorage, storageKey, idGenerator, ssrFriendly, children }) => {
-  const storeKey = storageKey ?? "convex-session-id";
+  const storeKey = storageKey ?? DEFAULT_STORAGE_KEY;
   function idGen() {
     // On the server, crypto may not be defined.
     return (idGenerator ?? crypto.randomUUID.bind(crypto))() as SessionId;
@@ -330,8 +338,7 @@ interface SessionStorage {
  * const result = await sessionClient.sessionQuery(api.myModule.myQuery, { arg1: 123 });
  * ```
  */
-export class ConvexSessionClient {
-  private client: any; // ConvexClient from convex/browser
+export class ConvexSessionClient extends ConvexReactClient {
   private sessionId: SessionId;
   private storageKey: string;
   private storage: SessionStorage | null;
@@ -346,47 +353,43 @@ export class ConvexSessionClient {
    * @param options.storageKey Key to use for storage (defaults to "convex-session-id")
    */
   constructor(
-    client: any,
-    options?: {
+    address: string,
+    options?: ConvexReactClientOptions & {
       sessionId?: SessionId;
       storage?: SessionStorage;
       storageKey?: string;
     },
   ) {
-    this.client = client;
-    this.storageKey = options?.storageKey ?? "convex-session-id";
+    super(address, options);
+    this.storageKey = options?.storageKey ?? DEFAULT_STORAGE_KEY;
 
     this.storage =
       options?.storage ||
-      (typeof localStorage !== "undefined" ? localStorage : null);
+      (typeof sessionStorage !== "undefined" ? sessionStorage : null);
 
-    let storedId: SessionId | undefined;
-    if (this.storage) {
-      const stored = this.storage.getItem(this.storageKey);
-      if (stored && stored !== "undefined") {
-        storedId = stored as SessionId;
+    if (options?.sessionId) {
+      this.sessionId = options.sessionId;
+    } else {
+      let storedId: SessionId | undefined;
+      if (this.storage) {
+        const stored = this.storage.getItem(this.storageKey);
+        if (stored && stored !== "undefined") {
+          storedId = stored as SessionId;
+        }
+      }
+      if (storedId) {
+        this.sessionId = storedId;
+      } else {
+        if (typeof crypto === "undefined") {
+          throw new Error(
+            "Crypto is not available. If you're in a server environment, you must provide a sessionId manually.",
+          );
+        }
+        // We have to explicitly set it here so TypeScript won't complain about it being uninitialized.
+        this.sessionId = crypto.randomUUID() as SessionId;
+        this.setSessionId(this.sessionId);
       }
     }
-
-    this.sessionId = options?.sessionId || storedId || this.generateSessionId();
-
-    if (this.storage && (!storedId || storedId !== this.sessionId)) {
-      this.storage.setItem(this.storageKey, this.sessionId);
-    }
-  }
-
-  /**
-   * Generate a new session ID.
-   *
-   * @returns A new unique session ID
-   */
-  private generateSessionId(): SessionId {
-    // On the server, crypto may not be defined.
-    return (
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : Math.random().toString(36).substring(2)
-    ) as SessionId;
   }
 
   /**
@@ -426,7 +429,7 @@ export class ConvexSessionClient {
       sessionId: this.sessionId,
     } as FunctionArgs<Query>;
 
-    return this.client.query(query, newArgs);
+    return this.query(query, newArgs);
   }
 
   /**
@@ -445,7 +448,7 @@ export class ConvexSessionClient {
       sessionId: this.sessionId,
     } as FunctionArgs<Mutation>;
 
-    return this.client.mutation(mutation, newArgs);
+    return this.mutation(mutation, newArgs);
   }
 
   /**
@@ -464,6 +467,6 @@ export class ConvexSessionClient {
       sessionId: this.sessionId,
     } as FunctionArgs<Action>;
 
-    return this.client.action(action, newArgs);
+    return this.action(action, newArgs);
   }
 }
