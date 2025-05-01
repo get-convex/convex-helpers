@@ -1,14 +1,14 @@
 /**
  * Non-React client for adding session data to Convex functions.
- * 
+ *
  * Provides a wrapper around ConvexClient that automatically injects
  * the sessionId parameter into queries, mutations, and actions.
- * 
+ *
  * Example:
  * ```ts
  * const client = new ConvexClient(...);
  * const sessionClient = new ConvexSessionClient(client, sessionId);
- * 
+ *
  * // Use sessionClient instead of client
  * const result = await sessionClient.sessionQuery(api.myModule.myQuery, { arg1: 123 });
  * ```
@@ -17,7 +17,7 @@ import type { ConvexClient } from "convex/browser";
 import type {
   FunctionReference,
   FunctionArgs,
-  FunctionReturnType
+  FunctionReturnType,
 } from "convex/server";
 import type { SessionId } from "../server/sessions.js";
 import type { BetterOmit, EmptyObject } from "../index.js";
@@ -46,7 +46,7 @@ export type SessionArgsArray<
 
 /**
  * A client wrapper that adds session data to Convex functions.
- * 
+ *
  * Wraps a ConvexClient and provides methods to automatically inject
  * the sessionId parameter into queries, mutations, and actions.
  */
@@ -56,7 +56,7 @@ export class ConvexSessionClient {
 
   /**
    * Create a new ConvexSessionClient.
-   * 
+   *
    * @param client The ConvexClient to wrap
    * @param sessionId The session ID to use for function calls
    */
@@ -67,7 +67,7 @@ export class ConvexSessionClient {
 
   /**
    * Set a new session ID to use for future function calls.
-   * 
+   *
    * @param sessionId The new session ID
    */
   setSessionId(sessionId: SessionId): void {
@@ -76,7 +76,7 @@ export class ConvexSessionClient {
 
   /**
    * Get the current session ID.
-   * 
+   *
    * @returns The current session ID
    */
   getSessionId(): SessionId {
@@ -85,7 +85,7 @@ export class ConvexSessionClient {
 
   /**
    * Run a Convex query with the session ID injected.
-   * 
+   *
    * @param query Query that takes a sessionId parameter
    * @param args Arguments for the query, without the sessionId
    * @returns A promise of the query result
@@ -104,7 +104,7 @@ export class ConvexSessionClient {
 
   /**
    * Run a Convex mutation with the session ID injected.
-   * 
+   *
    * @param mutation Mutation that takes a sessionId parameter
    * @param args Arguments for the mutation, without the sessionId
    * @returns A promise of the mutation result
@@ -118,12 +118,15 @@ export class ConvexSessionClient {
       sessionId: this.sessionId,
     } as FunctionArgs<Mutation>;
 
-    return this.client.mutation(mutation as FunctionReference<"mutation">, newArgs);
+    return this.client.mutation(
+      mutation as FunctionReference<"mutation">,
+      newArgs,
+    );
   }
 
   /**
    * Run a Convex action with the session ID injected.
-   * 
+   *
    * @param action Action that takes a sessionId parameter
    * @param args Arguments for the action, without the sessionId
    * @returns A promise of the action result
