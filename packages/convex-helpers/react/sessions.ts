@@ -310,7 +310,7 @@ export function useSessionStorage(
 /**
  * Simple storage interface that matches localStorage/sessionStorage.
  */
-interface Storage {
+interface SessionStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }
@@ -334,7 +334,7 @@ export class ConvexSessionClient {
   private client: any; // ConvexClient from convex/browser
   private sessionId: SessionId;
   private storageKey: string;
-  private storage: Storage | null;
+  private storage: SessionStorage | null;
 
   /**
    * Create a new ConvexSessionClient.
@@ -349,7 +349,7 @@ export class ConvexSessionClient {
     client: any,
     options?: {
       sessionId?: SessionId;
-      storage?: Storage;
+      storage?: SessionStorage;
       storageKey?: string;
     },
   ) {
