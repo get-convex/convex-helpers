@@ -77,7 +77,7 @@ describe("ConvexSessionClient", () => {
       mutation: vi.fn().mockResolvedValue("mutation-result"),
       action: vi.fn().mockResolvedValue("action-result"),
     };
-    sessionClient = new ConvexSessionClient(mockClient, sessionId);
+    sessionClient = new ConvexSessionClient(mockClient, { sessionId });
   });
 
   it("should inject sessionId into query args", async () => {
