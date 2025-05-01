@@ -339,7 +339,7 @@ interface SessionStorage {
  * ```
  */
 export class ConvexSessionClient extends ConvexReactClient {
-  private sessionId: SessionId;
+  private sessionId: SessionId | undefined;
   private storageKey: string;
   private storage: SessionStorage | null;
 
@@ -370,24 +370,15 @@ export class ConvexSessionClient extends ConvexReactClient {
     if (options?.sessionId) {
       this.sessionId = options.sessionId;
     } else {
-      let storedId: SessionId | undefined;
       if (this.storage) {
         const stored = this.storage.getItem(this.storageKey);
         if (stored && stored !== "undefined") {
-          storedId = stored as SessionId;
+          this.sessionId = stored as SessionId;
+        } else {
+          // We have to explicitly set it here so TypeScript won't complain about it being uninitialized.
+          this.sessionId = crypto.randomUUID() as SessionId;
+          this.setSessionId(this.sessionId);
         }
-      }
-      if (storedId) {
-        this.sessionId = storedId;
-      } else {
-        if (typeof crypto === "undefined") {
-          throw new Error(
-            "Crypto is not available. If you're in a server environment, you must provide a sessionId manually.",
-          );
-        }
-        // We have to explicitly set it here so TypeScript won't complain about it being uninitialized.
-        this.sessionId = crypto.randomUUID() as SessionId;
-        this.setSessionId(this.sessionId);
       }
     }
   }
@@ -410,6 +401,11 @@ export class ConvexSessionClient extends ConvexReactClient {
    * @returns The current session ID
    */
   getSessionId(): SessionId {
+    if (this.sessionId === undefined) {
+      throw new Error(
+        "Session ID not set. Call setSessionId first if using this in a server context, or ensure you're passing in a storage provider if using this in a client context.",
+      );
+    }
     return this.sessionId;
   }
 
@@ -426,7 +422,7 @@ export class ConvexSessionClient extends ConvexReactClient {
   ): Promise<FunctionReturnType<Query>> {
     const newArgs = {
       ...(args[0] ?? {}),
-      sessionId: this.sessionId,
+      sessionId: this.getSessionId(),
     } as FunctionArgs<Query>;
 
     return this.query(query, newArgs);
@@ -445,7 +441,7 @@ export class ConvexSessionClient extends ConvexReactClient {
   ): Promise<FunctionReturnType<Mutation>> {
     const newArgs = {
       ...(args[0] ?? {}),
-      sessionId: this.sessionId,
+      sessionId: this.getSessionId(),
     } as FunctionArgs<Mutation>;
 
     return this.mutation(mutation, newArgs);
@@ -464,7 +460,7 @@ export class ConvexSessionClient extends ConvexReactClient {
   ): Promise<FunctionReturnType<Action>> {
     const newArgs = {
       ...(args[0] ?? {}),
-      sessionId: this.sessionId,
+      sessionId: this.getSessionId(),
     } as FunctionArgs<Action>;
 
     return this.action(action, newArgs);
