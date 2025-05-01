@@ -1,8 +1,5 @@
 import type { OptionalRestArgsOrSkip, RequestForQueries } from "convex/react";
-import {
-  ConvexProvider,
-  useQueries as useQueriesCore,
-} from "convex/react";
+import { ConvexProvider, useQueries as useQueriesCore } from "convex/react";
 import { usePaginatedQuery as usePaginatedQueryCore } from "convex/react";
 import type {
   FunctionArgs,
@@ -176,8 +173,7 @@ export type PaginatedQueryReference = FunctionReference<
 /**
  * Reset pagination id for tests only, so tests know what it is.
  */
-export function resetPaginationId() {
-}
+export function resetPaginationId() {}
 
 /**
  * Load data reactively from a paginated query to a create a growing list.
@@ -255,10 +251,10 @@ export function resetPaginationId() {
  */
 /**
  * Load data reactively from a paginated query to create a growing list.
- * 
+ *
  * This implementation wraps the core usePaginatedQuery hook from convex/react
  * and integrates it with the ConvexQueryCacheContext to provide caching.
- * 
+ *
  * @param query - A FunctionReference to the public query function to run.
  * @param args - The arguments object for the query function, excluding
  * the `paginationOpts` property. That property is injected by this hook.
@@ -266,7 +262,7 @@ export function resetPaginationId() {
  * the first page.
  * @returns A {@link UsePaginatedQueryReturnType} that includes the currently loaded
  * items, the status of the pagination, and a `loadMore` function.
- * 
+ *
  * @public
  */
 export function usePaginatedQuery<Query extends PaginatedQueryReference>(
