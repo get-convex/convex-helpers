@@ -1,7 +1,7 @@
 import { ConvexSessionClient } from "./sessions";
 import { ConvexClient } from "convex/browser";
 import { vi, describe, it, expect, beforeEach } from "vitest";
-import { SessionId } from "../server/sessions";
+import type { SessionId } from "../server/sessions";
 
 describe("ConvexSessionClient", () => {
   let mockClient: { query: any; mutation: any; action: any };
