@@ -1,6 +1,7 @@
 import { expectTypeOf, test, vi, describe, it, expect, beforeEach } from "vitest";
 import type { FunctionReference } from "convex/server";
-import { ConvexSessionClient, SessionArgsArray, SessionQueryArgsArray } from "./sessions";
+import { ConvexSessionClient } from "./sessions";
+import type { SessionArgsArray, SessionQueryArgsArray } from "./sessions";
 import type { EmptyObject } from "..";
 import type { SessionId } from "../server/sessions";
 
