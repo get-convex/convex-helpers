@@ -309,15 +309,15 @@ export function useSessionStorage(
 
 /**
  * A client wrapper that adds session data to Convex functions.
- * 
+ *
  * Wraps a ConvexClient and provides methods to automatically inject
  * the sessionId parameter into queries, mutations, and actions.
- * 
+ *
  * Example:
  * ```ts
  * const client = new ConvexClient(...);
  * const sessionClient = new ConvexSessionClient(client, sessionId);
- * 
+ *
  * // Use sessionClient instead of client
  * const result = await sessionClient.sessionQuery(api.myModule.myQuery, { arg1: 123 });
  * ```
@@ -328,7 +328,7 @@ export class ConvexSessionClient {
 
   /**
    * Create a new ConvexSessionClient.
-   * 
+   *
    * @param client The ConvexClient to wrap
    * @param sessionId The session ID to use for function calls
    */
@@ -339,7 +339,7 @@ export class ConvexSessionClient {
 
   /**
    * Set a new session ID to use for future function calls.
-   * 
+   *
    * @param sessionId The new session ID
    */
   setSessionId(sessionId: SessionId): void {
@@ -348,7 +348,7 @@ export class ConvexSessionClient {
 
   /**
    * Get the current session ID.
-   * 
+   *
    * @returns The current session ID
    */
   getSessionId(): SessionId {
@@ -357,7 +357,7 @@ export class ConvexSessionClient {
 
   /**
    * Run a Convex query with the session ID injected.
-   * 
+   *
    * @param query Query that takes a sessionId parameter
    * @param args Arguments for the query, without the sessionId
    * @returns A promise of the query result
@@ -376,7 +376,7 @@ export class ConvexSessionClient {
 
   /**
    * Run a Convex mutation with the session ID injected.
-   * 
+   *
    * @param mutation Mutation that takes a sessionId parameter
    * @param args Arguments for the mutation, without the sessionId
    * @returns A promise of the mutation result
@@ -395,7 +395,7 @@ export class ConvexSessionClient {
 
   /**
    * Run a Convex action with the session ID injected.
-   * 
+   *
    * @param action Action that takes a sessionId parameter
    * @param args Arguments for the action, without the sessionId
    * @returns A promise of the action result
