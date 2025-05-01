@@ -107,10 +107,6 @@
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"
     },
-    "./client/sessions": {
-      "types": "./client/sessions.d.ts",
-      "default": "./client/sessions.js"
-    },
     "./react/*": {
       "types": "./react/*.d.ts",
       "default": "./react/*.js"
@@ -122,10 +118,6 @@
     "./server/*": {
       "types": "./server/*.d.ts",
       "default": "./server/*.js"
-    },
-    "./client/*": {
-      "types": "./client/*.d.ts",
-      "default": "./client/*.js"
     }
   },
   "scripts": {
