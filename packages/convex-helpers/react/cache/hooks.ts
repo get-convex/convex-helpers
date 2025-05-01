@@ -1,5 +1,9 @@
 import type { OptionalRestArgsOrSkip, RequestForQueries } from "convex/react";
-import { ConvexProvider, useQueries as useQueriesCore, useConvex } from "convex/react";
+import {
+  ConvexProvider,
+  useQueries as useQueriesCore,
+  useConvex,
+} from "convex/react";
 import type {
   FunctionArgs,
   FunctionReference,
@@ -438,7 +442,6 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
             currResult.data?.isConvexSystemError === true &&
             currResult.data?.paginationError === "InvalidCursor")
         ) {
-
           logger.warn(
             "usePaginatedQuery hit error, resetting pagination state: " +
               currResult.message,
@@ -492,15 +495,13 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
         return {
           status: "LoadingFirstPage",
           isLoading: true,
-          loadMore: (_numItems: number) => {
-          },
+          loadMore: (_numItems: number) => {},
         } as const;
       } else {
         return {
           status: "LoadingMore",
           isLoading: true,
-          loadMore: (_numItems: number) => {
-          },
+          loadMore: (_numItems: number) => {},
         } as const;
       }
     }
@@ -508,8 +509,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
       return {
         status: "Exhausted",
         isLoading: false,
-        loadMore: (_numItems: number) => {
-        },
+        loadMore: (_numItems: number) => {},
       } as const;
     }
     const continueCursor = maybeLastResult.continueCursor;
@@ -742,13 +742,11 @@ export function insertAtTop<Query extends PaginatedQueryReference>(options: {
     if (argsToMatch === undefined) {
       return true;
     }
-    return Object.keys(argsToMatch).every(
-      (k) => {
-        const a = argsToMatch[k as keyof typeof argsToMatch];
-        const b = q.args[k];
-        return JSON.stringify(a) === JSON.stringify(b);
-      },
-    );
+    return Object.keys(argsToMatch).every((k) => {
+      const a = argsToMatch[k as keyof typeof argsToMatch];
+      const b = q.args[k];
+      return JSON.stringify(a) === JSON.stringify(b);
+    });
   });
   const firstPage = queriesThatMatch.find(
     (q: any) => q.args.paginationOpts.cursor === null,
@@ -795,13 +793,11 @@ export function insertAtBottomIfLoaded<
     if (argsToMatch === undefined) {
       return true;
     }
-    return Object.keys(argsToMatch).every(
-      (k) => {
-        const a = argsToMatch[k as keyof typeof argsToMatch];
-        const b = q.args[k];
-        return JSON.stringify(a) === JSON.stringify(b);
-      },
-    );
+    return Object.keys(argsToMatch).every((k) => {
+      const a = argsToMatch[k as keyof typeof argsToMatch];
+      const b = q.args[k];
+      return JSON.stringify(a) === JSON.stringify(b);
+    });
   });
   const lastPage = queriesThatMatch.find(
     (q: any) => q.value !== undefined && q.value.isDone,
