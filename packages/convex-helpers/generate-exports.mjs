@@ -17,6 +17,7 @@ const EntryPointDirectories = ["react", "react/cache", "server"];
 function entryPointFiles() {
   return [
     "./index.ts",
+    "./browser.ts",
     "./testing.ts",
     "./validators.ts",
     "./server.ts",

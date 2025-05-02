@@ -29,9 +29,19 @@ import type {
   FunctionReturnType,
   OptionalRestArgs,
 } from "convex/server";
-import { useQuery, useMutation, useAction } from "convex/react";
+import {
+  useQuery,
+  useMutation,
+  useAction,
+  ConvexReactClient,
+  type ConvexReactClientOptions,
+  type MutationOptions,
+  useConvex,
+} from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
+
+export const DEFAULT_STORAGE_KEY = "convex-session-id";
 
 export type UseStorage<T> = (
   key: string,
@@ -62,10 +72,17 @@ export type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
     : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
 
 export type SessionArgsArray<
-  Fn extends SessionFunction<"mutation" | "action">,
+  Fn extends SessionFunction<"query" | "mutation" | "action">,
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject]
   : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
+
+export type SessionArgsAndOptions<
+  Fn extends SessionFunction<"mutation">,
+  Options,
+> = keyof FunctionArgs<Fn> extends "sessionId"
+  ? [args?: EmptyObject, options?: Options]
+  : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">, options?: Options];
 
 /**
  * Context for a Convex session, creating a server session and providing the id.
@@ -94,13 +111,19 @@ export const SessionProvider: React.FC<{
   ssrFriendly?: boolean;
   children?: React.ReactNode;
 }> = ({ useStorage, storageKey, idGenerator, ssrFriendly, children }) => {
-  const storeKey = storageKey ?? "convex-session-id";
+  const storeKey = storageKey ?? DEFAULT_STORAGE_KEY;
   function idGen() {
     // On the server, crypto may not be defined.
     return (idGenerator ?? crypto.randomUUID.bind(crypto))() as SessionId;
   }
+  const convex = useConvex();
   const initialValue = useMemo(
-    () => (ssrFriendly ? undefined : idGen()),
+    () =>
+      ssrFriendly
+        ? undefined
+        : convex instanceof ConvexReactSessionClient
+          ? convex.getSessionId()
+          : idGen(),
     [useStorage],
   );
   // Get or set the ID from our desired storage location.
@@ -124,6 +147,9 @@ export const SessionProvider: React.FC<{
     if (!sessionId) {
       const newId = idGen();
       setSessionId(newId);
+      if (convex instanceof ConvexReactSessionClient) {
+        convex.setSessionId(newId);
+      }
       resolveSessionId(newId);
     }
     if (ssrFriendly && initial) setInitial(false);
@@ -305,4 +331,166 @@ export function useSessionStorage(
     [key],
   );
   return [value, setValue] as const;
+}
+
+/**
+ * Simple storage interface that matches localStorage/sessionStorage.
+ */
+interface SessionStorage {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+/**
+ * A client wrapper that adds session data to Convex functions.
+ *
+ * Wraps a ConvexClient and provides methods to automatically inject
+ * the sessionId parameter into queries, mutations, and actions.
+ *
+ * Example:
+ * ```ts
+ * const sessionClient = new ConvexSessionReactClient(address);
+ *
+ * // Use sessionClient instead of client
+ * const result = await sessionClient.sessionQuery(api.myModule.myQuery, { arg1: 123 });
+ * ```
+ */
+export class ConvexReactSessionClient extends ConvexReactClient {
+  private sessionId: SessionId;
+  private storageKey: string;
+  private storage: SessionStorage | null;
+
+  /**
+   * Create a new ConvexSessionClient.
+   *
+   * @param client The ConvexClient to wrap
+   * @param options Optional configuration
+   * @param options.sessionId Initial session ID (will generate one if not provided)
+   * @param options.storage Storage interface to use (defaults to localStorage if available)
+   * @param options.storageKey Key to use for storage (defaults to "convex-session-id")
+   */
+  constructor(
+    address: string,
+    options?: ConvexReactClientOptions & {
+      sessionId?: SessionId;
+      storage?: SessionStorage;
+      storageKey?: string;
+    },
+  ) {
+    super(address, options);
+    this.storageKey = options?.storageKey ?? DEFAULT_STORAGE_KEY;
+
+    this.storage =
+      options?.storage ||
+      (typeof sessionStorage !== "undefined" ? sessionStorage : null);
+
+    if (options?.sessionId) {
+      this.sessionId = options.sessionId;
+    } else {
+      let storedId: SessionId | undefined;
+      if (this.storage) {
+        const stored = this.storage.getItem(this.storageKey);
+        if (stored && stored !== "undefined") {
+          storedId = stored as SessionId;
+        }
+      }
+      if (storedId) {
+        this.sessionId = storedId;
+      } else {
+        if (typeof crypto === "undefined") {
+          throw new Error(
+            "Crypto is not available. If you're in a server environment, you must provide a sessionId manually.",
+          );
+        }
+        // We have to explicitly set it here so TypeScript won't complain about it being uninitialized.
+        this.sessionId = crypto.randomUUID() as SessionId;
+        this.setSessionId(this.sessionId);
+      }
+    }
+  }
+
+  /**
+   * Set a new session ID to use for future function calls.
+   *
+   * NOTE: Setting it here will not propagate to any SessionProvider.
+   * So if you plan to change the sessionId and you are using a SessionProvider,
+   * you should update it there instead.
+   *
+   * @param sessionId The new session ID
+   */
+  setSessionId(sessionId: SessionId): void {
+    this.sessionId = sessionId;
+    if (this.storage) {
+      this.storage.setItem(this.storageKey, sessionId);
+    }
+  }
+
+  /**
+   * Get the current session ID.
+   *
+   * @returns The current session ID
+   */
+  getSessionId(): SessionId {
+    return this.sessionId;
+  }
+
+  /**
+   * Run a Convex query with the session ID injected.
+   *
+   * @param query Query that takes a sessionId parameter
+   * @param args Arguments for the query, without the sessionId
+   * @returns A promise of the query result
+   */
+  sessionQuery<Query extends SessionFunction<"query">>(
+    query: Query,
+    ...args: SessionArgsArray<Query>
+  ): Promise<FunctionReturnType<Query>> {
+    const newArgs = {
+      ...(args[0] ?? {}),
+      sessionId: this.sessionId,
+    } as FunctionArgs<Query>;
+
+    return this.query(query, newArgs);
+  }
+
+  /**
+   * Run a Convex mutation with the session ID injected.
+   *
+   * @param mutation Mutation that takes a sessionId parameter
+   * @param args Arguments for the mutation, without the sessionId
+   * @returns A promise of the mutation result
+   */
+  sessionMutation<Mutation extends SessionFunction<"mutation">>(
+    mutation: Mutation,
+    ...args: SessionArgsAndOptions<
+      Mutation,
+      MutationOptions<FunctionArgs<Mutation>>
+    >
+  ): Promise<FunctionReturnType<Mutation>> {
+    const newArgs = {
+      ...(args[0] ?? {}),
+      sessionId: this.sessionId,
+    } as FunctionArgs<Mutation>;
+
+    return this.mutation(mutation, newArgs, args[1]);
+  }
+
+  /**
+   * Run a Convex action with the session ID injected.
+   *
+   * @param action Action that takes a sessionId parameter
+   * @param args Arguments for the action, without the sessionId
+   * @returns A promise of the action result
+   */
+  sessionAction<Action extends SessionFunction<"action">>(
+    action: Action,
+    ...args: SessionArgsArray<Action>
+  ): Promise<FunctionReturnType<Action>> {
+    const newArgs = {
+      ...(args[0] ?? {}),
+      sessionId: this.sessionId,
+    } as FunctionArgs<Action>;
+
+    return this.action(action, newArgs);
+  }
 }
