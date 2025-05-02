@@ -22,7 +22,7 @@ export type ArgsArray<
  * const client = new ConvexClient(process.env.CONVEX_URL!);
  * const apiClient = withArgs(client, { apiKey: process.env.API_KEY! });
  *
- * const result = await apiClient.query(query);
+ * const result = await apiClient.query(api.foo.bar, { ...other args });
  * ```
  *
  * @param client A ConvexClient instance
