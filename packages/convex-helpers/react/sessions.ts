@@ -36,6 +36,7 @@ import {
   ConvexReactClient,
   type ConvexReactClientOptions,
   type MutationOptions,
+  useConvex,
 } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
@@ -115,8 +116,14 @@ export const SessionProvider: React.FC<{
     // On the server, crypto may not be defined.
     return (idGenerator ?? crypto.randomUUID.bind(crypto))() as SessionId;
   }
+  const convex = useConvex();
   const initialValue = useMemo(
-    () => (ssrFriendly ? undefined : idGen()),
+    () =>
+      ssrFriendly
+        ? undefined
+        : convex instanceof ConvexReactSessionClient
+          ? convex.getSessionId()
+          : idGen(),
     [useStorage],
   );
   // Get or set the ID from our desired storage location.
@@ -140,6 +147,9 @@ export const SessionProvider: React.FC<{
     if (!sessionId) {
       const newId = idGen();
       setSessionId(newId);
+      if (convex instanceof ConvexReactSessionClient) {
+        convex.setSessionId(newId);
+      }
       resolveSessionId(newId);
     }
     if (ssrFriendly && initial) setInitial(false);
@@ -401,6 +411,10 @@ export class ConvexReactSessionClient extends ConvexReactClient {
 
   /**
    * Set a new session ID to use for future function calls.
+   *
+   * NOTE: Setting it here will not propagate to any SessionProvider.
+   * So if you plan to change the sessionId and you are using a SessionProvider,
+   * you should update it there instead.
    *
    * @param sessionId The new session ID
    */
