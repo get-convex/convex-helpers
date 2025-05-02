@@ -8,10 +8,10 @@ import {
   beforeEach,
 } from "vitest";
 import { anyApi, type FunctionReference } from "convex/server";
-import { ConvexSessionClient } from "./sessions";
 import type { SessionArgsArray, SessionQueryArgsArray } from "./sessions";
 import type { EmptyObject } from "..";
 import type { SessionId } from "../server/sessions";
+import { ConvexReactSessionClient } from "convex-helpers/react/sessions";
 
 test("noop", () => {});
 
@@ -68,7 +68,7 @@ expectTypeOf<
 
 describe("ConvexSessionClient", () => {
   let mockClient: { query: any; mutation: any; action: any };
-  let sessionClient: ConvexSessionClient;
+  let sessionClient: ConvexReactSessionClient;
   const sessionId = "test-session-id" as SessionId;
 
   beforeEach(() => {
@@ -77,7 +77,7 @@ describe("ConvexSessionClient", () => {
       mutation: vi.fn().mockResolvedValue("mutation-result"),
       action: vi.fn().mockResolvedValue("action-result"),
     };
-    sessionClient = new ConvexSessionClient("http://localhost:3000", {
+    sessionClient = new ConvexReactSessionClient("http://localhost:3000", {
       sessionId,
     });
     sessionClient.query = mockClient.query;
