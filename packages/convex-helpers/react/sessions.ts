@@ -24,7 +24,6 @@ import React, {
   useState,
 } from "react";
 import type {
-  ArgsAndOptions,
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
@@ -40,7 +39,6 @@ import {
 } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
-import type { ConvexClientOptions } from "convex/browser";
 
 export const DEFAULT_STORAGE_KEY = "convex-session-id";
 
