@@ -24,6 +24,7 @@ import React, {
   useState,
 } from "react";
 import type {
+  ArgsAndOptions,
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
@@ -35,9 +36,11 @@ import {
   useAction,
   ConvexReactClient,
   type ConvexReactClientOptions,
+  type MutationOptions,
 } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
+import type { ConvexClientOptions } from "convex/browser";
 
 export const DEFAULT_STORAGE_KEY = "convex-session-id";
 
@@ -74,6 +77,13 @@ export type SessionArgsArray<
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject]
   : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
+
+export type SessionArgsAndOptions<
+  Fn extends SessionFunction<"mutation">,
+  Options,
+> = keyof FunctionArgs<Fn> extends "sessionId"
+  ? [args?: EmptyObject, options?: Options]
+  : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">, options?: Options];
 
 /**
  * Context for a Convex session, creating a server session and providing the id.
@@ -440,14 +450,17 @@ export class ConvexReactSessionClient extends ConvexReactClient {
    */
   sessionMutation<Mutation extends SessionFunction<"mutation">>(
     mutation: Mutation,
-    ...args: SessionArgsArray<Mutation>
+    ...args: SessionArgsAndOptions<
+      Mutation,
+      MutationOptions<FunctionArgs<Mutation>>
+    >
   ): Promise<FunctionReturnType<Mutation>> {
     const newArgs = {
       ...(args[0] ?? {}),
       sessionId: this.sessionId,
     } as FunctionArgs<Mutation>;
 
-    return this.mutation(mutation, newArgs);
+    return this.mutation(mutation, newArgs, args[1]);
   }
 
   /**
