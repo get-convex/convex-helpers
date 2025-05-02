@@ -7,7 +7,7 @@ import {
   expect,
   beforeEach,
 } from "vitest";
-import { anyApi, type FunctionReference } from "convex/server";
+import type { FunctionReference } from "convex/server";
 import type { SessionArgsArray, SessionQueryArgsArray } from "./sessions";
 import type { EmptyObject } from "..";
 import type { SessionId } from "../server/sessions";
@@ -86,7 +86,7 @@ describe("ConvexSessionClient", () => {
   });
 
   it("should inject sessionId into query args", async () => {
-    const query = anyApi.myModule!.myQuery as FunctionReference<
+    const query = {} as FunctionReference<
       "query",
       "public",
       { arg: string; sessionId: SessionId | null },
@@ -104,7 +104,7 @@ describe("ConvexSessionClient", () => {
   });
 
   it("should inject sessionId into mutation args", async () => {
-    const mutation = anyApi.myModule!.myMutation as FunctionReference<
+    const mutation = {} as FunctionReference<
       "mutation",
       "public",
       { arg: string; sessionId: SessionId },
@@ -114,15 +114,17 @@ describe("ConvexSessionClient", () => {
 
     const result = await sessionClient.sessionMutation(mutation, args);
 
-    expect(mockClient.mutation).toHaveBeenCalledWith(mutation, {
-      ...args,
-      sessionId,
-    });
+    expect(mockClient.mutation).toHaveBeenCalledWith(
+      mutation,
+      { ...args, sessionId },
+      // options, e.g. for optimistic updates
+      undefined,
+    );
     expect(result).toBe("mutation-result");
   });
 
   it("should inject sessionId into action args", async () => {
-    const action = anyApi.myModule!.myAction as FunctionReference<
+    const action = {} as FunctionReference<
       "action",
       "public",
       { arg: string; sessionId: SessionId },
@@ -141,7 +143,7 @@ describe("ConvexSessionClient", () => {
 
   it("should allow changing the sessionId", async () => {
     const newSessionId = "new-session-id" as SessionId;
-    const query = anyApi.myModule!.myQuery as FunctionReference<
+    const query = {} as FunctionReference<
       "query",
       "public",
       { arg: string; sessionId: SessionId },
@@ -160,7 +162,7 @@ describe("ConvexSessionClient", () => {
   });
 
   it("should allow omitting args if the only arg is sessionId", async () => {
-    const query = anyApi.myModule!.myQuery as FunctionReference<
+    const query = {} as FunctionReference<
       "query",
       "public",
       { sessionId: SessionId },
@@ -172,7 +174,7 @@ describe("ConvexSessionClient", () => {
       sessionId,
     });
 
-    const mutation = anyApi.myModule!.myMutation as FunctionReference<
+    const mutation = {} as FunctionReference<
       "mutation",
       "public",
       { sessionId: SessionId },
@@ -182,11 +184,13 @@ describe("ConvexSessionClient", () => {
     expect(await sessionClient.sessionMutation(mutation)).toBe(
       "mutation-result",
     );
-    expect(mockClient.mutation).toHaveBeenCalledWith(mutation, {
-      sessionId,
-    });
+    expect(mockClient.mutation).toHaveBeenCalledWith(
+      mutation,
+      { sessionId },
+      undefined,
+    );
 
-    const action = anyApi.myModule!.myAction as FunctionReference<
+    const action = {} as FunctionReference<
       "action",
       "public",
       { sessionId: SessionId },
