@@ -92,8 +92,9 @@ describe("ConvexSessionClient", () => {
       { arg: string; sessionId: SessionId | null },
       any
     >;
+    const args = { arg: " foo" };
 
-    const result = await sessionClient.sessionQuery(query, { arg: " foo" });
+    const result = await sessionClient.sessionQuery(query, args);
 
     expect(mockClient.query).toHaveBeenCalledWith(query, {
       arg: " foo",
@@ -109,9 +110,9 @@ describe("ConvexSessionClient", () => {
       { arg: string; sessionId: SessionId },
       any
     >;
-    const args = { baz: "qux" };
+    const args = { arg: "foo" };
 
-    const result = await sessionClient.sessionMutation(mutation as any, args);
+    const result = await sessionClient.sessionMutation(mutation, args);
 
     expect(mockClient.mutation).toHaveBeenCalledWith(mutation, {
       ...args,
@@ -127,9 +128,9 @@ describe("ConvexSessionClient", () => {
       { arg: string; sessionId: SessionId },
       any
     >;
-    const args = { quux: "corge" };
+    const args = { arg: "foo" };
 
-    const result = await sessionClient.sessionAction(action as any, args);
+    const result = await sessionClient.sessionAction(action, args);
 
     expect(mockClient.action).toHaveBeenCalledWith(action, {
       ...args,
@@ -140,13 +141,19 @@ describe("ConvexSessionClient", () => {
 
   it("should allow changing the sessionId", async () => {
     const newSessionId = "new-session-id" as SessionId;
-    const query = { _path: "test/query" };
+    const query = anyApi.myModule!.myQuery as FunctionReference<
+      "query",
+      "public",
+      { arg: string; sessionId: SessionId },
+      any
+    >;
 
     sessionClient.setSessionId(newSessionId);
 
-    await sessionClient.sessionQuery(query as any, {});
+    await sessionClient.sessionQuery(query, { arg: "foo" });
 
     expect(mockClient.query).toHaveBeenCalledWith(query, {
+      arg: "foo",
       sessionId: newSessionId,
     });
     expect(sessionClient.getSessionId()).toBe(newSessionId);
