@@ -18,7 +18,7 @@ export default () => {
   const [room, setRoom] = useState("");
   const roomData = useStableQuery(
     api.sessionsExample.roomPresence,
-    room ? useSessionIdArg({ room }) : "skip",
+    useSessionIdArg(room ? { room } : "skip"),
   );
   return (
     <div>
