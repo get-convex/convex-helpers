@@ -37,9 +37,11 @@ import {
   type ConvexReactClientOptions,
   type MutationOptions,
   useConvex,
+  type ReactMutation,
 } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
+import type { OptimisticUpdate } from "convex/browser";
 
 export const DEFAULT_STORAGE_KEY = "convex-session-id";
 
@@ -201,6 +203,18 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
   return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
 }
 
+type SessionMutation<Mutation extends FunctionReference<"mutation">> = (
+  ...args: SessionArgsArray<Mutation>
+) => Promise<FunctionReturnType<Mutation>>;
+
+// Similar to ReactMutation, but with a sessionId parameter.
+interface ReactSessionMutation<Mutation extends FunctionReference<"mutation">>
+  extends SessionMutation<Mutation> {
+  withOptimisticUpdate(
+    optimisticUpdate: OptimisticUpdate<FunctionArgs<Mutation>>,
+  ): SessionMutation<Mutation>;
+}
+
 /**
  * Use this in place of {@link useMutation} to run a mutation with a sessionId.
  *
@@ -212,23 +226,32 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
  */
 export function useSessionMutation<
   Mutation extends SessionFunction<"mutation">,
->(name: Mutation) {
+>(name: Mutation): ReactSessionMutation<Mutation> {
   const [sessionId, _, sessionIdPromise] = useSessionId();
   const originalMutation = useMutation(name);
 
-  return useCallback(
-    async (
-      ...args: SessionArgsArray<Mutation>
-    ): Promise<FunctionReturnType<Mutation>> => {
-      const newArgs = {
-        ...(args[0] ?? {}),
-        sessionId: sessionId || (await sessionIdPromise),
-      } as FunctionArgs<Mutation>;
-
-      return originalMutation(...([newArgs] as OptionalRestArgs<Mutation>));
-    },
-    [sessionId, originalMutation],
-  );
+  return useMemo(() => {
+    function createMutation(
+      originalMutation: ReactMutation<Mutation>,
+    ): SessionMutation<Mutation> {
+      return async (...args) => {
+        const newArgs: FunctionArgs<Mutation> = {
+          ...(args[0] ?? {}),
+          sessionId: sessionId || (await sessionIdPromise),
+        };
+        return originalMutation(...[newArgs]);
+      };
+    }
+    const mutation = createMutation(
+      originalMutation,
+    ) as ReactSessionMutation<Mutation>;
+    mutation.withOptimisticUpdate = (optimisticUpdate) => {
+      return createMutation(
+        originalMutation.withOptimisticUpdate(optimisticUpdate),
+      );
+    };
+    return mutation;
+  }, [sessionId, sessionIdPromise, originalMutation]);
 }
 
 /**

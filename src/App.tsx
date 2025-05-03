@@ -15,11 +15,7 @@ export default function App() {
       // storageKey={"ConvexSessionId"}
       // useStorage={useLocalStorage}
       >
-        <ConvexQueryCacheProvider
-          maxIdleEntries={11}
-          expiration={15000}
-          debug={true}
-        >
+        <ConvexQueryCacheProvider maxIdleEntries={11} expiration={15000}>
           <Counter />
           <RelationshipExample />
           <SessionsExample />

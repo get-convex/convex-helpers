@@ -14,7 +14,19 @@ export default () => {
   const login = useSessionMutation(api.sessionsExample.logIn);
   const logout = useSessionMutation(api.sessionsExample.logOut);
   const myPresence = useSessionQuery(api.sessionsExample.myPresence);
-  const joinRoom = useSessionMutation(api.sessionsExample.joinRoom);
+  const joinRoom = useSessionMutation(
+    api.sessionsExample.joinRoom,
+  ).withOptimisticUpdate((store, args) => {
+    if (!sessionId) return;
+    const roomPresence = store.getQuery(api.sessionsExample.myPresence, {
+      sessionId,
+    });
+    store.setQuery(
+      api.sessionsExample.myPresence,
+      { sessionId },
+      roomPresence ? [...roomPresence, args.room] : undefined,
+    );
+  });
   const [room, setRoom] = useState("");
   const roomData = useStableQuery(
     api.sessionsExample.roomPresence,
