@@ -1,5 +1,6 @@
 import type {
   GenericValidator,
+  Infer,
   ObjectType,
   PropertyValidators,
   VObject,
@@ -363,6 +364,8 @@ export function validate<T extends Validator<any, any, any>>(
     throw?: boolean;
     /* If provided, v.id validation will check that the id is for the table. */
     db?: GenericDatabaseReader<GenericDataModel>;
+    /* If true, allow fields that are not in an object validator. */
+    allowUnknownFields?: boolean;
     /* A prefix for the path of the value being validated, for error reporting.
     This is used for recursive calls, do not set it manually. */
     _pathPrefix?: string;
@@ -480,17 +483,19 @@ export function validate<T extends Validator<any, any, any>>(
             break;
           }
         }
-        for (const k of Object.keys(value)) {
-          if (validator.fields[k] === undefined) {
-            if (opts?.throw) {
-              throw new ValidationError(
-                "nothing",
-                typeof (value as any)[k],
-                appendPath(opts, k),
-              );
+        if (!opts?.allowUnknownFields) {
+          for (const k of Object.keys(value)) {
+            if (validator.fields[k] === undefined) {
+              if (opts?.throw) {
+                throw new ValidationError(
+                  "nothing",
+                  typeof (value as any)[k],
+                  appendPath(opts, k),
+                );
+              }
+              valid = false;
+              break;
             }
-            valid = false;
-            break;
           }
         }
         break;
@@ -536,6 +541,61 @@ export function validate<T extends Validator<any, any, any>>(
     throw new ValidationError(expected, typeof value, opts?._pathPrefix);
   }
   return valid;
+}
+
+export function parse<T extends Validator<any, any, any>>(
+  validator: T,
+  value: unknown,
+): Infer<T> {
+  validate(validator, value, { allowUnknownFields: true, throw: true });
+  return stripUnknownFields(validator, value);
+}
+
+function stripUnknownFields<T extends Validator<any, any, any>>(
+  validator: T,
+  value: Infer<T>,
+): Infer<T> {
+  switch (validator.kind) {
+    case "object": {
+      const result: Infer<T> = {};
+      for (const [k, v] of Object.entries(value)) {
+        if (validator.fields[k] !== undefined) {
+          result[k] = stripUnknownFields(validator.fields[k], v);
+        }
+      }
+      return result;
+    }
+    case "record": {
+      const result: Infer<T> = {};
+      for (const [k, v] of Object.entries(value)) {
+        result[k] = stripUnknownFields(validator.value, v);
+      }
+      return result;
+    }
+    case "array": {
+      return (value as any[]).map((e) =>
+        stripUnknownFields(validator.element, e),
+      );
+    }
+    case "union": {
+      // First try a strict match
+      for (const member of validator.members) {
+        if (validate(member, value, { allowUnknownFields: false })) {
+          return stripUnknownFields(member, value);
+        }
+      }
+      // Then try a permissive match
+      for (const member of validator.members) {
+        if (validate(member, value, { allowUnknownFields: true })) {
+          return stripUnknownFields(member, value);
+        }
+      }
+      throw new Error("No matching member in union");
+    }
+    default: {
+      return value as Infer<T>;
+    }
+  }
 }
 
 function appendPath(opts: { _pathPrefix?: string } | undefined, path: string) {

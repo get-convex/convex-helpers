@@ -16,6 +16,7 @@ import {
   object,
   optional,
   union as or,
+  parse,
   pretend,
   pretendRequired,
   string,
@@ -497,5 +498,103 @@ describe("validate", () => {
     expect(validate(any, 123)).toBe(true);
     expect(validate(any, null)).toBe(true);
     expect(validate(any, { complex: "object" })).toBe(true);
+  });
+
+  test("parse strips unknown fields", () => {
+    const validator = object({
+      name: string,
+      age: number,
+    });
+
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      unknown: "field",
+    });
+    expect(result).toEqual({ name: "Alice", age: 30 });
+  });
+
+  test("parse strips unknown fields from unions", () => {
+    const validator = or(object({ name: string }), object({ age: number }));
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      unknown: "field",
+    });
+    expect(result).toEqual({ name: "Alice" });
+  });
+
+  test("parse strips unknown fields from arrays", () => {
+    const validator = array(object({ name: string }));
+    const result = parse(validator, [
+      { name: "Alice" },
+      { name: "Bob", unknown: "field" },
+    ]);
+    expect(result[0]).toMatchObject({ name: "Alice" });
+    expect(result[1]).toMatchObject({ name: "Bob" });
+  });
+
+  test("parse strips unknown fields from records", () => {
+    const validator = vv.record(string, object({ name: string }));
+    const result = parse(validator, {
+      a: { name: "Alice" },
+      b: { name: "Bob", unknown: "field" },
+    });
+    expect(result).toEqual({ a: { name: "Alice" }, b: { name: "Bob" } });
+  });
+
+  test("parse strips unknown fields from nested objects", () => {
+    const validator = object({
+      name: string,
+      age: number,
+      details: object({
+        name: string,
+        age: number,
+      }),
+      union: or(object({ name: string }), object({ age: number })),
+      array: array(object({ name: string })),
+      record: vv.record(string, object({ name: string })),
+    });
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      details: { name: "Alice", age: 30 },
+      union: { name: "Alice", foo: "bar" },
+      array: [{ name: "Alice", foo: "bar" }],
+      record: { a: { name: "Alice", foo: "bar" } },
+    });
+    expect(result).toEqual({
+      name: "Alice",
+      age: 30,
+      details: { name: "Alice", age: 30 },
+      union: { name: "Alice" },
+      array: [{ name: "Alice" }],
+      record: { a: { name: "Alice" } },
+    });
+  });
+
+  test("union matches first member with unknown fields", () => {
+    const validator = or(
+      object({ name: string }),
+      object({ name: string, age: number }),
+    );
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      unknown: "field",
+    });
+    expect(result).toEqual({ name: "Alice" });
+  });
+
+  test("union matches second member if matches second strictly", () => {
+    const validator = or(
+      object({ name: string }),
+      object({ name: string, age: number }),
+    );
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+    });
+    expect(result).toEqual({ name: "Alice", age: 30 });
   });
 });
