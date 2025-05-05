@@ -98,6 +98,24 @@ export function omit<T extends Record<string, any>, Keys extends (keyof T)[]>(
   ) as BetterOmit<T, Keys[number]>;
 }
 
+/**
+ * Removes the _id and _creationTime fields from an object.
+ * This enables easily cloning a Convex document like:
+ * ```ts
+ * const doc = await db.get(id);
+ * const clone = withoutSystemFields(doc);
+ * await db.insert(table, clone);
+ * ```
+ * @param obj The object to remove the _id and _creationTime fields from.
+ * @returns A new object with the _id and _creationTime fields removed.
+ */
+export function withoutSystemFields<
+  T extends { _id?: string; _creationTime?: number } & Record<string, any>,
+>(obj: T) {
+  const { _id, _creationTime, ...rest } = obj;
+  return rest as Expand<Omit<T, "_id" | "_creationTime">>;
+}
+
 // Type utils:
 const error = Symbol();
 export type ErrorMessage<Reason extends string> = Reason & {
