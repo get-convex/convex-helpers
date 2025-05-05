@@ -37,10 +37,11 @@ import {
   internalQueryGeneric,
 } from "convex/server";
 import type { Infer, ObjectType } from "convex/values";
-import { assertType, expect, test } from "vitest";
+import { assertType, describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
 import { validate } from "../validators.js";
+import { fail } from "assert";
 
 export const testLiterals = internalQueryGeneric({
   args: {
