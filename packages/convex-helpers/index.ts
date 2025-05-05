@@ -95,7 +95,7 @@ export function omit<T extends Record<string, any>, Keys extends (keyof T)[]>(
 ) {
   return Object.fromEntries(
     Object.entries(obj).filter(([k]) => !keys.includes(k as Keys[number])),
-  ) as BetterOmit<T, Keys[number]>;
+  ) as Expand<BetterOmit<T, Keys[number]>>;
 }
 
 /**
@@ -109,11 +109,8 @@ export function omit<T extends Record<string, any>, Keys extends (keyof T)[]>(
  * @param obj The object to remove the _id and _creationTime fields from.
  * @returns A new object with the _id and _creationTime fields removed.
  */
-export function withoutSystemFields<
-  T extends { _id?: string; _creationTime?: number } & Record<string, any>,
->(obj: T) {
-  const { _id, _creationTime, ...rest } = obj;
-  return rest as Expand<Omit<T, "_id" | "_creationTime">>;
+export function withoutSystemFields<T extends Record<string, any>>(obj: T) {
+  return omit(obj, ["_id", "_creationTime"]);
 }
 
 // Type utils:
