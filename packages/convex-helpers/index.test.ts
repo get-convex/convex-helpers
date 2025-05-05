@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import { withoutSystemFields } from "./index.js";
 import { test, expect, expectTypeOf } from "vitest";
 
@@ -26,4 +27,15 @@ test("withoutSystemFields type when it's a union", () => {
   const without2 = withoutSystemFields(obj2);
   expect(without2).toEqual({ a: "a" });
   expectTypeOf(without2).toEqualTypeOf<{ a: string } | { b: string }>();
+});
+
+test("withoutSystemFields works on validators too", () => {
+  const validator = v.object({
+    _id: v.string(),
+    _creationTime: v.number(),
+    a: v.string(),
+  });
+  const { _id, _creationTime, ...rest } = validator.fields;
+  const without = withoutSystemFields(validator.fields);
+  expectTypeOf(without).toEqualTypeOf<typeof rest>();
 });
