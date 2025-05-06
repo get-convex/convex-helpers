@@ -3,7 +3,12 @@ import { defineTable, defineSchema } from "convex/server";
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import type { IndexKey } from "./stream.js";
-import { mergedStream, stream, streamIndexRange } from "./stream.js";
+import {
+  concatStreams,
+  mergedStream,
+  stream,
+  streamIndexRange,
+} from "./stream.js";
 import { modules } from "./setup.test.js";
 import { v } from "convex/values";
 
@@ -236,6 +241,25 @@ describe("stream", () => {
       expect(result.map(stripSystemFields)).toEqual([
         { a: 2, b: 4, c: 4 },
         { a: 2, b: 1, c: 3 },
+        { a: 1, b: 3, c: 3 },
+        { a: 1, b: 2, c: 3 },
+      ]);
+    });
+  });
+
+  test("concat streams", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
+      const query1 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2));
+      const query2 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1).lt("b", 3));
+      const result = await concatStreams([query1, query2]).collect();
+      expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 3, c: 3 },
         { a: 1, b: 2, c: 3 },
       ]);

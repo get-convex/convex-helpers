@@ -1110,10 +1110,10 @@ function commonPrefix(values: Value[][]) {
  * and are provided in the same order as the index ranges.
  *
  * e.g. ```ts
- * new ConcatStreams(
+ * concatStreams([
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user1")),
  *   stream(db, schema).query("messages").withIndex("by_author", q => q.eq("author", "user2")),
- * )
+ * ])
  * ```
  *
  * is valid, but if the stream arguments were reversed, or the queries were
@@ -1122,6 +1122,12 @@ function commonPrefix(values: Value[][]) {
  * It's not recommended to use `ConcatStreams` directly, since it has the same
  * behavior as `MergedStream`, but with fewer runtime checks.
  */
+export function concatStreams<T extends GenericStreamItem>(
+  streams: QueryStream<T>[],
+): QueryStream<T> {
+  return new ConcatStreams(...streams);
+}
+
 class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
   #order: "asc" | "desc";
   #streams: QueryStream<T>[];
