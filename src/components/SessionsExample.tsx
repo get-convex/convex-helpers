@@ -2,6 +2,7 @@ import {
   useSessionId,
   useSessionIdArg,
   useSessionMutation,
+  useSessionPaginatedQuery,
   useSessionQuery,
 } from "convex-helpers/react/sessions";
 import { api } from "../../convex/_generated/api";
@@ -14,6 +15,11 @@ export default () => {
   const login = useSessionMutation(api.sessionsExample.logIn);
   const logout = useSessionMutation(api.sessionsExample.logOut);
   const myPresence = useSessionQuery(api.sessionsExample.myPresence);
+  const paginatedPresence = useSessionPaginatedQuery(
+    api.sessionsExample.paginatedQueryWithSession,
+    {},
+    { initialNumItems: 2 },
+  )!;
   const joinRoom = useSessionMutation(
     api.sessionsExample.joinRoom,
   ).withOptimisticUpdate((store, args) => {
@@ -60,6 +66,17 @@ export default () => {
       </form>
       <p>{JSON.stringify(roomData)}</p>
       <ul>{myPresence && myPresence.map((room) => <li>{room}</li>)}</ul>
+      <ul>
+        {paginatedPresence.results.map((room) => (
+          <li>{room.room}</li>
+        ))}
+      </ul>
+      <button
+        disabled={paginatedPresence.status !== "CanLoadMore"}
+        onClick={() => paginatedPresence.loadMore(2)}
+      >
+        load more
+      </button>
 
       <button onClick={() => refreshSessionId((newSessionId) => logout())}>
         Delete Session Data on Log Out

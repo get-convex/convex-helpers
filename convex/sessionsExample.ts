@@ -16,6 +16,7 @@ import {
   runSessionFunctions,
   vSessionId,
 } from "convex-helpers/server/sessions";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 
 /** -----------------------------------------------------------------
@@ -191,5 +192,17 @@ export const joinRoom = mutationWithSession({
         updated: Date.now(),
       });
     }
+  },
+});
+
+export const paginatedQueryWithSession = query({
+  args: { paginationOpts: paginationOptsValidator, ...SessionIdArg },
+  handler: async (ctx, args) => {
+    console.log(args.sessionId);
+    const foo = await ctx.db
+      .query("presence")
+      .order("desc")
+      .paginate(args.paginationOpts);
+    return foo;
   },
 });
