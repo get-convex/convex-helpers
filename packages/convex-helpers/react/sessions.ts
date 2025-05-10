@@ -28,6 +28,8 @@ import type {
   FunctionReference,
   FunctionReturnType,
   OptionalRestArgs,
+  PaginationOptions,
+  PaginationResult,
 } from "convex/server";
 import {
   useQuery,
@@ -38,6 +40,9 @@ import {
   type MutationOptions,
   useConvex,
   type ReactMutation,
+  usePaginatedQuery,
+  type PaginatedQueryArgs,
+  type UsePaginatedQueryReturnType,
 } from "convex/react";
 import type { SessionId } from "../server/sessions.js";
 import type { EmptyObject, BetterOmit } from "../index.js";
@@ -85,6 +90,21 @@ export type SessionArgsAndOptions<
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject, options?: Options]
   : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">, options?: Options];
+
+type SessionPaginatedQueryFunction<
+  Args extends { paginationOpts: PaginationOptions } = {
+    paginationOpts: PaginationOptions;
+  },
+> = FunctionReference<
+  "query",
+  "public",
+  { sessionId: SessionId } & Args,
+  PaginationResult<any>
+>;
+
+export type SessionPaginatedQueryArgs<
+  Fn extends SessionPaginatedQueryFunction,
+> = BetterOmit<PaginatedQueryArgs<Fn>, "sessionId"> | "skip";
 
 /**
  * Context for a Convex session, creating a server session and providing the id.
@@ -201,6 +221,37 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
   const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
 
   return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
+}
+
+/**
+ * Use this in place of {@link usePaginatedQuery} to run a query, passing a sessionId.
+ *
+ * @param query Query that takes in a sessionId parameter. Like `api.foo.bar`.
+ * @param args Args for that query, without the sessionId.
+ * @param options - An object specifying the `initialNumItems` to be loaded in
+ * the first page.
+ * @returns A {@link UsePaginatedQueryRes} that includes the currently loaded
+ * items, the status of the pagination, and a `loadMore` function.
+ * For SSR, it will skip the query until the second render.
+ */
+export function useSessionPaginatedQuery<
+  Query extends SessionPaginatedQueryFunction,
+>(
+  query: Query,
+  args: SessionPaginatedQueryArgs<Query>,
+  options: { initialNumItems: number },
+): UsePaginatedQueryReturnType<Query> | undefined {
+  const [sessionId] = useSessionId();
+  const skip = args === "skip" || !sessionId;
+  const originalArgs = args === "skip" ? {} : (args ?? {});
+
+  const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
+
+  return usePaginatedQuery(
+    query,
+    newArgs as PaginatedQueryArgs<Query> | "skip",
+    options,
+  );
 }
 
 type SessionMutation<Mutation extends FunctionReference<"mutation">> = (
