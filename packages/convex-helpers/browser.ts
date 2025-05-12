@@ -1,5 +1,5 @@
 import type { BetterOmit, EmptyObject } from "./index.js";
-import type { ConvexClient } from "convex/browser";
+import type { ConvexClient, ConvexHttpClient } from "convex/browser";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import type { FunctionReference } from "convex/server";
 import type { Value } from "convex/values";
@@ -30,7 +30,7 @@ export type ArgsArray<
  * @returns { query, mutation, action } functions with the injected arguments
  */
 export function withArgs<A extends Record<string, Value>>(
-  client: ConvexClient,
+  client: ConvexClient | ConvexHttpClient,
   injectedArgs: A,
 ) {
   return {
