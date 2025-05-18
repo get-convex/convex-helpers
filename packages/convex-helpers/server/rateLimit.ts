@@ -196,7 +196,7 @@ export function isRateLimitError(
  * If you use {@link defineRateLimits} to define the named rate limit, you don't
  * specify the config inline.
  */
-interface RateLimitArgs extends RateLimitArgsWithoutConfig {
+export interface RateLimitArgs extends RateLimitArgsWithoutConfig {
   config: RateLimitConfig;
 }
 
