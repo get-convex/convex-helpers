@@ -163,7 +163,7 @@ export type RateLimitConfig = TokenBucketRateLimit | FixedWindowRateLimit;
  * @param throws Whether to throw an error if the rate limit is exceeded.
  * By default, {@link rateLimit} will just return { ok: false, retryAt: number }.
  */
-interface RateLimitArgsWithoutConfig<Name extends string = string> {
+export interface RateLimitArgsWithoutConfig<Name extends string = string> {
   name: Name;
   key?: string;
   count?: number;
