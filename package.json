@@ -50,7 +50,7 @@
     "convex-test": "0.0.37",
     "eslint": "9.27.0",
     "jsdom": "26.1.0",
-    "npm-run-all2": "8.0.2",
+    "npm-run-all2": "8.0.3",
     "typescript": "5.8.3",
     "vite": "6.3.5",
     "vitest": "3.1.4"
