@@ -21,6 +21,7 @@ function entryPointFiles() {
     "./testing.ts",
     "./validators.ts",
     "./server.ts",
+    "./standardSchema.ts",
     "./react.ts",
     ...EntryPointDirectories.map(directoryContents).flat(),
   ];
