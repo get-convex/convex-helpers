@@ -12,14 +12,18 @@
  * accessible to web applications hosted on different domains while
  * maintaining proper CORS configuration.
  */
-import type {
-  GenericActionCtx,
-  PublicHttpAction,
-  RouteSpec,
-  RouteSpecWithPath,
-  RouteSpecWithPathPrefix,
+import {
+  type GenericActionCtx,
+  httpActionGeneric,
+  httpRouter,
+  HttpRouter,
+  ROUTABLE_HTTP_METHODS,
+  type RoutableMethod,
+  type PublicHttpAction,
+  type RouteSpec,
+  type RouteSpecWithPath,
+  type RouteSpecWithPathPrefix,
 } from "convex/server";
-import { httpActionGeneric, httpRouter, HttpRouter } from "convex/server";
 
 export const DEFAULT_EXPOSED_HEADERS = [
   // For Range requests
@@ -65,6 +69,11 @@ export type CorsConfig = {
    * @default 86400 (1 day)
    */
   browserCacheMaxAge?: number;
+  /**
+   * Whether to log debugging information about CORS requests.
+   * @default false
+   */
+  debug?: boolean;
 };
 
 type RouteSpecWithCors = RouteSpec & CorsConfig;
@@ -212,9 +221,6 @@ export default corsRouter;
  * to web applications hosted on different domains.
  */
 
-import type { RoutableMethod } from "convex/server";
-import { ROUTABLE_HTTP_METHODS } from "convex/server";
-
 const SECONDS_IN_A_DAY = 60 * 60 * 24;
 
 /**
@@ -234,6 +240,7 @@ const handleCors = ({
   exposedHeaders = DEFAULT_EXPOSED_HEADERS,
   allowCredentials = false,
   browserCacheMaxAge = SECONDS_IN_A_DAY,
+  debug = false,
 }: {
   originalHandler?: PublicHttpAction;
   allowedMethods?: string[];
@@ -300,7 +307,16 @@ const handleCors = ({
    */
   return httpActionGeneric(
     async (ctx: GenericActionCtx<any>, request: Request) => {
-      const requestOrigin = request.headers.get("Origin");
+      if (debug) {
+        console.log("CORS request", {
+          path: request.url,
+          origin: request.headers.get("origin"),
+          headers: request.headers,
+          method: request.method,
+          body: request.body,
+        });
+      }
+      const requestOrigin = request.headers.get("origin");
 
       // Handle origin matching
       let allowOrigins: string | null = null;
@@ -316,6 +332,9 @@ const handleCors = ({
 
       if (!allowOrigins) {
         // Origin not allowed
+        console.error(
+          `Request from origin ${requestOrigin} blocked, missing from allowed origins: ${allowedOrigins.join()}`,
+        );
         return new Response(null, { status: 403 });
       }
       /**
