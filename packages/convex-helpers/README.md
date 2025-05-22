@@ -4,26 +4,35 @@ A collection of useful code to complement the official packages.
 
 Table of contents:
 
-- [Custom Functions](#custom-functions)
-- [Relationship helpers](#relationship-helpers)
-- [Database triggers](#triggers)
-- [Action retry wrapper](#action-retries)
-- [Stateful migrations](#stateful-migrations)
-- [Rate limiting](#rate-limiting)
-- [Sessions](#session-tracking-via-client-side-sessionid-storage)
-- [Richer useQuery API](#richer-usequery)
-- [Row-level security](#row-level-security)
-- [Zod validation](#zod-validation)
-- [Hono for HTTP endpoints](#hono-for-advanced-http-endpoint-definitions)
-- [CRUD](#crud-utilities)
-- [Validator utilities](#validator-utilities)
-- [Filter db queries with JS](#filter)
-- [Manual pagination](#manual-pagination)
-- [Stream and combine data from multiple queries](#composable-querystreams)
-- [Query caching with ConvexQueryCacheProvider](#query-caching)
-- [TypeScript API Generator](#typescript-api-generation)
-- [OpenAPI Spec Generator](#open-api-spec-generation)
-- [CORS support for HttpRouter](#cors-support-for-httprouter)
+- [convex-helpers](#convex-helpers)
+  - [Custom Functions](#custom-functions)
+  - [Relationship helpers](#relationship-helpers)
+  - [Action retries](#action-retries)
+  - [Stateful migrations](#stateful-migrations)
+  - [Rate limiting](#rate-limiting)
+  - [Session tracking via client-side sessionID storage](#session-tracking-via-client-side-sessionid-storage)
+  - [Richer useQuery](#richer-usequery)
+  - [Row-level security](#row-level-security)
+  - [Zod Validation](#zod-validation)
+  - [Hono for advanced HTTP endpoint definitions](#hono-for-advanced-http-endpoint-definitions)
+  - [CRUD utilities](#crud-utilities)
+  - [Validator utilities](#validator-utilities)
+  - [Filter](#filter)
+  - [Manual Pagination](#manual-pagination)
+    - [Examples](#examples)
+    - [`paginator`: manual pagination with familiar syntax](#paginator-manual-pagination-with-familiar-syntax)
+  - [Composable QueryStreams](#composable-querystreams)
+    - [Example 1: Paginate all messages by a fixed set of authors](#example-1-paginate-all-messages-by-a-fixed-set-of-authors)
+    - [Example 2: Paginate all messages whose authors match a complex predicate.](#example-2-paginate-all-messages-whose-authors-match-a-complex-predicate)
+    - [Example 3: Order by a suffix of an index.](#example-3-order-by-a-suffix-of-an-index)
+    - [Example 4: Join tables.](#example-4-join-tables)
+  - [Query Caching](#query-caching)
+  - [TypeScript API Generation](#typescript-api-generation)
+  - [Open API Spec Generation](#open-api-spec-generation)
+  - [Triggers](#triggers)
+    - [What can you do with triggers?](#what-can-you-do-with-triggers)
+    - [Trigger semantics](#trigger-semantics)
+  - [CORS support for HttpRouter](#cors-support-for-httprouter)
 
 ## Custom Functions
 
@@ -1156,9 +1165,9 @@ const cors = corsRouter(
   // Optional configuration, can be omitted entirely
   {
     allowedOrigins: ["http://localhost:8080"], // Default: ["*"]
-    allowedMethods: ["GET", "POST"], // Default: ["OPTIONS"]
+    allowedMethods: ["GET", "POST"], // Defaults to route spec method
     allowedHeaders: ["Content-Type"], // Default: ["Content-Type"]
-    exposedHeaders: ["Content-Type"], // Default: ["Content-Type"]
+    exposedHeaders: ["Custom-Header"], // Default: ["Content-Range", "Accept-Ranges"]
     allowCredentials: true, // Default: false
     browserCacheMaxAge: 60, // Default: 86400 (1 day)
     debug: true, // Default: false
