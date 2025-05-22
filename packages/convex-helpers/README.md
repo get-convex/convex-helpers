@@ -1151,7 +1151,19 @@ import { httpAction } from "./_generated/api";
 const http = httpRouter();
 
 // Your CORS router:
-const cors = corsRouter(http);
+const cors = corsRouter(
+  http,
+  // Optional configuration, can be omitted entirely
+  {
+    allowedOrigins: ["http://localhost:8080"], // Default: ["*"]
+    allowedMethods: ["GET", "POST"], // Default: ["OPTIONS"]
+    allowedHeaders: ["Content-Type"], // Default: ["Content-Type"]
+    exposedHeaders: ["Content-Type"], // Default: ["Content-Type"]
+    allowCredentials: true, // Default: false
+    browserCacheMaxAge: 60, // Default: 86400 (1 day)
+    debug: true, // Default: false
+  },
+);
 
 cors.route({
   path: "/foo",
