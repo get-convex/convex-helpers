@@ -33,6 +33,7 @@ Table of contents:
     - [What can you do with triggers?](#what-can-you-do-with-triggers)
     - [Trigger semantics](#trigger-semantics)
   - [CORS support for HttpRouter](#cors-support-for-httprouter)
+  - [Standard Schema support](#standard-schema)
 
 ## Custom Functions
 
@@ -1203,4 +1204,22 @@ http.route({
 });
 // Export http (or cors.http)
 export default http;
+```
+
+## Standard Schema
+
+Convex helpers provides a function to convert a validator to a Standard Schema.
+
+```typescript
+import { toStandardSchema } from "convex-helpers/standardSchema";
+
+const standardValidator = toStandardSchema(v.object({
+  name: v.string(),
+  age: v.number(),
+}));
+
+standardValidator["~standard"].validate({
+  name: "John",
+  age: 30,
+});
 ```
