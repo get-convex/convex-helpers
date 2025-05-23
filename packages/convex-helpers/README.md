@@ -1215,10 +1215,12 @@ To convert a Convex validator to a Standard Schema, use `toStandardSchema`:
 ```typescript
 import { toStandardSchema } from "convex-helpers/standardSchema";
 
-const standardValidator = toStandardSchema(v.object({
-  name: v.string(),
-  age: v.number(),
-}));
+const standardValidator = toStandardSchema(
+  v.object({
+    name: v.string(),
+    age: v.number(),
+  }),
+);
 
 standardValidator["~standard"].validate({
   name: "John",
