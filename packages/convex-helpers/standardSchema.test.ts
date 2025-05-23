@@ -17,7 +17,7 @@ describe("toStandardSchema", () => {
     const value = ours["~standard"].validate("hello");
     const zods = z.string();
     const zodValue = zods["~standard"].validate("hello");
-    expectTypeOf(value["~standard"]).toEqualTypeOf(zodValue["~standard"]);
+    expectTypeOf(ours["~standard"]).toEqualTypeOf(zods["~standard"]);
     expectTypeOf(value).toEqualTypeOf(zodValue);
   });
 
