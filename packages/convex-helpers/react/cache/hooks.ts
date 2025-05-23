@@ -180,16 +180,16 @@ function createQueryKey<Query extends FunctionReference<"query">>(
   return queryKey;
 }
 
-/**
- * NOTE: The below is copied verbatim from the convex package, using the cached
- * useQueries implementation.
- */
-
 // NOTE!: We use the same ID so it's always cached, but it can mean a split is
 // required off the bat if it's an old stale query result.
 function nextPaginationId(): number {
   return 0;
 }
+
+/**
+ * NOTE: The below is copied verbatim from the convex package, using the cached
+ * useQueries implementation.
+ */
 
 // Incrementing integer for each page queried in the usePaginatedQuery hook.
 type QueryPageKey = number;

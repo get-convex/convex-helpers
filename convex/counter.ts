@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { action, query } from "./_generated/server";
 // Using mutation from triggersExample so any changes will run triggers
 import { mutation } from "./triggersExample";
@@ -19,6 +20,13 @@ export const getCounters = query({
   args: {},
   handler: async ({ db }) => {
     return db.query("counter_table").collect();
+  },
+});
+
+export const getCountersPaginated = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async ({ db }, { paginationOpts }) => {
+    return db.query("counter_table").order("desc").paginate(paginationOpts);
   },
 });
 
