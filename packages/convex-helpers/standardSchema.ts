@@ -7,6 +7,12 @@ import { validate, ValidationError } from "./validators.js";
 import type { Value } from "convex/values";
 import type { GenericDataModel } from "convex/server";
 
+/**
+ * Convert a Convex validator to a Standard Schema.
+ * @param validator - The Convex validator to convert.
+ * @param opts - Options for the validation.
+ * @returns The Standard Schema validator with the type of the Convex validator.
+ */
 export function toStandardSchema<
   T extends Value,
   V extends Validator<T, any, any>,
