@@ -1208,7 +1208,9 @@ export default http;
 
 ## Standard Schema
 
-Convex helpers provides a function to convert a validator to a Standard Schema.
+[Standard Schema](https://github.com/standard-schema/standard-schema)
+is a specification for validating data.
+To convert a Convex validator to a Standard Schema, use `toStandardSchema`:
 
 ```typescript
 import { toStandardSchema } from "convex-helpers/standardSchema";
