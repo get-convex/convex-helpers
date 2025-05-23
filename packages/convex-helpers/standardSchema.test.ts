@@ -1,5 +1,7 @@
+import { z } from "zod";
 import { toStandardSchema } from "./standardSchema.js";
 import { v } from "convex/values";
+import { expectTypeOf } from "vitest";
 
 describe("toStandardSchema", () => {
   test("conforms to StandardSchemaV1 for string", () => {
@@ -8,6 +10,15 @@ describe("toStandardSchema", () => {
     expect(schema["~standard"]).toHaveProperty("version", 1);
     expect(schema["~standard"]).toHaveProperty("vendor", "convex-helpers");
     expect(typeof schema["~standard"].validate).toBe("function");
+  });
+
+  test("types the same as an equivalent zod validator", () => {
+    const ours = toStandardSchema(v.string());
+    const value = ours["~standard"].validate("hello");
+    const zods = z.string();
+    const zodValue = zods["~standard"].validate("hello");
+    expectTypeOf(value["~standard"]).toEqualTypeOf(zodValue["~standard"]);
+    expectTypeOf(value).toEqualTypeOf(zodValue);
   });
 
   test("validates string type", () => {

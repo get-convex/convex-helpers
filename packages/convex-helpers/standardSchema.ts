@@ -1,10 +1,9 @@
 import type { GenericDatabaseReader } from "convex/server";
 
-import type { Validator } from "convex/values";
+import type { Infer, Validator } from "convex/values";
 
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { validate, ValidationError } from "./validators.js";
-import type { Value } from "convex/values";
 import type { GenericDataModel } from "convex/server";
 
 /**
@@ -13,10 +12,7 @@ import type { GenericDataModel } from "convex/server";
  * @param opts - Options for the validation.
  * @returns The Standard Schema validator with the type of the Convex validator.
  */
-export function toStandardSchema<
-  T extends Value,
-  V extends Validator<T, any, any>,
->(
+export function toStandardSchema<V extends Validator<any, any, any>>(
   validator: V,
   opts?: {
     /* If provided, v.id validation will check that the id is for the table. */
@@ -28,7 +24,7 @@ export function toStandardSchema<
     are validating a value at a sub-path within some parent object. */
     _pathPrefix?: string;
   },
-): StandardSchemaV1<T> {
+): StandardSchemaV1<Infer<V>> {
   return {
     "~standard": {
       version: 1,
@@ -36,7 +32,7 @@ export function toStandardSchema<
       validate: (value) => {
         try {
           validate(validator, value, { ...opts, throw: true });
-          return { value } as StandardSchemaV1.SuccessResult<T>;
+          return { value } as StandardSchemaV1.SuccessResult<Infer<V>>;
         } catch (e) {
           if (e instanceof ValidationError) {
             return {
