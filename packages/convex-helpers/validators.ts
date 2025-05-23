@@ -543,6 +543,14 @@ export function validate<T extends Validator<any, any, any>>(
   return valid;
 }
 
+/**
+ * Parse a value, using a Convex validator. This differs from `validate` in that
+ * it strips unknown fields instead of throwing an error on them.
+ *
+ * @param validator - The Convex validator to parse the value against.
+ * @param value - The value to parse.
+ * @returns The parsed value, without fields not specified in the validator.
+ */
 export function parse<T extends Validator<any, any, any>>(
   validator: T,
   value: unknown,
