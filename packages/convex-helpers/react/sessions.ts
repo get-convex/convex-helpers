@@ -423,10 +423,13 @@ interface SessionStorage {
  *
  * Example:
  * ```ts
- * const sessionClient = new ConvexSessionReactClient(address);
+ * const sessionClient = new ConvexReactSessionClient(address);
  *
  * // Use sessionClient instead of client
- * const result = await sessionClient.sessionQuery(api.myModule.myQuery, { arg1: 123 });
+ * const result = await sessionClient.sessionQuery(
+ *   api.myModule.myQuery,
+ *   { arg1: 123 },
+ * );
  * ```
  */
 export class ConvexReactSessionClient extends ConvexReactClient {
