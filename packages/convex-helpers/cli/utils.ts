@@ -72,7 +72,7 @@ export function getFunctionSpec(prod?: boolean, filePath?: string) {
       } catch (error) {
         console.warn(
           chalk.yellow(
-            `Warning: Failed to delete temporary file ${filePath}:`,
+            `Warning: Failed to delete temporary file ${tempFile}:`,
             error instanceof Error ? error.message : "Unknown error",
           ),
         );
