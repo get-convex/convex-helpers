@@ -37,7 +37,7 @@ import {
   internalMutationGeneric,
   internalQueryGeneric,
 } from "convex/server";
-import type { Infer, ObjectType } from "convex/values";
+import { v, type Infer, type ObjectType } from "convex/values";
 import { assertType, describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
@@ -346,7 +346,7 @@ describe("validate", () => {
   });
 
   test("validates literal validator", () => {
-    const literalValidator = is("specific");
+    const literalValidator = v.literal("specific");
     expect(validate(literalValidator, "specific")).toBe(true);
     expect(validate(literalValidator, "other")).toBe(false);
     expect(validate(literalValidator, null)).toBe(false);
