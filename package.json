@@ -43,7 +43,7 @@
     "@types/babel__core": "7.20.5",
     "@types/jest": "29.5.14",
     "@types/node": "22.13.10",
-    "@types/react": "19.1.5",
+    "@types/react": "19.1.6",
     "@types/react-dom": "19.1.5",
     "@vitejs/plugin-react": "4.5.0",
     "@vitest/coverage-v8": "3.1.4",
