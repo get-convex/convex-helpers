@@ -373,6 +373,7 @@ export function validate<T extends Validator<any, any, any>>(
 ): value is T["type"] {
   let valid = true;
   let expected: string = validator.kind;
+  let got: string | undefined;
   if (value === undefined) {
     if (validator.isOptional !== "optional") {
       valid = false;
@@ -423,6 +424,12 @@ export function validate<T extends Validator<any, any, any>>(
       case "literal": {
         if (value !== validator.value) {
           valid = false;
+          expected = validator.value;
+          if (
+            ["string", "number", "boolean", "bigint"].includes(typeof value)
+          ) {
+            got = `"${value}"`;
+          }
         }
         break;
       }
@@ -430,6 +437,7 @@ export function validate<T extends Validator<any, any, any>>(
         if (typeof value !== "string") {
           valid = false;
         } else if (opts?.db) {
+          expected = `Id<${validator.tableName}>`;
           const id = opts.db.normalizeId(validator.tableName, value);
           if (!id) {
             valid = false;
@@ -538,7 +546,7 @@ export function validate<T extends Validator<any, any, any>>(
     }
   }
   if (!valid && opts?.throw) {
-    throw new ValidationError(expected, typeof value, opts?._pathPrefix);
+    throw new ValidationError(expected, got ?? typeof value, opts?._pathPrefix);
   }
   return valid;
 }
