@@ -510,11 +510,19 @@ export function validate<T extends Validator<any, any, any>>(
       }
       case "union": {
         valid = false;
+        let error: ValidationError | undefined;
         for (const member of validator.members) {
-          if (validate(member, value, { ...opts, throw: false })) {
-            valid = true;
-            break;
+          try {
+            if (validate(member, value, opts)) {
+              valid = true;
+              break;
+            }
+          } catch (e) {
+            error = e as ValidationError;
           }
+        }
+        if (!valid && error) {
+          throw error;
         }
         break;
       }
@@ -546,7 +554,11 @@ export function validate<T extends Validator<any, any, any>>(
     }
   }
   if (!valid && opts?.throw) {
-    throw new ValidationError(expected, got ?? typeof value, opts?._pathPrefix);
+    throw new ValidationError(
+      expected,
+      got ?? (value === null ? "null" : typeof value),
+      opts?._pathPrefix,
+    );
   }
   return valid;
 }
