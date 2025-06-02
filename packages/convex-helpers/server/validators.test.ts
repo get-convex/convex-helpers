@@ -603,5 +603,6 @@ describe("validate", () => {
 
     expect(parse(validator, "specific")).toBe("specific");
     expect(parse(validator, "other")).toBe("other");
+    expect(() => parse(validator, "not a literal")).toThrow(ValidationError);
   });
 });
