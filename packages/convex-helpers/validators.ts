@@ -503,7 +503,7 @@ export function validate<T extends Validator<any, any, any>>(
       case "union": {
         valid = false;
         for (const member of validator.members) {
-          if (validate(member, value, opts)) {
+          if (validate(member, value, { ...opts, throw: false })) {
             valid = true;
             break;
           }

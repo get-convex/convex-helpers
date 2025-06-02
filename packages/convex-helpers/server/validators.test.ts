@@ -597,4 +597,11 @@ describe("validate", () => {
     });
     expect(result).toEqual({ name: "Alice", age: 30 });
   });
+
+  test("parse handles literal union validators", () => {
+    const validator = or(is("specific"), is("other"));
+
+    expect(parse(validator, "specific")).toBe("specific");
+    expect(parse(validator, "other")).toBe("other");
+  });
 });
