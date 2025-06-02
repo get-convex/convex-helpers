@@ -37,7 +37,7 @@ import {
   internalMutationGeneric,
   internalQueryGeneric,
 } from "convex/server";
-import type { Infer, ObjectType } from "convex/values";
+import { v, type Infer, type ObjectType } from "convex/values";
 import { assertType, describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
@@ -346,10 +346,18 @@ describe("validate", () => {
   });
 
   test("validates literal validator", () => {
-    const literalValidator = is("specific");
+    const literalValidator = v.literal("specific");
     expect(validate(literalValidator, "specific")).toBe(true);
     expect(validate(literalValidator, "other")).toBe(false);
     expect(validate(literalValidator, null)).toBe(false);
+  });
+
+  test("validates union of literals", () => {
+    const unionValidator = or(is("foo"), is("bar"));
+    expect(validate(unionValidator, "foo")).toBe(true);
+    expect(validate(unionValidator, "bar")).toBe(true);
+    expect(validate(unionValidator, "baz")).toBe(false);
+    expect(validate(unionValidator, null)).toBe(false);
   });
 
   test("validates optional values", () => {
@@ -393,6 +401,18 @@ describe("validate", () => {
         { throw: true },
       ),
     ).toThrow(ValidationError);
+  });
+
+  test("doesn't throw when validating union with later matching member", () => {
+    const unionValidator = or(is("foo"), is("bar"));
+    expect(validate(unionValidator, "foo", { throw: true })).toBe(true);
+    expect(validate(unionValidator, "bar", { throw: true })).toBe(true);
+    expect(() => validate(unionValidator, "baz", { throw: true })).toThrow(
+      'Validator error: Expected `bar`, got `"baz"`',
+    );
+    expect(() => validate(unionValidator, null, { throw: true })).toThrow(
+      "Validator error: Expected `bar`, got `null`",
+    );
   });
 
   test("includes path in error messages", () => {
@@ -596,5 +616,13 @@ describe("validate", () => {
       age: 30,
     });
     expect(result).toEqual({ name: "Alice", age: 30 });
+  });
+
+  test("parse handles literal union validators", () => {
+    const validator = or(is("specific"), is("other"));
+
+    expect(parse(validator, "specific")).toBe("specific");
+    expect(parse(validator, "other")).toBe("other");
+    expect(() => parse(validator, "not a literal")).toThrow(ValidationError);
   });
 });
