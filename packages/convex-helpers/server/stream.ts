@@ -52,6 +52,8 @@ type Bound = ["gt" | "lt" | "gte" | "lte" | "eq", string, Value];
  */
 function splitRange(
   indexFields: string[],
+  // For descending queries, the resulting queries are reversed.
+  order: "asc" | "desc",
   startBound: IndexKey,
   endBound: IndexKey,
   startBoundType: "gt" | "lt" | "gte" | "lte",
@@ -116,7 +118,11 @@ function splitRange(
     middleRange.push([startBoundType, indexFields[0]!, startValue]);
     middleRange.push([endBoundType, indexFields[0]!, endValue]);
   }
-  return [...startRanges, middleRange, ...endRanges];
+  const ranges = [...startRanges, middleRange, ...endRanges];
+  if (order === "desc") {
+    ranges.reverse();
+  }
+  return ranges;
 }
 
 function rangeToQuery(range: Bound[]) {
@@ -821,6 +827,7 @@ export function streamIndexRange<
   const indexFields = getIndexFields(table, index, schema);
   const splitBounds = splitRange(
     indexFields,
+    order,
     bounds.lowerBound,
     bounds.upperBound,
     bounds.lowerBoundInclusive ? "gte" : "gt",

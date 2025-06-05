@@ -174,6 +174,46 @@ describe("stream", () => {
     });
   });
 
+  test("continuCursor respects the order of the stream", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      // put first out of order just in case
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 2 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 2 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc")
+        .order("desc");
+      const result = await query.paginate({ numItems: 1, cursor: null });
+      expect(result.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 3, c: 2 },
+      ]);
+      expect(result.isDone).toBe(false);
+      expect(result.continueCursor).toMatch("[1,3,2");
+      const result2 = await query.paginate({
+        numItems: 1,
+        cursor: result.continueCursor,
+      });
+      expect(result2.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 3 },
+      ]);
+      expect(result2.isDone).toBe(false);
+      expect(result2.continueCursor).toMatch("[1,2,3");
+      const result3 = await query.paginate({
+        numItems: 1,
+        cursor: result2.continueCursor,
+      });
+      expect(result3.continueCursor).toMatch("[1,2,2");
+      expect(result3.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 2 },
+      ]);
+      expect(result3.isDone).toBe(false);
+    });
+  });
+
   test("query round trip with pagination one item at a time", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
