@@ -469,7 +469,7 @@ describe("stream", () => {
           numItems: 0,
           cursor: null,
         }),
-      ).toThrow();
+      ).rejects.toThrow();
     });
   });
 
