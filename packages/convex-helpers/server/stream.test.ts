@@ -132,6 +132,7 @@ describe("stream", () => {
       const result = await query.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { a: 1, b: 4, c: 3 },
+        { a: 1, b: 3, c: 4 },
         { a: 1, b: 3, c: 3 },
       ]);
     });
@@ -145,14 +146,13 @@ describe("stream", () => {
       await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 4 });
-      await ctx.db.insert("foo", { a: 1, b: 4, c: 5 });
       const query = stream(ctx.db, schema)
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2));
       const resultPage1 = await query.paginate({ numItems: 2, cursor: null });
       expect(resultPage1.page.map(stripSystemFields)).toEqual([
         { a: 1, b: 3, c: 3 },
-        { a: 1, b: 4, c: 3 },
+        { a: 1, b: 3, c: 4 },
       ]);
       expect(resultPage1.isDone).toBe(false);
       const resultPage2 = await query.paginate({
@@ -160,8 +160,8 @@ describe("stream", () => {
         cursor: resultPage1.continueCursor,
       });
       expect(resultPage2.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 4, c: 3 },
         { a: 1, b: 4, c: 4 },
-        { a: 1, b: 4, c: 5 },
       ]);
       expect(resultPage2.isDone).toBe(false);
       const resultPage3 = await query.paginate({
