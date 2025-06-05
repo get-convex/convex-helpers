@@ -748,4 +748,52 @@ describe("stream", () => {
       expect(page1.page.map(stripSystemFields)).toEqual([{ a: 1, b: 3, c: 5 }]);
     });
   });
+  test("undefined cursor serialization roundtrips", async () => {
+    const schema = defineSchema({
+      foo: defineTable({
+        a: v.optional(v.number()),
+        b: v.number(),
+      }).index("ab", ["a", "b"]),
+    });
+  });
+
+  test("undefined cursor serialization roundtrips", async () => {
+    const schema = defineSchema({
+      foo: defineTable({
+        a: v.optional(v.number()),
+        b: v.number(),
+      }).index("ab", ["a", "b"]),
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2 });
+      await ctx.db.insert("foo", { a: undefined, b: 3 });
+      await ctx.db.insert("foo", { a: 2, b: 4 });
+      await ctx.db.insert("foo", { a: undefined, b: 5 });
+      const query = stream(ctx.db, schema).query("foo").withIndex("ab");
+      const result = await query.paginate({ numItems: 1, cursor: null });
+      expect(result.continueCursor).toMatch('["$_",');
+      expect(result.page.map(stripSystemFields)).toEqual([
+        { a: undefined, b: 3 },
+      ]);
+      expect(result.isDone).toBe(false);
+      const page1 = await query.paginate({
+        numItems: 2,
+        cursor: result.continueCursor,
+      });
+      expect(page1.page.map(stripSystemFields)).toEqual([
+        { b: 5 },
+        { a: 1, b: 2 },
+      ]);
+      expect(page1.isDone).toBe(false);
+      const page2 = await query.paginate({
+        numItems: 1,
+        cursor: page1.continueCursor,
+      });
+      expect(page2.page.map(stripSystemFields)).toEqual([
+        { a: undefined, b: 5 },
+      ]);
+      expect(page2.isDone).toBe(true);
+    });
+  });
 });
