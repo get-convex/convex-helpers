@@ -1,6 +1,6 @@
 /* eslint-disable no-unexpected-multiline */
 import type { Value } from "convex/values";
-import { convexToJson, jsonToConvex } from "convex/values";
+import { convexToJson, compareValues, jsonToConvex } from "convex/values";
 import type {
   DataModelFromSchemaDefinition,
   DocumentByInfo,
@@ -21,9 +21,8 @@ import type {
   SystemDataModel,
   TableNamesInDataModel,
 } from "convex/server";
-import { compareValues } from "./compare.js";
 
-export type IndexKey = Value[];
+export type IndexKey = (Value | undefined)[];
 
 //
 // Helper functions
@@ -349,7 +348,7 @@ abstract class QueryStream<T extends GenericStreamItem>
     };
     if (opts.cursor !== null) {
       newStartKey = {
-        key: jsonToConvex(JSON.parse(opts.cursor)) as IndexKey,
+        key: deserializeCursor(opts.cursor),
         inclusive: false,
       };
     }
@@ -362,7 +361,7 @@ abstract class QueryStream<T extends GenericStreamItem>
     let maxRows: number | undefined = opts.numItems;
     if (opts.endCursor) {
       newEndKey = {
-        key: jsonToConvex(JSON.parse(opts.endCursor)) as IndexKey,
+        key: deserializeCursor(opts.endCursor),
         inclusive: true,
       };
       // If there's an endCursor, continue until we get there even if it's more
@@ -391,7 +390,7 @@ abstract class QueryStream<T extends GenericStreamItem>
         (maxRowsToRead !== undefined && indexKeys.length >= maxRowsToRead)
       ) {
         hasMore = true;
-        continueCursor = JSON.stringify(convexToJson(indexKey as Value));
+        continueCursor = serializeCursor(indexKey);
         break;
       }
     }
@@ -410,9 +409,7 @@ abstract class QueryStream<T extends GenericStreamItem>
       isDone: !hasMore,
       continueCursor,
       pageStatus,
-      splitCursor: splitCursor
-        ? JSON.stringify(convexToJson(splitCursor as Value))
-        : undefined,
+      splitCursor: splitCursor ? serializeCursor(splitCursor) : undefined,
     };
   }
   async collect() {
@@ -1850,4 +1847,27 @@ function compareKeys(key1: Key, key2: Key): number {
   // Note: we're being cautious here, but we aren't checking above that the type
   // of key2.kind is valid...
   throw new Error(`Unexpected key kind: ${key1.kind as any}`);
+}
+
+function serializeCursor(key: IndexKey): string {
+  return JSON.stringify(
+    convexToJson(
+      key.map((v): Value => (v === undefined ? { $undefined: true } : v)),
+    ),
+  );
+}
+
+function deserializeCursor(cursor: string): IndexKey {
+  return (jsonToConvex(JSON.parse(cursor)) as Value[]).map((v) => {
+    if (typeof v === "object" && !Array.isArray(v) && v !== null) {
+      const entries = Object.entries(v);
+      if (entries.length === 1 && entries[0]![0] === "$undefined") {
+        // This is a special case for the undefined value.
+        // It's not a valid value in the index, but it's a valid value in the
+        // cursor.
+        return undefined;
+      }
+    }
+    return v;
+  });
 }
