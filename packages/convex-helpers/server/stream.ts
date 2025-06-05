@@ -1852,20 +1852,34 @@ function compareKeys(key1: Key, key2: Key): number {
 function serializeCursor(key: IndexKey): string {
   return JSON.stringify(
     convexToJson(
-      key.map((v): Value => (v === undefined ? { $undefined: true } : v)),
+      key.map(
+        (v): Value =>
+          v === undefined
+            ? "$_"
+            : typeof v === "string" && v.endsWith("$_")
+              ? // in the unlikely case their string was "$_" or "$$_" etc.
+                // we need to escape it. Always add a $ so "$$_" becomes "$$$_"
+                "$" + v
+              : v,
+      ),
     ),
   );
 }
 
 function deserializeCursor(cursor: string): IndexKey {
   return (jsonToConvex(JSON.parse(cursor)) as Value[]).map((v) => {
-    if (typeof v === "object" && !Array.isArray(v) && v !== null) {
-      const entries = Object.entries(v);
-      if (entries.length === 1 && entries[0]![0] === "$undefined") {
+    if (typeof v === "string") {
+      if (v === "$_") {
         // This is a special case for the undefined value.
         // It's not a valid value in the index, but it's a valid value in the
         // cursor.
         return undefined;
+      }
+      if (v.endsWith("$_")) {
+        // in the unlikely case their string was "$_" it was changed to "$$_"
+        // in the serialization process. If it was "$$_", it was changed to
+        // "$$$_" and so on.
+        return v.slice(1);
       }
     }
     return v;
