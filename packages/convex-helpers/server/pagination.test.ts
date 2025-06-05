@@ -330,8 +330,11 @@ describe("paginator", () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       await ctx.db.insert("foo", { a: 1, b: 5, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 2 });
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 6, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 2 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 2 });
       const result1 = await paginator(ctx.db, schema)
@@ -340,8 +343,8 @@ describe("paginator", () => {
         .order("desc")
         .paginate({ cursor: null, numItems: 2 });
       expect(result1.page.map(stripSystemFields)).toEqual([
-        { a: 1, b: 5, c: 1 },
-        { a: 1, b: 4, c: 2 },
+        { a: 1, b: 5, c: 3 },
+        { a: 1, b: 5, c: 2 },
       ]);
       expect(result1.isDone).toBe(false);
 
@@ -349,11 +352,21 @@ describe("paginator", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1).gt("b", 3).lte("b", 5))
         .order("desc")
-        .paginate({ cursor: result1.continueCursor, numItems: 2 });
+        .paginate({ cursor: result1.continueCursor, numItems: 3 });
       expect(result2.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 5, c: 1 },
+        { a: 1, b: 4, c: 2 },
         { a: 1, b: 4, c: 1 },
       ]);
-      expect(result2.isDone).toBe(true);
+      expect(result2.isDone).toBe(false);
+
+      const result3 = await paginator(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1).gt("b", 3).lte("b", 5))
+        .order("desc")
+        .paginate({ cursor: result2.continueCursor, numItems: 2 });
+      expect(result3.page.map(stripSystemFields)).toEqual([]);
+      expect(result3.isDone).toBe(true);
     });
   });
 
