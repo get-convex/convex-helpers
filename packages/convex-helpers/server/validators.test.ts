@@ -352,6 +352,14 @@ describe("validate", () => {
     expect(validate(literalValidator, null)).toBe(false);
   });
 
+  test("validates union of literals", () => {
+    const unionValidator = or(is("foo"), is("bar"));
+    expect(validate(unionValidator, "foo")).toBe(true);
+    expect(validate(unionValidator, "bar")).toBe(true);
+    expect(validate(unionValidator, "baz")).toBe(false);
+    expect(validate(unionValidator, null)).toBe(false);
+  });
+
   test("validates optional values", () => {
     const optionalString = optional(string);
     expect(validate(optionalString, "value")).toBe(true);
@@ -393,6 +401,18 @@ describe("validate", () => {
         { throw: true },
       ),
     ).toThrow(ValidationError);
+  });
+
+  test("doesn't throw when validating union with later matching member", () => {
+    const unionValidator = or(is("foo"), is("bar"));
+    expect(validate(unionValidator, "foo", { throw: true })).toBe(true);
+    expect(validate(unionValidator, "bar", { throw: true })).toBe(true);
+    expect(() => validate(unionValidator, "baz", { throw: true })).toThrow(
+      'Validator error: Expected `bar`, got `"baz"`',
+    );
+    expect(() => validate(unionValidator, null, { throw: true })).toThrow(
+      "Validator error: Expected `bar`, got `null`",
+    );
   });
 
   test("includes path in error messages", () => {
@@ -596,5 +616,13 @@ describe("validate", () => {
       age: 30,
     });
     expect(result).toEqual({ name: "Alice", age: 30 });
+  });
+
+  test("parse handles literal union validators", () => {
+    const validator = or(is("specific"), is("other"));
+
+    expect(parse(validator, "specific")).toBe("specific");
+    expect(parse(validator, "other")).toBe("other");
+    expect(() => parse(validator, "not a literal")).toThrow(ValidationError);
   });
 });

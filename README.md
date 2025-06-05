@@ -71,7 +71,7 @@ There are two approaches to sessions data:
 2. Create a new session document in a `sessions` table for every new client,
    where you can store associated data.
    See [this article on Stack](https://stack.convex.dev/sessions-wrappers-as-middleware)
-   for tips on how to set up and use Sessions. To use theses sessions, copy the files:
+   for tips on how to set up and use Sessions. To use these sessions, copy the files:
    - [server/sessions.ts](./packages/convex-helpers/server/sessions.ts) on the server-side to give you action utilities like `ctx.runSessionQuery(...)`.
    - [react/session.ts](./packages/convex-helpers/react/sessions.ts) on the client-side to give you hooks like `useSessionMutation(...)`.
    - You'll need to define a table in your [`convex/schema.ts`](./convex/schema.ts) for whatever your session data looks like. Here we just use `{}`.
