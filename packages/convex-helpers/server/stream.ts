@@ -833,15 +833,12 @@ export function streamIndexRange<
     bounds.lowerBoundInclusive ? "gte" : "gt",
     bounds.upperBoundInclusive ? "lte" : "lt",
   );
-  const subQueries: OrderedStreamQuery<Schema, T, IndexName>[] = [];
-  for (const splitBound of splitBounds) {
-    subQueries.push(
-      stream(db, schema)
-        .query(table)
-        .withIndex(index, rangeToQuery(splitBound))
-        .order(order),
-    );
-  }
+  const subQueries = splitBounds.map((splitBound) =>
+    stream(db, schema)
+      .query(table)
+      .withIndex(index, rangeToQuery(splitBound))
+      .order(order),
+  );
   return new ConcatStreams(...subQueries);
 }
 
