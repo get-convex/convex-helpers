@@ -140,6 +140,7 @@ describe("stream", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 4 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 5 });
