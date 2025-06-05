@@ -141,10 +141,11 @@ describe("stream", () => {
   test("query round trip with pagination", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
+      // put first out of order just in case
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 3, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
-      await ctx.db.insert("foo", { a: 1, b: 4, c: 3 });
       await ctx.db.insert("foo", { a: 1, b: 4, c: 4 });
       const query = stream(ctx.db, schema)
         .query("foo")
@@ -170,6 +171,42 @@ describe("stream", () => {
       });
       expect(resultPage3.page.map(stripSystemFields)).toEqual([]);
       expect(resultPage3.isDone).toBe(true);
+    });
+  });
+
+  test("query round trip with pagination one item at a time", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      // put first out of order just in case
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 1 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 2 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 2 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1).gt("b", 2));
+      const result = await query.paginate({ numItems: 1, cursor: null });
+      expect(result.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 3, c: 1 },
+      ]);
+      expect(result.isDone).toBe(false);
+      const result2 = await query.paginate({
+        numItems: 1,
+        cursor: result.continueCursor,
+      });
+      expect(result2.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 1 },
+      ]);
+      expect(result2.isDone).toBe(false);
+      const result3 = await query.paginate({
+        numItems: 1,
+        cursor: result2.continueCursor,
+      });
+      expect(result3.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 2, c: 2 },
+      ]);
+      expect(result3.isDone).toBe(false);
     });
   });
 
