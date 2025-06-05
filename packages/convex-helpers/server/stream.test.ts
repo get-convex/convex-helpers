@@ -449,6 +449,30 @@ describe("stream", () => {
       expect(result.map(stripSystemFields)).toEqual([{ a: 1, b: 5, c: 0 }]);
     });
   });
+
+  test("paginate with 0 numItems", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const page = await query.paginate({
+        numItems: 0,
+        cursor: "",
+      });
+      expect(page.page).toEqual([]);
+      expect(page.isDone).toBe(false);
+      expect(page.continueCursor).toBe("");
+
+      expect(() =>
+        query.paginate({
+          numItems: 0,
+          cursor: null,
+        }),
+      ).toThrow();
+    });
+  });
+
   test("paginate respects endCursor", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
