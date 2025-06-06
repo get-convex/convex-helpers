@@ -343,7 +343,7 @@ abstract class QueryStream<T extends GenericStreamItem>
       inclusive: true,
     };
     const maxRowsToRead = opts.maximumRowsRead;
-    const softMaxRowsToRead = maxRowsToRead ? (3 * maxRowsToRead) / 4 : 1000;
+    const softMaxRowsToRead = opts.numItems + 1;
     let maxRows: number | undefined = opts.numItems;
     if (opts.endCursor) {
       newEndKey = {
