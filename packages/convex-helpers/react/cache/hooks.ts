@@ -413,9 +413,9 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
     Value[],
     undefined | PaginationResult<Value>,
   ] = useMemo(() => {
-    let currResult = undefined;
+    let currResult: PaginationResult<Value> | undefined = undefined;
 
-    const allItems = [];
+    const allItems: Value[] = [];
     for (const pageKey of currState.pageKeys) {
       currResult = resultsObject[pageKey];
       if (currResult === undefined) {

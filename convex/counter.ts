@@ -17,9 +17,9 @@ export const getCounter = query({
 });
 
 export const getCounters = query({
-  args: {},
-  handler: async ({ db }) => {
-    return db.query("counter_table").collect();
+  args: { count: v.number() },
+  handler: async ({ db }, { count }) => {
+    return db.query("counter_table").order("desc").take(count);
   },
 });
 

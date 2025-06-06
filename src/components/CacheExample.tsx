@@ -15,6 +15,7 @@ export const CacheExample: FC = () => {
   const [count, setCount] = useState(4);
   const ref = useRef<HTMLInputElement>(null);
   const [skip, setSkip] = useState(true);
+  const [unmounted, setUnmounted] = useState(false);
   const children = [];
   const updateCount = () => {
     const r = parseInt(ref.current!.value);
@@ -24,15 +25,12 @@ export const CacheExample: FC = () => {
     return false;
   };
   for (let i = 0; i < count; i++) {
-    children.push(<Added key={i} top={i + 1} />);
-    if (count % 2 == 1) {
-      children.push(<Added key={i + "extra"} top={i + 1} />);
-    }
+    children.push(<Query key={i} count={i + 1} />);
   }
   return (
     <>
       <h2>Query Cache Example</h2>
-      Enter a new number of children:{" "}
+      Enter a number counters to fetch:{" "}
       <input
         style={{ border: "1px solid" }}
         ref={ref}
@@ -48,48 +46,58 @@ export const CacheExample: FC = () => {
       </button>
       <div className="flex flex-row gap-8">
         <div className="flex-1 flex flex-col gap-2">
-          <Added top={count % 2 ? -1 : count} skip={skip} />
-          <div>Skipping the paginated query:</div>
+          <div>Regular query results</div>
+          <Query count={count} skip={skip} />
+          <div>Paginated query results</div>
           <Paginated skip={skip} />
         </div>
         <div className="flex-1 flex flex-col gap-2">
-          <div>
-            Optionally rendering the component should also show up instantly:
-          </div>
-          {skip ? (
-            <div>Skipped</div>
+          <div>Alternative to skip: mounting and unmounting the component</div>
+          <button onClick={() => setUnmounted((unmounted) => !unmounted)}>
+            {unmounted ? "Mount" : "Unmount"}
+          </button>
+          {unmounted ? (
+            <div>Unmounted</div>
           ) : (
-            <Added top={count % 2 ? -1 : count} skip={false} />
+            <>
+              <div>Regular query results</div>
+              <Query count={count} skip={false} />
+              <div>Paginated query results</div>
+              <Paginated skip={false} />
+            </>
           )}
-          <div>Reloading the paginated query:</div>
-          {skip ? <div>Skipped</div> : <Paginated skip={false} />}
         </div>
       </div>
     </>
   );
 };
 
-const Added: FC<{ top: number; skip?: boolean }> = ({ top, skip }) => {
-  const sum = useQuery(api.addIt.addItUp, skip ? "skip" : { top });
+const Query: FC<{ count: number; skip?: boolean }> = ({ count, skip }) => {
+  const counters = useQuery(api.counter.getCounters, skip ? "skip" : { count });
   const sumWithStatus = useQueryWithStatus(
-    api.addIt.addItUp,
-    skip ? "skip" : { top },
+    api.counter.getCounters,
+    skip ? "skip" : { count },
   );
   if (
-    sumWithStatus.data !== sum ||
-    sumWithStatus.isPending !== (sum === undefined) ||
-    sumWithStatus.isSuccess !== (sum !== undefined)
+    sumWithStatus.data !== counters ||
+    sumWithStatus.isPending !== (counters === undefined) ||
+    sumWithStatus.isSuccess !== (counters !== undefined)
   ) {
     throw new Error("These should never mismatch");
   }
 
-  if (sum === undefined) {
+  if (counters === undefined) {
     if (skip) return <li>Skipped</li>;
-    return <li>Loading {top}...</li>;
+    return <li>Loading {count}...</li>;
   } else {
     return (
       <li>
-        {top} &rarr; {sum}
+        {count} &rarr; {counters.at(0)?.name}
+        {counters.length > 1
+          ? counters.length > 2
+            ? `...${counters.length - 2}...${counters.at(-1)?.name}`
+            : `...${counters.at(-1)?.name}`
+          : ""}
       </li>
     );
   }

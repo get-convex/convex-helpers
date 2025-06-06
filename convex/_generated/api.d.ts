@@ -13,7 +13,6 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
-import type * as addIt from "../addIt.js";
 import type * as counter from "../counter.js";
 import type * as http from "../http.js";
 import type * as migrationsExample from "../migrationsExample.js";
@@ -34,7 +33,6 @@ import type * as triggersExample from "../triggersExample.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-  addIt: typeof addIt;
   counter: typeof counter;
   http: typeof http;
   migrationsExample: typeof migrationsExample;
