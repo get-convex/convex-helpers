@@ -327,6 +327,20 @@ abstract class QueryStream<T extends GenericStreamItem>
       maximumRowsRead?: number;
     },
   ): Promise<PaginationResult<T>> {
+    if (opts.numItems === 0) {
+      if (opts.cursor === null) {
+        throw new Error(
+          ".paginate called with cursor of null and 0 for numItems. " +
+            "This is not supported, as null is not a valid continueCursor. " +
+            "Advice: avoid calling paginate entirely in these cases.",
+        );
+      }
+      return {
+        page: [],
+        isDone: false,
+        continueCursor: opts.cursor,
+      };
+    }
     const order = this.getOrder();
     let newStartKey = {
       key: [] as IndexKey,
