@@ -1,8 +1,13 @@
 # Changelog
 
-## 0.1.91-alpha.0
+## 0.1.91
 
-- Fix descending pagination of paginator/ streams helpers
+- `usePaginatedQuery` is now available in the cached query helpers.
+  - With it, you can pass `endCursorBehavior: "setOnLoadMore", which allows seamless
+    pagination when using the `stream` and `paginator` helpers and will allow future
+    deprecation of the too-magical QueryJournal.
+- Split pages more eagerly in the custom pagination hooks to reduce bandwidth.
+- Fix descending multi-column index pagination for `paginator` and `streams` helpers.
 
 ## 0.1.90
 
