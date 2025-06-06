@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.92
+
+- `usePaginatedQuery` has the default `latestPageSize` option of "fixed"
+  which has the first (or latest once loadMore is called) page stay a
+  fixed size. Today this only affects queries using `paginator` or
+  `stream` helpers, and will soon also be able to fix the page size for
+  built-in pagination too.
+- Fix: update type annotations of imports for tsApiApec.ts.
+
 ## 0.1.91
 
 - `usePaginatedQuery` is now available in the cached query helpers.
