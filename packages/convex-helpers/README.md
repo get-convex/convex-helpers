@@ -722,11 +722,12 @@ and paginate the result.
   of documents, ordered by indexed fields.
 
 The cool thing about QueryStreams is you can make more QueryStreams from them,
-with operations equivalent to SQL's `UNION ALL`, `WHERE`, and
-`JOIN`. These operations preserve order, so the result
-is still a valid QueryStream. You can combine streams as much as you want, and
-finally treat it like a Convex query to get documents with `.first()`,
-`.collect()`, or `.paginate()`.
+with operations equivalent to SQL's `UNION ALL`, `WHERE`, and `JOIN`.
+These operations preserve order, so the result is still a valid QueryStream.
+You can combine streams as much as you want, and finally treat it like a
+Convex query to get documents with `.first()`, `.collect()`, or `.paginate()`.
+See [this Stack post](https://stack.convex.dev/translate-sql-into-convex-queries)
+for examples of translating SQL queries into Convex queries.
 
 For example, if you have a stream of "messages created by user1" and a stream
 of "messages created by user2", you can get a stream of
@@ -734,6 +735,9 @@ of "messages created by user2", you can get a stream of
 by creation time (or whatever the order is of the index you're using). You can
 then filter the merged stream to get a stream of "messages created by user1 or user2 that are unread". Then you
 can paginate the result.
+
+See [this Stack post](https://stack.convex.dev/merging-streams-of-convex-data)
+for more information.
 
 Concrete functions you can use:
 
