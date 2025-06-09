@@ -358,6 +358,18 @@ export const outerRemoves = outerRemover({
     return { ctxInner: ctx["inner"], ctxOuter: ctx["outer"], ...args };
   },
 });
+export const outerExtender = customQuery(inner, {
+  args: { outer: v.string() },
+  input: async (ctx, args) => {
+    return { ctx: { outer: [args.outer, ctx.inner] }, args: {} };
+  },
+});
+export const outerExtends = outerExtender({
+  args: { a: v.string() },
+  handler: async (ctx, args) => {
+    return { outer: ctx.outer, ...args };
+  },
+});
 
 /**
  * Test helpers
@@ -388,6 +400,7 @@ const testApi: ApiFromModules<{
     create: typeof create;
     outerAdds: typeof outerAdds;
     outerRemoves: typeof outerRemoves;
+    outerExtends: typeof outerExtends;
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -558,6 +571,16 @@ describe("nested custom functions", () => {
     expect(
       await t.query(testApi.outerRemoves, { a: "hi", outer: "bye" }),
     ).toMatchObject({
+      a: "hi",
+    });
+  });
+
+  test("extends prev ctx", async () => {
+    const t = convexTest(schema, modules);
+    expect(
+      await t.query(testApi.outerExtends, { a: "hi", outer: "extended" }),
+    ).toMatchObject({
+      outer: ["extended", "inner"],
       a: "hi",
     });
   });
