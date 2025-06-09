@@ -35,7 +35,7 @@
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.1",
+    "@arethetypeswrong/cli": "0.18.2",
     "@edge-runtime/vm": "5.0.0",
     "@redocly/cli": "1.34.3",
     "@standard-schema/spec": "1.0.0",
