@@ -367,7 +367,7 @@ export const outerExtender = customQuery(inner, {
 export const outerExtends = outerExtender({
   args: { a: v.string() },
   handler: async (ctx, args) => {
-    return { outer: ctx.outer, ...args };
+    return { outer: ctx.outer, inner: ctx.inner, ...args };
   },
 });
 
@@ -580,6 +580,7 @@ describe("nested custom functions", () => {
     expect(
       await t.query(testApi.outerExtends, { a: "hi", outer: "extended" }),
     ).toMatchObject({
+      inner: "inner",
       outer: ["extended", "inner"],
       a: "hi",
     });
