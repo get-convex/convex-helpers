@@ -358,6 +358,7 @@ export const outerRemoves = outerRemover({
     return { ctxInner: ctx["inner"], ctxOuter: ctx["outer"], ...args };
   },
 });
+// Extend the previous ctx with new args
 export const outerExtender = customQuery(inner, {
   args: { outer: v.string() },
   input: async (ctx, args) => {
@@ -368,6 +369,21 @@ export const outerExtends = outerExtender({
   args: { a: v.string() },
   handler: async (ctx, args) => {
     return { outer: ctx.outer, inner: ctx.inner, ...args };
+  },
+});
+// Deleted ctx is correctly undefined on nested functions
+export const dbRemover = customQuery(
+  query,
+  customCtx(() => ({ db: undefined })),
+);
+export const outerDBRemover = customQuery(
+  dbRemover,
+  customCtx(() => ({ outer: "outer" })),
+);
+export const outerRemovesDB = outerDBRemover({
+  args: {},
+  handler: async (ctx, args) => {
+    return { db: ctx?.db ? "present" : "missing", outer: ctx.outer, ...args };
   },
 });
 
@@ -401,6 +417,7 @@ const testApi: ApiFromModules<{
     outerAdds: typeof outerAdds;
     outerRemoves: typeof outerRemoves;
     outerExtends: typeof outerExtends;
+    outerRemovesDB: typeof outerRemovesDB;
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -575,6 +592,13 @@ describe("nested custom functions", () => {
     });
   });
 
+  test("still validates args", async () => {
+    const t = convexTest(schema, modules);
+    await expect(() =>
+      t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
+    ).rejects.toThrow("Validator error: Expected `string`");
+  });
+
   test("extends prev ctx", async () => {
     const t = convexTest(schema, modules);
     expect(
@@ -586,10 +610,11 @@ describe("nested custom functions", () => {
     });
   });
 
-  test("still validates args", async () => {
+  test("keeps deleted ctx", async () => {
     const t = convexTest(schema, modules);
-    await expect(() =>
-      t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
-    ).rejects.toThrow("Validator error: Expected `string`");
+    expect(await t.query(testApi.outerRemovesDB, {})).toMatchObject({
+      db: "missing",
+      outer: "outer",
+    });
   });
 });
