@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.93 alpha
+## 0.1.93
 
 - Changes `usePaginatedQuery` for caching to take a `customPagination`
   option instead of "fixed" vs. "grow" for now. Pass `true` when using

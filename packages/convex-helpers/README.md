@@ -666,9 +666,10 @@ nearly a drop-in replacement and can even be used with `usePaginatedQuery`[^1].
 This makes it more suitable for non-reactive pagination usecases,
 such as iterating data in a mutation. Note: it supports `withIndex` but not `filter`.
 
-[^1]: Note: if you want gapless pagination, use the `usePaginatedQuery` hook in
-`"convex-helpers/react"`, or if you're also using the cached query helpers, pass
-`customPagination: true` for that version.
+[^1]:
+    Note: if you want gapless pagination, use the `usePaginatedQuery` hook in
+    `"convex-helpers/react"`, or if you're also using the cached query helpers, pass
+    `customPagination: true` for that version.
 
 For more information on reactive pagination and end cursors, see
 https://stack.convex.dev/fully-reactive-pagination
@@ -947,7 +948,6 @@ To use the cache, first make sure to put a `<ConvexQueryCacheProvider>`
 inside `<ConvexProvider>` in your react component tree:
 
 ```tsx
-
 import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
 // For Next.js, import from "convex-helpers/react/cache/provider"; instead
 
