@@ -314,13 +314,10 @@ const completeSplitQuery =
  * @param args - The arguments object for the query function, excluding
  * the `paginationOpts` property. That property is injected by this hook.
  * @param options - An object specifying the `initialNumItems` to be loaded in
- * the first page, and the `latestPageSize` to use.
- * @param options.latestPageSize controls how the latest page (the first page
- * until another page is loaded) size grows. With "fixed", the page size will
- * stay at the size specified by `initialNumItems` / `loadMore`. With "grow",
- * the page size will grow as new items are added within the range of the initial
- * page. Once multiple pages are loaded, all but the last page will grow, in
- * order to provide seamless pagination. See the docs for more details.
+ * the first page, and the `customPagination` to use.
+ * @param options.customPagination - Set this to true when you are using
+ * `stream` or `paginator` helpers on the server. This enables gapless
+ * pagination by connecting the pages explicitly when calling `loadMore`.
  * @returns A {@link UsePaginatedQueryResult} that includes the currently loaded
  * items, the status of the pagination, and a `loadMore` function.
  *
@@ -331,7 +328,10 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   args: PaginatedQueryArgs<Query> | "skip",
   options: {
     initialNumItems: number;
-    latestPageSize?: "grow" | "fixed";
+    /**
+     * Set this to true if you are using the `stream` or `paginator` helpers.
+     */
+    customPagination?: boolean;
   },
 ): UsePaginatedQueryReturnType<Query> {
   if (
@@ -391,10 +391,10 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   // `currState` is the state that we'll render based on.
   let currState = state;
   if (
+    skip !== state.skip ||
     getFunctionName(query) !== getFunctionName(state.query) ||
     JSON.stringify(convexToJson(argsObject as Value)) !==
-      JSON.stringify(convexToJson(state.args)) ||
-    skip !== state.skip
+      JSON.stringify(convexToJson(state.args))
   ) {
     currState = createInitialState();
     setState(currState);
@@ -455,9 +455,12 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
         currResult.splitCursor &&
         (currResult.pageStatus === "SplitRecommended" ||
           currResult.pageStatus === "SplitRequired" ||
-          currResult.page.length > options.initialNumItems * 2)
+          (options.customPagination
+            ? // For custom pagination, we eagerly split the page when it grows.
+              currResult.page.length > options.initialNumItems
+            : currResult.page.length > options.initialNumItems * 2))
       ) {
-        // If a single page has more than double the expected number of items,
+        // If a single page has more than 1.5x the expected number of items,
         // or if the server requests a split, split the page into two.
         setState(
           splitQuery(
@@ -527,7 +530,10 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
             const queries = { ...prevState.queries };
             let ongoingSplits = prevState.ongoingSplits;
             let pageKeys = prevState.pageKeys;
-            if (options.latestPageSize !== "grow") {
+            if (options.customPagination) {
+              // Connect the current last page to the next page
+              // by setting the endCursor of the last page to the continueCursor
+              // of the next page.
               const lastPageKey = prevState.pageKeys.at(-1)!;
               const boundLastPageKey = nextPageKey;
               queries[boundLastPageKey] = {
@@ -572,7 +578,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
         }
       },
     } as const;
-  }, [maybeLastResult, currState.nextPageKey, options.latestPageSize]);
+  }, [maybeLastResult, currState.nextPageKey, options.customPagination]);
 
   return {
     results,
