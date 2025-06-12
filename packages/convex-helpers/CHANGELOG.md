@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.93 alpha
+
+- Changes `usePaginatedQuery` for caching to take a `customPagination`
+  option instead of "fixed" vs. "grow" for now. Pass `true` when using
+  the `paginator` or `stream` helpers.
+- Adds a regular `usePaginatedQuery` to use with `stream` and `paginator`
+  helpers that doesn't use the subscription cache helper.
+
 ## 0.1.92
 
 - `usePaginatedQuery` has the default `latestPageSize` option of "fixed"

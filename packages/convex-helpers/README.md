@@ -662,9 +662,13 @@ In addition to `getPage`, convex-helpers provides a function
   but does not subscribe the query to the end cursor automatically.
 
 The syntax and interface for `paginator` is so similar to `.paginate` that it is
-nearly a drop-in replacement and can even be used with `usePaginatedQuery`.
+nearly a drop-in replacement and can even be used with `usePaginatedQuery`[^1].
 This makes it more suitable for non-reactive pagination usecases,
 such as iterating data in a mutation. Note: it supports `withIndex` but not `filter`.
+
+[^1]: Note: if you want gapless pagination, use the `usePaginatedQuery` hook in
+`"convex-helpers/react"`, or if you're also using the cached query helpers, pass
+`customPagination: true` for that version.
 
 For more information on reactive pagination and end cursors, see
 https://stack.convex.dev/fully-reactive-pagination
@@ -750,9 +754,11 @@ Concrete functions you can use:
 - Once your stream is set up, you can get documents from it with the normal
   Convex query methods: `.first()`, `.collect()`, `.paginate()`, etc.
 
-Beware if using `.paginate()` with streams in reactive queries, as it has the
-same problems as [`paginator` and `getPage`](#manual-pagination): you need to
-pass in `endCursor` to prevent holes or overlaps between the pages.
+Note: if using `.paginate()` with streams in reactive queries, use the
+`usePaginatedQuery` hook from `"convex-helpers/react"`, or if you're also using
+the cached query helpers, pass `customPagination: true` for that version.
+It has the same behavior as [`paginator` and `getPage`](#manual-pagination) in
+that you need to pass in `endCursor` to prevent holes or overlaps between pages.
 
 ### Example 1: Paginate all messages by a fixed set of authors
 
@@ -924,18 +930,23 @@ server for some expiration period even after app `useQuery` hooks have all
 unmounted. This allows very fast reloading of unevicted values during
 navigation changes, view changes, etc.
 
+Note: unlike other forms of caching, subscription caching will mean strictly
+more bandwidth usage, because it will keep the subscription open even after
+the component unmounts. This is for optimizing the user experience, not database
+bandwidth.
+
 Related files:
 
 - [cache.ts](./react/cache.ts) re-exports things so you can import from a single convenient location.
 - [provider.tsx](./react/cache/provider.tsx) contains `ConvexQueryCacheProvider`,
   a configurable cache provider you put in your react app's root.
 - [hooks.ts](./react/cache/hooks.ts) contains cache-enabled drop-in
-  replacements for both `useQuery` and `useQueries` from `convex/react`.
+  replacements for `useQuery`, `usePaginatedQuery`, and `useQueries`.
 
 To use the cache, first make sure to put a `<ConvexQueryCacheProvider>`
 inside `<ConvexProvider>` in your react component tree:
 
-```jsx
+```tsx
 
 import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
 // For Next.js, import from "convex-helpers/react/cache/provider"; instead
@@ -970,7 +981,7 @@ This provider takes three optional props:
 Finally, you can utilize `useQuery` (and `useQueries`) just the same as
 their `convex/react` equivalents.
 
-```jsx
+```tsx
 import { useQuery } from "convex-helpers/react/cache";
 // For Next.js, import from "convex-helpers/react/cache/hooks"; instead
 
