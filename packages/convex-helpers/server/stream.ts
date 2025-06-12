@@ -318,7 +318,7 @@ abstract class QueryStream<T extends GenericStreamItem>
 
   filter(_predicate: any): never {
     throw new Error(
-      "Cannot call .filter on query stream. use .filterWith instead.",
+      "Cannot call .filter() on a query stream. This method is intentionally unsupported. If you want to filter streamed results, collect them first with .collect() and then use .filter() on the resulting array.",
     );
   }
   async paginate(
