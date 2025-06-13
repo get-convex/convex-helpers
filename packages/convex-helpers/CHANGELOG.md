@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.94 alpha
+
+- Fix: Pagination of distinct streams
+
 ## 0.1.93
 
 - Changes `usePaginatedQuery` for caching to take a `customPagination`
