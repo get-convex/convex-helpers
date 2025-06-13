@@ -646,6 +646,67 @@ describe("stream", () => {
     });
   });
 
+  /* test both asc and desc */
+  test.each([{ order: "asc" }, { order: "desc" }] as const)(
+    "distinct pagination works",
+    async ({ order }) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        const values = [
+          { a: 1, b: 2, c: 3 },
+          { a: 1, b: 2, c: 5 },
+          { a: 1, b: 2, c: 6 },
+          { a: 1, b: 3, c: 7 },
+          { a: 1, b: 3, c: 8 },
+          { a: 1, b: 4, c: 9 },
+          { a: 1, b: 4, c: 10 },
+          { a: 1, b: 5, c: 0 },
+          { a: 1, b: 6, c: 0 },
+        ];
+        const expectedValuesAsc = [
+          { a: 1, b: 2, c: 3 },
+          { a: 1, b: 3, c: 7 },
+          { a: 1, b: 4, c: 9 },
+          { a: 1, b: 5, c: 0 },
+          { a: 1, b: 6, c: 0 },
+        ];
+
+        const expectedValuesDesc = [
+          { a: 1, b: 6, c: 0 },
+          { a: 1, b: 5, c: 0 },
+          { a: 1, b: 4, c: 10 },
+          { a: 1, b: 3, c: 8 },
+          { a: 1, b: 2, c: 6 },
+        ];
+        const expected =
+          order === "asc" ? expectedValuesAsc : expectedValuesDesc;
+        for (const value of values) {
+          await ctx.db.insert("foo", value);
+        }
+        async function doPaginate(cursor: string | null) {
+          return stream(ctx.db, schema)
+            .query("foo")
+            .withIndex("abc", (q) => q.eq("a", 1))
+            .order(order)
+            .distinct(["b"])
+            .paginate({
+              numItems: 2,
+              cursor,
+            });
+        }
+        const query = await doPaginate(null);
+        expect(query.page.map(stripSystemFields)).toEqual(expected.slice(0, 2));
+        expect(query.isDone).toBe(false);
+        const page2 = await doPaginate(query.continueCursor!);
+        expect(page2.page.map(stripSystemFields)).toEqual(expected.slice(2, 4));
+        expect(page2.isDone).toBe(false);
+        const page3 = await doPaginate(page2.continueCursor!);
+        expect(page3.page.map(stripSystemFields)).toEqual(expected.slice(4, 6));
+        expect(page3.isDone).toBe(true);
+      });
+    },
+  );
+
   /*
   SELECT * FROM foo WHERE a = 1 AND b > 1 AND b < 5 AND c > 3
   */

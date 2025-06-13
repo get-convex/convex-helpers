@@ -1707,8 +1707,19 @@ class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
     };
   }
   override narrow(indexBounds: IndexBounds): QueryStream<T> {
+    const indexBoundsPrefix: IndexBounds = {
+      ...indexBounds,
+      lowerBound: indexBounds.lowerBound.slice(
+        0,
+        this.#distinctIndexFieldsLength,
+      ),
+      upperBound: indexBounds.upperBound.slice(
+        0,
+        this.#distinctIndexFieldsLength,
+      ),
+    };
     return new DistinctStream(
-      this.#stream.narrow(indexBounds),
+      this.#stream.narrow(indexBoundsPrefix),
       this.#distinctIndexFields,
     );
   }
