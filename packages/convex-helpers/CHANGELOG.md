@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.94 alpha
+## 0.1.94
 
 - Fix: Pagination of distinct streams
 
