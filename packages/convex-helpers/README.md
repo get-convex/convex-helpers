@@ -33,7 +33,7 @@ Table of contents:
     - [What can you do with triggers?](#what-can-you-do-with-triggers)
     - [Trigger semantics](#trigger-semantics)
   - [CORS support for HttpRouter](#cors-support-for-httprouter)
-  - [Standard Schema](#standard-schema)
+  - [Standard Schema support](#standard-schema)
 
 ## Custom Functions
 
