@@ -70,6 +70,11 @@ export type CorsConfig = {
    */
   browserCacheMaxAge?: number;
   /**
+   * Whether to block requests from origins that are not in the allowedOrigins list.
+   * @default true
+   */
+  enforceAllowOrigins?: boolean;
+  /**
    * Whether to log debugging information about CORS requests.
    * @default false
    */
@@ -240,6 +245,7 @@ const handleCors = ({
   exposedHeaders = DEFAULT_EXPOSED_HEADERS,
   allowCredentials = false,
   browserCacheMaxAge = SECONDS_IN_A_DAY,
+  enforceAllowOrigins = true,
   debug = false,
 }: {
   originalHandler?: PublicHttpAction;
@@ -330,7 +336,7 @@ const handleCors = ({
         }
       }
 
-      if (!allowOrigins) {
+      if (enforceAllowOrigins && !allowOrigins) {
         // Origin not allowed
         console.error(
           `Request from origin ${requestOrigin} blocked, missing from allowed origins: ${allowedOrigins.join()}`,
@@ -345,7 +351,7 @@ const handleCors = ({
           status: 204,
           headers: new Headers({
             ...commonHeaders,
-            "Access-Control-Allow-Origin": allowOrigins,
+            "Access-Control-Allow-Origin": allowOrigins ?? "",
             "Access-Control-Allow-Methods": allowMethods,
             "Access-Control-Allow-Headers": allowedHeaders.join(", "),
             "Access-Control-Max-Age": browserCacheMaxAge.toString(),
@@ -375,7 +381,7 @@ const handleCors = ({
        * Second, get a copy of the original response's headers
        */
       const newHeaders = new Headers(originalResponse.headers);
-      newHeaders.set("Access-Control-Allow-Origin", allowOrigins);
+      newHeaders.set("Access-Control-Allow-Origin", allowOrigins ?? "");
 
       /**
        * Third, add or update our CORS headers
