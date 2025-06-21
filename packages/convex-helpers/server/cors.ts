@@ -339,8 +339,12 @@ const handleCors = ({
 
       // Handle origin matching
       let allowOrigins: string | null = null;
-      if (parsedAllowedOrigins.includes("*") && !allowCredentials) {
-        allowOrigins = "*";
+      if (
+        parsedAllowedOrigins.includes("*") &&
+        requestOrigin &&
+        !allowCredentials
+      ) {
+        allowOrigins = requestOrigin;
       } else if (requestOrigin) {
         // Check if the request origin matches any of the allowed origins
         // (including wildcard subdomain matching if configured)
@@ -362,7 +366,9 @@ const handleCors = ({
       if (request.method === "OPTIONS") {
         const responseHeaders = new Headers({
           ...commonHeaders,
-          "Access-Control-Allow-Origin": allowOrigins ?? "",
+          ...(allowOrigins
+            ? { "Access-Control-Allow-Origin": allowOrigins }
+            : {}),
           "Access-Control-Allow-Methods": allowMethods,
           "Access-Control-Allow-Headers": allowedHeaders.join(", "),
           "Access-Control-Max-Age": browserCacheMaxAge.toString(),
@@ -395,13 +401,16 @@ const handleCors = ({
       const originalResponse = await innerHandler(ctx, request);
 
       /**
-       * Second, get a copy of the original response's headers
+       * Second, get a copy of the original response's headers and add the
+       * allow origin header if it's allowed
        */
       const newHeaders = new Headers(originalResponse.headers);
-      newHeaders.set("Access-Control-Allow-Origin", allowOrigins ?? "");
+      if (allowOrigins) {
+        newHeaders.set("Access-Control-Allow-Origin", allowOrigins);
+      }
 
       /**
-       * Third, add or update our CORS headers
+       * Third, add or update our other CORS headers
        */
       Object.entries(commonHeaders).forEach(([key, value]) => {
         newHeaders.set(key, value);

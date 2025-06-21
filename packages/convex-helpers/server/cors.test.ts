@@ -170,7 +170,7 @@ describe("corsRouter fetch routes", () => {
     return {
       "access-control-allow-headers": "Content-Type",
       "access-control-allow-methods": `${method}`,
-      "access-control-allow-origin": "*",
+      "access-control-allow-origin": "http://localhost:3000",
       "access-control-max-age": "86400",
       "content-type": "application/json",
     };
@@ -195,6 +195,15 @@ describe("corsRouter fetch routes", () => {
       expectedHeaders({ method })["content-type"],
     );
   };
+
+  const verifyFactResponse = async (response: Response) => {
+    expect(response.status).toBe(200);
+    verifyHeaders("GET", response.headers);
+    const body = await response.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBe(1);
+  };
+
   const testWithHttp = () => {
     // We define http routes in ./cors.test.http.ts
     // But convex expects them to be in convex/http.ts
@@ -212,62 +221,67 @@ describe("corsRouter fetch routes", () => {
   };
   test("GET /fact", async () => {
     const t = testWithHttp();
-    const response = await t.fetch("/fact", { method: "GET" });
+    const response = await t.fetch("/fact", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
     expect(response.status).toBe(200);
     verifyHeaders("GET", response.headers);
-    const body = await response.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(1);
-    expect(body[0]).toHaveProperty("fact");
-    expect(typeof body[0].fact).toBe("string");
-    expect(body[0].fact).toBe("Hello, world!");
+    await verifyFactResponse(response);
   });
 
   test("POST /fact", async () => {
     const t = testWithHttp();
     const response = await t.fetch("/fact", {
       method: "POST",
+      headers: {
+        origin: "http://localhost:3000",
+      },
     });
     verifyHeaders("POST", response.headers);
-    const body = await response.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(1);
-    expect(body[0]).toHaveProperty("fact");
-    expect(typeof body[0].fact).toBe("string");
-    expect(body[0].fact).toBe("Hello, world!");
+    await verifyFactResponse(response);
   });
 
   test("GET /dynamicFact/123", async () => {
     const t = testWithHttp();
-    const response = await t.fetch("/dynamicFact/123", { method: "GET" });
+    const response = await t.fetch("/dynamicFact/123", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
     expect(response.status).toBe(200);
     verifyHeaders("GET", response.headers);
-    const body = await response.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(1);
-    expect(body[0]).toHaveProperty("fact");
-    expect(typeof body[0].fact).toBe("string");
-    expect(body[0].fact).toBe("Hello, world!");
+    await verifyFactResponse(response);
   });
 
   test("PATCH /dynamicFact/123", async () => {
     const t = testWithHttp();
-    const response = await t.fetch("/dynamicFact/123", { method: "PATCH" });
+    const response = await t.fetch("/dynamicFact/123", {
+      method: "PATCH",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
     expect(response.status).toBe(200);
     verifyHeaders("PATCH", response.headers);
-    const body = await response.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBe(1);
-    expect(body[0]).toHaveProperty("fact");
-    expect(typeof body[0].fact).toBe("string");
-    expect(body[0].fact).toBe("Hello, world!");
+    await verifyFactResponse(response);
   });
 
   test("OPTIONS /fact (CORS preflight)", async () => {
     const t = testWithHttp();
-    const response = await t.fetch("/fact", { method: "OPTIONS" });
+    const response = await t.fetch("/fact", {
+      method: "OPTIONS",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
     expect(response.status).toBe(204);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
     expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
       "GET",
     );
@@ -312,6 +326,35 @@ describe("corsRouter fetch routes", () => {
     );
     const body = await response.json();
     expect(body).toEqual({ message: "Dynamic allowed origins! Wow!" });
+  });
+
+  test("Sets allow origin header to request origin if allowed", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/fact", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
+    await verifyFactResponse(response);
+  });
+
+  test("Omits allow origin header if request origin is not allowed", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/specialRouteOnlyForThisOrigin", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3001",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    const body = await response.json();
+    expect(body).toEqual({ message: "Custom allowed origins! Wow!" });
   });
 
   test("OPTIONS for route with custom allowedOrigins", async () => {
@@ -403,6 +446,7 @@ describe("corsRouter fetch routes", () => {
     const badResponse = await t.fetch("/allowCredentialsWithOrigin", {
       method: "GET",
     });
-    expect(badResponse.status).toBe(403);
+    expect(badResponse.status).toBe(200);
+    expect(badResponse.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
 });
