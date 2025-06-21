@@ -33,7 +33,7 @@ Table of contents:
     - [What can you do with triggers?](#what-can-you-do-with-triggers)
     - [Trigger semantics](#trigger-semantics)
   - [CORS support for HttpRouter](#cors-support-for-httprouter)
-  - [Standard Schema support](#standard-schema)
+  - [Standard Schema](#standard-schema)
 
 ## Custom Functions
 
@@ -1186,7 +1186,7 @@ const cors = corsRouter(
     exposedHeaders: ["Custom-Header"], // Default: ["Content-Range", "Accept-Ranges"]
     allowCredentials: true, // Default: false
     browserCacheMaxAge: 60, // Default: 86400 (1 day)
-    enforceAllowOrigins: false, // Default: true
+    enforceAllowOrigins: true, // Default: false
     debug: true, // Default: false
   },
 );

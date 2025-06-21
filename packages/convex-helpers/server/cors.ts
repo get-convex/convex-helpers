@@ -71,7 +71,7 @@ export type CorsConfig = {
   browserCacheMaxAge?: number;
   /**
    * Whether to block requests from origins that are not in the allowedOrigins list.
-   * @default true
+   * @default false
    */
   enforceAllowOrigins?: boolean;
   /**
@@ -245,7 +245,7 @@ const handleCors = ({
   exposedHeaders = DEFAULT_EXPOSED_HEADERS,
   allowCredentials = false,
   browserCacheMaxAge = SECONDS_IN_A_DAY,
-  enforceAllowOrigins = true,
+  enforceAllowOrigins = false,
   debug = false,
 }: {
   originalHandler?: PublicHttpAction;
