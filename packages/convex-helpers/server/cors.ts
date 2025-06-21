@@ -347,15 +347,19 @@ const handleCors = ({
        * OPTIONS has no handler and just returns headers
        */
       if (request.method === "OPTIONS") {
+        const responseHeaders = new Headers({
+          ...commonHeaders,
+          "Access-Control-Allow-Origin": allowOrigins ?? "",
+          "Access-Control-Allow-Methods": allowMethods,
+          "Access-Control-Allow-Headers": allowedHeaders.join(", "),
+          "Access-Control-Max-Age": browserCacheMaxAge.toString(),
+        });
+        if (debug) {
+          console.log("CORS OPTIONS response headers", responseHeaders);
+        }
         return new Response(null, {
           status: 204,
-          headers: new Headers({
-            ...commonHeaders,
-            "Access-Control-Allow-Origin": allowOrigins ?? "",
-            "Access-Control-Allow-Methods": allowMethods,
-            "Access-Control-Allow-Headers": allowedHeaders.join(", "),
-            "Access-Control-Max-Age": browserCacheMaxAge.toString(),
-          }),
+          headers: responseHeaders,
         });
       }
 
@@ -389,6 +393,10 @@ const handleCors = ({
       Object.entries(commonHeaders).forEach(([key, value]) => {
         newHeaders.set(key, value);
       });
+
+      if (debug) {
+        console.log("CORS response headers", newHeaders);
+      }
 
       /**
        * Fourth, return the modified Response.
