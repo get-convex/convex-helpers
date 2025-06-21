@@ -97,6 +97,28 @@ cors.route({
 });
 
 /**
+ * Per-path "allowedOrigins" can be a function
+ */
+cors.route({
+  path: "/routeWithDynamicAllowedOrigins",
+  method: "GET",
+  handler: httpActionGeneric(async () => {
+    return new Response(
+      JSON.stringify({ message: "Dynamic allowed origins! Wow!" }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+  }),
+  allowedOrigins: async (request) => {
+    return [request.headers.get("origin") ?? ""];
+  },
+});
+
+/**
  * Disable CORS for this route
  */
 http.route({

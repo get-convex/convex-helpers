@@ -146,6 +146,23 @@ describe("corsRouter internals", () => {
     const response = await callable(null as any, request);
     expect(response.headers.get("access-control-allow-methods")).toBe("GET");
   });
+  test("accepts allowedOrigins as a function", async () => {
+    const http = new HttpRouter();
+    const cors = corsRouter(http, {
+      allowedOrigins: async (request) => {
+        return ["https://example.com"];
+      },
+    });
+    const handler = vi.fn();
+    cors.route({
+      path: "/test",
+      method: "GET",
+      handler: httpActionGeneric(handler),
+    });
+    const routeMap = http.exactRoutes.get("/test");
+    const corsHandler = routeMap?.get("GET");
+    expect(corsHandler).toBeDefined();
+  });
 });
 
 describe("corsRouter fetch routes", () => {
@@ -279,6 +296,22 @@ describe("corsRouter fetch routes", () => {
     );
     const body = await response.json();
     expect(body).toEqual({ message: "Custom allowed origins! Wow!" });
+  });
+
+  test("Route with allowedOrigins as a function", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/routeWithDynamicAllowedOrigins", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
+    const body = await response.json();
+    expect(body).toEqual({ message: "Dynamic allowed origins! Wow!" });
   });
 
   test("OPTIONS for route with custom allowedOrigins", async () => {
