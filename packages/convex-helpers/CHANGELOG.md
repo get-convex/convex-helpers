@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.95
+
+- Improved CORS support for server-to-server endpoints, along with more
+  nuanced handling of Vary headers.
+  If you want the server to continue throwing when origins don't match,
+  pass `enforceAllowOrigins: true`. By default it will not throw and let
+  the browser or other server decide what to do about a conflict.
+
 ## 0.1.94
 
 - Fix: Pagination of distinct streams
