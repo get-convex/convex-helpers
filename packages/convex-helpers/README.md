@@ -33,7 +33,7 @@ Table of contents:
     - [What can you do with triggers?](#what-can-you-do-with-triggers)
     - [Trigger semantics](#trigger-semantics)
   - [CORS support for HttpRouter](#cors-support-for-httprouter)
-  - [Standard Schema support](#standard-schema)
+  - [Standard Schema](#standard-schema)
 
 ## Custom Functions
 
@@ -1180,12 +1180,16 @@ const cors = corsRouter(
   http,
   // Optional configuration, can be omitted entirely
   {
+    // allowedOrigins can also be a function
+    // allowedOrigins: (req: Request) => Promise<string[]>
     allowedOrigins: ["http://localhost:8080"], // Default: ["*"]
     allowedMethods: ["GET", "POST"], // Defaults to route spec method
     allowedHeaders: ["Content-Type"], // Default: ["Content-Type"]
     exposedHeaders: ["Custom-Header"], // Default: ["Content-Range", "Accept-Ranges"]
     allowCredentials: true, // Default: false
     browserCacheMaxAge: 60, // Default: 86400 (1 day)
+    // returns a 403 if the origin is not allowed
+    enforceAllowOrigins: true, // Default: false
     debug: true, // Default: false
   },
 );

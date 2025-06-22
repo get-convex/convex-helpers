@@ -48,7 +48,7 @@ export type CorsConfig = {
    * - https://example.com
    * @default ["*"]
    */
-  allowedOrigins?: string[];
+  allowedOrigins?: string[] | ((req: Request) => Promise<string[]>);
   /**
    * An array of allowed headers: what headers are allowed to be sent in
    * the request.
@@ -69,6 +69,11 @@ export type CorsConfig = {
    * @default 86400 (1 day)
    */
   browserCacheMaxAge?: number;
+  /**
+   * Whether to block requests from origins that are not in the allowedOrigins list.
+   * @default false
+   */
+  enforceAllowOrigins?: boolean;
   /**
    * Whether to log debugging information about CORS requests.
    * @default false
@@ -240,6 +245,7 @@ const handleCors = ({
   exposedHeaders = DEFAULT_EXPOSED_HEADERS,
   allowCredentials = false,
   browserCacheMaxAge = SECONDS_IN_A_DAY,
+  enforceAllowOrigins = false,
   debug = false,
 }: {
   originalHandler?: PublicHttpAction;
@@ -279,9 +285,17 @@ const handleCors = ({
     commonHeaders["Access-Control-Expose-Headers"] = exposedHeaders.join(", ");
   }
 
+  async function parseAllowedOrigins(request: Request): Promise<string[]> {
+    return Array.isArray(allowedOrigins)
+      ? allowedOrigins
+      : await allowedOrigins(request);
+  }
+
   // Helper function to check if origin is allowed (including wildcard subdomain matching)
-  function isAllowedOrigin(requestOrigin: string): boolean {
-    return allowedOrigins.some((allowed) => {
+  async function isAllowedOrigin(request: Request): Promise<boolean> {
+    const requestOrigin = request.headers.get("origin");
+    if (!requestOrigin) return false;
+    return (await parseAllowedOrigins(request)).some((allowed) => {
       if (allowed === "*") return true;
       if (allowed === requestOrigin) return true;
       if (allowed.startsWith("*.")) {
@@ -317,23 +331,32 @@ const handleCors = ({
         });
       }
       const requestOrigin = request.headers.get("origin");
+      const parsedAllowedOrigins = await parseAllowedOrigins(request);
+
+      if (debug) {
+        console.log("allowed origins", parsedAllowedOrigins);
+      }
 
       // Handle origin matching
       let allowOrigins: string | null = null;
-      if (allowedOrigins.includes("*") && !allowCredentials) {
-        allowOrigins = "*";
+      if (
+        parsedAllowedOrigins.includes("*") &&
+        requestOrigin &&
+        !allowCredentials
+      ) {
+        allowOrigins = requestOrigin;
       } else if (requestOrigin) {
         // Check if the request origin matches any of the allowed origins
         // (including wildcard subdomain matching if configured)
-        if (isAllowedOrigin(requestOrigin)) {
+        if (await isAllowedOrigin(request)) {
           allowOrigins = requestOrigin;
         }
       }
 
-      if (!allowOrigins) {
+      if (enforceAllowOrigins && !allowOrigins) {
         // Origin not allowed
         console.error(
-          `Request from origin ${requestOrigin} blocked, missing from allowed origins: ${allowedOrigins.join()}`,
+          `Request from origin ${requestOrigin} blocked, missing from allowed origins: ${parsedAllowedOrigins.join()}`,
         );
         return new Response(null, { status: 403 });
       }
@@ -341,15 +364,21 @@ const handleCors = ({
        * OPTIONS has no handler and just returns headers
        */
       if (request.method === "OPTIONS") {
+        const responseHeaders = new Headers({
+          ...commonHeaders,
+          ...(allowOrigins
+            ? { "Access-Control-Allow-Origin": allowOrigins }
+            : {}),
+          "Access-Control-Allow-Methods": allowMethods,
+          "Access-Control-Allow-Headers": allowedHeaders.join(", "),
+          "Access-Control-Max-Age": browserCacheMaxAge.toString(),
+        });
+        if (debug) {
+          console.log("CORS OPTIONS response headers", responseHeaders);
+        }
         return new Response(null, {
           status: 204,
-          headers: new Headers({
-            ...commonHeaders,
-            "Access-Control-Allow-Origin": allowOrigins,
-            "Access-Control-Allow-Methods": allowMethods,
-            "Access-Control-Allow-Headers": allowedHeaders.join(", "),
-            "Access-Control-Max-Age": browserCacheMaxAge.toString(),
-          }),
+          headers: responseHeaders,
         });
       }
 
@@ -372,17 +401,24 @@ const handleCors = ({
       const originalResponse = await innerHandler(ctx, request);
 
       /**
-       * Second, get a copy of the original response's headers
+       * Second, get a copy of the original response's headers and add the
+       * allow origin header if it's allowed
        */
       const newHeaders = new Headers(originalResponse.headers);
-      newHeaders.set("Access-Control-Allow-Origin", allowOrigins);
+      if (allowOrigins) {
+        newHeaders.set("Access-Control-Allow-Origin", allowOrigins);
+      }
 
       /**
-       * Third, add or update our CORS headers
+       * Third, add or update our other CORS headers
        */
       Object.entries(commonHeaders).forEach(([key, value]) => {
         newHeaders.set(key, value);
       });
+
+      if (debug) {
+        console.log("CORS response headers", newHeaders);
+      }
 
       /**
        * Fourth, return the modified Response.
