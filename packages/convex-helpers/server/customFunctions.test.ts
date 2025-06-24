@@ -364,7 +364,10 @@ export const outerRemoves = outerRemover({
  */
 const extraArgQueryBuilder = customQuery(query, {
   args: { a: v.string() },
-  input: async (_ctx, args, { extraArg }: { extraArg: string }) => ({ ctx: {extraArg}, args }),
+  input: async (_ctx, args, { extraArg }: { extraArg: string }) => ({
+    ctx: { extraArg },
+    args,
+  }),
 });
 export const extraArgQuery = extraArgQueryBuilder({
   args: {},
