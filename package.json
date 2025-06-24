@@ -53,7 +53,7 @@
     "jsdom": "26.1.0",
     "npm-run-all2": "8.0.4",
     "typescript": "5.8.3",
-    "vite": "6.3.5",
+    "vite": "7.0.0",
     "vitest": "3.2.4"
   }
 }
