@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.96-alpha.0
+
+- Adds support for defining extra arguments for custom functions.
+  When defining the custom function builder you can specify what extra
+  arguments must/may be provided alongside the args/handler at the
+  function definition site. See the README for more info.
+
+
 ## 0.1.95
 
 - Improved CORS support for server-to-server endpoints, along with more
