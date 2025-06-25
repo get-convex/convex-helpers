@@ -147,6 +147,30 @@ customAction(
   customCtx((ctx) => ({})),
 ) satisfies typeof action;
 
+customQuery({} as any, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof query;
+
+customMutation(mutation, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof mutation;
+
+customAction(action, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof action;
+
 /**
  * Testing custom function modifications.
  */

@@ -471,7 +471,11 @@ export type CustomBuilder<
             ctx: Overwrite<InputCtx, ModCtx>,
             ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
           ) => ReturnValue;
-        } & ExtraArgs)
+        } & {
+          [key in keyof ExtraArgs as key extends "args" | "returns" | "handler"
+            ? never
+            : key]: ExtraArgs[key];
+        })
       | {
           (
             ctx: Overwrite<InputCtx, ModCtx>,
@@ -505,4 +509,4 @@ export type CustomCtx<Builder> =
     ? Overwrite<InputCtx, ModCtx>
     : never;
 
-type Overwrite<T, U> = Omit<T, keyof U> & U;
+type Overwrite<T, U> = keyof U extends never ? T : Omit<T, keyof U> & U;
