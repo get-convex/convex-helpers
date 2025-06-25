@@ -543,7 +543,7 @@ describe("stream", () => {
       expect(page.isDone).toBe(false);
       expect(page.continueCursor).toBe("");
 
-      expect(() =>
+      await expect(() =>
         query.paginate({
           numItems: 0,
           cursor: null,
