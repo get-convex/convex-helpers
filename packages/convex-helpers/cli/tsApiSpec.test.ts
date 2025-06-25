@@ -1,7 +1,7 @@
 import * as ts from "typescript";
 import { expect, test } from "vitest";
-import { FUNCTIONS_JSON, JS_API } from "./functions.test";
-import { generateApiSpec } from "./tsApiSpec";
+import { FUNCTIONS_JSON, JS_API } from "./functions.test.js";
+import { generateApiSpec } from "./tsApiSpec.js";
 
 // If this test fails, it means the generated code changed. Confirm that these changes are
 // intentional by looking at the diff and update the string we compare against.

@@ -1,8 +1,8 @@
 import fs from "fs";
 import { expect, test } from "vitest";
-import { generateOpenApiSpec } from "./openApiSpec";
+import { generateOpenApiSpec } from "./openApiSpec.js";
 import { execSync } from "child_process";
-import { FUNCTIONS_JSON, OPEN_API_SPEC } from "./functions.test";
+import { FUNCTIONS_JSON, OPEN_API_SPEC } from "./functions.test.js";
 
 // If this test fails, it means you changed the generated OpenAPI spec. Confirm that these changes are
 // intentional by looking at the diff and update the string we compare against.

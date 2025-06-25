@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { FunctionReference } from "convex/server";
 import type { ConvexClient } from "convex/browser";
-import { withArgs } from "./browser";
+import { withArgs } from "./browser.js";
 
 describe("withArgs", () => {
   let mockClient: ConvexClient;

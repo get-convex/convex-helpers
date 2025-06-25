@@ -8,10 +8,10 @@ import {
   beforeEach,
 } from "vitest";
 import type { FunctionReference } from "convex/server";
-import type { SessionArgsArray, SessionQueryArgsArray } from "./sessions";
-import type { EmptyObject } from "..";
-import type { SessionId } from "../server/sessions";
-import { ConvexReactSessionClient } from "convex-helpers/react/sessions";
+import type { SessionArgsArray, SessionQueryArgsArray } from "./sessions.js";
+import type { EmptyObject } from "../index.js";
+import type { SessionId } from "../server/sessions.js";
+import { ConvexReactSessionClient } from "./sessions.js";
 
 test("noop", () => {});
 

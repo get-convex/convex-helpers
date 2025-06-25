@@ -7,8 +7,14 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "module": "ESNext",
-    "moduleResolution": "Bundler"
+    "module": "Node18",
+    "moduleResolution": "NodeNext"
   },
-  "exclude": ["node_modules", "packages/convex-helpers/dist"]
+  "include": ["packages/convex-helpers/**/*.test.ts"],
+  "exclude": [
+    "packages/convex-helpers/node_modules",
+    "packages/convex-helpers/dist",
+    "packages/convex-helpers/server/_generated",
+    "packages/convex-helpers/vitest.config.mts"
+  ]
 }
