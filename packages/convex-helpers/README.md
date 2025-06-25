@@ -52,7 +52,7 @@ See the associated [Stack Post](https://stack.convex.dev/custom-functions)
 
 For example:
 
-```js
+```ts
 import { customQuery } from "convex-helpers/server/customFunctions.js";
 
 const myQueryBuilder = customQuery(query, {
@@ -70,6 +70,34 @@ export const getSomeData = myQueryBuilder({
   handler: async (ctx, args) => {
     const { db, apiUser, scheduler } = ctx;
     const { someArg } = args;
+    // ...
+  },
+});
+```
+
+### Taking in extra arguments
+
+You can take in extra arguments to a custom function by specifying the type of a third `input` arg.
+
+```ts
+const myQueryBuilder = customQuery(query, {
+  args: {  },
+  input: async (ctx, args, { role }: { role: "admin" | "user" }) => {
+    const user = await getUser(ctx);
+    if (role === "admin" && user.role !== "admin") {
+      throw new Error("You are not an admin");
+    }
+    if (role === "user" && !user) {
+      throw new Error("You must be logged in to access this query");
+    }
+    return { ctx: { user }, args: {} };
+  }
+});
+
+const myAdminQuery = myQueryBuilder({
+  role: "admin",
+  args: { },
+  handler: async (ctx, args) => {
     // ...
   },
 });
