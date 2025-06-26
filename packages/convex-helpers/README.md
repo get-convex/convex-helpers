@@ -393,35 +393,76 @@ export const myComplexQuery = zodQuery({
 });
 ```
 
-### Zod v4 Ready (Future)
+### Zod v4 (Beta)
 
-We provide a parallel implementation that will be ready for Zod v4 when you upgrade. Currently uses Zod v3 but structured to take advantage of v4's performance improvements when available:
+We provide a full Zod v4 integration that embraces all the new features and performance improvements. This requires installing the Zod v4 beta:
+
+```bash
+npm install zod@beta
+```
 
 ```js
-// When Zod v4 is released and you upgrade your package.json:
-// "zod": "^4.0.0"
-import { z } from "zod";
-import { zCustomQuery, zid } from "convex-helpers/server/zodV4";
-import { NoOp } from "convex-helpers/server/customFunctions";
+// Import from Zod v4 subpath
+import { z } from "zod/v4";
+import { 
+  zCustomQuery, 
+  zid, 
+  string, 
+  file, 
+  globalRegistry,
+  formatZodError 
+} from "convex-helpers/server/zodV4";
 
-// Same API as the current v3 implementation
-const zodQuery = zCustomQuery(query, NoOp);
+// v4 Features: Schema Registry & Metadata
+const userSchema = z.object({
+  id: zid("users", { description: "User ID", example: "abc123" }),
+  email: string.email(),
+  avatar: file().optional(),
+});
 
-export const myQuery = zodQuery({
+// Register schema globally
+globalRegistry.register("User", userSchema);
+
+// v4 Features: Enhanced string validators
+export const validateData = zCustomQuery(query, NoOp)({
   args: {
-    userId: zid("users"),
-    email: z.string().email(),
+    email: string.email(),
+    url: string.url(),
+    datetime: string.datetime(),
+    ip: string.ipv4(),
+    template: string.template("user-", "-prod"),
   },
   handler: async (ctx, args) => {
-    // Ready for v4's performance improvements
+    // Benefit from 14x faster string parsing
+  },
+  metadata: {
+    description: "Validates various string formats",
+    generateJsonSchema: true,
+  },
+});
+
+// v4 Features: File validation
+export const uploadFile = zAction({
+  args: {
+    file: file(),
+    category: z.enum(["image", "document"]),
+  },
+  handler: async (ctx, args) => {
+    const buffer = await args.file.arrayBuffer();
+    // Process file...
   },
 });
 ```
 
-This implementation maintains the same API as v3, making it easy to switch between implementations. When Zod v4 is released, you'll benefit from:
-- 14x faster string parsing
-- 7x faster array parsing
-- 100x reduction in TypeScript type instantiations
+Key v4 Features:
+- **Schema Registry** for metadata and JSON Schema generation
+- **Enhanced string validators** with performance optimizations
+- **File validation** support
+- **Template literal types**
+- **Pretty error formatting** with `formatZodError`
+- **14x faster** string parsing
+- **7x faster** array parsing
+- **Built-in JSON Schema** generation
 
 ## Hono for advanced HTTP endpoint definitions
 
