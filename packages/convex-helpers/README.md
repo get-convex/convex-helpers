@@ -393,35 +393,35 @@ export const myComplexQuery = zodQuery({
 });
 ```
 
-### Zod v4 (Beta)
+### Zod v4 Ready (Future)
 
-For projects that want to leverage Zod v4's performance improvements (14x faster string parsing, 7x faster array parsing), we provide a v4-optimized implementation:
+We provide a parallel implementation that will be ready for Zod v4 when you upgrade. Currently uses Zod v3 but structured to take advantage of v4's performance improvements when available:
 
 ```js
+// When Zod v4 is released and you upgrade your package.json:
+// "zod": "^4.0.0"
 import { z } from "zod";
 import { zCustomQuery, zid } from "convex-helpers/server/zodV4";
 import { NoOp } from "convex-helpers/server/customFunctions";
 
-// Same API as v3, but with v4 performance benefits
+// Same API as the current v3 implementation
 const zodQuery = zCustomQuery(query, NoOp);
 
 export const myQuery = zodQuery({
   args: {
     userId: zid("users"),
     email: z.string().email(),
-    // All the same features work with v4
   },
   handler: async (ctx, args) => {
-    // Benefit from v4's performance improvements
+    // Ready for v4's performance improvements
   },
 });
 ```
 
-Key benefits of v4:
+This implementation maintains the same API as v3, making it easy to switch between implementations. When Zod v4 is released, you'll benefit from:
 - 14x faster string parsing
 - 7x faster array parsing
 - 100x reduction in TypeScript type instantiations
-- Same API as v3 for easy migration
 
 ## Hono for advanced HTTP endpoint definitions
 

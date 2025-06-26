@@ -1,12 +1,36 @@
 /**
- * Zod v4 Integration for Convex
+ * Zod v4-Ready Implementation for Convex
  * 
- * This module provides integration between Zod v4 and Convex, featuring:
- * - Performance optimizations (14x faster string parsing, 7x faster arrays)
- * - Same API as v3 for easy migration
+ * This module provides a Zod integration that's structured to take advantage
+ * of Zod v4's performance improvements when you upgrade. Currently uses Zod v3.
+ * 
+ * Features:
+ * - Same API as the main zod.ts implementation
+ * - Structured for v4 compatibility
  * - Full Convex type compatibility
  * - Branded types support
  * - System fields helper
+ * 
+ * When Zod v4 is released and you upgrade ("zod": "^4.0.0"), you'll get:
+ * - 14x faster string parsing
+ * - 7x faster array parsing
+ * - 100x reduction in TypeScript type instantiations
+ * 
+ * Usage:
+ * ```ts
+ * import { z } from "zod";
+ * import { zCustomQuery, zid } from "convex-helpers/server/zodV4";
+ * 
+ * const myQuery = zCustomQuery(query, customCtx)({
+ *   args: {
+ *     userId: zid("users"),
+ *     email: z.string().email(),
+ *   },
+ *   handler: async (ctx, args) => {
+ *     // Your logic here
+ *   },
+ * });
+ * ```
  */
 
 import type { ZodTypeDef } from "zod";
@@ -72,7 +96,25 @@ export const zid = <
 ) => new Zid({ typeName: "ConvexId", tableName });
 
 /**
- * Enhanced custom query with v4 features
+ * zCustomQuery with Zod validation support.
+ * 
+ * @example
+ * ```ts
+ * import { zCustomQuery, zid } from "convex-helpers/server/zodV4";
+ * import { NoOp } from "convex-helpers/server/customFunctions";
+ * 
+ * const zQuery = zCustomQuery(query, NoOp);
+ * 
+ * export const getUser = zQuery({
+ *   args: {
+ *     userId: zid("users"),
+ *     includeDeleted: z.boolean().optional(),
+ *   },
+ *   handler: async (ctx, args) => {
+ *     return await ctx.db.get(args.userId);
+ *   },
+ * });
+ * ```
  */
 export function zCustomQuery<
   ModArgsValidator extends PropertyValidators,
@@ -95,7 +137,23 @@ export function zCustomQuery<
 }
 
 /**
- * Enhanced custom mutation with v4 features
+ * zCustomMutation with Zod validation support.
+ * 
+ * @example
+ * ```ts
+ * const zMutation = zCustomMutation(mutation, NoOp);
+ * 
+ * export const createPost = zMutation({
+ *   args: {
+ *     title: z.string().min(1).max(200),
+ *     content: z.string().min(10),
+ *     tags: z.array(z.string()).default([]),
+ *   },
+ *   handler: async (ctx, args) => {
+ *     return await ctx.db.insert("posts", args);
+ *   },
+ * });
+ * ```
  */
 export function zCustomMutation<
   ModArgsValidator extends PropertyValidators,
@@ -123,7 +181,24 @@ export function zCustomMutation<
 }
 
 /**
- * Enhanced custom action with v4 features
+ * zCustomAction with Zod validation for actions.
+ * 
+ * @example
+ * ```ts
+ * const zAction = zCustomAction(action, NoOp);
+ * 
+ * export const sendEmail = zAction({
+ *   args: {
+ *     to: z.string().email(),
+ *     subject: z.string(),
+ *     body: z.string(),
+ *   },
+ *   handler: async (ctx, args) => {
+ *     // Call external email API
+ *     return { sent: true };
+ *   },
+ * });
+ * ```
  */
 export function zCustomAction<
   ModArgsValidator extends PropertyValidators,

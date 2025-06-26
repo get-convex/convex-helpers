@@ -115,10 +115,6 @@
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"
     },
-    "./server/zodV4.example": {
-      "types": "./server/zodV4.example.d.ts",
-      "default": "./server/zodV4.example.js"
-    },
     "./server/zodV4": {
       "types": "./server/zodV4.d.ts",
       "default": "./server/zodV4.js"
