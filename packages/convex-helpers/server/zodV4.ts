@@ -1,13 +1,12 @@
 /**
  * Zod v4 Integration for Convex
  * 
- * This module provides enhanced integration between Zod v4 and Convex, featuring:
- * - Full metadata and JSON Schema support
- * - Advanced string format validation
- * - File validation capabilities
- * - Template literal types
- * - Schema registry integration
- * - Performance optimizations
+ * This module provides integration between Zod v4 and Convex, featuring:
+ * - Performance optimizations (14x faster string parsing, 7x faster arrays)
+ * - Same API as v3 for easy migration
+ * - Full Convex type compatibility
+ * - Branded types support
+ * - System fields helper
  */
 
 import type { ZodTypeDef } from "zod";
@@ -56,125 +55,26 @@ import { pick } from "../index.js";
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
 /**
- * Schema Registry for managing global schemas and metadata
- */
-export class SchemaRegistry {
-  private static instance: SchemaRegistry;
-  private schemas: Map<string, z.ZodTypeAny> = new Map();
-  private metadata: Map<z.ZodTypeAny, Record<string, any>> = new Map();
-
-  static getInstance(): SchemaRegistry {
-    if (!SchemaRegistry.instance) {
-      SchemaRegistry.instance = new SchemaRegistry();
-    }
-    return SchemaRegistry.instance;
-  }
-
-  register(id: string, schema: z.ZodTypeAny): void {
-    this.schemas.set(id, schema);
-  }
-
-  get(id: string): z.ZodTypeAny | undefined {
-    return this.schemas.get(id);
-  }
-
-  setMetadata(schema: z.ZodTypeAny, metadata: Record<string, any>): void {
-    this.metadata.set(schema, metadata);
-  }
-
-  getMetadata(schema: z.ZodTypeAny): Record<string, any> | undefined {
-    return this.metadata.get(schema);
-  }
-
-  generateJsonSchema(schema: z.ZodTypeAny): Record<string, any> {
-    // Enhanced JSON Schema generation with v4 features
-    return zodToJsonSchema(schema);
-  }
-}
-
-/**
- * Create a validator for a Convex `Id` with v4 enhancements.
- * Supports metadata and JSON Schema generation.
+ * Create a validator for a Convex `Id`.
+ *
+ * When used as a validator, it will check that it's for the right table.
+ * When used as a parser, it will only check that the Id is a string.
  *
  * @param tableName - The table that the `Id` references. i.e.` Id<tableName>`
- * @param metadata - Optional metadata for the ID validator
  * @returns - A Zod object representing a Convex `Id`
  */
-export const zidV4 = <
+export const zid = <
   DataModel extends GenericDataModel,
   TableName extends
     TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
 >(
   tableName: TableName,
-  metadata?: Record<string, any>,
-) => {
-  const id = new ZidV4({ typeName: "ConvexId", tableName });
-  if (metadata) {
-    SchemaRegistry.getInstance().setMetadata(id, metadata);
-  }
-  return id;
-};
-
-/**
- * Enhanced string format validators leveraging Zod v4's top-level functions
- */
-export const stringFormats = {
-  email: () => z.string().email(),
-  url: () => z.string().url(),
-  uuid: () => z.string().uuid(),
-  cuid: () => z.string().cuid(),
-  cuid2: () => z.string().cuid2(),
-  ulid: () => z.string().ulid(),
-  datetime: () => z.string().datetime(),
-  ip: () => z.string().ip(),
-  ipv4: () => z.string().ip({ version: "v4" }),
-  ipv6: () => z.string().ip({ version: "v6" }),
-  base64: () => z.string().base64(),
-  json: () => z.string().transform((str: string) => JSON.parse(str)),
-  regex: (regex: RegExp) => z.string().regex(regex),
-  // Template literal support - v4 feature simulation
-  // Note: Real template literal support would require Zod v4 features
-  templateLiteral: (...parts: z.ZodTypeAny[]) => 
-    z.string().describe("Template literal pattern"),
-};
-
-/**
- * Enhanced number format validators with v4 precision
- */
-export const numberFormats = {
-  int: () => z.number().int(),
-  positive: () => z.number().positive(),
-  negative: () => z.number().negative(),
-  nonnegative: () => z.number().nonnegative(),
-  nonpositive: () => z.number().nonpositive(),
-  finite: () => z.number().finite(),
-  safe: () => z.number().safe(),
-  // v4 specific numeric types
-  int8: () => z.number().int().min(-128).max(127),
-  uint8: () => z.number().int().min(0).max(255),
-  int16: () => z.number().int().min(-32768).max(32767),
-  uint16: () => z.number().int().min(0).max(65535),
-  int32: () => z.number().int().min(-2147483648).max(2147483647),
-  uint32: () => z.number().int().min(0).max(4294967295),
-  float32: () => z.number(),
-  float64: () => z.number(),
-};
-
-/**
- * File validation support (for actions)
- * Note: File validation requires File API available in the environment
- */
-export const fileSchema = () => z.object({
-  name: z.string(),
-  size: z.number().positive(),
-  type: z.string(),
-  lastModified: z.number(),
-}).describe("File metadata schema");
+) => new Zid({ typeName: "ConvexId", tableName });
 
 /**
  * Enhanced custom query with v4 features
  */
-export function zCustomQueryV4<
+export function zCustomQuery<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
@@ -184,7 +84,7 @@ export function zCustomQueryV4<
   query: QueryBuilder<DataModel, Visibility>,
   mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
-  return customFnBuilderV4(query, mod) as CustomBuilderV4<
+  return customFnBuilder(query, mod) as CustomBuilder<
     "query",
     ModArgsValidator,
     ModCtx,
@@ -197,7 +97,7 @@ export function zCustomQueryV4<
 /**
  * Enhanced custom mutation with v4 features
  */
-export function zCustomMutationV4<
+export function zCustomMutation<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
@@ -212,7 +112,7 @@ export function zCustomMutationV4<
     ModMadeArgs
   >,
 ) {
-  return customFnBuilderV4(mutation, mod) as CustomBuilderV4<
+  return customFnBuilder(mutation, mod) as CustomBuilder<
     "mutation",
     ModArgsValidator,
     ModCtx,
@@ -225,7 +125,7 @@ export function zCustomMutationV4<
 /**
  * Enhanced custom action with v4 features
  */
-export function zCustomActionV4<
+export function zCustomAction<
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
   ModMadeArgs extends Record<string, any>,
@@ -235,7 +135,7 @@ export function zCustomActionV4<
   action: ActionBuilder<DataModel, Visibility>,
   mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
 ) {
-  return customFnBuilderV4(action, mod) as CustomBuilderV4<
+  return customFnBuilder(action, mod) as CustomBuilder<
     "action",
     ModArgsValidator,
     ModCtx,
@@ -245,7 +145,7 @@ export function zCustomActionV4<
   >;
 }
 
-function customFnBuilderV4(
+function customFnBuilder(
   builder: (args: any) => any,
   mod: Mod<any, any, any, any>,
 ) {
@@ -258,11 +158,6 @@ function customFnBuilderV4(
       returns = z.object(returns);
     }
 
-    // Extract metadata if present
-    const metadata = fn.metadata || fn.meta;
-    if (metadata && returns) {
-      SchemaRegistry.getInstance().setMetadata(returns, metadata);
-    }
 
     const returnValidator =
       fn.returns && !fn.skipConvexValidation
@@ -300,7 +195,7 @@ function customFnBuilderV4(
           const parsed = z.object(argsValidator).safeParse(rawArgs);
           if (!parsed.success) {
             throw new ConvexError({
-              ZodV4Error: {
+              ZodError: {
                 errors: parsed.error.errors,
                 formatted: parsed.error.format(),
               },
@@ -346,7 +241,7 @@ function customFnBuilderV4(
 /**
  * Enhanced type for custom builders with v4 features
  */
-export type CustomBuilderV4<
+export type CustomBuilder<
   FuncType extends "query" | "mutation" | "action",
   ModArgsValidator extends PropertyValidators,
   ModCtx extends Record<string, any>,
@@ -358,9 +253,9 @@ export type CustomBuilderV4<
     ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
     ReturnsZodValidator extends z.ZodTypeAny | ZodValidator | void = void,
     ReturnValue extends
-      ReturnValueForOptionalZodValidatorV4<ReturnsZodValidator> = any,
+      ReturnValueForOptionalZodValidator<ReturnsZodValidator> = any,
     OneOrZeroArgs extends
-      ArgsArrayForOptionalValidatorV4<ArgsValidator> = DefaultArgsForOptionalValidatorV4<ArgsValidator>,
+      ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
   >(
     func:
       | ({
@@ -410,7 +305,7 @@ export type CustomBuilderV4<
     >,
     ReturnsZodValidator extends void
       ? ReturnValue
-      : OutputValueForOptionalZodValidatorV4<ReturnsZodValidator>
+      : OutputValueForOptionalZodValidator<ReturnsZodValidator>
   >;
 };
 
@@ -423,7 +318,7 @@ type Expand<ObjectType extends Record<any, any>> =
       }
     : never;
 
-export type ReturnValueForOptionalZodValidatorV4<
+export type ReturnValueForOptionalZodValidator<
   ReturnsValidator extends z.ZodTypeAny | ZodValidator | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
   ? z.input<ReturnsValidator> | Promise<z.input<ReturnsValidator>>
@@ -433,7 +328,7 @@ export type ReturnValueForOptionalZodValidatorV4<
         | Promise<z.input<z.ZodObject<ReturnsValidator>>>
     : any;
 
-export type OutputValueForOptionalZodValidatorV4<
+export type OutputValueForOptionalZodValidator<
   ReturnsValidator extends z.ZodTypeAny | ZodValidator | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
   ? z.output<ReturnsValidator> | Promise<z.output<ReturnsValidator>>
@@ -443,7 +338,7 @@ export type OutputValueForOptionalZodValidatorV4<
         | Promise<z.output<z.ZodObject<ReturnsValidator>>>
     : any;
 
-export type ArgsArrayForOptionalValidatorV4<
+export type ArgsArrayForOptionalValidator<
   ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
 > = [ArgsValidator] extends [ZodValidator]
   ? [z.output<z.ZodObject<ArgsValidator>>]
@@ -451,7 +346,7 @@ export type ArgsArrayForOptionalValidatorV4<
     ? [z.output<ArgsValidator>]
     : ArgsArray;
 
-export type DefaultArgsForOptionalValidatorV4<
+export type DefaultArgsForOptionalValidator<
   ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
 > = [ArgsValidator] extends [ZodValidator]
   ? [z.output<z.ZodObject<ArgsValidator>>]
@@ -618,84 +513,22 @@ export function zodOutputToConvexFields<Z extends ZodValidator>(zod: Z) {
   ) as { [k in keyof Z]: ConvexValidatorFromZodOutput<Z[k]> };
 }
 
-/**
- * JSON Schema generation for Zod v4 schemas
- */
-function zodToJsonSchema(schema: z.ZodTypeAny): Record<string, any> {
-  const typeName = schema._def.typeName;
-  const metadata = SchemaRegistry.getInstance().getMetadata(schema) || {};
-  
-  let baseSchema: Record<string, any> = {};
-  
-  switch (typeName) {
-    case "ZodString":
-      baseSchema = { type: "string" };
-      break;
-    case "ZodNumber":
-      baseSchema = { type: "number" };
-      break;
-    case "ZodBoolean":
-      baseSchema = { type: "boolean" };
-      break;
-    case "ZodNull":
-      baseSchema = { type: "null" };
-      break;
-    case "ZodArray":
-      baseSchema = {
-        type: "array",
-        items: zodToJsonSchema(schema._def.type),
-      };
-      break;
-    case "ZodObject":
-      const properties: Record<string, any> = {};
-      const required: string[] = [];
-      
-      for (const [key, value] of Object.entries(schema._def.shape())) {
-        properties[key] = zodToJsonSchema(value as z.ZodTypeAny);
-        if (!(value as any).isOptional()) {
-          required.push(key);
-        }
-      }
-      
-      baseSchema = {
-        type: "object",
-        properties,
-        required: required.length > 0 ? required : undefined,
-      };
-      break;
-    case "ZodUnion":
-      baseSchema = {
-        anyOf: schema._def.options.map((opt: z.ZodTypeAny) => zodToJsonSchema(opt)),
-      };
-      break;
-    case "ZodLiteral":
-      baseSchema = { const: schema._def.value };
-      break;
-    case "ZodEnum":
-      baseSchema = { enum: schema._def.values };
-      break;
-    default:
-      baseSchema = { type: "any" };
-  }
-  
-  return { ...baseSchema, ...metadata };
-}
 
 /**
  * v4 ID type with enhanced features
  */
-interface ZidV4Def<TableName extends string> extends ZodTypeDef {
+interface ZidDef<TableName extends string> extends ZodTypeDef {
   typeName: "ConvexId";
   tableName: TableName;
 }
 
-export class ZidV4<TableName extends string> extends z.ZodType<
+export class Zid<TableName extends string> extends z.ZodType<
   GenericId<TableName>,
-  ZidV4Def<TableName>
+  ZidDef<TableName>
 > {
-  readonly _def: ZidV4Def<TableName>;
+  readonly _def: ZidDef<TableName>;
   
-  constructor(def: ZidV4Def<TableName>) {
+  constructor(def: ZidDef<TableName>) {
     super(def);
     this._def = def;
   }
@@ -703,49 +536,20 @@ export class ZidV4<TableName extends string> extends z.ZodType<
   _parse(input: z.ParseInput) {
     return z.string()._parse(input) as z.ParseReturnType<GenericId<TableName>>;
   }
-  
-  // v4 enhancements
-  metadata(meta: Record<string, any>) {
-    SchemaRegistry.getInstance().setMetadata(this, meta);
-    return this;
-  }
-  
-  toJsonSchema() {
-    return {
-      type: "string",
-      format: "convex-id",
-      tableName: this._def.tableName,
-      ...SchemaRegistry.getInstance().getMetadata(this),
-    };
-  }
 }
 
-/**
- * Enhanced system fields helper with v4 features
- */
-export const withSystemFieldsV4 = <
+export const withSystemFields = <
   Table extends string,
   T extends { [key: string]: z.ZodTypeAny },
 >(
   tableName: Table,
   zObject: T,
-  metadata?: { description?: string; [key: string]: any },
 ) => {
-  const fields = { 
+  return { 
     ...zObject, 
-    _id: zidV4(tableName).metadata({ description: "Document ID" }),
-    _creationTime: z.number().metadata({ description: "Creation timestamp" }),
+    _id: zid(tableName),
+    _creationTime: z.number(),
   };
-  
-  if (metadata) {
-    Object.values(fields).forEach(field => {
-      if (field instanceof z.ZodType) {
-        SchemaRegistry.getInstance().setMetadata(field, metadata);
-      }
-    });
-  }
-  
-  return fields;
 };
 
 /**
@@ -863,7 +667,7 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
 >;
 
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
-  Z extends ZidV4<infer TableName>
+  Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends z.ZodString
       ? VString
@@ -998,20 +802,20 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                   >
                                                 ? K extends
                                                     | z.ZodString
-                                                    | ZidV4<string>
+                                                    | Zid<string>
                                                     | z.ZodUnion<
                                                         [
                                                           (
                                                             | z.ZodString
-                                                            | ZidV4<string>
+                                                            | Zid<string>
                                                           ),
                                                           (
                                                             | z.ZodString
-                                                            | ZidV4<string>
+                                                            | Zid<string>
                                                           ),
                                                           ...(
                                                             | z.ZodString
-                                                            | ZidV4<string>
+                                                            | Zid<string>
                                                           )[],
                                                         ]
                                                       >
@@ -1036,7 +840,7 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                     : never;
 
 type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
-  Z extends ZidV4<infer TableName>
+  Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends z.ZodString
       ? VString
