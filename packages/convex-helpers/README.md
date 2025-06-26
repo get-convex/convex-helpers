@@ -353,7 +353,9 @@ features for validating arguments, this is for you!
 
 See the [Stack post on Zod validation](https://stack.convex.dev/typescript-zod-function-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
 
-Example:
+### Zod v3 (Stable)
+
+The default export from `convex-helpers/server/zod` uses Zod v3:
 
 ```js
 import { z } from "zod";
@@ -390,6 +392,36 @@ export const myComplexQuery = zodQuery({
   },
 });
 ```
+
+### Zod v4 (Beta)
+
+For projects that want to leverage Zod v4's performance improvements (14x faster string parsing, 7x faster array parsing), we provide a v4-optimized implementation:
+
+```js
+import { z } from "zod";
+import { zCustomQuery, zid } from "convex-helpers/server/zodV4";
+import { NoOp } from "convex-helpers/server/customFunctions";
+
+// Same API as v3, but with v4 performance benefits
+const zodQuery = zCustomQuery(query, NoOp);
+
+export const myQuery = zodQuery({
+  args: {
+    userId: zid("users"),
+    email: z.string().email(),
+    // All the same features work with v4
+  },
+  handler: async (ctx, args) => {
+    // Benefit from v4's performance improvements
+  },
+});
+```
+
+Key benefits of v4:
+- 14x faster string parsing
+- 7x faster array parsing
+- 100x reduction in TypeScript type instantiations
+- Same API as v3 for easy migration
 
 ## Hono for advanced HTTP endpoint definitions
 
