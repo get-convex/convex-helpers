@@ -1,202 +1,54 @@
 /**
  * Zod v4 Examples for Convex
  * 
- * This file demonstrates all the new features available in Zod v4
- * integrated with Convex helpers.
+ * This file demonstrates how to use Zod v4 with Convex helpers.
+ * The API is the same as v3 but with v4's performance benefits.
  */
 
 import { defineSchema, defineTable, queryGeneric, mutationGeneric, actionGeneric } from "convex/server";
 import type { DataModelFromSchemaDefinition, QueryBuilder, MutationBuilder, ActionBuilder } from "convex/server";
 import { v } from "convex/values";
+import { z } from "zod";
 import {
-  z,
-  zidV4,
-  zCustomQueryV4,
-  zCustomMutationV4,
-  zCustomActionV4,
-  zodV4ToConvexFields,
-  withSystemFieldsV4,
-  SchemaRegistry,
-  stringFormats,
-  numberFormats,
-  fileSchema,
+  zid,
+  zCustomQuery,
+  zCustomMutation,
+  zCustomAction,
+  zodToConvexFields,
+  withSystemFields,
+  zBrand,
+  zodToConvex,
+  convexToZod,
 } from "./zodV4.js";
 import { customCtx } from "./customFunctions.js";
 
 // ========================================
-// 1. Enhanced String Format Validation
-// ========================================
-
-const userProfileSchema = z.object({
-  // v4: Direct string format methods
-  email: stringFormats.email(),
-  website: stringFormats.url(),
-  userId: stringFormats.uuid(),
-  ipAddress: stringFormats.ip(),
-  createdAt: stringFormats.datetime(),
-  avatar: stringFormats.base64().optional(),
-  bio: z.string().max(500),
-  
-  // v4: Custom regex patterns
-  username: stringFormats.regex(/^[a-zA-Z0-9_]{3,20}$/),
-  
-  // v4: JSON string that parses to object
-  preferences: stringFormats.json().pipe(
-    z.object({
-      theme: z.enum(["light", "dark"]),
-      notifications: z.boolean(),
-      language: z.string(),
-    })
-  ),
-});
-
-// ========================================
-// 2. Precise Number Types
-// ========================================
-
-const productSchema = z.object({
-  id: zidV4("products"),
-  name: z.string(),
-  
-  // v4: Precise numeric types
-  quantity: numberFormats.uint32(), // 0 to 4,294,967,295
-  price: numberFormats.float64().positive(),
-  discount: numberFormats.int8().min(0).max(100), // percentage
-  rating: numberFormats.float32().min(0).max(5),
-  
-  // v4: Safe integers only
-  views: numberFormats.safe(),
-});
-
-// ========================================
-// 3. Metadata and JSON Schema Generation
-// ========================================
-
-const registry = SchemaRegistry.getInstance();
-
-// Define schema with metadata
-const orderSchema = z.object({
-  id: zidV4("orders").metadata({
-    description: "Unique order identifier",
-    example: "k5x8w9b2n4m6v8c1",
-  }),
-  
-  customerId: zidV4("users").metadata({
-    description: "Reference to the customer who placed the order",
-  }),
-  
-  items: z.array(z.object({
-    productId: zidV4("products"),
-    quantity: numberFormats.positive().int(),
-    price: z.number().positive(),
-  })).metadata({
-    description: "List of items in the order",
-    minItems: 1,
-  }),
-  
-  status: z.enum(["pending", "processing", "shipped", "delivered", "cancelled"])
-    .metadata({
-      description: "Current order status",
-      default: "pending",
-    }),
-  
-  total: z.number().positive(),
-  shippingAddress: z.object({
-    street: z.string(),
-    city: z.string(),
-    state: z.string().length(2),
-    zip: z.string().regex(/^\d{5}(-\d{4})?$/),
-    country: z.string().length(2),
-  }),
-  
-  notes: z.string().optional(),
-});
-
-// Register schema with metadata
-registry.register("Order", orderSchema);
-registry.setMetadata(orderSchema, {
-  title: "Order Schema",
-  description: "E-commerce order with items and shipping details",
-  version: "2.0.0",
-  tags: ["order", "e-commerce"],
-});
-
-// Generate JSON Schema for client validation
-const orderJsonSchema = registry.generateJsonSchema(orderSchema);
-
-// ========================================
-// 4. File Handling (for Actions)
-// ========================================
-
-const uploadSchema = z.object({
-  file: fileSchema(),
-  category: z.enum(["avatar", "document", "image"]),
-  description: z.string().optional(),
-});
-
-// ========================================
-// 5. Advanced Validation Patterns
-// ========================================
-
-// Discriminated unions with metadata
-const notificationSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("email"),
-    recipient: stringFormats.email(),
-    subject: z.string(),
-    body: z.string(),
-    attachments: z.array(fileSchema()).optional(),
-  }).metadata({ icon: "📧" }),
-  
-  z.object({
-    type: z.literal("sms"),
-    phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/),
-    message: z.string().max(160),
-  }).metadata({ icon: "💬" }),
-  
-  z.object({
-    type: z.literal("push"),
-    deviceToken: z.string(),
-    title: z.string().max(50),
-    body: z.string().max(100),
-    data: z.record(z.string(), z.any()).optional(),
-  }).metadata({ icon: "📱" }),
-]);
-
-// Recursive schemas
-type Comment = {
-  id: string;
-  author: string;
-  content: string;
-  replies?: Comment[];
-  createdAt: string;
-};
-
-const commentSchema: z.ZodType<Comment> = z.lazy(() =>
-  z.object({
-    id: stringFormats.uuid(),
-    author: zidV4("users"),
-    content: z.string().min(1).max(1000),
-    replies: z.array(commentSchema).optional(),
-    createdAt: stringFormats.datetime(),
-  })
-);
-
-// ========================================
-// 6. Convex Schema Definition with v4
+// 1. Basic Schema Definition
 // ========================================
 
 const schema = defineSchema({
-  users: defineTable(zodV4ToConvexFields(userProfileSchema)),
-  products: defineTable(zodV4ToConvexFields(productSchema)),
-  orders: defineTable(zodV4ToConvexFields(orderSchema))
-    .index("by_customer", ["customerId"])
-    .index("by_status", ["status"]),
-  notifications: defineTable(zodV4ToConvexFields({
-    ...notificationSchema.shape,
-    sentAt: stringFormats.datetime().optional(),
-    readAt: stringFormats.datetime().optional(),
-  })),
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+    role: v.string(),
+    age: v.number(),
+  }).index("by_email", ["email"]),
+  
+  posts: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    content: v.string(),
+    tags: v.array(v.string()),
+    published: v.boolean(),
+    views: v.number(),
+  }).index("by_author", ["authorId"]),
+  
+  comments: defineTable({
+    postId: v.id("posts"),
+    authorId: v.id("users"),
+    content: v.string(),
+    likes: v.number(),
+  }).index("by_post", ["postId"]),
 });
 
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
@@ -205,222 +57,338 @@ const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 const action = actionGeneric as ActionBuilder<DataModel, "public">;
 
 // ========================================
-// 7. Custom Functions with v4 Features
+// 2. Using Zod v4 with Custom Functions
 // ========================================
 
-// Create authenticated query builder with v4
-const authenticatedQuery = zCustomQueryV4(
-  query,
-  customCtx(async (ctx) => {
-    // Authentication logic here
-    return {
-      userId: "user123" as const,
-      permissions: ["read", "write"] as const,
-    };
-  })
-);
+// Create custom query builder with authentication
+const zQuery = zCustomQuery(query, customCtx);
 
-// Query with advanced validation and metadata
-export const searchProducts = authenticatedQuery({
+// Example: User profile query with Zod validation
+export const getUserProfile = zQuery({
   args: {
-    query: z.string().min(1).max(100),
-    filters: z.object({
-      minPrice: numberFormats.positive().optional(),
-      maxPrice: numberFormats.positive().optional(),
-      categories: z.array(z.string()).optional(),
-      inStock: z.boolean().default(true),
-    }).optional(),
-    
-    // v4: Advanced pagination with metadata
-    pagination: z.object({
-      cursor: z.string().optional(),
-      limit: numberFormats.int().min(1).max(100).default(20),
-    }).optional(),
+    userId: zid("users"),
+    includeStats: z.boolean().optional().default(false),
   },
-  
   handler: async (ctx, args) => {
-    // Implementation would search products
-    return {
-      results: [],
-      nextCursor: null,
-      totalCount: 0,
-    };
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+    
+    if (args.includeStats) {
+      const posts = await ctx.db
+        .query("posts")
+        .withIndex("by_author", q => q.eq("authorId", args.userId))
+        .collect();
+      
+      return {
+        ...user,
+        stats: {
+          postCount: posts.length,
+          totalViews: posts.reduce((sum, post) => sum + post.views, 0),
+        },
+      };
+    }
+    
+    return user;
   },
-  
+  // v4 feature: return type validation
   returns: z.object({
-    results: z.array(productSchema),
-    nextCursor: z.string().nullable(),
-    totalCount: numberFormats.nonnegative().int(),
+    _id: z.string(),
+    _creationTime: z.number(),
+    name: z.string(),
+    email: z.string().email(),
+    role: z.string(),
+    age: z.number().positive(),
+    stats: z.object({
+      postCount: z.number(),
+      totalViews: z.number(),
+    }).optional(),
   }),
-  
-  // v4: Function metadata
-  metadata: {
-    description: "Search products with advanced filtering",
-    tags: ["search", "products"],
-    rateLimit: {
-      requests: 100,
-      window: "1m",
-    },
+});
+
+// ========================================
+// 3. Mutations with Complex Validation
+// ========================================
+
+const zMutation = zCustomMutation(mutation, customCtx);
+
+// Create a post with rich validation
+export const createPost = zMutation({
+  args: {
+    title: z.string().min(5).max(200),
+    content: z.string().min(10).max(10000),
+    tags: z.array(z.string().min(2).max(20)).min(1).max(5),
+    published: z.boolean().default(false),
+  },
+  handler: async (ctx, args) => {
+    const { user } = ctx;
+    if (!user) throw new Error("Must be logged in");
+    
+    return await ctx.db.insert("posts", {
+      authorId: user._id,
+      title: args.title,
+      content: args.content,
+      tags: args.tags,
+      published: args.published,
+      views: 0,
+    });
   },
 });
 
-// Mutation with complex validation
-export const createOrder = zCustomMutationV4(
-  mutation,
-  customCtx(async (ctx) => ({ userId: "user123" }))
-)({
-  args: {
-    items: z.array(z.object({
-      productId: zidV4("products"),
-      quantity: numberFormats.positive().int().max(999),
-    })).min(1).max(50),
-    
-    shippingAddress: z.object({
-      street: z.string().min(1),
-      city: z.string().min(1),
-      state: z.string().length(2).toUpperCase(),
-      zip: z.string().regex(/^\d{5}(-\d{4})?$/),
-      country: z.string().length(2).toUpperCase().default("US"),
-    }),
-    
-    // v4: Conditional validation
-    paymentMethod: z.discriminatedUnion("type", [
-      z.object({
-        type: z.literal("credit_card"),
-        last4: z.string().length(4),
-        expiryMonth: numberFormats.int().min(1).max(12),
-        expiryYear: numberFormats.int().min(new Date().getFullYear()),
-      }),
-      z.object({
-        type: z.literal("paypal"),
-        email: stringFormats.email(),
-      }),
-      z.object({
-        type: z.literal("crypto"),
-        wallet: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-        currency: z.enum(["BTC", "ETH", "USDC"]),
-      }),
-    ]),
-    
-    couponCode: z.string().regex(/^[A-Z0-9]{5,10}$/).optional(),
-  },
-  
+// ========================================
+// 4. System Fields Helper
+// ========================================
+
+// Define user fields with system fields included
+const userFields = withSystemFields("users", {
+  name: z.string(),
+  email: z.string().email(),
+  role: z.enum(["admin", "user", "guest"]),
+  age: z.number().int().positive().max(150),
+  bio: z.string().optional(),
+  settings: z.object({
+    theme: z.enum(["light", "dark"]),
+    notifications: z.boolean(),
+    language: z.string(),
+  }).optional(),
+});
+
+// Use in a mutation
+export const updateUserProfile = zMutation({
+  args: userFields,
   handler: async (ctx, args) => {
-    // Validate inventory, calculate total, create order
-    const orderId = await ctx.db.insert("orders", {
-      customerId: ctx.userId,
-      items: args.items,
-      status: "pending",
-      total: 0, // Would be calculated
-      shippingAddress: args.shippingAddress,
-      notes: `Payment: ${args.paymentMethod.type}`,
+    const existing = await ctx.db.get(args._id);
+    if (!existing) throw new Error("User not found");
+    
+    // Update only provided fields
+    const { _id, _creationTime, ...updates } = args;
+    await ctx.db.patch(_id, updates);
+    
+    return { success: true };
+  },
+});
+
+// ========================================
+// 5. Branded Types for Type Safety
+// ========================================
+
+// Create branded types for different IDs
+const UserId = zBrand(z.string(), "UserId");
+const PostId = zBrand(z.string(), "PostId");
+const CommentId = zBrand(z.string(), "CommentId");
+
+// Type-safe function that only accepts UserIds
+export const getUserPosts = zQuery({
+  args: {
+    userId: UserId,
+    limit: z.number().positive().max(100).default(10),
+    cursor: PostId.optional(),
+  },
+  handler: async (ctx, args) => {
+    let query = ctx.db
+      .query("posts")
+      .withIndex("by_author", q => q.eq("authorId", args.userId as string));
+    
+    if (args.cursor) {
+      const cursor = await ctx.db.get(args.cursor as string);
+      if (cursor) {
+        query = query.filter(q => q.lt(q.field("_creationTime"), cursor._creationTime));
+      }
+    }
+    
+    const posts = await query.take(args.limit);
+    return posts;
+  },
+});
+
+// ========================================
+// 6. Actions with External API Calls
+// ========================================
+
+const zAction = zCustomAction(action, customCtx);
+
+// Action with file upload simulation
+export const processUserAvatar = zAction({
+  args: {
+    userId: zid("users"),
+    imageUrl: z.string().url(),
+    cropData: z.object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number().positive(),
+      height: z.number().positive(),
+    }).optional(),
+  },
+  handler: async (ctx, args) => {
+    // Simulate external API call
+    const processedUrl = `https://processed.example.com/${args.userId}`;
+    
+    // Update user with processed avatar
+    await ctx.runMutation(updateUserProfile as any, {
+      _id: args.userId,
+      avatarUrl: processedUrl,
     });
     
-    return { orderId, estimatedDelivery: new Date().toISOString() };
-  },
-  
-  returns: z.object({
-    orderId: zidV4("orders"),
-    estimatedDelivery: stringFormats.datetime(),
-  }),
-  
-  metadata: {
-    description: "Create a new order with validation",
-    requiresAuth: true,
+    return { processedUrl };
   },
 });
 
-// Action with file upload
-export const uploadAvatar = zCustomActionV4(
-  action,
-  customCtx(async (ctx) => ({ userId: "user123" }))
-)({
+// ========================================
+// 7. Bidirectional Schema Conversion
+// ========================================
+
+// Convert between Convex and Zod schemas
+const convexUserSchema = v.object({
+  name: v.string(),
+  email: v.string(),
+  age: v.number(),
+  role: v.union(v.literal("admin"), v.literal("user"), v.literal("guest")),
+});
+
+// Convert Convex validator to Zod
+const zodUserSchema = convexToZod(convexUserSchema);
+
+// Now you can use Zod's features
+const validatedUser = zodUserSchema.parse({
+  name: "John Doe",
+  email: "john@example.com",
+  age: 30,
+  role: "user",
+});
+
+// Convert Zod schema to Convex
+const postSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string(),
+  tags: z.array(z.string()),
+  published: z.boolean(),
+});
+
+const convexPostValidator = zodToConvex(postSchema);
+
+// ========================================
+// 8. Advanced Query Patterns
+// ========================================
+
+// Paginated search with complex filters
+export const searchPosts = zQuery({
   args: {
-    imageData: z.string().base64(),
-    mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+    query: z.string().optional(),
+    authorId: zid("users").optional(),
+    tags: z.array(z.string()).optional(),
+    published: z.boolean().optional(),
+    sortBy: z.enum(["recent", "popular"]).default("recent"),
+    limit: z.number().positive().max(50).default(20),
+    cursor: z.string().optional(),
   },
-  
   handler: async (ctx, args) => {
-    // Process image upload to storage
-    // Return URL of uploaded image
+    let dbQuery = ctx.db.query("posts");
+    
+    // Apply filters
+    if (args.authorId) {
+      dbQuery = dbQuery.withIndex("by_author", q => q.eq("authorId", args.authorId!));
+    }
+    
+    // Additional filters
+    if (args.published !== undefined) {
+      dbQuery = dbQuery.filter(q => q.eq(q.field("published"), args.published!));
+    }
+    
+    if (args.tags && args.tags.length > 0) {
+      dbQuery = dbQuery.filter(q => 
+        args.tags!.some(tag => q.eq(q.field("tags"), tag))
+      );
+    }
+    
+    // Apply cursor
+    if (args.cursor) {
+      const cursorPost = await ctx.db.get(args.cursor as any);
+      if (cursorPost) {
+        dbQuery = dbQuery.filter(q => 
+          args.sortBy === "recent"
+            ? q.lt(q.field("_creationTime"), cursorPost._creationTime)
+            : q.lt(q.field("views"), cursorPost.views)
+        );
+      }
+    }
+    
+    // Sort and limit
+    const posts = await dbQuery.take(args.limit);
+    
     return {
-      url: "https://example.com/avatar.jpg",
-      size: 12345,
+      posts,
+      nextCursor: posts.length === args.limit ? posts[posts.length - 1]._id : null,
     };
   },
-  
-  returns: z.object({
-    url: stringFormats.url(),
-    size: numberFormats.positive().int(),
-  }),
 });
 
 // ========================================
-// 8. Error Handling with v4
+// 9. Error Handling with Zod
 // ========================================
 
-export const validateUserInput = authenticatedQuery({
+export const safeCreateComment = zMutation({
   args: {
-    data: z.object({
-      email: stringFormats.email(),
-      age: numberFormats.int().min(13).max(120),
-      website: stringFormats.url().optional(),
-      interests: z.array(z.string()).min(1).max(10),
-    }),
+    postId: zid("posts"),
+    content: z.string().min(1).max(1000),
   },
-  
   handler: async (ctx, args) => {
-    // v4 provides better error messages
     try {
-      // Process validated data
-      return { success: true, data: args.data };
+      // Verify post exists
+      const post = await ctx.db.get(args.postId);
+      if (!post) {
+        throw new Error("Post not found");
+      }
+      
+      // Create comment
+      const commentId = await ctx.db.insert("comments", {
+        postId: args.postId,
+        authorId: ctx.user!._id,
+        content: args.content,
+        likes: 0,
+      });
+      
+      return { success: true, commentId };
     } catch (error) {
-      // Enhanced error information available
-      return { 
-        success: false, 
-        error: "Validation failed",
-        details: error,
-      };
+      if (error instanceof z.ZodError) {
+        return {
+          success: false,
+          error: "Validation failed",
+          details: error.errors,
+        };
+      }
+      throw error;
     }
   },
 });
 
 // ========================================
-// 9. Type-safe Client Usage Example
+// 10. Performance Benefits Example
 // ========================================
 
-// The generated types can be used on the client:
-type SearchProductsArgs = z.input<typeof searchProducts._args>;
-type SearchProductsReturn = z.output<typeof searchProducts._returns>;
-
-// Client can also use the JSON Schema for validation:
-const clientValidation = orderJsonSchema;
-
-// ========================================
-// 10. Migration Helper from v3 to v4
-// ========================================
-
-// Helper to migrate v3 schemas to v4
-export const migrateSchema = <T extends z.ZodTypeAny>(
-  v3Schema: T,
-  metadata?: Record<string, any>
-): T => {
-  if (metadata) {
-    SchemaRegistry.getInstance().setMetadata(v3Schema, metadata);
-  }
-  return v3Schema;
-};
-
-// Example migration
-const legacyUserSchema = z.object({
-  email: z.string().email(), // v3 style
-  created: z.string(),
-});
-
-const modernUserSchema = z.object({
-  email: stringFormats.email(), // v4 style
-  created: stringFormats.datetime(),
-}).metadata({
-  migrated: true,
-  version: "4.0",
+// This query benefits from v4's 14x faster string parsing
+export const bulkValidateEmails = zAction({
+  args: {
+    emails: z.array(z.string().email()).max(1000),
+  },
+  handler: async (ctx, args) => {
+    // v4's optimized parsing makes this much faster
+    const validEmails = args.emails;
+    
+    // Check which emails already exist
+    const existingUsers = await ctx.runQuery(
+      // Query would check for existing emails
+      async (ctx) => {
+        return ctx.db.query("users").collect();
+      }
+    );
+    
+    const existingEmails = new Set(existingUsers.map(u => u.email));
+    const newEmails = validEmails.filter(email => !existingEmails.has(email));
+    
+    return {
+      total: validEmails.length,
+      existing: existingEmails.size,
+      new: newEmails.length,
+      newEmails,
+    };
+  },
 });
