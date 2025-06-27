@@ -395,10 +395,14 @@ export const myComplexQuery = zodQuery({
 
 ### Zod v4 Features
 
-We provide a full Zod v4 integration that embraces all the new features and performance improvements available in Zod 3.25.0+:
+We provide a full Zod v4 integration that embraces all the new features and performance improvements. Zod v4 is available in stable releases 3.25.0+ and is imported from the `/v4` subpath:
+
+```bash
+npm upgrade zod@^3.25.0
+```
 
 ```js
-import { z } from "zod";
+import { z } from "zod/v4";
 import { 
   zCustomQuery, 
   zid, 

@@ -25,7 +25,7 @@ import {
   zBrand,
   ZodBrandedInputAndOutput,
 } from "./zodV4.js";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { customCtx } from "./customFunctions.js";
 import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { v } from "convex/values";

@@ -10,11 +10,11 @@
  * - Cleaner type definitions with z.interface()
  * - New .overwrite() method for transforms
  * 
- * Requires Zod 3.25.0 or higher which includes v4 features
+ * Requires Zod 3.25.0 or higher and imports from the /v4 subpath
  */
 
-import type { ZodTypeDef } from "zod";
-import { ZodFirstPartyTypeKind, z } from "zod";
+import type { ZodTypeDef } from "zod/v4";
+import { ZodFirstPartyTypeKind, z } from "zod/v4";
 import type {
   GenericId,
   Infer,
