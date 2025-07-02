@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.96
+
+- Fix the usePaginatedQuery helper to show LoadingMore when loading
+  the last page
+
 ## 0.1.95
 
 - Improved CORS support for server-to-server endpoints, along with more
