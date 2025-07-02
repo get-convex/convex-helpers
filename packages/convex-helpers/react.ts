@@ -358,24 +358,27 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   ]);
 
   const statusObject = useMemo(() => {
-    if (maybeLastResult === undefined) {
-      if (currState.nextPageKey === 1) {
-        return {
-          status: "LoadingFirstPage",
-          isLoading: true,
-          loadMore: (_numItems: number) => {
-            // Intentional noop.
-          },
-        } as const;
-      } else {
-        return {
-          status: "LoadingMore",
-          isLoading: true,
-          loadMore: (_numItems: number) => {
-            // Intentional noop.
-          },
-        } as const;
-      }
+    if (maybeLastResult === undefined && currState.nextPageKey === 1) {
+      return {
+        status: "LoadingFirstPage",
+        isLoading: true,
+        loadMore: (_numItems: number) => {
+          // Intentional noop.
+        },
+      } as const;
+    } else if (
+      maybeLastResult === undefined ||
+      // The last page (which isn't the first page) is splitting, which is how
+      // we model loading more in this helper
+      currState.ongoingSplits[currState.nextPageKey - 1] !== undefined
+    ) {
+      return {
+        status: "LoadingMore",
+        isLoading: true,
+        loadMore: (_numItems: number) => {
+          // Intentional noop.
+        },
+      } as const;
     }
     if (maybeLastResult.isDone) {
       return {

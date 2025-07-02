@@ -115,6 +115,7 @@ function Paginated({ skip }: { skip: boolean }) {
   }
   return (
     <div>
+      <div>Status: {counters.status}</div>
       <ul>
         {counters.results.map((counter, i) => (
           <li key={i}>
