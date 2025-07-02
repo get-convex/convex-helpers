@@ -138,7 +138,6 @@ export function makeUseQueryWithStatus(useQueriesHook: typeof useQueries) {
           args,
         },
       };
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [getFunctionName(query), JSON.stringify(args)]);
     const result = useQueriesHook(queries);
     if (args === "skip") {
@@ -249,9 +248,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
     // ESLint doesn't like that we're stringifying the args. We do this because
     // we want to avoid rerendering if the args are a different
     // object that serializes to the same result.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     JSON.stringify(convexToJson(argsObject as Value)),
     queryName,
     options.initialNumItems,
