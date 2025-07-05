@@ -2,6 +2,7 @@ import Counter from "./components/Counter";
 import RelationshipExample from "./components/RelationshipExample";
 import SessionsExample from "./components/SessionsExample";
 import { HonoExample } from "./components/HonoExample";
+import { StreamsExample } from "./components/StreamsExample";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { CacheExample } from "./components/CacheExample";
 import { ConvexQueryCacheProvider } from "convex-helpers/react/cache";
@@ -21,6 +22,7 @@ export default function App() {
           <SessionsExample />
           <HonoExample />
           <CacheExample />
+          <StreamsExample />
         </ConvexQueryCacheProvider>
       </SessionProvider>
     </main>
