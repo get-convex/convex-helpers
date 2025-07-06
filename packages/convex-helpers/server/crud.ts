@@ -91,8 +91,8 @@ export function crud<
       "fields" in validator
         ? v.object({
           ...validator.fields,
-          _id: v.optional(v.id(table)),
-          _creationTime: v.optional(v.number()),
+          ...(validator.fields._id ? { _id: v.optional(validator.fields._id) } : {}),
+          ...(validator.fields._creationTime ? { _creationTime: v.optional(validator.fields._creationTime) } : {}),
         })
         : "members" in validator
           ? v.union(...validator.members.map((value) => makeSystemFieldsOptional(value)))
