@@ -29,3 +29,4 @@ jobs:
           npm run build
           npm run test
           npx convex codegen && git diff --exit-code
+      - run: npx pkg-pr-new publish ./packages/convex-helpers
