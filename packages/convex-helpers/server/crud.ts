@@ -17,7 +17,12 @@ import {
   internalQueryGeneric,
   internalMutationGeneric,
 } from "convex/server";
-import type { GenericId, Infer, Validator } from "convex/values";
+import type {
+  GenericId,
+  Infer,
+  OptionalProperty,
+  Validator,
+} from "convex/values";
 import { v } from "convex/values";
 import { partial } from "../validators.js";
 /**
@@ -75,14 +80,23 @@ export function crud<
     );
   }
 
-  const makeOptional: (
-    validator: Validator<any, any, any>,
-  ) => Validator<any, any, any> = (validator: Validator<any, any, any>) =>
-    validator.kind === "object"
-      ? v.object(partial(validator.fields))
-      : "members" in validator
-        ? v.union(...validator.members.map((value) => makeOptional(value)))
-        : v.optional(validator);
+  const makeOptional = <
+    Type,
+    IsOptional extends OptionalProperty,
+    FieldPaths extends string,
+  >(
+    validator: Validator<Type, IsOptional, FieldPaths>,
+  ): Validator<Type, "optional", never> => {
+    if (validator.kind === "object") {
+      return v.object(partial(validator.fields)) as any;
+    } else if ("members" in validator) {
+      return v.union(
+        ...(validator.members.map((value) => makeOptional(value)) as any),
+      ) as any;
+    } else {
+      return v.optional(validator) as Validator<Type, "optional", never>;
+    }
+  };
 
   const optionalValidator = makeOptional(validator);
 
