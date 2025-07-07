@@ -16,7 +16,7 @@ import {
   streamIndexRange,
 } from "./stream.js";
 
-export type IndexKey = Value[];
+export type IndexKey = (Value | undefined)[];
 
 export type PageRequest<
   DataModel extends GenericDataModel,
