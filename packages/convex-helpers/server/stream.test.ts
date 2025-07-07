@@ -618,7 +618,8 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1))
         .filterWith(async () => false)
-        .flatMap(async (doc) => null as any, ["a", "b", "c"])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .flatMap(async () => null as any, ["a", "b", "c"])
         .collect();
       expect(result).toEqual([]);
     });
@@ -746,14 +747,6 @@ describe("stream", () => {
       // for b=2, the flatmap is empty, so it's as if b=2 were filtered out
       // by filterWith -- it counts towards the maximumRowsRead.
       expect(page1.page.map(stripSystemFields)).toEqual([{ a: 1, b: 3, c: 5 }]);
-    });
-  });
-  test("undefined cursor serialization roundtrips", async () => {
-    const schema = defineSchema({
-      foo: defineTable({
-        a: v.optional(v.number()),
-        b: v.number(),
-      }).index("ab", ["a", "b"]),
     });
   });
 

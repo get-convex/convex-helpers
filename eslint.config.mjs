@@ -22,7 +22,10 @@ export default [
       parser: tseslint.parser,
 
       parserOptions: {
-        project: true,
+        project: [
+          "./tsconfig.json",
+          "./packages/convex-helpers/tsconfig.test.json",
+        ],
         tsconfigRootDir: ".",
       },
     },
