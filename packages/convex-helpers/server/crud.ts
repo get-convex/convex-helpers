@@ -79,7 +79,7 @@ export function crud<
 
   const makeOptional: (validator: Validator<any, any, any>) => Validator<any, any, any> =
     (validator: Validator<any, any, any>) =>
-      "fields" in validator
+      validator.kind === "object"
         ? v.object(partial(validator.fields))
         : "members" in validator
           ? v.union(...validator.members.map((value) => makeOptional(value)))
