@@ -56,7 +56,7 @@
     "globals": "16.3.0",
     "jsdom": "26.1.0",
     "npm-run-all2": "8.0.4",
-    "pkg-pr-new": "^0.0.54",
+    "pkg-pr-new": "0.0.54",
     "typescript": "5.8.3",
     "typescript-eslint": "8.36.0",
     "vite": "6.3.5",
