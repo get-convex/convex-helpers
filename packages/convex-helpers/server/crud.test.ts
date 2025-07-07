@@ -60,10 +60,14 @@ const ComplexFields = {
       }),
     }),
   }),
-  optionalArray: v.optional(v.array(v.object({
-    id: v.string(),
-    value: v.number(),
-  }))),
+  optionalArray: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        value: v.number(),
+      }),
+    ),
+  ),
 };
 
 const schema = defineSchema({
@@ -175,7 +179,9 @@ test("union table - user type", async () => {
     patch: { name: "Jane Doe", email: "jane@example.com" },
   });
 
-  const updatedUser = await t.query(unionTestApi.unionRead, { id: userDoc._id });
+  const updatedUser = await t.query(unionTestApi.unionRead, {
+    id: userDoc._id,
+  });
   expect(updatedUser).toMatchObject({
     type: "user",
     name: "Jane Doe",
@@ -204,7 +210,9 @@ test("union table - admin type", async () => {
     patch: { permissions: ["read", "write"] },
   });
 
-  const updatedAdmin = await t.query(unionTestApi.unionRead, { id: adminDoc._id });
+  const updatedAdmin = await t.query(unionTestApi.unionRead, {
+    id: adminDoc._id,
+  });
   expect(updatedAdmin).toMatchObject({
     type: "admin",
     name: "Admin User",
@@ -228,7 +236,9 @@ test("union table - guest type", async () => {
     patch: { sessionId: "session_456" },
   });
 
-  const updatedGuest = await t.query(unionTestApi.unionRead, { id: guestDoc._id });
+  const updatedGuest = await t.query(unionTestApi.unionRead, {
+    id: guestDoc._id,
+  });
   expect(updatedGuest).toMatchObject({
     type: "guest",
     sessionId: "session_456",
@@ -295,7 +305,9 @@ test("complex object - full structure", async () => {
     ],
   });
 
-  const readComplex = await t.query(complexTestApi.complexRead, { id: complexDoc._id });
+  const readComplex = await t.query(complexTestApi.complexRead, {
+    id: complexDoc._id,
+  });
   expect(readComplex).toMatchObject(complexDoc);
 });
 
@@ -336,7 +348,9 @@ test("complex object - partial updates", async () => {
     },
   });
 
-  const updated = await t.query(complexTestApi.complexRead, { id: complexDoc._id });
+  const updated = await t.query(complexTestApi.complexRead, {
+    id: complexDoc._id,
+  });
   expect(updated?.profile.address).toMatchObject({
     street: "New Street",
     city: "New City",
@@ -352,7 +366,9 @@ test("complex object - partial updates", async () => {
     },
   });
 
-  const updated2 = await t.query(complexTestApi.complexRead, { id: complexDoc._id });
+  const updated2 = await t.query(complexTestApi.complexRead, {
+    id: complexDoc._id,
+  });
   expect(updated2?.tags).toEqual(["new-tag", "another-tag"]);
   expect(updated2?.optionalArray).toEqual([{ id: "new-item", value: 999 }]);
 });

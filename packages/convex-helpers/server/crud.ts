@@ -18,7 +18,7 @@ import {
   internalMutationGeneric,
 } from "convex/server";
 import type { GenericId, Infer, Validator } from "convex/values";
-import { asObjectValidator, v } from "convex/values";
+import { v } from "convex/values";
 import { partial } from "../validators.js";
 /**
  * Create CRUD operations for a table.
@@ -75,35 +75,20 @@ export function crud<
     );
   }
 
-
-
-  const makeOptional: (validator: Validator<any, any, any>) => Validator<any, any, any> =
-    (validator: Validator<any, any, any>) =>
-      validator.kind === "object"
-        ? v.object(partial(validator.fields))
-        : "members" in validator
-          ? v.union(...validator.members.map((value) => makeOptional(value)))
-          : v.optional(validator);
-
-  const makeSystemFieldsOptional: (validator: Validator<any, any, any>) => Validator<any, any, any> =
-    (validator: Validator<any, any, any>) =>
-      "fields" in validator
-        ? v.object({
-          ...validator.fields,
-          ...(validator.fields._id ? { _id: v.optional(validator.fields._id) } : {}),
-          ...(validator.fields._creationTime ? { _creationTime: v.optional(validator.fields._creationTime) } : {}),
-        })
-        : "members" in validator
-          ? v.union(...validator.members.map((value) => makeSystemFieldsOptional(value)))
-          : validator.kind === "record" ? v.record(validator.key, makeSystemFieldsOptional(validator.value))
-            : validator;
+  const makeOptional: (
+    validator: Validator<any, any, any>,
+  ) => Validator<any, any, any> = (validator: Validator<any, any, any>) =>
+    validator.kind === "object"
+      ? v.object(partial(validator.fields))
+      : "members" in validator
+        ? v.union(...validator.members.map((value) => makeOptional(value)))
+        : v.optional(validator);
 
   const optionalValidator = makeOptional(validator);
-  const createValidator = makeSystemFieldsOptional(validator);
 
   return {
     create: mutation({
-      args: createValidator,
+      args: validator,
       handler: async (ctx, args) => {
         if ("_id" in args) delete args._id;
         if ("_creationTime" in args) delete args._creationTime;
