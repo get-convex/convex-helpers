@@ -81,7 +81,7 @@ You can take in extra arguments to a custom function by specifying the type of a
 
 ```ts
 const myQueryBuilder = customQuery(query, {
-  args: {  },
+  args: {},
   input: async (ctx, args, { role }: { role: "admin" | "user" }) => {
     const user = await getUser(ctx);
     if (role === "admin" && user.role !== "admin") {
@@ -91,12 +91,12 @@ const myQueryBuilder = customQuery(query, {
       throw new Error("You must be logged in to access this query");
     }
     return { ctx: { user }, args: {} };
-  }
+  },
 });
 
 const myAdminQuery = myQueryBuilder({
   role: "admin",
-  args: { },
+  args: {},
   handler: async (ctx, args) => {
     // ...
   },
