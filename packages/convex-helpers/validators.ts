@@ -478,7 +478,7 @@ export function validate<T extends Validator<any, any, any>>(
 
         if (!isSimple) {
           expected =
-            prototype?.constructor?.name ?? (typeof prototype || "object");
+            (prototype?.constructor?.name ?? typeof prototype) || "object";
           valid = false;
           break;
         }
