@@ -83,7 +83,9 @@ export function partial(fieldsOrObjOrUnion: any) {
     if (fieldsOrObjOrUnion.kind === "object") {
       return partialVObject(fieldsOrObjOrUnion);
     }
-    return fieldsOrObjOrUnion;
+    throw new Error(
+      "partial only works with object validators or a Record<string, Validator> currently",
+    );
   }
   return partialFields(fieldsOrObjOrUnion);
 }
