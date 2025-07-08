@@ -77,26 +77,26 @@ export const partial = <T extends PropertyValidators>(obj: T) => {
 
 // Shorthand for defining validators that look like types.
 
-/** Any string value. */
+/** @deprecated Use `v.string()` instead. Any string value. */
 export const string = v.string();
-/** JavaScript number, represented as a float64 in the database. */
+/** @deprecated Use `v.float64()` instead. JavaScript number, represented as a float64 in the database. */
 export const number = v.float64();
-/** JavaScript number, represented as a float64 in the database. */
+/** @deprecated Use `v.float64()` instead. JavaScript number, represented as a float64 in the database. */
 export const float64 = v.float64();
-/** boolean value. For typing it only as true, use `l(true)` */
+/** @deprecated Use `v.boolean()` instead. boolean value. For typing it only as true, use `l(true)` */
 export const boolean = v.boolean();
-/** bigint, though stored as an int64 in the database. */
-export const bigint = v.int64();
-/** bigint, though stored as an int64 in the database. */
+/** @deprecated Use `v.int64()` instead. bigint, though stored as an int64 in the database. */
+export const biging = v.int64();
+/** @deprecated Use `v.int64()` instead. bigint, though stored as an int64 in the database. */
 export const int64 = v.int64();
-/** Any Convex value */
+/** @deprecated Use `v.any()` instead. Any Convex value */
 export const any = v.any();
-/** Null value. Underscore is so it doesn't shadow the null builtin */
+/** @deprecated Use `v.null()` instead. Null value. Underscore is so it doesn't shadow the null builtin */
 export const null_ = v.null();
-/** Re-export values from v without having to do v.* */
+/** @deprecated Use `v.*()` instead. */
 export const { id, object, array, bytes, literal, optional, union } = v;
-/** ArrayBuffer validator. */
-export const arrayBuffer = bytes();
+/** @deprecated Use `v.bytes()` instead. ArrayBuffer validator. */
+export const arrayBuffer = v.bytes();
 
 /**
  * Utility to get the validators for fields associated with a table.
