@@ -2,6 +2,7 @@ import type {
   GenericValidator,
   Infer,
   ObjectType,
+  OptionalProperty,
   PropertyValidators,
   VLiteral,
   VObject,
@@ -19,6 +20,7 @@ import type {
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
+import { assert } from "convex-helpers";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -64,16 +66,129 @@ export const nullable = <V extends Validator<any, "required", any>>(x: V) =>
  * @param obj The object of validators to make optional. e.g. {a: v.string()}
  * @returns A new object of validators that can be the value or undefined.
  */
-export const partial = <T extends PropertyValidators>(obj: T) => {
+export function partial<T extends PropertyValidators>(
+  obj: T,
+): {
+  [K in keyof T]: VOptional<T[K]>;
+};
+export function partial<
+  T,
+  V extends Record<string, GenericValidator>,
+  O extends OptionalProperty,
+>(obj: VObject<T, V, O>): PartialVObject<T, V, O>;
+export function partial(fieldsOrObjOrUnion: any) {
+  if (fieldsOrObjOrUnion.isConvexValidator) {
+    if (fieldsOrObjOrUnion.kind === "object") {
+      return partialObject(fieldsOrObjOrUnion);
+    }
+    if (fieldsOrObjOrUnion.kind === "union") {
+      return partialUnion(fieldsOrObjOrUnion);
+    }
+    return fieldsOrObjOrUnion;
+  }
+  return partialFields(fieldsOrObjOrUnion);
+}
+
+/**
+ * partialFields helps you define an object of optional validators more concisely.
+ *
+ * e.g. `partialFields({a: v.string(), b: v.number()})` is equivalent to
+ * `{a: v.optional(v.string()), b: v.optional(v.number())}`
+ *
+ * @param obj The object of validators to make optional. e.g. {a: v.string()}
+ * @returns A new object of validators that can be the value or undefined.
+ */
+export function partialFields<T extends PropertyValidators>(
+  obj: T,
+): {
+  [K in keyof T]: VOptional<T[K]>;
+} {
   return Object.fromEntries(
     Object.entries(obj).map(([k, vv]) => [
       k,
       vv.isOptional === "optional" ? vv : v.optional(vv),
     ]),
-  ) as {
-    [K in keyof T]: VOptional<T[K]>;
-  };
-};
+  ) as any;
+}
+
+/**
+ * partialObject helps you define an object of optional validators more concisely.
+ *
+ * e.g. `partialObject({a: v.string(), b: v.number()})` is equivalent to
+ * `{a: v.optional(v.string()), b: v.optional(v.number())}`
+ *
+ * @param obj The object of validators to make optional. e.g. {a: v.string()}
+ * @returns A new object of validators that can be the value or undefined.
+ */
+export function partialObject<
+  T,
+  V extends Record<string, GenericValidator>,
+  O extends OptionalProperty,
+>(obj: VObject<T, V, O>): PartialVObject<T, V, O> {
+  const o = v.object(partialFields(obj.fields));
+  if (obj.isOptional === "optional") {
+    return v.optional(o) as any;
+  }
+  return o as any;
+}
+
+type PartialVObject<
+  T,
+  V extends Record<string, GenericValidator>,
+  O extends OptionalProperty,
+> = VObject<
+  Partial<T>,
+  {
+    [K in keyof V]: VOptional<V[K]>;
+  },
+  O
+>;
+
+function partialUnion<V extends VUnion<any, any[], any>>(
+  union: V,
+): PartialVUnion<V> {
+  return v.union(
+    ...union.members.map((m) => {
+      assert(m.isOptional === "required", "Union members cannot be optional");
+      if (m.kind === "object") {
+        return partialObject(m) as VObject<any, any, "required">;
+      }
+      if (m.kind === "union") {
+        return partialUnion(m) as VUnion<any, any[], "required">;
+      }
+      throw new Error(`Invalid union member type: ${m.kind}`);
+    }),
+  ) as any;
+}
+
+const u = v.union(
+  v.object({ a: v.string() }),
+  v.union(v.object({ b: v.number() }), v.object({ c: v.boolean() })),
+);
+
+type UU = typeof u;
+type UU2 = UU["members"][0];
+
+type PU = PartialVUnion<typeof u>;
+
+const pu = partialUnion(u);
+const a = pu.members[0];
+
+type PartialVUnion<V extends VUnion<any, any[], any>> = VUnion<
+  Partial<V["type"]>,
+  {
+    [K in keyof V["members"]]: K extends number
+      ? V["members"][K] extends VObject<infer T, infer F, "required">
+        ? VLiteral<"hi", "required"> //PartialVObject<T, F, "required">
+        : V["members"][K] extends VUnion<infer T, infer M, "required", infer P>
+          ? PartialVUnion<VUnion<T, M, "required", P>>
+          : never
+      : V["members"][K];
+  },
+  V["isOptional"]
+>;
+
+const p = partial({ a: v.string(), b: v.number() });
 
 // Shorthand for defining validators that look like types.
 
