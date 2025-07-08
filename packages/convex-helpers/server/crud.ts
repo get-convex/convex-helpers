@@ -24,7 +24,7 @@ import type {
   Validator,
 } from "convex/values";
 import { v } from "convex/values";
-import { partial } from "../validators.js";
+import { partial, systemFields } from "../validators.js";
 /**
  * Create CRUD operations for a table.
  * You can expose these operations in your API. For example, in convex/users.ts:
@@ -91,7 +91,7 @@ export function crud<
       return v.object(partial(validator.fields)) as any;
     } else if (validator.kind === "union") {
       return v.union(
-        ...(validator.members.map((value) => makeOptional(value)) as any),
+        ...validator.members.map((value) => makeOptional(value) as any),
       ) as any;
     } else {
       return v.optional(validator) as Validator<Type, "optional", never>;
@@ -100,9 +100,35 @@ export function crud<
 
   const optionalValidator = makeOptional(validator);
 
+  const makeSystemFieldsOptional = <
+    Type,
+    IsOptional extends OptionalProperty,
+    FieldPaths extends string,
+  >(
+    validator: Validator<Type, IsOptional, FieldPaths>,
+  ): Validator<Type, IsOptional, FieldPaths> => {
+    if (validator.kind === "object") {
+      return v.object({
+        ...validator.fields,
+        ...partial({
+          _id: v.optional(v.id(table)),
+          _creationTime: v.optional(v.number()),
+        }),
+      }) as any;
+    } else if (validator.kind === "union") {
+      return v.union(
+        ...validator.members.map((value) => makeSystemFieldsOptional(value)),
+      ) as any;
+    } else {
+      return validator;
+    }
+  };
+
+  const validatorWithSystemFields = makeSystemFieldsOptional(validator);
+
   return {
     create: mutation({
-      args: validator,
+      args: validatorWithSystemFields,
       handler: async (ctx, args) => {
         if ("_id" in args) delete args._id;
         if ("_creationTime" in args) delete args._creationTime;
