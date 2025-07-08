@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.97
+
+- `partial` from `convex-helpers/validators` now supports either a
+  v.object or POJO of validators.
+
 ## 0.1.96
 
 - Fix the usePaginatedQuery helper to show LoadingMore when loading
