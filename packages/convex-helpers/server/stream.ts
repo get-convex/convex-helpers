@@ -1,3 +1,4 @@
+/* eslint-disable no-unexpected-multiline */
 import type { Value } from "convex/values";
 import { convexToJson, jsonToConvex } from "convex/values";
 import type {
