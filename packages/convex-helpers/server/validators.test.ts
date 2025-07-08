@@ -637,11 +637,11 @@ describe("partial", () => {
     );
     expect(validate(v.object(validator), { age: 30 })).toBe(true);
     expect(validate(v.object(validator), {})).toBe(true);
-    const manualPartial = {
+    const _manualPartial = {
       name: v.optional(v.string()),
       age: v.optional(v.number()),
     };
-    expectTypeOf(manualPartial).toEqualTypeOf<typeof manualPartial>();
+    expectTypeOf(validator).toEqualTypeOf<typeof _manualPartial>();
   });
 
   test("partial with object", () => {
@@ -662,10 +662,69 @@ describe("partial", () => {
     ).toBe(false);
     expect(partialValidator.kind).toBe("object");
     expect(partialValidator.fields.name?.isOptional).toBe("optional");
-    const manualPartial = v.object({
+    const _manualPartial = v.object({
       name: v.optional(v.string()),
       age: v.optional(v.number()),
     });
-    expectTypeOf(manualPartial).toEqualTypeOf<typeof manualPartial>();
+    expectTypeOf(partialValidator).toEqualTypeOf<typeof _manualPartial>();
+  });
+
+  test("partial with union", () => {
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ age: v.number() }),
+    );
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(validate(partialValidator, {})).toBe(true);
+    expect(validate(partialValidator, { name: "Alice", age: 30 })).toBe(false);
+
+    const _manualPartial = v.union(
+      v.object({ name: v.optional(v.string()) }),
+      v.object({ age: v.optional(v.number()) }),
+    );
+    // We only check the types for now
+    expectTypeOf(partialValidator.type).toEqualTypeOf<
+      Infer<typeof _manualPartial>
+    >();
+  });
+
+  test("partial with union of unions", () => {
+    const validator = v.union(
+      v.object({
+        name: v.string(),
+        age: v.number(),
+      }),
+      v.union(
+        v.object({ type: v.literal("email"), email: v.string() }),
+        v.object({ type: v.literal("phone"), phone: v.string() }),
+      ),
+    );
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(
+      validate(partialValidator, { type: "email", email: "alice@example.com" }),
+    ).toBe(true);
+    expect(
+      validate(partialValidator, { type: "phone", phone: "1234567890" }),
+    ).toBe(true);
+    expect(
+      validate(partialValidator, {
+        name: "Alice",
+        age: 30,
+        type: "email",
+        email: "alice@example.com",
+      }),
+    ).toBe(false);
+    expect(
+      validate(partialValidator, {
+        name: "Alice",
+        age: 30,
+        type: "phone",
+        phone: "1234567890",
+      }),
+    ).toBe(false);
   });
 });
