@@ -86,7 +86,7 @@ export function crud<
     FieldPaths extends string,
   >(
     validator: Validator<Type, IsOptional, FieldPaths>,
-  ): Validator<Type, "optional", never> => {
+  ): Validator<Type, "optional", FieldPaths> => {
     if (validator.kind === "object") {
       return v.object(partial(validator.fields)) as any;
     } else if (validator.kind === "union") {
