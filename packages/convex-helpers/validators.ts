@@ -98,7 +98,7 @@ export function partial(
       return partialUnion(fieldsOrObjOrUnion);
     }
     throw new Error(
-      "partial only works with object validators or a Record<string, Validator> currently",
+      "partial only works with union or object Validators, or a Record<string, Validator> currently",
     );
   }
   return partialFields(fieldsOrObjOrUnion as PropertyValidators);
@@ -138,8 +138,8 @@ function partialFields<T extends PropertyValidators>(
 function partialVObject<
   T,
   V extends Record<string, GenericValidator>,
-  O extends OptionalProperty,
->(obj: VObject<T, V, O>): PartialVObject<T, V, O> {
+  Optional extends OptionalProperty,
+>(obj: VObject<T, V, Optional>): PartialVObject<T, V, Optional> {
   const o = v.object(partialFields(obj.fields));
   if (obj.isOptional === "optional") {
     return v.optional(o) as any;
@@ -150,20 +150,20 @@ function partialVObject<
 type PartialVObject<
   T,
   V extends Record<string, GenericValidator>,
-  O extends OptionalProperty,
+  Optional extends OptionalProperty,
 > = VObject<
   Partial<T>,
   {
     [K in keyof V]: VOptional<V[K]>;
   },
-  O
+  Optional
 >;
 
 function partialUnion<
   T,
   V extends Validator<T, "required", any>[],
-  O extends OptionalProperty,
->(union: VUnion<T, V, O>): PartialVUnion<T, V, O> {
+  Optional extends OptionalProperty,
+>(union: VUnion<T, V, Optional>): PartialVUnion<T, V, Optional> {
   const u = v.union(
     ...union.members.map((m) => {
       assert(m.isOptional === "required", "Union members cannot be optional");
@@ -184,9 +184,9 @@ function partialUnion<
 
 type PartialVUnion<
   T,
-  V extends Validator<T, "required", any>[],
-  O extends OptionalProperty,
-> = VUnion<Partial<T>, V, O>;
+  Members extends Validator<T, "required", any>[],
+  Optional extends OptionalProperty,
+> = VUnion<Partial<T>, Members, Optional>;
 
 // Shorthand for defining validators that look like types.
 
