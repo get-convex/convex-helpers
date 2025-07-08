@@ -626,3 +626,15 @@ describe("validate", () => {
     expect(() => parse(validator, "not a literal")).toThrow(ValidationError);
   });
 });
+
+describe("partial", () => {
+  test("partial", () => {
+    const validator = partial({ name: v.string(), age: v.number() });
+    expect(validate(v.object(validator), { name: "Alice" })).toBe(true);
+    expect(validate(v.object(validator), { name: "Alice", age: 30 })).toBe(
+      true,
+    );
+    expect(validate(v.object(validator), { age: 30 })).toBe(true);
+    expect(validate(v.object(validator), {})).toBe(true);
+  });
+});
