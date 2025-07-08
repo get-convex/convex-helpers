@@ -1,3 +1,4 @@
+// Note: this is in the server/ folder b/c it defines test query/mutations.
 import {
   brandedString,
   deprecated,
