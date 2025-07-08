@@ -159,6 +159,24 @@ type PartialVObject<
   Optional
 >;
 
+type PartialUnionMembers<
+  Members extends readonly Validator<any, "required", any>[],
+> = {
+  [K in keyof Members]: Members[K] extends VObject<any, any, "required">
+    ? Members[K] extends VObject<
+        infer MemberT,
+        infer MemberV extends PropertyValidators,
+        "required"
+      >
+      ? PartialVObject<MemberT, MemberV, "required">
+      : Members[K]
+    : Members[K] extends VUnion<any, any, "required">
+      ? Members[K] extends VUnion<infer MemberT, infer MemberV, "required">
+        ? PartialVUnion<MemberT, MemberV, "required">
+        : Members[K]
+      : Members[K];
+};
+
 function partialUnion<
   T,
   V extends Validator<T, "required", any>[],
@@ -186,7 +204,7 @@ type PartialVUnion<
   T,
   Members extends Validator<T, "required", any>[],
   Optional extends OptionalProperty,
-> = VUnion<Partial<T>, Members, Optional>;
+> = VUnion<Partial<T>, PartialUnionMembers<Members>, Optional>;
 
 // Shorthand for defining validators that look like types.
 

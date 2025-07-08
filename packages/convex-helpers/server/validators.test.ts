@@ -726,5 +726,23 @@ describe("partial", () => {
         phone: "1234567890",
       }),
     ).toBe(false);
+    expect(partialValidator.kind).toBe("union");
+    expect(partialValidator.members[0].kind).toBe("object");
+    expect(partialValidator.members[0].fields.name?.isOptional).toBe(
+      "optional",
+    );
+    expect(partialValidator.members[0].fields.age?.isOptional).toBe("optional");
+    expect(partialValidator.members[1].kind).toBe("union");
+    expect(partialValidator.members[1].members[0].kind).toBe("object");
+    expect(partialValidator.members[1].members[0].fields.type?.isOptional).toBe(
+      "optional",
+    );
+    expect(
+      partialValidator.members[1].members[0].fields.email?.isOptional,
+    ).toBe("optional");
+    expect(partialValidator.members[1].members[1].kind).toBe("object");
+    expect(
+      partialValidator.members[1].members[1].fields.phone?.isOptional,
+    ).toBe("optional");
   });
 });
