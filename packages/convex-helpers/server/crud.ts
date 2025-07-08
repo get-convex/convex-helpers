@@ -89,7 +89,7 @@ export function crud<
   ): Validator<Type, "optional", never> => {
     if (validator.kind === "object") {
       return v.object(partial(validator.fields)) as any;
-    } else if ("members" in validator) {
+    } else if (validator.kind === "union") {
       return v.union(
         ...(validator.members.map((value) => makeOptional(value)) as any),
       ) as any;
