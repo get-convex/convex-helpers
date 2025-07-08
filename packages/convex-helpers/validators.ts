@@ -20,6 +20,7 @@ import type {
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
+import { assert } from "convex-helpers";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -144,6 +145,80 @@ type PartialVObject<
   },
   O
 >;
+
+function partialUnion<
+  T,
+  V extends Validator<T, "required", any>[],
+  O extends OptionalProperty,
+>(union: VUnion<T, V, O>): VUnion<Partial<T>, V, O> {
+  const u = v.union(
+    ...union.members.map((m) => {
+      assert(m.isOptional === "required", "Union members cannot be optional");
+      if (m.kind === "object") {
+        return partialVObject(m) as VObject<any, any, "required">;
+      }
+      if (m.kind === "union") {
+        return partialUnion(m) as VUnion<any, any[], "required">;
+      }
+      throw new Error(`Invalid union member type: ${m.kind}`);
+    }),
+  ) as any;
+  if (union.isOptional === "optional") {
+    return v.optional(u) as any;
+  }
+  return u as any;
+}
+
+const u = v.union(
+  v.object({ a: v.string(), b: v.string() }),
+  v.union(v.object({ b: v.number() }), v.object({ c: v.boolean() })),
+);
+
+type UU = typeof u;
+type U = Infer<typeof u>;
+type P = Partial<U>;
+const __: P = {
+  a: undefined,
+  b: undefined,
+};
+type UU2 = UU["members"][0];
+
+type PU = PartialVUnion<typeof u>;
+
+const pu = partialUnion(u);
+const a = pu.members[0];
+
+function f(_: Infer<typeof u>) {}
+const _a: Infer<typeof pu> = {
+  a: "hi",
+  c: false,
+};
+
+type PartialVUnionOrObject<V extends Validator<any, any, any>> =
+  V extends VUnion<any, any[], OptionalProperty>
+    ? PartialVUnion<V>
+    : V extends VObject<infer T, infer F, infer O>
+      ? PartialVObject<T, F, O>
+      : never;
+
+type PartialVUnion<V extends VUnion<any, any[], OptionalProperty>> =
+  V extends VUnion<infer T, infer M, infer O, infer P>
+    ? VUnion<
+        Partial<T>,
+        {
+          [K in keyof M]: K extends number
+            ? M[K] extends VObject<any, any, any>
+              ? PartialVObject<M[K]["type"], M[K]["fields"], M[K]["isOptional"]>
+              : M[K] extends VUnion<infer T, infer M, infer O, infer P>
+                ? PartialVUnion<VUnion<T, M, O, P>>
+                : never
+            : M[K];
+        },
+        O
+      >
+    : never;
+
+const p = partial({ a: v.string(), b: v.number() });
 
 // Shorthand for defining validators that look like types.
 
