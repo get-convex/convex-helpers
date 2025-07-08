@@ -60,11 +60,8 @@ export const nullable = <V extends Validator<any, "required", any>>(x: V) =>
 /**
  * partial helps you define an object of optional validators more concisely.
  *
- * e.g. `partial({a: v.string(), b: v.number()})` is equivalent to
+ * `partial({a: v.string(), b: v.number()})` is equivalent to
  * `{a: v.optional(v.string()), b: v.optional(v.number())}`
- *
- * And `partial(v.object({a: v.string(), b: v.number()}))` is equivalent to
- * `v.object({a: v.optional(v.string()), b: v.optional(v.number())})`
  *
  * @param obj The object of validators to make optional. e.g. {a: v.string()}
  * @returns A new object of validators that can be the value or undefined.
@@ -74,11 +71,30 @@ export function partial<T extends PropertyValidators>(
 ): {
   [K in keyof T]: VOptional<T[K]>;
 };
+/**
+ * partial helps you define an object of optional validators more concisely.
+ *
+ * `partial(v.object({a: v.string(), b: v.number()}))` is equivalent to
+ * `v.object({a: v.optional(v.string()), b: v.optional(v.number())})`
+ *
+ * @param obj The object of validators to make optional. e.g. v.object({a: v.string()})
+ * @returns A new object of validators that can be the value or undefined.
+ */
 export function partial<
   T,
   V extends Record<string, GenericValidator>,
   O extends OptionalProperty,
 >(obj: VObject<T, V, O>): PartialVObject<T, V, O>;
+/**
+ * partial helps you define a union of optional validators more concisely.
+ *
+ * `partial(v.union(v.object({a: v.string()}), v.object({b: v.number()})))`
+ * is equivalent to
+ * `v.union(v.object({a: v.optional(v.string())}), v.object({b: v.optional(v.number())}))`
+ *
+ * @param obj The union of validators to make optional. e.g. v.union(v.object({a: v.string()}), v.object({b: v.number()}))
+ * @returns A new union of validators that can be the value or undefined.
+ */
 export function partial<
   T,
   V extends Validator<T, "required", any>[],

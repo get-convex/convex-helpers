@@ -507,7 +507,7 @@ const vv = typedV(schema);
 export const replaceUser = internalMutation({
   args: {
     id: vv.id("accounts"),
-    replace: object({
+    replace: vv.object({
       // You can provide the document with or without system fields.
       ...schema.tables.accounts.validator.fields,
       ...partial(systemFields("accounts")),
