@@ -4,7 +4,7 @@
   "description": "Home to [packages](./packages/) to complement the official convex package.",
   "scripts": {
     "init": "convex dev --until-success",
-    "dev": "npm-run-all --parallel dev:backend dev:frontend dev:helpers",
+    "dev": "npm-run-all --parallel --race dev:backend dev:frontend dev:helpers test:watch",
     "dev:backend": "convex dev",
     "dev:frontend": "vite",
     "dev:helpers": "cd packages/convex-helpers && npm run dev",
