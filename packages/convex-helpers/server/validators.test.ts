@@ -27,7 +27,7 @@ import {
   internalQueryGeneric,
 } from "convex/server";
 import { v, type Infer, type ObjectType } from "convex/values";
-import { assertType, describe, expect, test } from "vitest";
+import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
 import { validate } from "../validators.js";
@@ -629,7 +629,7 @@ describe("validate", () => {
 });
 
 describe("partial", () => {
-  test("partial", () => {
+  test("partial with fields", () => {
     const validator = partial({ name: v.string(), age: v.number() });
     expect(validate(v.object(validator), { name: "Alice" })).toBe(true);
     expect(validate(v.object(validator), { name: "Alice", age: 30 })).toBe(
@@ -637,5 +637,35 @@ describe("partial", () => {
     );
     expect(validate(v.object(validator), { age: 30 })).toBe(true);
     expect(validate(v.object(validator), {})).toBe(true);
+    const manualPartial = {
+      name: v.optional(v.string()),
+      age: v.optional(v.number()),
+    };
+    expectTypeOf(manualPartial).toEqualTypeOf<typeof manualPartial>();
+  });
+
+  test("partial with object", () => {
+    const validator = v.object({
+      name: v.string(),
+      age: v.number(),
+    });
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { name: "Alice", age: 30 })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(validate(partialValidator, {})).toBe(true);
+    expect(
+      validate(partialValidator, { name: "Alice", age: 30, unknown: "field" }),
+    ).toBe(false);
+    expect(
+      validate(partialValidator, { name: "Alice", age: 30, unknown: "field" }),
+    ).toBe(false);
+    expect(partialValidator.kind).toBe("object");
+    expect(partialValidator.fields.name?.isOptional).toBe("optional");
+    const manualPartial = v.object({
+      name: v.optional(v.string()),
+      age: v.optional(v.number()),
+    });
+    expectTypeOf(manualPartial).toEqualTypeOf<typeof manualPartial>();
   });
 });
