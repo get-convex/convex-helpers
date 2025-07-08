@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.98
+
+- `partial` now supports unions too (including recursive unions).
+
 ## 0.1.97
 
 - `partial` from `convex-helpers/validators` now supports either a
