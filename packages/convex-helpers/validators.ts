@@ -3,6 +3,7 @@ import type {
   Infer,
   ObjectType,
   PropertyValidators,
+  VLiteral,
   VObject,
   VOptional,
   VString,
@@ -36,17 +37,13 @@ import type {
  * @param args Values you want to use in a union of literals.
  * @returns A validator for the union of the literals.
  */
-export const literals = <
-  V extends string | number | boolean | bigint,
-  T extends V[],
->(
+export const literals = <T extends (string | number | boolean | bigint)[]>(
   ...args: T
-): VUnion<T[number], any> => {
-  // The `any` above is unfortunate, because then we cannot get proper types
-  // for `validator.members`, but without it, TypeScript seems to have a hard
-  // time inferring the TS type for the first parameter.
-
-  return v.union(...args.map(v.literal)) as any;
+) => {
+  return v.union(...args.map(v.literal)) as VUnion<
+    T[number],
+    VLiteral<T[number]>[]
+  >;
 };
 
 /**
