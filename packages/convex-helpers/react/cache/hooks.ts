@@ -5,7 +5,12 @@ import type {
   RequestForQueries,
   UsePaginatedQueryReturnType,
 } from "convex/react";
-import { useConvex, useQueries as useQueriesCore } from "convex/react";
+import {
+  useConvex,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ConvexProvider,
+  useQueries as useQueriesCore,
+} from "convex/react";
 import type {
   FunctionArgs,
   FunctionReference,

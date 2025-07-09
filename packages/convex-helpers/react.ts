@@ -9,6 +9,7 @@ import { convexToJson } from "convex/values";
 import {
   useConvex,
   useQueries,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useQuery as useQueryOriginal,
 } from "convex/react";
 import type {
