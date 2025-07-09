@@ -154,10 +154,6 @@
     "url": "https://github.com/get-convex/convex-helpers/issues"
   },
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
-  "devDependencies": {
-    "chalk": "5.4.1",
-    "commander": "14.0.0"
-  },
   "peerDependencies": {
     "@standard-schema/spec": "^1.0.0",
     "convex": "^1.13.0",
