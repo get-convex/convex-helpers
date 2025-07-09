@@ -68,12 +68,10 @@ const SessionContext = React.createContext<{
   ssrFriendly?: boolean;
 } | null>(null);
 
-/* eslint-disable @typescript-eslint/no-unnecessary-type-constraint */
 type SessionFunction<
   T extends "query" | "mutation" | "action",
   Args = any,
 > = FunctionReference<T, "public", { sessionId: SessionId } & Args>;
-/* eslint-enable @typescript-eslint/no-unnecessary-type-constraint */
 
 export type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
   keyof FunctionArgs<Fn> extends "sessionId"
