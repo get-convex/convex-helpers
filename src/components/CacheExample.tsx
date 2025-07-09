@@ -107,7 +107,7 @@ function Paginated({ skip }: { skip: boolean }) {
   const counters = usePaginatedQuery(
     api.counter.getCountersPaginated,
     skip ? "skip" : {},
-    { initialNumItems: 2 },
+    { initialNumItems: 2, customPagination: true },
   );
   const addCounter = useMutation(api.counter.incrementCounter);
   if (skip) {

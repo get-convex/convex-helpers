@@ -5,11 +5,7 @@ import type {
   RequestForQueries,
   UsePaginatedQueryReturnType,
 } from "convex/react";
-import {
-  ConvexProvider,
-  useConvex,
-  useQueries as useQueriesCore,
-} from "convex/react";
+import { useConvex, useQueries as useQueriesCore } from "convex/react";
 import type {
   FunctionArgs,
   FunctionReference,
@@ -117,7 +113,6 @@ export function useQueries(
       };
     },
     // Safe to ignore query and args since queryKey is derived from them
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [registry, JSON.stringify(queryKeys)],
   );
   const memoizedQueries = useMemo(() => queries, [JSON.stringify(queryKeys)]);
@@ -336,7 +331,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
 ): UsePaginatedQueryReturnType<Query> {
   if (
     typeof options?.initialNumItems !== "number" ||
-    options.initialNumItems < 0
+    options.initialNumItems <= 0
   ) {
     throw new Error(
       `\`options.initialNumItems\` must be a positive number. Received \`${options?.initialNumItems}\`.`,
@@ -376,9 +371,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
     // ESLint doesn't like that we're stringifying the args. We do this because
     // we want to avoid rerendering if the args are a different
     // object that serializes to the same result.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     JSON.stringify(convexToJson(argsObject as Value)),
     queryName,
     options.initialNumItems,
@@ -489,24 +482,28 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   ]);
 
   const statusObject = useMemo(() => {
-    if (maybeLastResult === undefined) {
-      if (currState.nextPageKey === 1) {
-        return {
-          status: "LoadingFirstPage",
-          isLoading: true,
-          loadMore: (_numItems: number) => {
-            // Intentional noop.
-          },
-        } as const;
-      } else {
-        return {
-          status: "LoadingMore",
-          isLoading: true,
-          loadMore: (_numItems: number) => {
-            // Intentional noop.
-          },
-        } as const;
-      }
+    if (maybeLastResult === undefined && currState.pageKeys.length <= 1) {
+      return {
+        status: "LoadingFirstPage",
+        isLoading: true,
+        loadMore: (_numItems: number) => {
+          // Intentional noop.
+        },
+      } as const;
+    } else if (
+      maybeLastResult === undefined ||
+      // The last page (which isn't the first page) is splitting, which is how
+      // we model loading more with custom pagination.
+      (options.customPagination &&
+        currState.ongoingSplits[currState.pageKeys.at(-1)!] !== undefined)
+    ) {
+      return {
+        status: "LoadingMore",
+        isLoading: true,
+        loadMore: (_numItems: number) => {
+          // Intentional noop.
+        },
+      } as const;
     }
     if (maybeLastResult.isDone) {
       return {
