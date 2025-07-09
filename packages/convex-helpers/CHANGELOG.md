@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.99-alpha.0
+## 0.1.99
 
 - Fixes LoadingMore for custom pagintation
 
