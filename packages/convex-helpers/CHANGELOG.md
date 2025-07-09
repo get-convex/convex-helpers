@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.99-alpha.0
+
+- Fixes LoadingMore for custom pagintation
+
 ## 0.1.98
 
 - `partial` now supports unions too (including recursive unions).
