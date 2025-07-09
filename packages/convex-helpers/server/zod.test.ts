@@ -792,15 +792,15 @@ expectTypeOf(
 ).toEqualTypeOf({
   branded2: v.string() as VString<string & z.BRAND<"branded2">>,
 });
-const s = zBrand(z.string(), "brand");
-const n = zBrand(z.number(), "brand");
-const i = zBrand(z.bigint(), "brand");
-expectTypeOf<z.input<typeof s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
-expectTypeOf<z.output<typeof s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
-expectTypeOf<z.input<typeof n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
-expectTypeOf<z.output<typeof n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
-expectTypeOf<z.input<typeof i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
-expectTypeOf<z.output<typeof i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
+const _s = zBrand(z.string(), "brand");
+const _n = zBrand(z.number(), "brand");
+const _i = zBrand(z.bigint(), "brand");
+expectTypeOf<z.input<typeof _s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof _s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
+expectTypeOf<z.input<typeof _n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof _n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
+expectTypeOf<z.input<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
 
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;

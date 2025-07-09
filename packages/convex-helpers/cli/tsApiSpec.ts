@@ -37,7 +37,7 @@ export const tsApiSpec = new Command("ts-api-spec")
     ).default(false),
   )
   .action(async (options) => {
-    let content = getFunctionSpec(options.prod, options.inputFile);
+    const content = getFunctionSpec(options.prod, options.inputFile);
     const outputPath =
       (options.outputFile ?? `convexApi${Date.now().valueOf()}`) + ".ts";
 

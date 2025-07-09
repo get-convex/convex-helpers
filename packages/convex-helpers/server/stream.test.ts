@@ -618,7 +618,6 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1))
         .filterWith(async () => false)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .flatMap(async () => null as any, ["a", "b", "c"])
         .collect();
       expect(result).toEqual([]);

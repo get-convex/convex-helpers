@@ -7,7 +7,7 @@ export function HonoExample() {
   const [value, setValue] = useState("");
   useEffect(() => {
     if (!siteUrl) return;
-    fetch(`${siteUrl}/`)
+    void fetch(`${siteUrl}/`)
       .then((r) => r.text())
       .then(setValue);
   }, [siteUrl]);

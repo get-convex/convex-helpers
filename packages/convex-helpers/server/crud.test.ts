@@ -73,22 +73,22 @@ test("crud for table", async () => {
 
 const customQ = customQuery(
   internalQuery,
-  customCtx((ctx) => ({ foo: "bar" })),
+  customCtx((_ctx) => ({ foo: "bar" })),
 );
 const customM = customMutation(
   internalMutation,
-  customCtx((ctx) => ({})),
+  customCtx((_ctx) => ({})),
 );
 
-const customCrud = crud(schema, CrudTable, customQ, customM);
+const _customCrud = crud(schema, CrudTable, customQ, customM);
 
 const customTestApi: ApiFromModules<{
   fns: {
-    create: typeof customCrud.create;
-    read: typeof customCrud.read;
-    update: typeof customCrud.update;
-    paginate: typeof customCrud.paginate;
-    destroy: typeof customCrud.destroy;
+    create: typeof _customCrud.create;
+    read: typeof _customCrud.read;
+    update: typeof _customCrud.update;
+    paginate: typeof _customCrud.paginate;
+    destroy: typeof _customCrud.destroy;
   };
 }>["fns"] = anyApi["crud.test"] as any;
 

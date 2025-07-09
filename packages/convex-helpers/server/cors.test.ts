@@ -149,7 +149,7 @@ describe("corsRouter internals", () => {
   test("accepts allowedOrigins as a function", async () => {
     const http = new HttpRouter();
     const cors = corsRouter(http, {
-      allowedOrigins: async (request) => {
+      allowedOrigins: async (_) => {
         return ["https://example.com"];
       },
     });

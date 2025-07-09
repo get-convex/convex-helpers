@@ -1,4 +1,4 @@
-import { ConvexReactClient, ReactMutation } from "convex/react";
+import { ConvexReactClient } from "convex/react";
 import { FunctionReference } from "convex/server";
 
 export class ConvexReactClientFake extends ConvexReactClient {

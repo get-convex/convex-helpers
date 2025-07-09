@@ -32,7 +32,7 @@ import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
 import { validate } from "../validators.js";
 import { fail } from "assert";
-import type { Expand } from "convex-helpers";
+import { type Expand } from "convex-helpers";
 
 export const testLiterals = internalQueryGeneric({
   args: {

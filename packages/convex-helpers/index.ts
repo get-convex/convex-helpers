@@ -114,9 +114,9 @@ export function withoutSystemFields<T extends Record<string, any>>(obj: T) {
 }
 
 // Type utils:
-const error = Symbol();
+const _error = Symbol();
 export type ErrorMessage<Reason extends string> = Reason & {
-  __error: typeof error;
+  __error: typeof _error;
 };
 
 // Copied from convex/server since it wasn't exported

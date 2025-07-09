@@ -70,7 +70,7 @@ const SessionContext = React.createContext<{
 
 type SessionFunction<
   T extends "query" | "mutation" | "action",
-  Args extends any = any,
+  Args = any,
 > = FunctionReference<T, "public", { sessionId: SessionId } & Args, any>;
 
 export type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =

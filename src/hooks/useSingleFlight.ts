@@ -51,7 +51,7 @@ export default function useSingleFlight<
           // If it failed, we naively just move on to the next request.
         }
         while (flightStatus.current.upNext) {
-          let cur = flightStatus.current.upNext;
+          const cur = flightStatus.current.upNext;
           flightStatus.current.upNext = null;
           await cur
             .fn(...cur.args)

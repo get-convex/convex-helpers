@@ -145,8 +145,8 @@ class Lock {
  *   To avoid such problems, triggers should be resilient to such
  *   inconsistencies or the trigger graph should be kept simple.
  */
-let innerWriteLock = new Lock();
-let outerWriteLock = new Lock();
+const innerWriteLock = new Lock();
+const outerWriteLock = new Lock();
 const triggerQueue: (() => Promise<void>)[] = [];
 
 export class DatabaseWriterWithTriggers<

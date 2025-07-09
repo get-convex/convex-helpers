@@ -23,7 +23,7 @@ test("generateValidSpec", async () => {
   const testFileName = "openApiSpec.test.yaml";
   fs.writeFileSync(testFileName, apiSpec, "utf-8");
 
-  let output = execSync(`npx redocly lint ${testFileName} --format='json'`);
+  const output = execSync(`npx redocly lint ${testFileName} --format='json'`);
 
   fs.unlinkSync(testFileName);
 

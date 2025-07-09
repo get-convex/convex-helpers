@@ -5,11 +5,16 @@ import reactPlugin from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
-  { files: ["src/**/*.{js,mjs,cjs,ts,tsx}"] },
+  { files: ["src/**/*.{js,mjs,cjs,ts,tsx}", "convex/**/*.{ts,tsx}"] },
   {
     ignores: [
       "dist/**",
+      "packages/convex-helpers/dist/**",
+      "packages/convex-helpers/generate-exports.mjs",
+      "src/fakeConvexClient/fakeConvexClient.js",
+      "backendHarness.js",
       "eslint.config.mjs",
+      "convex/vitest.config.mts",
       "setup.cjs",
       "**/_generated/",
       "vite.config.mts",
