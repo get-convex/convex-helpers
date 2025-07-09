@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { usePaginatedQuery } from "convex-helpers/react/cache";
+import { usePaginatedQuery } from "convex-helpers/react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Doc } from "../../convex/_generated/dataModel";
@@ -127,40 +127,45 @@ const MessageList: React.FC<MessageListProps> = ({
   title,
   paginationResult,
 }) => {
-  const { results, status, isLoading, loadMore } = paginationResult;
+  const { results, status, loadMore } = paginationResult;
 
   return (
     <div style={styles.messageSection}>
       <h3 style={styles.sectionHeader}>{title}</h3>
-      <div style={styles.messageList}>
-        {results.map((message: Doc<"privateMessages">, index: number) => (
-          <div key={index} style={styles.messageItem}>
-            <div style={styles.messageHeader}>
-              <span style={styles.fromTo}>From: {message.from}</span>
-              <span style={styles.fromTo}>To: {message.to}</span>
-              <span style={styles.time}>
-                {new Date(message.sentAt).toLocaleTimeString()}
-              </span>
-            </div>
-            <div style={styles.messageBody}>{message.message}</div>
-          </div>
-        ))}
-      </div>
       <div>Status: {status}</div>
-      {status === "CanLoadMore" && (
+      {status === "CanLoadMore" ? (
         <button
-          onClick={() => loadMore(5)}
+          onClick={() => loadMore(1)}
           style={styles.loadMoreBtn}
           onMouseOver={(e) => (e.currentTarget.style.background = "#0056b3")}
           onMouseOut={(e) => (e.currentTarget.style.background = "#007bff")}
         >
           Load More
         </button>
-      )}
-      {isLoading && <div style={styles.loading}>Loading...</div>}
-      {status === "Exhausted" && (
+      ) : status === "Exhausted" ? (
         <div style={styles.loading}>No more messages</div>
-      )}
+      ) : status === "LoadingFirstPage" ? (
+        <div style={styles.loading}>Loading first page...</div>
+      ) : status === "LoadingMore" ? (
+        <div style={styles.loading}>Loading more messages...</div>
+      ) : null}
+      <div style={styles.messageList}>
+        {results
+          .slice()
+          .reverse()
+          .map((message: Doc<"privateMessages">, index: number) => (
+            <div key={index} style={styles.messageItem}>
+              <div style={styles.messageHeader}>
+                <span style={styles.fromTo}>From: {message.from}</span>
+                <span style={styles.fromTo}>To: {message.to}</span>
+                <span style={styles.time}>
+                  {new Date(message.sentAt).toLocaleTimeString()}
+                </span>
+              </div>
+              <div style={styles.messageBody}>{message.message}</div>
+            </div>
+          ))}
+      </div>
     </div>
   );
 };
@@ -184,19 +189,19 @@ const UserPane: React.FC<UserPaneProps> = ({
   const inbox = usePaginatedQuery(
     api.streamsExample.getInbox,
     { id: userId },
-    { initialNumItems: 10, customPagination: true },
+    { initialNumItems: 2 },
   );
 
   const outbox = usePaginatedQuery(
     api.streamsExample.getOutbox,
     { id: userId },
-    { initialNumItems: 10, customPagination: true },
+    { initialNumItems: 2 },
   );
 
   const conversation = usePaginatedQuery(
     api.streamsExample.getMessagesBetween,
     { a: userId, b: otherUserId },
-    { initialNumItems: 10, customPagination: true },
+    { initialNumItems: 2 },
   );
 
   const handleSendMessage = async () => {

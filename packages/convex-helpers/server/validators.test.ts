@@ -129,7 +129,7 @@ const internalQuery = internalQueryGeneric as QueryBuilder<
 
 export const toDoc = internalMutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const kid = await ctx.db.insert("kitchenSink", valid);
     const uid = await ctx.db.insert("unionTable", { foo: "" });
 

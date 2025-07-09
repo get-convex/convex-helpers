@@ -27,7 +27,7 @@ function testUser(
 
 export const relationshipTest = mutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const userId = await ctx.db.insert(
       "users",
       testUser({ name: "test", tokenIdentifier: "test123" }),
@@ -189,7 +189,7 @@ export const relationshipTest = mutation({
 
 export const addRandomFile = internalAction({
   args: {},
-  handler: async (ctx, args): Promise<void> => {
+  handler: async (ctx): Promise<void> => {
     await ctx.storage.store(new Blob(["test"]));
   },
 });
