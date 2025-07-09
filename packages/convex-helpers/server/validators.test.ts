@@ -32,13 +32,13 @@ import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
 import { validate } from "../validators.js";
 import { fail } from "assert";
-import { type Expand } from "convex-helpers";
+import type { Expand } from "convex-helpers";
 
 export const testLiterals = internalQueryGeneric({
   args: {
     foo: literals("bar", "baz"),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     assertType<"bar" | "baz">(args.foo);
   },
 });
@@ -83,7 +83,7 @@ type ExampleFields = ObjectType<typeof ExampleFields>;
 
 export const echo = internalQueryGeneric({
   args: ExampleFields,
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return args;
   },
 });
@@ -183,7 +183,7 @@ test("vv generates the right types for unions", async () => {
   const doc = await t.query(testApi.getUnion, { docId });
   expect(doc).toBeDefined();
   expect(doc!._creationTime).toBeTypeOf("number");
-  expect(doc!["foo"]).toBeDefined();
+  expect("foo" in doc! && !!doc!.foo).toBe(true);
 });
 
 test("doc validator adds fields", async () => {
