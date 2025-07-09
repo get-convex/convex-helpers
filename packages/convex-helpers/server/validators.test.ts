@@ -26,12 +26,13 @@ import {
   internalMutationGeneric,
   internalQueryGeneric,
 } from "convex/server";
-import { v, type Infer, type ObjectType } from "convex/values";
+import { GenericId, v, type Infer, type ObjectType } from "convex/values";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "convex-helpers/server/relationships";
 import { validate } from "../validators.js";
 import { fail } from "assert";
+import { Expand } from "convex-helpers";
 
 export const testLiterals = internalQueryGeneric({
   args: {
@@ -744,5 +745,18 @@ describe("partial", () => {
     expect(
       partialValidator.members[1].members[1].fields.phone?.isOptional,
     ).toBe("optional");
+  });
+
+  test("partial with doc", () => {
+    const validator = doc(schema, "kitchenSink");
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(validate(partialValidator, {})).toBe(true);
+    type Manual = Expand<Partial<ExampleFields>> & {
+      _id?: GenericId<"kitchenSink"> | undefined;
+      _creationTime?: number | undefined;
+    };
+    assertType<Manual>(partialValidator.type);
   });
 });
