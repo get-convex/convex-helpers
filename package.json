@@ -13,7 +13,7 @@
     "lint": "eslint . && npm run typecheck && prettier --check .",
     "typecheck": "tsc --noEmit && cd packages/convex-helpers && npm run typecheck",
     "build": "cd packages/convex-helpers && npm run build",
-    "clean": "rm -rf packages/convex-helpers/dist",
+    "clean": "rm -rf packages/convex-helpers/dist packages/convex-helpers/tsconfig.tsbuildinfo",
     "pack": "cd packages/convex-helpers/dist && npm pack --pack-destination ../../..",
     "test": "vitest run",
     "test:watch": "vitest",
