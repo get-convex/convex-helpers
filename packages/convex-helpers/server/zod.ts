@@ -309,17 +309,20 @@ function customFnBuilder(
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
-    let returns = fn.returns ?? fn.output;
-    if (returns && !(returns instanceof z.ZodType)) {
-      returns = z.object(returns);
-    }
+    const { args, handler = fn, returns: maybeObject, ...extra } = fn;
+
+    const returns =
+      maybeObject && !(maybeObject instanceof z.ZodType)
+        ? z.object(maybeObject)
+        : maybeObject;
 
     const returnValidator =
-      fn.returns && !fn.skipConvexValidation
+      returns && !fn.skipConvexValidation
         ? { returns: zodOutputToConvex(returns) }
         : null;
-    if ("args" in fn && !fn.skipConvexValidation) {
-      let argsValidator = fn.args;
+
+    if (args && !fn.skipConvexValidation) {
+      let argsValidator = args;
       if (argsValidator instanceof z.ZodType) {
         if (argsValidator instanceof z.ZodObject) {
           argsValidator = argsValidator._def.shape();
@@ -341,6 +344,7 @@ function customFnBuilder(
           const added = await inputMod(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
+            extra,
           );
           const rawArgs = pick(allArgs, Object.keys(argsValidator));
           const parsed = z.object(argsValidator).safeParse(rawArgs);
@@ -370,11 +374,10 @@ function customFnBuilder(
           "modifier, you must declare the arguments for the function too.",
       );
     }
-    const handler = fn.handler ?? fn;
     return builder({
       ...returnValidator,
       handler: async (ctx: any, args: any) => {
-        const added = await inputMod(ctx, args);
+        const added = await inputMod(ctx, args, extra);
         if (returns) {
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.

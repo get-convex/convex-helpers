@@ -147,6 +147,30 @@ customAction(
   customCtx((_ctx) => ({})),
 ) satisfies typeof action;
 
+customQuery({} as any, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof query;
+
+customMutation(mutation, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof mutation;
+
+customAction(action, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof action;
+
 /**
  * Testing custom function modifications.
  */
@@ -361,6 +385,25 @@ export const outerRemoved = outerRemover({
 });
 
 /**
+ * Adding extra args to `input`
+ */
+const extraArgQueryBuilder = customQuery(query, {
+  args: { a: v.string() },
+  input: async (_ctx, args, { extraArg }: { extraArg: string }) => ({
+    ctx: { extraArg },
+    args,
+  }),
+});
+export const extraArgQuery = extraArgQueryBuilder({
+  args: {},
+  extraArg: "foo",
+  handler: async (ctx, args) => {
+    return { ctxA: ctx.extraArg };
+  },
+});
+queryMatches(extraArgQuery, {}, { ctxA: "foo" });
+
+/**
  * Test helpers
  */
 function queryMatches<
@@ -389,6 +432,7 @@ const testApi: ApiFromModules<{
     create: typeof create;
     outerAdds: typeof outerAdds;
     outerRemoved: typeof outerRemoved;
+    extraArgQuery: typeof extraArgQuery;
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -566,5 +610,14 @@ describe("nested custom functions", () => {
     await expect(() =>
       t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
     ).rejects.toThrow("Validator error: Expected `string`");
+  });
+});
+
+describe("extra args", () => {
+  test("add extra args", async () => {
+    const t = convexTest(schema, modules);
+    expect(await t.query(testApi.extraArgQuery, { a: "foo" })).toMatchObject({
+      ctxA: "foo",
+    });
   });
 });
