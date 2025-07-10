@@ -11,7 +11,7 @@
     "predev": "npm run build",
     "format": "prettier --write .",
     "lint": "eslint . && npm run typecheck && prettier --check .",
-    "typecheck": "cd packages/convex-helpers && npm run typecheck",
+    "typecheck": "tsc --noEmit && cd packages/convex-helpers && npm run typecheck",
     "build": "cd packages/convex-helpers && npm run build",
     "clean": "rm -rf packages/convex-helpers/dist",
     "pack": "cd packages/convex-helpers/dist && npm pack --pack-destination ../../..",
