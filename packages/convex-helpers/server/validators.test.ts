@@ -29,10 +29,10 @@ import {
 import { type GenericId, v, type Infer, type ObjectType } from "convex/values";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { getOrThrow } from "convex-helpers/server/relationships";
+import { getOrThrow } from "./relationships.js";
 import { validate } from "../validators.js";
 import { fail } from "assert";
-import { type Expand } from "convex-helpers";
+import { type Expand } from "../index.js";
 
 export const testLiterals = internalQueryGeneric({
   args: {

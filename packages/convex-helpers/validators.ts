@@ -1,26 +1,26 @@
 import type {
-  GenericValidator,
-  Infer,
-  ObjectType,
-  OptionalProperty,
-  PropertyValidators,
-  VLiteral,
-  VObject,
-  VOptional,
-  VString,
-  VUnion,
-  Validator,
-} from "convex/values";
-import { v } from "convex/values";
-import type { Expand } from "./index.js";
-import type {
   DataModelFromSchemaDefinition,
   GenericDatabaseReader,
   GenericDataModel,
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
-import { assert } from "convex-helpers";
+import type {
+  GenericValidator,
+  Infer,
+  ObjectType,
+  OptionalProperty,
+  PropertyValidators,
+  Validator,
+  VLiteral,
+  VObject,
+  VOptional,
+  VString,
+  VUnion,
+} from "convex/values";
+import { v } from "convex/values";
+import type { Expand } from "./index.js";
+import { assert } from "./index.js";
 
 /**
  * Helper for defining a union of literals more concisely.
