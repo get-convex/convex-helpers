@@ -558,10 +558,7 @@ describe("nested custom functions", () => {
     const t = convexTest(schema, modules);
     expect(
       await t.query(testApi.outerRemoved, { a: "hi", outer: "bye" }),
-    ).toMatchObject({
-      a: "hi",
-      ctxInner: undefined,
-    });
+    ).toStrictEqual({ a: "hi" });
   });
 
   test("still validates args", async () => {
