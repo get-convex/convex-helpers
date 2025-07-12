@@ -17,9 +17,14 @@ import {
   internalQueryGeneric,
   internalMutationGeneric,
 } from "convex/server";
-import type { GenericId, Infer } from "convex/values";
+import type {
+  GenericId,
+  Infer,
+  OptionalProperty,
+  Validator,
+} from "convex/values";
 import { v } from "convex/values";
-import { partial } from "../validators.js";
+import { partial, systemFields } from "../validators.js";
 /**
  * Create CRUD operations for a table.
  * You can expose these operations in your API. For example, in convex/users.ts:
@@ -67,28 +72,63 @@ export function crud<
   > = internalMutationGeneric as any,
 ) {
   type DataModel = DataModelFromSchemaDefinition<SchemaDefinition<Schema, any>>;
-  const systemFields = {
-    _id: v.id(table),
-    _creationTime: v.number(),
-  };
+
   const validator = schema.tables[table]?.validator;
   if (!validator) {
     throw new Error(
       `Table ${table} not found in schema. Did you define it in defineSchema?`,
     );
   }
-  if (validator.kind !== "object") {
-    throw new Error(
-      `CRUD only supports simple tables ${table} is a ${validator.type}`,
-    );
-  }
+
+  const makeOptional = <
+    Type,
+    IsOptional extends OptionalProperty,
+    FieldPaths extends string,
+  >(
+    validator: Validator<Type, IsOptional, FieldPaths>,
+  ): Validator<Type, "optional", FieldPaths> => {
+    if (validator.kind === "object") {
+      return v.object(partial(validator.fields)) as any;
+    } else if (validator.kind === "union") {
+      return v.union(
+        ...validator.members.map((value) => makeOptional(value) as any),
+      ) as any;
+    } else {
+      return v.optional(validator) as Validator<Type, "optional", never>;
+    }
+  };
+
+  const optionalValidator = makeOptional(validator);
+
+  const makeSystemFieldsOptional = <
+    Type,
+    IsOptional extends OptionalProperty,
+    FieldPaths extends string,
+  >(
+    validator: Validator<Type, IsOptional, FieldPaths>,
+  ): Validator<Type, IsOptional, FieldPaths> => {
+    if (validator.kind === "object") {
+      return v.object({
+        ...validator.fields,
+        ...partial({
+          _id: v.optional(v.id(table)),
+          _creationTime: v.optional(v.number()),
+        }),
+      }) as any;
+    } else if (validator.kind === "union") {
+      return v.union(
+        ...validator.members.map((value) => makeSystemFieldsOptional(value)),
+      ) as any;
+    } else {
+      return validator;
+    }
+  };
+
+  const validatorWithSystemFields = makeSystemFieldsOptional(validator);
 
   return {
     create: mutation({
-      args: {
-        ...validator.fields,
-        ...partial(systemFields),
-      },
+      args: validatorWithSystemFields,
       handler: async (ctx, args) => {
         if ("_id" in args) delete args._id;
         if ("_creationTime" in args) delete args._creationTime;
@@ -132,10 +172,7 @@ export function crud<
         id: v.id(table),
         // this could be partial(table.withSystemFields) but keeping
         // the api less coupled to Table
-        patch: v.object({
-          ...partial(validator.fields),
-          ...partial(systemFields),
-        }),
+        patch: optionalValidator,
       },
       handler: async (ctx, args) => {
         await ctx.db.patch(
