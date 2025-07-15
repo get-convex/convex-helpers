@@ -12,6 +12,7 @@ import { v } from "convex/values";
 import { internalQueryGeneric, internalMutationGeneric } from "convex/server";
 import { modules } from "./setup.test.js";
 import { customCtx, customMutation, customQuery } from "./customFunctions.js";
+import { doc } from "../validators.js";
 
 const ExampleFields = {
   foo: v.string(),
@@ -356,6 +357,7 @@ test("complex object - partial updates", async () => {
     city: "New City",
     country: "New Country",
   });
+
 
   // Update array
   await t.mutation(complexTestApi.complexUpdate, {
