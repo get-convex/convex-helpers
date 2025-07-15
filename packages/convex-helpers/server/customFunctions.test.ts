@@ -136,16 +136,40 @@ async function getUserByTokenIdentifier(ctx: {
 
 customQuery(
   query,
-  customCtx((ctx) => ({ foo: "bar" })),
+  customCtx((_ctx) => ({ foo: "bar" })),
 ) satisfies typeof query;
 customMutation(
   mutation,
-  customCtx((ctx) => ({})),
+  customCtx((_ctx) => ({})),
 ) satisfies typeof mutation;
 customAction(
   action,
-  customCtx((ctx) => ({})),
+  customCtx((_ctx) => ({})),
 ) satisfies typeof action;
+
+customQuery({} as any, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof query;
+
+customMutation(mutation, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof mutation;
+
+customAction(action, {
+  args: {},
+  input: async () => ({
+    ctx: {},
+    args: {},
+  }),
+}) satisfies typeof action;
 
 /**
  * Testing custom function modifications.
@@ -168,6 +192,7 @@ export const addC = addCtxArg({
   },
 });
 queryMatches(addC, {}, { ctxA: "" });
+
 // Unvalidated
 export const addCU = addCtxArg({
   handler: async (ctx) => {
@@ -184,7 +209,7 @@ queryMatches(addCU2, {}, { ctxA: "" });
 
 // Unvalidated with type annotation
 export const addCU3 = addCtxArg({
-  handler: async (ctx, args: { foo: number }) => {
+  handler: async (ctx, _args: { foo: number }) => {
     return { ctxA: ctx.a }; // !!!
   },
 });
@@ -237,7 +262,7 @@ const consumeArg = customQuery(query, {
 export const consume = consumeArg({
   args: {},
   handler: async (ctx, emptyArgs) => {
-    assertType<{}>(emptyArgs); // !!!
+    assertType<Record<string, never>>(emptyArgs); // !!!
     return { ctxA: ctx.a };
   },
 });
@@ -345,19 +370,38 @@ const outerAdder = customQuery(inner, {
 export const outerAdds = outerAdder({
   args: { a: v.string() },
   handler: async (ctx, args) => {
-    return { ctxInner: ctx["inner"], ctxOuter: ctx.outer, ...args };
+    return { ctxInner: (ctx as any)["inner"], ctxOuter: ctx.outer, ...args };
   },
 });
 export const outerRemover = customQuery(inner, {
   args: { outer: v.string() },
-  input: async (_ctx, args) => ({ ctx: { inner: undefined }, args: {} }),
+  input: async (_ctx, _args) => ({ ctx: { inner: undefined }, args: {} }),
 });
-export const outerRemoves = outerRemover({
+export const outerRemoved = outerRemover({
   args: { a: v.string() },
   handler: async (ctx, args) => {
-    return { ctxInner: ctx["inner"], ctxOuter: ctx["outer"], ...args };
+    return { ctxInner: ctx["inner"], ...args };
   },
 });
+
+/**
+ * Adding extra args to `input`
+ */
+const extraArgQueryBuilder = customQuery(query, {
+  args: { a: v.string() },
+  input: async (_ctx, args, { extraArg }: { extraArg: string }) => ({
+    ctx: { extraArg },
+    args,
+  }),
+});
+export const extraArgQuery = extraArgQueryBuilder({
+  args: {},
+  extraArg: "foo",
+  handler: async (ctx, args) => {
+    return { ctxA: ctx.extraArg };
+  },
+});
+queryMatches(extraArgQuery, {}, { ctxA: "foo" });
 
 /**
  * Test helpers
@@ -387,7 +431,8 @@ const testApi: ApiFromModules<{
     badRedefine: typeof badRedefine;
     create: typeof create;
     outerAdds: typeof outerAdds;
-    outerRemoves: typeof outerRemoves;
+    outerRemoved: typeof outerRemoved;
+    extraArgQuery: typeof extraArgQuery;
   };
 }>["fns"] = anyApi["customFunctions.test"] as any;
 
@@ -556,10 +601,8 @@ describe("nested custom functions", () => {
   test("remove args", async () => {
     const t = convexTest(schema, modules);
     expect(
-      await t.query(testApi.outerRemoves, { a: "hi", outer: "bye" }),
-    ).toMatchObject({
-      a: "hi",
-    });
+      await t.query(testApi.outerRemoved, { a: "hi", outer: "bye" }),
+    ).toStrictEqual({ a: "hi" });
   });
 
   test("still validates args", async () => {
@@ -567,5 +610,14 @@ describe("nested custom functions", () => {
     await expect(() =>
       t.query(testApi.outerAdds, { a: 3 as any, outer: "" }),
     ).rejects.toThrow("Validator error: Expected `string`");
+  });
+});
+
+describe("extra args", () => {
+  test("add extra args", async () => {
+    const t = convexTest(schema, modules);
+    expect(await t.query(testApi.extraArgQuery, { a: "foo" })).toMatchObject({
+      ctxA: "foo",
+    });
   });
 });

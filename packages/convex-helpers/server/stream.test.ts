@@ -618,7 +618,7 @@ describe("stream", () => {
         .query("foo")
         .withIndex("abc", (q) => q.eq("a", 1))
         .filterWith(async () => false)
-        .flatMap(async (doc) => null as any, ["a", "b", "c"])
+        .flatMap(async () => null as any, ["a", "b", "c"])
         .collect();
       expect(result).toEqual([]);
     });

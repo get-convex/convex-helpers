@@ -32,7 +32,7 @@ triggers.register("users", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
-      ctx.db.patch(change.id, { fullName });
+      await ctx.db.patch(change.id, { fullName });
     }
   }
 });

@@ -23,7 +23,7 @@ async function rlsRules(ctx: QueryCtx) {
         if (!identity && user.age < 18) return false;
         return true;
       },
-      insert: async (_, user) => {
+      insert: async (_, _user) => {
         return true;
       },
       modify: async (_, user) => {

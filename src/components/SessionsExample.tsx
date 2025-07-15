@@ -44,7 +44,9 @@ export default () => {
       <span>{sessionId}</span>
       <button
         onClick={() =>
-          refreshSessionId((newSessionId) => login({ new: newSessionId }))
+          void refreshSessionId((newSessionId) => {
+            void login({ new: newSessionId });
+          })
         }
       >
         Refresh Session Id on Log In
@@ -52,7 +54,7 @@ export default () => {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (room) joinRoom({ room });
+          if (room) void joinRoom({ room });
           setRoom("");
         }}
       >
@@ -78,7 +80,13 @@ export default () => {
         load more
       </button>
 
-      <button onClick={() => refreshSessionId((newSessionId) => logout())}>
+      <button
+        onClick={() =>
+          void refreshSessionId((_newSessionId) => {
+            void logout();
+          })
+        }
+      >
         Delete Session Data on Log Out
       </button>
     </div>

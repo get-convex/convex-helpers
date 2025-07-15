@@ -5,11 +5,16 @@ import reactPlugin from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default [
-  { files: ["src/**/*.{js,mjs,cjs,ts,tsx}"] },
+  { files: ["src/**/*.{js,mjs,cjs,ts,tsx}", "convex/**/*.{ts,tsx}"] },
   {
     ignores: [
       "dist/**",
+      "packages/convex-helpers/dist/**",
+      "packages/convex-helpers/generate-exports.mjs",
+      "src/fakeConvexClient/fakeConvexClient.js",
+      "backendHarness.js",
       "eslint.config.mjs",
+      "convex/vitest.config.mts",
       "setup.cjs",
       "**/_generated/",
       "vite.config.mts",
@@ -22,7 +27,7 @@ export default [
       parser: tseslint.parser,
 
       parserOptions: {
-        project: true,
+        project: ["./tsconfig.json", "./packages/convex-helpers/tsconfig.json"],
         tsconfigRootDir: ".",
       },
     },
@@ -54,6 +59,7 @@ export default [
     rules: {
       "@typescript-eslint/no-floating-promises": "error",
       "eslint-comments/no-unused-disable": "off",
+      "@typescript-eslint/no-explicit-any": "off",
 
       // allow (_arg: number) => {} and const _foo = 1;
       "no-unused-vars": "off",

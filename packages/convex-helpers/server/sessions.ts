@@ -71,7 +71,7 @@ export const SessionIdArg = { sessionId: vSessionId };
 
 type SessionFunction<
   T extends "query" | "mutation" | "action",
-  Args extends any = any,
+  Args = any,
 > = FunctionReference<
   T,
   "public" | "internal",

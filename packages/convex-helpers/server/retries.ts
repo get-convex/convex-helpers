@@ -162,7 +162,7 @@ export function makeActionRetrier(
           });
           break;
 
-        case "failed":
+        case "failed": {
           if (args.maxFailures <= 0) {
             log(
               `Job ${args.action}(${job}) failed too many times, not retrying.`,
@@ -189,6 +189,7 @@ export function makeActionRetrier(
             },
           );
           break;
+        }
 
         case "success":
           log(`Job ${args.action}(${job}) succeeded.`);

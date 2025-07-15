@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.99
+
+- Fixes LoadingMore for custom pagintation
+
+## 0.1.98
+
+- `partial` now supports unions too (including recursive unions).
+
+## 0.1.97
+
+- `partial` from `convex-helpers/validators` now supports either a
+  v.object or POJO of validators.
+
 ## 0.1.96
 
 - Fix the usePaginatedQuery helper to show LoadingMore when loading

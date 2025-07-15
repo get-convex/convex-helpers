@@ -21,6 +21,7 @@ import type * as relationshipsExample from "../relationshipsExample.js";
 import type * as retriesExample from "../retriesExample.js";
 import type * as rlsExample from "../rlsExample.js";
 import type * as sessionsExample from "../sessionsExample.js";
+import type * as streamsExample from "../streamsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 import type * as triggersExample from "../triggersExample.js";
 
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   retriesExample: typeof retriesExample;
   rlsExample: typeof rlsExample;
   sessionsExample: typeof sessionsExample;
+  streamsExample: typeof streamsExample;
   testingFunctions: typeof testingFunctions;
   triggersExample: typeof triggersExample;
 }>;

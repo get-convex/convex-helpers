@@ -224,10 +224,9 @@ export const rateLimitTables = {
 };
 
 // A data model that includes the rate limit table.
-export interface RateLimitDataModel
-  extends DataModelFromSchemaDefinition<
-    SchemaDefinition<typeof rateLimitTables, true>
-  > {}
+export type RateLimitDataModel = DataModelFromSchemaDefinition<
+  SchemaDefinition<typeof rateLimitTables, true>
+>;
 
 /**
  *
@@ -256,7 +255,7 @@ export function defineRateLimits<
     >(
       { db }: { db: GenericDatabaseReader<DataModel> },
       args: RateLimitArgsWithoutConfig<Name> &
-        (Name extends RateLimitNames ? {} : { config: RateLimitConfig }),
+        (Name extends RateLimitNames ? object : { config: RateLimitConfig }),
     ) => {
       const config = ("config" in args && args.config) || limits[args.name];
       if (!config) {
@@ -281,7 +280,7 @@ export function defineRateLimits<
     rateLimit: async <Name extends string = RateLimitNames>(
       ctx: { db: GenericDatabaseWriter<RateLimitDataModel> },
       args: RateLimitArgsWithoutConfig<Name> &
-        (Name extends RateLimitNames ? {} : { config: RateLimitConfig }),
+        (Name extends RateLimitNames ? object : { config: RateLimitConfig }),
     ) => {
       const config = ("config" in args && args.config) || limits[args.name];
       if (!config) {

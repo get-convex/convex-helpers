@@ -28,7 +28,7 @@ export const unreliableAction = internalAction({
 // e.g. `npx convex run retriesExample:runUnreliableActionWithRetries`
 export const runUnreliableActionWithRetries = mutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     await runWithRetries(ctx, internal.retriesExample.unreliableAction, {
       failureRate: 0.8,
     });

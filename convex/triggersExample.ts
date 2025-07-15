@@ -97,7 +97,7 @@ export const incrementCounterRace = mutation({
 
 export const getSum = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     return ctx.db.query("sum_table").first();
   },
 });

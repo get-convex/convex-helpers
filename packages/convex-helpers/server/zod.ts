@@ -309,17 +309,20 @@ function customFnBuilder(
   const inputMod = mod.input ?? NoOp.input;
   const inputArgs = mod.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
-    let returns = fn.returns ?? fn.output;
-    if (returns && !(returns instanceof z.ZodType)) {
-      returns = z.object(returns);
-    }
+    const { args, handler = fn, returns: maybeObject, ...extra } = fn;
+
+    const returns =
+      maybeObject && !(maybeObject instanceof z.ZodType)
+        ? z.object(maybeObject)
+        : maybeObject;
 
     const returnValidator =
-      fn.returns && !fn.skipConvexValidation
+      returns && !fn.skipConvexValidation
         ? { returns: zodOutputToConvex(returns) }
         : null;
-    if ("args" in fn && !fn.skipConvexValidation) {
-      let argsValidator = fn.args;
+
+    if (args && !fn.skipConvexValidation) {
+      let argsValidator = args;
       if (argsValidator instanceof z.ZodType) {
         if (argsValidator instanceof z.ZodObject) {
           argsValidator = argsValidator._def.shape();
@@ -341,6 +344,7 @@ function customFnBuilder(
           const added = await inputMod(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
+            extra,
           );
           const rawArgs = pick(allArgs, Object.keys(argsValidator));
           const parsed = z.object(argsValidator).safeParse(rawArgs);
@@ -370,11 +374,10 @@ function customFnBuilder(
           "modifier, you must declare the arguments for the function too.",
       );
     }
-    const handler = fn.handler ?? fn;
     return builder({
       ...returnValidator,
       handler: async (ctx: any, args: any) => {
-        const added = await inputMod(ctx, args);
+        const added = await inputMod(ctx, args, extra);
         if (returns) {
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.
@@ -780,12 +783,13 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
     case "ZodAny":
     case "ZodUnknown":
       return v.any() as ConvexValidatorFromZod<Z>;
-    case "ZodArray":
+    case "ZodArray": {
       const inner = zodToConvex(zod._def.type);
       if (inner.isOptional === "optional") {
         throw new Error("Arrays of optional values are not supported");
       }
       return v.array(inner) as ConvexValidatorFromZod<Z>;
+    }
     case "ZodObject":
       return v.object(
         zodToConvexFields(zod._def.shape()),
@@ -795,7 +799,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
       return v.union(
         ...zod._def.options.map((v: z.ZodTypeAny) => zodToConvex(v)),
       ) as ConvexValidatorFromZod<Z>;
-    case "ZodTuple":
+    case "ZodTuple": {
       const allTypes = zod._def.items.map((v: z.ZodTypeAny) => zodToConvex(v));
       if (zod._def.rest) {
         allTypes.push(zodToConvex(zod._def.rest));
@@ -803,6 +807,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
       return v.array(
         v.union(...allTypes),
       ) as unknown as ConvexValidatorFromZod<Z>;
+    }
     case "ZodLazy":
       return zodToConvex(zod._def.getter()) as ConvexValidatorFromZod<Z>;
     case "ZodLiteral":
@@ -819,7 +824,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
       return v.optional(
         zodToConvex((zod as any).unwrap()) as any,
       ) as ConvexValidatorFromZod<Z>;
-    case "ZodNullable":
+    case "ZodNullable": {
       const nullable = (zod as any).unwrap();
       if (nullable._def.typeName === "ZodOptional") {
         // Swap nullable(optional(Z)) for optional(nullable(Z))
@@ -832,15 +837,17 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
         zodToConvex(nullable) as any,
         v.null(),
       ) as unknown as ConvexValidatorFromZod<Z>;
+    }
     case "ZodBranded":
       return zodToConvex((zod as any).unwrap()) as ConvexValidatorFromZod<Z>;
-    case "ZodDefault":
+    case "ZodDefault": {
       const withDefault = zodToConvex(zod._def.innerType);
       if (withDefault.isOptional === "optional") {
         return withDefault as ConvexValidatorFromZod<Z>;
       }
       return v.optional(withDefault) as ConvexValidatorFromZod<Z>;
-    case "ZodRecord":
+    }
+    case "ZodRecord": {
       const keyType = zodToConvex(
         zod._def.keyType,
       ) as ConvexValidatorFromZod<Z>;
@@ -856,6 +863,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
         keyType,
         zodToConvex(zod._def.valueType) as ConvexValidatorFromZod<Z>,
       ) as unknown as ConvexValidatorFromZod<Z>;
+    }
     case "ZodReadonly":
       return zodToConvex(zod._def.innerType) as ConvexValidatorFromZod<Z>;
     case "ZodPipeline":
@@ -1101,12 +1109,13 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
     case "ZodAny":
     case "ZodUnknown":
       return v.any() as ConvexValidatorFromZodOutput<Z>;
-    case "ZodArray":
+    case "ZodArray": {
       const inner = zodOutputToConvex(zod._def.type);
       if (inner.isOptional === "optional") {
         throw new Error("Arrays of optional values are not supported");
       }
       return v.array(inner) as ConvexValidatorFromZodOutput<Z>;
+    }
     case "ZodObject":
       return v.object(
         zodOutputToConvexFields(zod._def.shape()),
@@ -1116,7 +1125,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
       return v.union(
         ...zod._def.options.map((v: z.ZodTypeAny) => zodOutputToConvex(v)),
       ) as ConvexValidatorFromZodOutput<Z>;
-    case "ZodTuple":
+    case "ZodTuple": {
       const allTypes = zod._def.items.map((v: z.ZodTypeAny) =>
         zodOutputToConvex(v),
       );
@@ -1126,6 +1135,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
       return v.array(
         v.union(...allTypes),
       ) as unknown as ConvexValidatorFromZodOutput<Z>;
+    }
     case "ZodLazy":
       return zodOutputToConvex(
         zod._def.getter(),
@@ -1142,7 +1152,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
       return v.optional(
         zodOutputToConvex((zod as any).unwrap()) as any,
       ) as ConvexValidatorFromZodOutput<Z>;
-    case "ZodNullable":
+    case "ZodNullable": {
       const nullable = (zod as any).unwrap();
       if (nullable._def.typeName === "ZodOptional") {
         // Swap nullable(optional(Z)) for optional(nullable(Z))
@@ -1155,11 +1165,12 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
         zodOutputToConvex(nullable) as any,
         v.null(),
       ) as unknown as ConvexValidatorFromZodOutput<Z>;
+    }
     case "ZodBranded":
       return zodOutputToConvex(
         (zod as any).unwrap(),
       ) as ConvexValidatorFromZodOutput<Z>;
-    case "ZodRecord":
+    case "ZodRecord": {
       const keyType = zodOutputToConvex(
         zod._def.keyType,
       ) as ConvexValidatorFromZodOutput<Z>;
@@ -1177,6 +1188,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
           zod._def.valueType,
         ) as ConvexValidatorFromZodOutput<Z>,
       ) as unknown as ConvexValidatorFromZodOutput<Z>;
+    }
     case "ZodReadonly":
       return zodOutputToConvex(
         zod._def.innerType,

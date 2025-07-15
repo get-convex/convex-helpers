@@ -17,10 +17,10 @@ describe("testingExample", () => {
     expect(await t.query(api.counter.getCounter, { counterName: "foo" })).toBe(
       0,
     );
-    expect(() =>
+    await expect(
       t.query(api.counter.getCounterOrThrow, { counterName: "foo" }),
     ).rejects.toThrow(/Counter not found/);
-    expect(() =>
+    await expect(() =>
       t.query(api.counter.getCounterOrThrow, { counterName: "bar" }),
     ).rejects.toThrow(/Counter not found/);
     await t.mutation(api.counter.incrementCounter, {

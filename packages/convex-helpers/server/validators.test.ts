@@ -1,25 +1,14 @@
+// Note: this is in the server/ folder b/c it defines test query/mutations.
 import {
-  any,
-  array,
-  arrayBuffer,
-  bigint,
-  boolean,
   brandedString,
   deprecated,
   doc,
-  id,
-  literal as is,
   literals,
-  null_,
   nullable,
-  number,
-  object,
-  optional,
-  union as or,
   parse,
+  partial,
   pretend,
   pretendRequired,
-  string,
   typedV,
   ValidationError,
 } from "../validators.js";
@@ -37,18 +26,19 @@ import {
   internalMutationGeneric,
   internalQueryGeneric,
 } from "convex/server";
-import { v, type Infer, type ObjectType } from "convex/values";
-import { assertType, describe, expect, test } from "vitest";
+import { type GenericId, v, type Infer, type ObjectType } from "convex/values";
+import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { getOrThrow } from "convex-helpers/server/relationships";
+import { getOrThrow } from "./relationships.js";
 import { validate } from "../validators.js";
 import { fail } from "assert";
+import { type Expand } from "../index.js";
 
 export const testLiterals = internalQueryGeneric({
   args: {
     foo: literals("bar", "baz"),
   },
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     assertType<"bar" | "baz">(args.foo);
   },
 });
@@ -60,31 +50,31 @@ const ExampleFields = {
   // These look like types, but they're values.
   // Most people will just use the v.string() syntax,
   // But this is an example of what's possible for readability.
-  name: string,
-  age: number,
-  nickname: optional(string),
-  id: optional(id("users")),
-  balance: nullable(bigint),
-  ephemeral: boolean,
+  name: v.string(),
+  age: v.number(),
+  nickname: v.optional(v.string()),
+  id: v.optional(v.id("users")),
+  balance: nullable(v.int64()),
+  ephemeral: v.boolean(),
   status: literals("active", "inactive"),
-  rawJSON: optional(any),
-  maybeNotSetYet: pretendRequired(string),
-  couldBeAnything: pretend(boolean),
-  loginType: or(
-    object({
-      type: is("email"),
+  rawJSON: v.optional(v.any()),
+  maybeNotSetYet: pretendRequired(v.string()),
+  couldBeAnything: pretend(v.boolean()),
+  loginType: v.union(
+    v.object({
+      type: v.literal("email"),
       email: emailValidator,
-      phone: null_,
-      verified: boolean,
+      phone: v.null(),
+      verified: v.boolean(),
     }),
-    object({
-      type: is("phone"),
-      phone: string,
-      email: null_,
-      verified: boolean,
+    v.object({
+      type: v.literal("phone"),
+      phone: v.string(),
+      email: v.null(),
+      verified: v.boolean(),
     }),
   ),
-  logs: or(string, array(string)),
+  logs: v.union(v.string(), v.array(v.string())),
 
   // This is a handy way to mark a field as deprecated
   oldField: deprecated,
@@ -93,7 +83,7 @@ type ExampleFields = ObjectType<typeof ExampleFields>;
 
 export const echo = internalQueryGeneric({
   args: ExampleFields,
-  handler: async (ctx, args) => {
+  handler: async (_ctx, args) => {
     return args;
   },
 });
@@ -120,10 +110,12 @@ const valid = {
 
 const schema = defineSchema({
   users: defineTable({
-    tokenIdentifier: string,
+    tokenIdentifier: v.string(),
   }),
   kitchenSink: defineTable(ExampleFields),
-  unionTable: defineTable(or(object({ foo: string }), object({ bar: number }))),
+  unionTable: defineTable(
+    v.union(v.object({ foo: v.string() }), v.object({ bar: v.number() })),
+  ),
 });
 
 const internalMutation = internalMutationGeneric as MutationBuilder<
@@ -137,7 +129,7 @@ const internalQuery = internalQueryGeneric as QueryBuilder<
 
 export const toDoc = internalMutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const kid = await ctx.db.insert("kitchenSink", valid);
     const uid = await ctx.db.insert("unionTable", { foo: "" });
 
@@ -146,7 +138,7 @@ export const toDoc = internalMutation({
       union: await getOrThrow(ctx, uid),
     };
   },
-  returns: object({
+  returns: v.object({
     sink: doc(schema, "kitchenSink"),
     union: doc(schema, "unionTable"),
   }),
@@ -191,7 +183,7 @@ test("vv generates the right types for unions", async () => {
   const doc = await t.query(testApi.getUnion, { docId });
   expect(doc).toBeDefined();
   expect(doc!._creationTime).toBeTypeOf("number");
-  expect(doc!["foo"]).toBeDefined();
+  expect("foo" in doc! && !!doc!.foo).toBe(true);
 });
 
 test("doc validator adds fields", async () => {
@@ -278,34 +270,34 @@ test("validators disallow things when they're wrong", async () => {
 describe("validate", () => {
   test("validates primitive validators", () => {
     // String
-    expect(validate(string, "hello")).toBe(true);
-    expect(validate(string, 123)).toBe(false);
-    expect(validate(string, null)).toBe(false);
+    expect(validate(v.string(), "hello")).toBe(true);
+    expect(validate(v.string(), 123)).toBe(false);
+    expect(validate(v.string(), null)).toBe(false);
 
     // Number
-    expect(validate(number, 123)).toBe(true);
-    expect(validate(number, "123")).toBe(false);
-    expect(validate(number, null)).toBe(false);
+    expect(validate(v.number(), 123)).toBe(true);
+    expect(validate(v.number(), "123")).toBe(false);
+    expect(validate(v.number(), null)).toBe(false);
 
     // Boolean
-    expect(validate(boolean, true)).toBe(true);
-    expect(validate(boolean, false)).toBe(true);
-    expect(validate(boolean, "true")).toBe(false);
-    expect(validate(boolean, 1)).toBe(false);
+    expect(validate(v.boolean(), true)).toBe(true);
+    expect(validate(v.boolean(), false)).toBe(true);
+    expect(validate(v.boolean(), "true")).toBe(false);
+    expect(validate(v.boolean(), 1)).toBe(false);
 
     // Null
-    expect(validate(null_, null)).toBe(true);
-    expect(validate(null_, undefined)).toBe(false);
-    expect(validate(null_, false)).toBe(false);
+    expect(validate(v.null(), null)).toBe(true);
+    expect(validate(v.null(), undefined)).toBe(false);
+    expect(validate(v.null(), false)).toBe(false);
 
     // BigInt/Int64
-    expect(validate(bigint, 123n)).toBe(true);
-    expect(validate(bigint, 123)).toBe(false);
-    expect(validate(bigint, "123")).toBe(false);
+    expect(validate(v.int64(), 123n)).toBe(true);
+    expect(validate(v.int64(), 123)).toBe(false);
+    expect(validate(v.int64(), "123")).toBe(false);
   });
 
   test("validates array validator", () => {
-    const arrayOfStrings = array(string);
+    const arrayOfStrings = v.array(v.string());
     expect(validate(arrayOfStrings, ["a", "b", "c"])).toBe(true);
     expect(validate(arrayOfStrings, [])).toBe(true);
     expect(validate(arrayOfStrings, ["a", 1, "c"])).toBe(false);
@@ -314,10 +306,10 @@ describe("validate", () => {
   });
 
   test("validates object validator", () => {
-    const personValidator = object({
-      name: string,
-      age: number,
-      optional: optional(string),
+    const personValidator = v.object({
+      name: v.string(),
+      age: v.number(),
+      optional: v.optional(v.string()),
     });
 
     expect(validate(personValidator, { name: "Alice", age: 30 })).toBe(true);
@@ -335,7 +327,11 @@ describe("validate", () => {
   });
 
   test("validates union validator", () => {
-    const unionValidator = or(string, number, object({ type: is("test") }));
+    const unionValidator = v.union(
+      v.string(),
+      v.number(),
+      v.object({ type: v.literal("test") }),
+    );
 
     expect(validate(unionValidator, "string")).toBe(true);
     expect(validate(unionValidator, 123)).toBe(true);
@@ -353,7 +349,7 @@ describe("validate", () => {
   });
 
   test("validates union of literals", () => {
-    const unionValidator = or(is("foo"), is("bar"));
+    const unionValidator = v.union(v.literal("foo"), v.literal("bar"));
     expect(validate(unionValidator, "foo")).toBe(true);
     expect(validate(unionValidator, "bar")).toBe(true);
     expect(validate(unionValidator, "baz")).toBe(false);
@@ -361,7 +357,7 @@ describe("validate", () => {
   });
 
   test("validates optional values", () => {
-    const optionalString = optional(string);
+    const optionalString = v.optional(v.string());
     expect(validate(optionalString, "value")).toBe(true);
     expect(validate(optionalString, undefined)).toBe(true);
     expect(validate(optionalString, null)).toBe(false);
@@ -369,11 +365,11 @@ describe("validate", () => {
   });
 
   test("validates id validator", async () => {
-    const idValidator = id("users");
+    const idValidator = v.id("users");
     expect(validate(idValidator, "123")).toBe(true);
     expect(validate(idValidator, "any string")).toBe(true);
     expect(
-      validate(object({ someArray: optional(array(idValidator)) }), {
+      validate(v.object({ someArray: v.optional(v.array(idValidator)) }), {
         someArray: ["string", "other string"],
       }),
     ).toBe(true);
@@ -386,17 +382,17 @@ describe("validate", () => {
   });
 
   test("throws validation errors when configured", () => {
-    expect(() => validate(string, 123, { throw: true })).toThrow(
+    expect(() => validate(v.string(), 123, { throw: true })).toThrow(
       ValidationError,
     );
 
     expect(() =>
-      validate(object({ name: string }), { name: 123 }, { throw: true }),
+      validate(v.object({ name: v.string() }), { name: 123 }, { throw: true }),
     ).toThrow(ValidationError);
 
     expect(() =>
       validate(
-        object({ name: string }),
+        v.object({ name: v.string() }),
         { name: "valid", extra: true },
         { throw: true },
       ),
@@ -404,7 +400,7 @@ describe("validate", () => {
   });
 
   test("doesn't throw when validating union with later matching member", () => {
-    const unionValidator = or(is("foo"), is("bar"));
+    const unionValidator = v.union(v.literal("foo"), v.literal("bar"));
     expect(validate(unionValidator, "foo", { throw: true })).toBe(true);
     expect(validate(unionValidator, "bar", { throw: true })).toBe(true);
     expect(() => validate(unionValidator, "baz", { throw: true })).toThrow(
@@ -416,10 +412,10 @@ describe("validate", () => {
   });
 
   test("includes path in error messages", () => {
-    const complexValidator = object({
-      user: object({
-        details: object({
-          name: string,
+    const complexValidator = v.object({
+      user: v.object({
+        details: v.object({
+          name: v.string(),
         }),
       }),
     });
@@ -443,10 +439,10 @@ describe("validate", () => {
   });
 
   test("includes path for nested objects", () => {
-    const complexValidator = object({
-      user: object({
-        details: object({
-          name: string,
+    const complexValidator = v.object({
+      user: v.object({
+        details: v.object({
+          name: v.string(),
         }),
       }),
     });
@@ -476,9 +472,9 @@ describe("validate", () => {
   });
 
   test("includes path for nested arrays", () => {
-    const complexValidator = object({
-      user: object({
-        details: array(string),
+    const complexValidator = v.object({
+      user: v.object({
+        details: v.array(v.string()),
       }),
     });
     expect(
@@ -508,22 +504,22 @@ describe("validate", () => {
 
   test("validates bytes/ArrayBuffer", () => {
     const buffer = new ArrayBuffer(8);
-    expect(validate(arrayBuffer, buffer)).toBe(true);
-    expect(validate(arrayBuffer, new Uint8Array(8))).toBe(false);
-    expect(validate(arrayBuffer, "binary")).toBe(false);
+    expect(validate(v.bytes(), buffer)).toBe(true);
+    expect(validate(v.bytes(), new Uint8Array(8))).toBe(false);
+    expect(validate(v.bytes(), "binary")).toBe(false);
   });
 
   test("validates any", () => {
-    expect(validate(any, "anything")).toBe(true);
-    expect(validate(any, 123)).toBe(true);
-    expect(validate(any, null)).toBe(true);
-    expect(validate(any, { complex: "object" })).toBe(true);
+    expect(validate(v.any(), "anything")).toBe(true);
+    expect(validate(v.any(), 123)).toBe(true);
+    expect(validate(v.any(), null)).toBe(true);
+    expect(validate(v.any(), { complex: "object" })).toBe(true);
   });
 
   test("parse strips unknown fields", () => {
-    const validator = object({
-      name: string,
-      age: number,
+    const validator = v.object({
+      name: v.string(),
+      age: v.number(),
     });
 
     const result = parse(validator, {
@@ -535,7 +531,10 @@ describe("validate", () => {
   });
 
   test("parse strips unknown fields from unions", () => {
-    const validator = or(object({ name: string }), object({ age: number }));
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ age: v.number() }),
+    );
     const result = parse(validator, {
       name: "Alice",
       age: 30,
@@ -545,7 +544,7 @@ describe("validate", () => {
   });
 
   test("parse strips unknown fields from arrays", () => {
-    const validator = array(object({ name: string }));
+    const validator = v.array(v.object({ name: v.string() }));
     const result = parse(validator, [
       { name: "Alice" },
       { name: "Bob", unknown: "field" },
@@ -555,7 +554,7 @@ describe("validate", () => {
   });
 
   test("parse strips unknown fields from records", () => {
-    const validator = vv.record(string, object({ name: string }));
+    const validator = vv.record(v.string(), v.object({ name: v.string() }));
     const result = parse(validator, {
       a: { name: "Alice" },
       b: { name: "Bob", unknown: "field" },
@@ -564,16 +563,19 @@ describe("validate", () => {
   });
 
   test("parse strips unknown fields from nested objects", () => {
-    const validator = object({
-      name: string,
-      age: number,
-      details: object({
-        name: string,
-        age: number,
+    const validator = v.object({
+      name: v.string(),
+      age: v.number(),
+      details: v.object({
+        name: v.string(),
+        age: v.number(),
       }),
-      union: or(object({ name: string }), object({ age: number })),
-      array: array(object({ name: string })),
-      record: vv.record(string, object({ name: string })),
+      union: v.union(
+        v.object({ name: v.string() }),
+        v.object({ age: v.number() }),
+      ),
+      array: v.array(v.object({ name: v.string() })),
+      record: vv.record(v.string(), v.object({ name: v.string() })),
     });
     const result = parse(validator, {
       name: "Alice",
@@ -594,9 +596,9 @@ describe("validate", () => {
   });
 
   test("union matches first member with unknown fields", () => {
-    const validator = or(
-      object({ name: string }),
-      object({ name: string, age: number }),
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ name: v.string(), age: v.number() }),
     );
     const result = parse(validator, {
       name: "Alice",
@@ -607,9 +609,9 @@ describe("validate", () => {
   });
 
   test("union matches second member if matches second strictly", () => {
-    const validator = or(
-      object({ name: string }),
-      object({ name: string, age: number }),
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ name: v.string(), age: v.number() }),
     );
     const result = parse(validator, {
       name: "Alice",
@@ -619,10 +621,142 @@ describe("validate", () => {
   });
 
   test("parse handles literal union validators", () => {
-    const validator = or(is("specific"), is("other"));
+    const validator = v.union(v.literal("specific"), v.literal("other"));
 
     expect(parse(validator, "specific")).toBe("specific");
     expect(parse(validator, "other")).toBe("other");
     expect(() => parse(validator, "not a literal")).toThrow(ValidationError);
+  });
+});
+
+describe("partial", () => {
+  test("partial with fields", () => {
+    const validator = partial({ name: v.string(), age: v.number() });
+    expect(validate(v.object(validator), { name: "Alice" })).toBe(true);
+    expect(validate(v.object(validator), { name: "Alice", age: 30 })).toBe(
+      true,
+    );
+    expect(validate(v.object(validator), { age: 30 })).toBe(true);
+    expect(validate(v.object(validator), {})).toBe(true);
+    const _manualPartial = {
+      name: v.optional(v.string()),
+      age: v.optional(v.number()),
+    };
+    expectTypeOf(validator).toEqualTypeOf<typeof _manualPartial>();
+  });
+
+  test("partial with object", () => {
+    const validator = v.object({
+      name: v.string(),
+      age: v.number(),
+    });
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { name: "Alice", age: 30 })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(validate(partialValidator, {})).toBe(true);
+    expect(
+      validate(partialValidator, { name: "Alice", age: 30, unknown: "field" }),
+    ).toBe(false);
+    expect(
+      validate(partialValidator, { name: "Alice", age: 30, unknown: "field" }),
+    ).toBe(false);
+    expect(partialValidator.kind).toBe("object");
+    expect(partialValidator.fields.name?.isOptional).toBe("optional");
+    const _manualPartial = v.object({
+      name: v.optional(v.string()),
+      age: v.optional(v.number()),
+    });
+    expectTypeOf(partialValidator).toEqualTypeOf<typeof _manualPartial>();
+  });
+
+  test("partial with union", () => {
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ age: v.number() }),
+    );
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(validate(partialValidator, {})).toBe(true);
+    expect(validate(partialValidator, { name: "Alice", age: 30 })).toBe(false);
+
+    const _manualPartial = v.union(
+      v.object({ name: v.optional(v.string()) }),
+      v.object({ age: v.optional(v.number()) }),
+    );
+    // We only check the types for now
+    expectTypeOf(partialValidator.type).toEqualTypeOf<
+      Infer<typeof _manualPartial>
+    >();
+  });
+
+  test("partial with union of unions", () => {
+    const validator = v.union(
+      v.object({
+        name: v.string(),
+        age: v.number(),
+      }),
+      v.union(
+        v.object({ type: v.literal("email"), email: v.string() }),
+        v.object({ type: v.literal("phone"), phone: v.string() }),
+      ),
+    );
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(
+      validate(partialValidator, { type: "email", email: "alice@example.com" }),
+    ).toBe(true);
+    expect(
+      validate(partialValidator, { type: "phone", phone: "1234567890" }),
+    ).toBe(true);
+    expect(
+      validate(partialValidator, {
+        name: "Alice",
+        age: 30,
+        type: "email",
+        email: "alice@example.com",
+      }),
+    ).toBe(false);
+    expect(
+      validate(partialValidator, {
+        name: "Alice",
+        age: 30,
+        type: "phone",
+        phone: "1234567890",
+      }),
+    ).toBe(false);
+    expect(partialValidator.kind).toBe("union");
+    expect(partialValidator.members[0].kind).toBe("object");
+    expect(partialValidator.members[0].fields.name?.isOptional).toBe(
+      "optional",
+    );
+    expect(partialValidator.members[0].fields.age?.isOptional).toBe("optional");
+    expect(partialValidator.members[1].kind).toBe("union");
+    expect(partialValidator.members[1].members[0].kind).toBe("object");
+    expect(partialValidator.members[1].members[0].fields.type?.isOptional).toBe(
+      "optional",
+    );
+    expect(
+      partialValidator.members[1].members[0].fields.email?.isOptional,
+    ).toBe("optional");
+    expect(partialValidator.members[1].members[1].kind).toBe("object");
+    expect(
+      partialValidator.members[1].members[1].fields.phone?.isOptional,
+    ).toBe("optional");
+  });
+
+  test("partial with doc", () => {
+    const validator = doc(schema, "kitchenSink");
+    const partialValidator = partial(validator);
+    expect(validate(partialValidator, { name: "Alice" })).toBe(true);
+    expect(validate(partialValidator, { age: 30 })).toBe(true);
+    expect(validate(partialValidator, {})).toBe(true);
+    type Manual = Expand<Partial<ExampleFields>> & {
+      _id?: GenericId<"kitchenSink"> | undefined;
+      _creationTime?: number | undefined;
+    };
+    assertType<Manual>(partialValidator.type);
   });
 });

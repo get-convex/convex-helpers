@@ -32,4 +32,17 @@ export default defineSchema({
   sum_table: defineTable({ sum: v.number() }),
   notes: defineTable({ session: v.string(), note: v.string() }),
   migrations: migrationsTable,
+  privateMessages: defineTable({
+    from: v.string(),
+    to: v.string(),
+    message: v.string(),
+    // we have creation time, but let's say we want to store it separately
+    sentAt: v.number(),
+  })
+    // inbox
+    .index("to", ["to", "sentAt"])
+    // outbox
+    .index("from", ["from", "sentAt"])
+    // pairwise
+    .index("from_to", ["from", "to", "sentAt"]),
 });

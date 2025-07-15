@@ -40,7 +40,7 @@ export const cleanUpBrokenRefs = migration({
 
 export const callOneDirectly = internalMutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     // can run a migration directly within a function:
     await startMigration(ctx, internal.migrationsExample.increment, {
       startCursor: null,

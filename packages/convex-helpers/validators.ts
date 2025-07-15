@@ -1,23 +1,26 @@
 import type {
-  GenericValidator,
-  Infer,
-  ObjectType,
-  PropertyValidators,
-  VObject,
-  VOptional,
-  VString,
-  VUnion,
-  Validator,
-} from "convex/values";
-import { v } from "convex/values";
-import type { Expand } from "./index.js";
-import type {
   DataModelFromSchemaDefinition,
   GenericDatabaseReader,
   GenericDataModel,
   SchemaDefinition,
   TableNamesInDataModel,
 } from "convex/server";
+import type {
+  GenericValidator,
+  Infer,
+  ObjectType,
+  OptionalProperty,
+  PropertyValidators,
+  Validator,
+  VLiteral,
+  VObject,
+  VOptional,
+  VString,
+  VUnion,
+} from "convex/values";
+import { v } from "convex/values";
+import type { Expand } from "./index.js";
+import { assert } from "./index.js";
 
 /**
  * Helper for defining a union of literals more concisely.
@@ -36,17 +39,13 @@ import type {
  * @param args Values you want to use in a union of literals.
  * @returns A validator for the union of the literals.
  */
-export const literals = <
-  V extends string | number | boolean | bigint,
-  T extends V[],
->(
+export const literals = <T extends (string | number | boolean | bigint)[]>(
   ...args: T
-): VUnion<T[number], any> => {
-  // The `any` above is unfortunate, because then we cannot get proper types
-  // for `validator.members`, but without it, TypeScript seems to have a hard
-  // time inferring the TS type for the first parameter.
-
-  return v.union(...args.map(v.literal)) as any;
+) => {
+  return v.union(...args.map(v.literal)) as VUnion<
+    T[number],
+    VLiteral<T[number]>[]
+  >;
 };
 
 /**
@@ -61,45 +60,190 @@ export const nullable = <V extends Validator<any, "required", any>>(x: V) =>
 /**
  * partial helps you define an object of optional validators more concisely.
  *
- * e.g. `partial({a: v.string(), b: v.number()})` is equivalent to
+ * `partial({a: v.string(), b: v.number()})` is equivalent to
  * `{a: v.optional(v.string()), b: v.optional(v.number())}`
  *
  * @param obj The object of validators to make optional. e.g. {a: v.string()}
  * @returns A new object of validators that can be the value or undefined.
  */
-export const partial = <T extends PropertyValidators>(obj: T) => {
+export function partial<T extends PropertyValidators>(
+  obj: T,
+): {
+  [K in keyof T]: VOptional<T[K]>;
+};
+/**
+ * partial helps you define an object of optional validators more concisely.
+ *
+ * `partial(v.object({a: v.string(), b: v.number()}))` is equivalent to
+ * `v.object({a: v.optional(v.string()), b: v.optional(v.number())})`
+ *
+ * @param obj The object of validators to make optional. e.g. v.object({a: v.string()})
+ * @returns A new object of validators that can be the value or undefined.
+ */
+export function partial<
+  T,
+  V extends Record<string, GenericValidator>,
+  O extends OptionalProperty,
+>(obj: VObject<T, V, O>): PartialVObject<T, V, O>;
+/**
+ * partial helps you define a union of optional validators more concisely.
+ *
+ * `partial(v.union(v.object({a: v.string()}), v.object({b: v.number()})))`
+ * is equivalent to
+ * `v.union(v.object({a: v.optional(v.string())}), v.object({b: v.optional(v.number())}))`
+ *
+ * @param obj The union of validators to make optional. e.g. v.union(v.object({a: v.string()}), v.object({b: v.number()}))
+ * @returns A new union of validators that can be the value or undefined.
+ */
+export function partial<
+  T,
+  V extends Validator<T, "required", any>[],
+  O extends OptionalProperty,
+>(obj: VUnion<T, V, O>): PartialVUnion<T, V, O>;
+export function partial(
+  fieldsOrObjOrUnion:
+    | PropertyValidators
+    | VObject<any, any, any>
+    | VUnion<any, any[], any>,
+) {
+  if (fieldsOrObjOrUnion.isConvexValidator) {
+    if (fieldsOrObjOrUnion.kind === "object") {
+      return partialVObject(fieldsOrObjOrUnion);
+    }
+    if (fieldsOrObjOrUnion.kind === "union") {
+      return partialUnion(fieldsOrObjOrUnion);
+    }
+    throw new Error(
+      "partial only works with union or object Validators, or a Record<string, Validator> currently",
+    );
+  }
+  return partialFields(fieldsOrObjOrUnion as PropertyValidators);
+}
+
+/**
+ * partialFields helps you define an object of optional validators more concisely.
+ *
+ * e.g. `partialFields({a: v.string(), b: v.number()})` is equivalent to
+ * `{a: v.optional(v.string()), b: v.optional(v.number())}`
+ *
+ * @param obj The object of validators to make optional. e.g. {a: v.string()}
+ * @returns A new object of validators that can be the value or undefined.
+ */
+function partialFields<T extends PropertyValidators>(
+  obj: T,
+): {
+  [K in keyof T]: VOptional<T[K]>;
+} {
   return Object.fromEntries(
     Object.entries(obj).map(([k, vv]) => [
       k,
       vv.isOptional === "optional" ? vv : v.optional(vv),
     ]),
-  ) as {
-    [K in keyof T]: VOptional<T[K]>;
-  };
+  ) as any;
+}
+
+/**
+ * partialObject helps you define an object of optional validators more concisely.
+ *
+ * e.g. `partialObject({a: v.string(), b: v.number()})` is equivalent to
+ * `{a: v.optional(v.string()), b: v.optional(v.number())}`
+ *
+ * @param obj The object of validators to make optional. e.g. {a: v.string()}
+ * @returns A new object of validators that can be the value or undefined.
+ */
+function partialVObject<
+  T,
+  V extends Record<string, GenericValidator>,
+  Optional extends OptionalProperty,
+>(obj: VObject<T, V, Optional>): PartialVObject<T, V, Optional> {
+  const o = v.object(partialFields(obj.fields));
+  if (obj.isOptional === "optional") {
+    return v.optional(o) as any;
+  }
+  return o as any;
+}
+
+type PartialVObject<
+  T,
+  V extends Record<string, GenericValidator>,
+  Optional extends OptionalProperty,
+> = VObject<
+  Partial<T>,
+  {
+    [K in keyof V]: VOptional<V[K]>;
+  },
+  Optional
+>;
+
+type PartialUnionMembers<
+  Members extends readonly Validator<any, "required", any>[],
+> = {
+  [K in keyof Members]: Members[K] extends VObject<any, any, "required">
+    ? Members[K] extends VObject<
+        infer MemberT,
+        infer MemberV extends PropertyValidators,
+        "required"
+      >
+      ? PartialVObject<MemberT, MemberV, "required">
+      : Members[K]
+    : Members[K] extends VUnion<any, any, "required">
+      ? Members[K] extends VUnion<infer MemberT, infer MemberV, "required">
+        ? PartialVUnion<MemberT, MemberV, "required">
+        : Members[K]
+      : Members[K];
 };
+
+function partialUnion<
+  T,
+  V extends Validator<T, "required", any>[],
+  Optional extends OptionalProperty,
+>(union: VUnion<T, V, Optional>): PartialVUnion<T, V, Optional> {
+  const u = v.union(
+    ...union.members.map((m) => {
+      assert(m.isOptional === "required", "Union members cannot be optional");
+      if (m.kind === "object") {
+        return partialVObject(m) as VObject<any, any, "required">;
+      }
+      if (m.kind === "union") {
+        return partialUnion(m) as VUnion<any, any[], "required">;
+      }
+      throw new Error(`Invalid union member type: ${m.kind}`);
+    }),
+  ) as any;
+  if (union.isOptional === "optional") {
+    return v.optional(u) as any;
+  }
+  return u as any;
+}
+
+type PartialVUnion<
+  T,
+  Members extends Validator<T, "required", any>[],
+  Optional extends OptionalProperty,
+> = VUnion<Partial<T>, PartialUnionMembers<Members>, Optional>;
 
 // Shorthand for defining validators that look like types.
 
-/** Any string value. */
+/** @deprecated Use `v.string()` instead. Any string value. */
 export const string = v.string();
-/** JavaScript number, represented as a float64 in the database. */
+/** @deprecated Use `v.float64()` instead. JavaScript number, represented as a float64 in the database. */
 export const number = v.float64();
-/** JavaScript number, represented as a float64 in the database. */
+/** @deprecated Use `v.float64()` instead. JavaScript number, represented as a float64 in the database. */
 export const float64 = v.float64();
-/** boolean value. For typing it only as true, use `l(true)` */
+/** @deprecated Use `v.boolean()` instead. boolean value. For typing it only as true, use `l(true)` */
 export const boolean = v.boolean();
-/** bigint, though stored as an int64 in the database. */
-export const bigint = v.int64();
-/** bigint, though stored as an int64 in the database. */
+/** @deprecated Use `v.int64()` instead. bigint, though stored as an int64 in the database. */
+export const biging = v.int64();
+/** @deprecated Use `v.int64()` instead. bigint, though stored as an int64 in the database. */
 export const int64 = v.int64();
-/** Any Convex value */
+/** @deprecated Use `v.any()` instead. Any Convex value */
 export const any = v.any();
-/** Null value. Underscore is so it doesn't shadow the null builtin */
+/** @deprecated Use `v.null()` instead. Null value. Underscore is so it doesn't shadow the null builtin */
 export const null_ = v.null();
-/** Re-export values from v without having to do v.* */
+/** @deprecated Use `v.*()` instead. */
 export const { id, object, array, bytes, literal, optional, union } = v;
-/** ArrayBuffer validator. */
-export const arrayBuffer = bytes();
+/** @deprecated Use `v.bytes()` instead. ArrayBuffer validator. */
+export const arrayBuffer = v.bytes();
 
 /**
  * Utility to get the validators for fields associated with a table.
@@ -478,7 +622,7 @@ export function validate<T extends Validator<any, any, any>>(
 
         if (!isSimple) {
           expected =
-            prototype?.constructor?.name ?? (typeof prototype || "object");
+            (prototype?.constructor?.name ?? typeof prototype) || "object";
           valid = false;
           break;
         }

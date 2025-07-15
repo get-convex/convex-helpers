@@ -138,7 +138,7 @@ export const logIn = mutationWithSession({
 
 export const logOut = mutationWithSession({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx, _args) => {
     console.log("deleting presence data on logout", ctx.sessionId);
     const presenceDocs = await ctx.db
       .query("presence")

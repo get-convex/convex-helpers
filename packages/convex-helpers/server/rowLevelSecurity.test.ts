@@ -111,7 +111,7 @@ const mutationWithRLS = customMutation(
 
 customMutation(
   mutationWithRLS,
-  customCtx((ctx) => ({ foo: "bar" })),
+  customCtx((_ctx) => ({ foo: "bar" })),
 ) satisfies typeof mutation;
 
 crud(schema, "users", queryGeneric, mutationWithRLS);

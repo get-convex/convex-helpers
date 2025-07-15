@@ -90,7 +90,7 @@ const query = queryGeneric as QueryBuilder<DataModel, "public">;
 const zQuery = zCustomQuery(query, {
   // You could require arguments for all queries here.
   args: {},
-  input: async (ctx, args) => {
+  input: async () => {
     // Here you could use the args you declared and return patches for the
     // function's ctx and args. e.g. looking up a user and passing it in ctx.
     // Or just asserting that the user is logged in.
@@ -100,8 +100,7 @@ const zQuery = zCustomQuery(query, {
 
 export const kitchenSink = zQuery({
   args: kitchenSinkValidator,
-  handler: async (ctx, args) => {
-    ctx.db;
+  handler: async (_ctx, args) => {
     return {
       args,
       json: (v.object(zodToConvexFields(kitchenSinkValidator)) as any).json,
@@ -159,7 +158,7 @@ export const zodOutputCompliance = zQuery({
   // Note inline record of zod validators works.
   returns: {
     undefinedBecomesFooString: z.string().default("foo"),
-    stringBecomesNull: z.string().transform((s) => null),
+    stringBecomesNull: z.string().transform((_) => null),
     threeBecomesString: z.number().pipe(z.coerce.string()),
     optionalString: z.string().optional(),
     arrayWithDefaultFoo: z.array(z.string().default("foo")),
@@ -179,7 +178,7 @@ export const zodArgsObject = zQuery({
 // example of helper function
 type ZodQueryCtx = ZCustomCtx<typeof zQuery>;
 const myArgs = z.object({ a: z.string() });
-const myHandler = async (ctx: ZodQueryCtx, args: z.infer<typeof myArgs>) => {
+const myHandler = async (_ctx: ZodQueryCtx, _args: z.infer<typeof myArgs>) => {
   return "foo";
 };
 export const viaHelper = zQuery({
@@ -267,7 +266,7 @@ const consumeArg = zCustomQuery(query, {
 export const consume = consumeArg({
   args: {},
   handler: async (ctx, emptyArgs) => {
-    assertType<{}>(emptyArgs); // !!!
+    assertType<Record<string, never>>(emptyArgs); // !!!
     return { ctxA: ctx.a };
   },
 });
@@ -793,15 +792,15 @@ expectTypeOf(
 ).toEqualTypeOf({
   branded2: v.string() as VString<string & z.BRAND<"branded2">>,
 });
-const s = zBrand(z.string(), "brand");
-const n = zBrand(z.number(), "brand");
-const i = zBrand(z.bigint(), "brand");
-expectTypeOf<z.input<typeof s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
-expectTypeOf<z.output<typeof s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
-expectTypeOf<z.input<typeof n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
-expectTypeOf<z.output<typeof n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
-expectTypeOf<z.input<typeof i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
-expectTypeOf<z.output<typeof i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
+const _s = zBrand(z.string(), "brand");
+const _n = zBrand(z.number(), "brand");
+const _i = zBrand(z.bigint(), "brand");
+expectTypeOf<z.input<typeof _s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof _s>>().toEqualTypeOf<string & z.BRAND<"brand">>();
+expectTypeOf<z.input<typeof _n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof _n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
+expectTypeOf<z.input<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
+expectTypeOf<z.output<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
 
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;

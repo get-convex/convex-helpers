@@ -9,6 +9,7 @@ import { convexToJson } from "convex/values";
 import {
   useConvex,
   useQueries,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   useQuery as useQueryOriginal,
 } from "convex/react";
 import type {
@@ -355,7 +356,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   ]);
 
   const statusObject = useMemo(() => {
-    if (maybeLastResult === undefined && currState.nextPageKey === 1) {
+    if (maybeLastResult === undefined && currState.pageKeys.length <= 1) {
       return {
         status: "LoadingFirstPage",
         isLoading: true,
@@ -367,7 +368,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
       maybeLastResult === undefined ||
       // The last page (which isn't the first page) is splitting, which is how
       // we model loading more in this helper
-      currState.ongoingSplits[currState.nextPageKey - 1] !== undefined
+      currState.ongoingSplits[currState.pageKeys.at(-1)!] !== undefined
     ) {
       return {
         status: "LoadingMore",
