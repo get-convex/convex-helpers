@@ -1069,3 +1069,11 @@ test("convexToZod optional values", () => {
 
   expect(roundTripOptionalArray.isOptional).toBe("optional");
 });
+
+test("convexToZod union of one literal", () => {
+  const unionValidator = v.union(v.literal("hello"));
+  const zodUnion = convexToZod(unionValidator);
+  expect(zodUnion.constructor.name).toBe("ZodUnion");
+  expect(zodUnion.parse("hello")).toBe("hello");
+  expect(() => zodUnion.parse("world")).toThrow();
+});
