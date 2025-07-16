@@ -1077,3 +1077,13 @@ test("convexToZod union of one literal", () => {
   expect(zodUnion.parse("hello")).toBe("hello");
   expect(() => zodUnion.parse("world")).toThrow();
 });
+
+test("convexToZod object with union of one literal", () => {
+  const unionValidator = v.object({
+    member: v.union(v.literal("hello")),
+  });
+  const zodUnion = convexToZod(unionValidator);
+  expect(zodUnion.constructor.name).toBe("ZodObject");
+  expect(zodUnion.parse({ member: "hello" })).toEqual({ member: "hello" });
+  expect(() => zodUnion.parse({ member: "world" })).toThrow();
+});
