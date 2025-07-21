@@ -171,6 +171,14 @@ export class DatabaseWriterWithTriggers<
     this.#triggers = triggers;
     this.#isWithinTrigger = isWithinTrigger;
     this.system = innerDb.system;
+      // Make methods enumerable by assigning them as instance properties
+    this.get = this.get.bind(this);
+    this.query = this.query.bind(this);
+    this.normalizeId = this.normalizeId.bind(this);
+    this.insert = this.insert.bind(this);
+    this.patch = this.patch.bind(this);
+    this.replace = this.replace.bind(this);
+    this.delete = this.delete.bind(this);
   }
 
   async insert<TableName extends TableNamesInDataModel<DataModel>>(
