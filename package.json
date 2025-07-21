@@ -60,7 +60,7 @@
     "npm-run-all2": "8.0.4",
     "pkg-pr-new": "0.0.54",
     "typescript": "5.8.3",
-    "typescript-eslint": "8.37.0",
+    "typescript-eslint": "8.38.0",
     "vitest": "3.2.4"
   }
 }
