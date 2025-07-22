@@ -833,6 +833,9 @@ test("convexToZod complex types", () => {
 
   const recordValidator = convexToZod(v.record(v.string(), v.number()));
   expect(recordValidator.constructor.name).toBe("ZodRecord");
+
+  const optionalValidator = convexToZod(v.optional(v.string()));
+  expect(optionalValidator.constructor.name).toBe("ZodOptional");
 });
 
 test("convexToZodFields", () => {

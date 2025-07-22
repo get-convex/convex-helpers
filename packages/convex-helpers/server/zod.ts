@@ -1323,8 +1323,10 @@ export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
 type ZodFromValidatorBase<V extends GenericValidator> =
   V extends VId<GenericId<infer TableName extends string>>
     ? Zid<TableName>
-    : V extends VString<any, any>
-      ? z.ZodString
+    : V extends VString<infer T, any>
+      ? T extends string & { _: infer Brand extends string }
+        ? z.ZodBranded<z.ZodString, Brand>
+        : z.ZodString
       : V extends VFloat64<any, any>
         ? z.ZodNumber
         : V extends VInt64<any, any>
@@ -1333,24 +1335,22 @@ type ZodFromValidatorBase<V extends GenericValidator> =
             ? z.ZodBoolean
             : V extends VNull<any, any>
               ? z.ZodNull
-              : V extends VLiteral<any, any>
-                ? z.ZodLiteral<V["value"]>
-                : V extends VObject<any, any, any, any>
-                  ? z.ZodObject<{
-                      [K in keyof V["fields"]]: ZodValidatorFromConvex<
-                        V["fields"][K]
-                      >;
-                    }>
-                  : V extends VRecord<any, infer Key, any, any, any>
+              : V extends VLiteral<infer T, any>
+                ? z.ZodLiteral<T>
+                : V extends VObject<any, infer Fields, any, any>
+                  ? z.ZodObject<
+                      {
+                        [K in keyof Fields]: ZodValidatorFromConvex<Fields[K]>;
+                      },
+                      "strip"
+                    >
+                  : V extends VRecord<any, infer Key, infer Value, any, any>
                     ? Key extends VId<GenericId<infer TableName>>
                       ? z.ZodRecord<
                           Zid<TableName>,
-                          ZodValidatorFromConvex<V["value"]>
+                          ZodValidatorFromConvex<Value>
                         >
-                      : z.ZodRecord<
-                          z.ZodString,
-                          ZodValidatorFromConvex<V["value"]>
-                        >
+                      : z.ZodRecord<z.ZodString, ZodValidatorFromConvex<Value>>
                     : V extends VArray<any, any>
                       ? z.ZodArray<ZodValidatorFromConvex<V["element"]>>
                       : V extends VUnion<any, any, any, any>
