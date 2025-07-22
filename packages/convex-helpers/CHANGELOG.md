@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.100 alpha
+
+- Custom Functions now can take dynamic parameters for each function
+  they define (e.g. each custom query providing a "role" it expects)
+- zodToConvex now transforms to more specific zod types (credit: Firephoenix25)
+
 ## 0.1.99
 
 - Fixes LoadingMore for custom pagintation
