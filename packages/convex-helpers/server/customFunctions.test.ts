@@ -397,7 +397,7 @@ const extraArgQueryBuilder = customQuery(query, {
 export const extraArgQuery = extraArgQueryBuilder({
   args: {},
   extraArg: "foo",
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     return { ctxA: ctx.extraArg };
   },
 });
