@@ -332,7 +332,7 @@ export const doc = <
   schema: Schema,
   tableName: TableName,
 ): AddFieldsToValidator<
-  (typeof schema)["tables"][TableName]["validator"],
+  Schema["tables"][TableName]["validator"],
   SystemFields<TableName>
 > => {
   function addSystemFields<V extends Validator<any, any, any>>(
@@ -405,7 +405,7 @@ export function typedV<Schema extends SchemaDefinition<any, boolean>>(
     >(
       tableName: TableName,
     ): AddFieldsToValidator<
-      (typeof schema)["tables"][TableName]["validator"],
+      Schema["tables"][TableName]["validator"],
       SystemFields<TableName>
     > => doc(schema, tableName),
   };
