@@ -833,6 +833,9 @@ test("convexToZod complex types", () => {
 
   const recordValidator = convexToZod(v.record(v.string(), v.number()));
   expect(recordValidator.constructor.name).toBe("ZodRecord");
+
+  const optionalValidator = convexToZod(v.optional(v.string()));
+  expect(optionalValidator.constructor.name).toBe("ZodOptional");
 });
 
 test("convexToZodFields", () => {
@@ -1068,4 +1071,22 @@ test("convexToZod optional values", () => {
   };
 
   expect(roundTripOptionalArray.isOptional).toBe("optional");
+});
+
+test("convexToZod union of one literal", () => {
+  const unionValidator = v.union(v.literal("hello"));
+  const zodUnion = convexToZod(unionValidator);
+  expect(zodUnion.constructor.name).toBe("ZodUnion");
+  expect(zodUnion.parse("hello")).toBe("hello");
+  expect(() => zodUnion.parse("world")).toThrow();
+});
+
+test("convexToZod object with union of one literal", () => {
+  const unionValidator = v.object({
+    member: v.union(v.literal("hello")),
+  });
+  const zodUnion = convexToZod(unionValidator);
+  expect(zodUnion.constructor.name).toBe("ZodObject");
+  expect(zodUnion.parse({ member: "hello" })).toEqual({ member: "hello" });
+  expect(() => zodUnion.parse({ member: "world" })).toThrow();
 });

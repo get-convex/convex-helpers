@@ -1314,6 +1314,57 @@ export function zBrand<
 /** Simple type conversion from a Convex validator to a Zod validator. */
 export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
 
+/** Better type conversion from a Convex validator to a Zod validator where the output is not a generetic ZodType but it's more specific.
+ *
+ * ES: z.ZodString instead of z.ZodType<string, z.ZodTypeDef, string>
+ * so you can use methods of z.ZodString like .min() or .email()
+ */
+
+type ZodFromValidatorBase<V extends GenericValidator> =
+  V extends VId<GenericId<infer TableName extends string>>
+    ? Zid<TableName>
+    : V extends VString<infer T, any>
+      ? T extends string & { _: infer Brand extends string }
+        ? z.ZodBranded<z.ZodString, Brand>
+        : z.ZodString
+      : V extends VFloat64<any, any>
+        ? z.ZodNumber
+        : V extends VInt64<any, any>
+          ? z.ZodBigInt
+          : V extends VBoolean<any, any>
+            ? z.ZodBoolean
+            : V extends VNull<any, any>
+              ? z.ZodNull
+              : V extends VLiteral<infer T, any>
+                ? z.ZodLiteral<T>
+                : V extends VObject<any, infer Fields, any, any>
+                  ? z.ZodObject<
+                      {
+                        [K in keyof Fields]: ZodValidatorFromConvex<Fields[K]>;
+                      },
+                      "strip"
+                    >
+                  : V extends VRecord<any, infer Key, infer Value, any, any>
+                    ? Key extends VId<GenericId<infer TableName>>
+                      ? z.ZodRecord<
+                          Zid<TableName>,
+                          ZodValidatorFromConvex<Value>
+                        >
+                      : z.ZodRecord<z.ZodString, ZodValidatorFromConvex<Value>>
+                    : V extends VArray<any, any>
+                      ? z.ZodArray<ZodValidatorFromConvex<V["element"]>>
+                      : V extends VUnion<any, any, any, any>
+                        ? z.ZodUnion<
+                            [ZodValidatorFromConvex<V["members"][number]>]
+                          >
+                        : z.ZodTypeAny; // fallback for unknown validators
+
+/** Main type with optional handling. */
+export type ZodValidatorFromConvex<V extends GenericValidator> =
+  V extends Validator<any, "optional", any>
+    ? z.ZodOptional<ZodFromValidatorBase<V>>
+    : ZodFromValidatorBase<V>;
+
 /**
  * Turn a Convex validator into a Zod validator.
  * @param convexValidator Convex validator can be any validator from "convex/values" e.g. `v.string()`
@@ -1321,7 +1372,7 @@ export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
  */
 export function convexToZod<V extends GenericValidator>(
   convexValidator: V,
-): z.ZodType<Infer<V>> {
+): ZodValidatorFromConvex<V> {
   const isOptional = (convexValidator as any).isOptional === "optional";
 
   let zodValidator: z.ZodTypeAny;
@@ -1393,7 +1444,9 @@ export function convexToZod<V extends GenericValidator>(
       throw new Error(`Unknown convex validator type: ${convexValidator.kind}`);
   }
 
-  return isOptional ? z.optional(zodValidator) : zodValidator;
+  return isOptional
+    ? (z.optional(zodValidator) as ZodValidatorFromConvex<V>)
+    : (zodValidator as ZodValidatorFromConvex<V>);
 }
 
 /**
@@ -1408,5 +1461,5 @@ export function convexToZodFields<C extends PropertyValidators>(
 ) {
   return Object.fromEntries(
     Object.entries(convexValidators).map(([k, v]) => [k, convexToZod(v)]),
-  ) as { [k in keyof C]: z.ZodType<Infer<C[k]>> };
+  ) as { [k in keyof C]: ZodValidatorFromConvex<C[k]> };
 }

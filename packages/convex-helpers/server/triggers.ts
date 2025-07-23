@@ -1,5 +1,6 @@
 import type {
   DocumentByName,
+  GenericDatabaseReader,
   GenericDatabaseWriter,
   GenericDataModel,
   GenericMutationCtx,
@@ -90,7 +91,7 @@ export class Triggers<
   }
 
   wrapDB = <C extends Ctx>(ctx: C): C => {
-    return { ...ctx, db: new DatabaseWriterWithTriggers(ctx, ctx.db, this) };
+    return { ...ctx, db: writerWithTriggers(ctx, ctx.db, this) };
   };
 }
 
@@ -149,6 +150,7 @@ const innerWriteLock = new Lock();
 const outerWriteLock = new Lock();
 const triggerQueue: (() => Promise<void>)[] = [];
 
+/** @deprecated use writerWithTriggers instead */
 export class DatabaseWriterWithTriggers<
   DataModel extends GenericDataModel,
   Ctx extends {
@@ -156,163 +158,246 @@ export class DatabaseWriterWithTriggers<
   } = GenericMutationCtx<DataModel>,
 > implements GenericDatabaseWriter<DataModel>
 {
-  #ctx: Ctx;
-  #innerDb: GenericDatabaseWriter<DataModel>;
-  #triggers: Triggers<DataModel, Ctx>;
-  #isWithinTrigger: boolean;
+  writer: GenericDatabaseWriter<DataModel>;
   constructor(
     ctx: Ctx,
     innerDb: GenericDatabaseWriter<DataModel>,
     triggers: Triggers<DataModel, Ctx>,
     isWithinTrigger: boolean = false,
   ) {
-    this.#ctx = ctx;
-    this.#innerDb = innerDb;
-    this.#triggers = triggers;
-    this.#isWithinTrigger = isWithinTrigger;
     this.system = innerDb.system;
+    this.writer = writerWithTriggers(ctx, innerDb, triggers, isWithinTrigger);
   }
-
-  async insert<TableName extends TableNamesInDataModel<DataModel>>(
-    table: TableName,
-    value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
-  ): Promise<GenericId<TableName>> {
-    if (!this.#triggers.registered[table]) {
-      return await this.#innerDb.insert(table, value);
-    }
-    return await this._execThenTrigger(table, async () => {
-      const id = await this.#innerDb.insert(table, value);
-      const newDoc = (await this.#innerDb.get(id))!;
-      return [id, { operation: "insert", id, oldDoc: null, newDoc }];
-    });
+  delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
+    return this.writer.delete(id);
   }
-  async patch<TableName extends TableNamesInDataModel<DataModel>>(
-    id: GenericId<TableName>,
-    value: Partial<DocumentByName<DataModel, TableName>>,
-  ): Promise<void> {
-    const tableName = this._tableNameFromId(id);
-    if (!tableName) {
-      return await this.#innerDb.patch(id, value);
-    }
-    return await this._execThenTrigger(tableName, async () => {
-      const oldDoc = (await this.#innerDb.get(id))!;
-      await this.#innerDb.patch(id, value);
-      const newDoc = (await this.#innerDb.get(id))!;
-      return [undefined, { operation: "update", id, oldDoc, newDoc }];
-    });
-  }
-  async replace<TableName extends TableNamesInDataModel<DataModel>>(
-    id: GenericId<TableName>,
-    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
-  ): Promise<void> {
-    const tableName = this._tableNameFromId(id);
-    if (!tableName) {
-      return await this.#innerDb.replace(id, value);
-    }
-    return await this._execThenTrigger(tableName, async () => {
-      const oldDoc = (await this.#innerDb.get(id))!;
-      await this.#innerDb.replace(id, value);
-      const newDoc = (await this.#innerDb.get(id))!;
-      return [undefined, { operation: "update", id, oldDoc, newDoc }];
-    });
-  }
-  async delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
-    const tableName = this._tableNameFromId(id);
-    if (!tableName) {
-      return await this.#innerDb.delete(id);
-    }
-    return await this._execThenTrigger(tableName, async () => {
-      const oldDoc = (await this.#innerDb.get(id))!;
-      await this.#innerDb.delete(id);
-      return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
-    });
-  }
-
-  // Helper methods.
-  _tableNameFromId<TableName extends TableNamesInDataModel<DataModel>>(
-    id: GenericId<TableName>,
-  ): TableName | null {
-    for (const tableName of Object.keys(this.#triggers.registered)) {
-      if (
-        this.#innerDb.normalizeId(
-          tableName as TableNamesInDataModel<DataModel>,
-          id,
-        )
-      ) {
-        return tableName as TableName;
-      }
-    }
-    return null;
-  }
-  async _queueTriggers<R, TableName extends TableNamesInDataModel<DataModel>>(
-    tableName: TableName,
-    f: () => Promise<[R, Change<DataModel, TableName>]>,
-  ): Promise<R> {
-    return await innerWriteLock.withLock(async () => {
-      const [result, change] = await f();
-      const recursiveCtx = {
-        ...this.#ctx,
-        db: new DatabaseWriterWithTriggers(
-          this.#ctx,
-          this.#innerDb,
-          this.#triggers,
-          true,
-        ),
-        innerDb: this.#innerDb,
-      };
-      for (const trigger of this.#triggers.registered[tableName]!) {
-        triggerQueue.push(async () => {
-          await trigger(recursiveCtx, change);
-        });
-      }
-      return result;
-    });
-  }
-
-  async _execThenTrigger<R, TableName extends TableNamesInDataModel<DataModel>>(
-    tableName: TableName,
-    f: () => Promise<[R, Change<DataModel, TableName>]>,
-  ): Promise<R> {
-    if (this.#isWithinTrigger) {
-      return await this._queueTriggers(tableName, f);
-    }
-    return await outerWriteLock.withLock(async () => {
-      const result = await this._queueTriggers(tableName, f);
-      let e: unknown | null = null;
-      while (triggerQueue.length > 0) {
-        const trigger = triggerQueue.shift()!;
-        try {
-          await trigger();
-        } catch (err) {
-          if (e) {
-            console.error(err);
-          } else {
-            e = err;
-          }
-        }
-      }
-      if (e !== null) {
-        throw e;
-      }
-      return result;
-    });
-  }
-
-  system: GenericDatabaseWriter<DataModel>["system"];
   get<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
   ): Promise<DocumentByName<DataModel, TableName> | null> {
-    return this.#innerDb.get(id);
+    return this.writer.get(id);
+  }
+  insert<TableName extends TableNamesInDataModel<DataModel>>(
+    table: TableName,
+    value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<GenericId<TableName>> {
+    return this.writer.insert(table, value);
+  }
+  patch<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: Partial<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
+    return this.writer.patch(id, value);
   }
   query<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
-    return this.#innerDb.query(tableName);
+    return this.writer.query(tableName);
   }
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     id: string,
   ): GenericId<TableName> | null {
-    return this.#innerDb.normalizeId(tableName, id);
+    return this.writer.normalizeId(tableName, id);
   }
+  replace<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
+    return this.writer.replace(id, value);
+  }
+  system: GenericDatabaseWriter<DataModel>["system"];
+}
+
+export function writerWithTriggers<
+  DataModel extends GenericDataModel,
+  Ctx extends {
+    db: GenericDatabaseWriter<DataModel>;
+  } = GenericMutationCtx<DataModel>,
+>(
+  ctx: Ctx,
+  innerDb: GenericDatabaseWriter<DataModel>,
+  triggers: Triggers<DataModel, Ctx>,
+  isWithinTrigger: boolean = false,
+): GenericDatabaseWriter<DataModel> {
+  return {
+    insert: async <TableName extends TableNamesInDataModel<DataModel>>(
+      table: TableName,
+      value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
+    ): Promise<GenericId<TableName>> => {
+      if (!triggers.registered[table]) {
+        return await innerDb.insert(table, value);
+      }
+      return await _execThenTrigger(
+        ctx,
+        innerDb,
+        triggers,
+        table,
+        isWithinTrigger,
+        async () => {
+          const id = await innerDb.insert(table, value);
+          const newDoc = (await innerDb.get(id))!;
+          return [id, { operation: "insert", id, oldDoc: null, newDoc }];
+        },
+      );
+    },
+    patch: async <TableName extends TableNamesInDataModel<DataModel>>(
+      id: GenericId<TableName>,
+      value: Partial<DocumentByName<DataModel, TableName>>,
+    ): Promise<void> => {
+      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
+      if (!tableName) {
+        return await innerDb.patch(id, value);
+      }
+      return await _execThenTrigger(
+        ctx,
+        innerDb,
+        triggers,
+        tableName,
+        isWithinTrigger,
+        async () => {
+          const oldDoc = (await innerDb.get(id))!;
+          await innerDb.patch(id, value);
+          const newDoc = (await innerDb.get(id))!;
+          return [undefined, { operation: "update", id, oldDoc, newDoc }];
+        },
+      );
+    },
+    replace: async <TableName extends TableNamesInDataModel<DataModel>>(
+      id: GenericId<TableName>,
+      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+    ): Promise<void> => {
+      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
+      if (!tableName) {
+        return await innerDb.replace(id, value);
+      }
+      return await _execThenTrigger(
+        ctx,
+        innerDb,
+        triggers,
+        tableName,
+        isWithinTrigger,
+        async () => {
+          const oldDoc = (await innerDb.get(id))!;
+          await innerDb.replace(id, value);
+          const newDoc = (await innerDb.get(id))!;
+          return [undefined, { operation: "update", id, oldDoc, newDoc }];
+        },
+      );
+    },
+    delete: async (
+      id: GenericId<TableNamesInDataModel<DataModel>>,
+    ): Promise<void> => {
+      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
+      if (!tableName) {
+        return await innerDb.delete(id);
+      }
+      return await _execThenTrigger(
+        ctx,
+        innerDb,
+        triggers,
+        tableName,
+        isWithinTrigger,
+        async () => {
+          const oldDoc = (await innerDb.get(id))!;
+          await innerDb.delete(id);
+          return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
+        },
+      );
+    },
+
+    system: innerDb.system,
+    get: innerDb.get,
+    query: innerDb.query,
+    normalizeId: innerDb.normalizeId,
+  };
+}
+
+// Helper methods.
+function _tableNameFromId<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+  Ctx extends {
+    db: GenericDatabaseWriter<DataModel>;
+  } = GenericMutationCtx<DataModel>,
+>(
+  db: GenericDatabaseReader<DataModel>,
+  registered: Triggers<DataModel, Ctx>["registered"],
+  id: GenericId<TableName>,
+): TableName | null {
+  for (const tableName of Object.keys(registered)) {
+    if (db.normalizeId(tableName as TableNamesInDataModel<DataModel>, id)) {
+      return tableName as TableName;
+    }
+  }
+  return null;
+}
+
+async function _queueTriggers<
+  DataModel extends GenericDataModel,
+  R,
+  TableName extends TableNamesInDataModel<DataModel>,
+  Ctx extends {
+    db: GenericDatabaseWriter<DataModel>;
+  } = GenericMutationCtx<DataModel>,
+>(
+  ctx: Ctx,
+  innerDb: GenericDatabaseWriter<DataModel>,
+  triggers: Triggers<DataModel, Ctx>,
+  tableName: TableName,
+  f: () => Promise<[R, Change<DataModel, TableName>]>,
+): Promise<R> {
+  return await innerWriteLock.withLock(async () => {
+    const [result, change] = await f();
+    const recursiveCtx = {
+      ...ctx,
+      db: writerWithTriggers(ctx, innerDb, triggers, true),
+      innerDb: innerDb,
+    };
+    for (const trigger of triggers.registered[tableName]!) {
+      triggerQueue.push(async () => {
+        await trigger(recursiveCtx, change);
+      });
+    }
+    return result;
+  });
+}
+
+async function _execThenTrigger<
+  DataModel extends GenericDataModel,
+  R,
+  TableName extends TableNamesInDataModel<DataModel>,
+  Ctx extends {
+    db: GenericDatabaseWriter<DataModel>;
+  } = GenericMutationCtx<DataModel>,
+>(
+  ctx: Ctx,
+  innerDb: GenericDatabaseWriter<DataModel>,
+  triggers: Triggers<DataModel, Ctx>,
+  tableName: TableName,
+  isWithinTrigger: boolean,
+  f: () => Promise<[R, Change<DataModel, TableName>]>,
+): Promise<R> {
+  if (isWithinTrigger) {
+    return await _queueTriggers(ctx, innerDb, triggers, tableName, f);
+  }
+  return await outerWriteLock.withLock(async () => {
+    const result = await _queueTriggers(ctx, innerDb, triggers, tableName, f);
+    let e: unknown | null = null;
+    while (triggerQueue.length > 0) {
+      const trigger = triggerQueue.shift()!;
+      try {
+        await trigger();
+      } catch (err) {
+        if (e) {
+          console.error(err);
+        } else {
+          e = err;
+        }
+      }
+    }
+    if (e !== null) {
+      throw e;
+    }
+    return result;
+  });
 }
