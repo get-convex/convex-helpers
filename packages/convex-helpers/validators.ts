@@ -100,6 +100,24 @@ export function partial<
   V extends Validator<T, "required", any>[],
   O extends OptionalProperty,
 >(obj: VUnion<T, V, O>): PartialVUnion<T, V, O>;
+/**
+ * partial helps you define a union of optional validators more concisely.
+ *
+ * `partial(v.union(v.object({a: v.string()}), v.object({b: v.number()})))`
+ * is equivalent to
+ * `v.union(v.object({a: v.optional(v.string())}), v.object({b: v.optional(v.number())}))`
+ *
+ * @param obj The union of validators to make optional. e.g. v.union(v.object({a: v.string()}), v.object({b: v.number()}))
+ * @returns A new union of validators that can be the value or undefined.
+ */
+export function partial<
+  Object extends VObject<any, any, any>,
+  Union extends VUnion<any, any[], any>,
+>(
+  obj: Object | Union,
+):
+  | PartialVUnion<Union["type"], Union["members"], Object["isOptional"]>
+  | PartialVObject<Object["type"], Object["fields"], Object["isOptional"]>;
 export function partial(
   fieldsOrObjOrUnion:
     | PropertyValidators
