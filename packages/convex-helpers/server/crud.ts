@@ -21,9 +21,11 @@ import type {
   GenericId,
   Infer,
   Validator,
+  VObject,
+  VUnion,
 } from "convex/values";
 import { v } from "convex/values";
-import { doc, partial } from "../validators.js";
+import { doc, partial, systemFields } from "../validators.js";
 /**
  * Create CRUD operations for a table.
  * You can expose these operations in your API. For example, in convex/users.ts:
@@ -71,39 +73,32 @@ export function crud<
   > = internalMutationGeneric as any,
 ) {
   type DataModel = DataModelFromSchemaDefinition<SchemaDefinition<Schema, any>>;
-
-  const validator = schema.tables[table]?.validator
+  const validator = schema.tables[table]?.validator;
   if (!validator) {
     throw new Error(
       `Table ${table} not found in schema. Did you define it in defineSchema?`,
     );
   }
+  if (validator.kind !== "object" && validator.kind !== "union") {
+    throw new Error("Validator must be an object or union");
+  }
 
-  const systemFields = v.object({
-    _id: v.id(table),
-    _creationTime: v.number(),
-  });
-
-  const partialSystemFields = partial(systemFields).fields;
-
-
-  const makeSystemFieldsOptional = (
-    validator: Validator<any, any, any>,
-  ): Validator<any, any, any> => {
+  const makeSystemFieldsOptional = <V extends Validator<any, any, any>>(
+    validator: V,
+  ): V => {
     if (validator.kind === "object") {
       return v.object({
         ...validator.fields,
-        ...partialSystemFields,
+        ...partial(systemFields(table)),
       }) as any;
     } else if (validator.kind === "union") {
       return v.union(
-        ...validator.members.map((value) => makeSystemFieldsOptional(value) as any),
+        ...validator.members.map((value) => makeSystemFieldsOptional(value)),
       ) as any;
     } else {
-      return validator;
+      throw new Error("Validator must be an object or union");
     }
   };
-
 
   return {
     create: mutation({
@@ -111,12 +106,7 @@ export function crud<
       handler: async (ctx, args) => {
         if ("_id" in args) delete args._id;
         if ("_creationTime" in args) delete args._creationTime;
-        const id = await ctx.db.insert(
-          table,
-          args as unknown as WithoutSystemFields<
-            DocumentByName<DataModel, TableName>
-          >,
-        );
+        const id = await ctx.db.insert(table, args);
         return (await ctx.db.get(id))!;
       },
     }) as RegisteredMutation<
@@ -151,7 +141,9 @@ export function crud<
         id: v.id(table),
         // this could be partial(table.withSystemFields) but keeping
         // the api less coupled to Table
-        patch: partial(v.union(doc(schema, table)))
+        patch: partial(
+          doc(schema, table) as VObject<any, any, any> | VUnion<any, any, any>,
+        ),
       },
       handler: async (ctx, args) => {
         await ctx.db.patch(
