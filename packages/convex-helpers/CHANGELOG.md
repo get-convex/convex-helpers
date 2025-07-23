@@ -7,6 +7,7 @@
 - Trigger DB wrapper is now an object, not a class when using
   `.wrapDB()` or `writerWithTriggers` explicitly (credit: front-depiction)
 - zodToConvex now transforms to more specific zod types (credit: Firephoenix25)
+- `crud` helper works for tables with top-level unions
 
 ## 0.1.99
 
