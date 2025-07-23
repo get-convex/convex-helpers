@@ -208,7 +208,7 @@ export class DatabaseWriterWithTriggers<
   system: GenericDatabaseWriter<DataModel>["system"];
 }
 
-function writerWithTriggers<
+export function writerWithTriggers<
   DataModel extends GenericDataModel,
   Ctx extends {
     db: GenericDatabaseWriter<DataModel>;
