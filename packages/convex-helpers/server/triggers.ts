@@ -90,6 +90,15 @@ export class Triggers<
   }
 
   wrapDB = <C extends Ctx>(ctx: C): C => {
+    if (wrapDBCalled) {
+      throw new Error(
+        `Triggers.wrapDB called multiple times in a single mutation. Not allowed due to potential deadlock.
+        Call it once in a single \`customMutation\`.
+        Do not call mutations directly as functions.
+        See https://docs.convex.dev/production/best-practices/#use-helper-functions-to-write-shared-code`,
+      );
+    }
+    wrapDBCalled = true;
     return { ...ctx, db: new DatabaseWriterWithTriggers(ctx, ctx.db, this) };
   };
 }
@@ -148,6 +157,7 @@ class Lock {
 const innerWriteLock = new Lock();
 const outerWriteLock = new Lock();
 const triggerQueue: (() => Promise<void>)[] = [];
+let wrapDBCalled = false;
 
 export class DatabaseWriterWithTriggers<
   DataModel extends GenericDataModel,
