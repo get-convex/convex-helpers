@@ -785,4 +785,32 @@ describe("stream", () => {
       expect(page2.isDone).toBe(true);
     });
   });
+  test("literal undefined string works", async () => {
+    const schema = defineSchema({
+      foo: defineTable({
+        a: v.optional(v.string()),
+        b: v.number(),
+      }).index("ab", ["a", "b"]),
+    });
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: undefined, b: 1 });
+      await ctx.db.insert("foo", { a: "undefined", b: 2 });
+      const query = stream(ctx.db, schema).query("foo").withIndex("ab");
+      const result = await query.paginate({ numItems: 1, cursor: null });
+      expect(result.continueCursor).toMatch('["undefined",');
+      expect(result.page.map(stripSystemFields)).toEqual([
+        { a: undefined, b: 1 },
+      ]);
+      expect(result.isDone).toBe(false);
+      const page1 = await query.paginate({
+        numItems: 1,
+        cursor: result.continueCursor,
+      });
+      expect(page1.continueCursor).toMatch('["_undefined",');
+      expect(page1.page.map(stripSystemFields)).toEqual([
+        { a: "undefined", b: 2 },
+      ]);
+    });
+  });
 });
