@@ -92,12 +92,12 @@ export type Customization<
     | Promise<{
         ctx: CustomCtx;
         args: CustomMadeArgs;
-        onSuccess?: (result: Value) => void | Promise<void>;
+        onSuccess?: (result: unknown) => void | Promise<void>;
       }>
     | {
         ctx: CustomCtx;
         args: CustomMadeArgs;
-        onSuccess?: (result: Value) => void | Promise<void>;
+        onSuccess?: (result: unknown) => void | Promise<void>;
       };
 };
 
