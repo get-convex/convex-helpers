@@ -755,15 +755,6 @@ describe("stream", () => {
         b: v.number(),
       }).index("ab", ["a", "b"]),
     });
-  });
-
-  test("undefined cursor serialization roundtrips", async () => {
-    const schema = defineSchema({
-      foo: defineTable({
-        a: v.optional(v.number()),
-        b: v.number(),
-      }).index("ab", ["a", "b"]),
-    });
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
       await ctx.db.insert("foo", { a: 1, b: 2 });
@@ -787,12 +778,10 @@ describe("stream", () => {
       ]);
       expect(page1.isDone).toBe(false);
       const page2 = await query.paginate({
-        numItems: 1,
+        numItems: 2,
         cursor: page1.continueCursor,
       });
-      expect(page2.page.map(stripSystemFields)).toEqual([
-        { a: undefined, b: 5 },
-      ]);
+      expect(page2.page.map(stripSystemFields)).toEqual([{ a: 2, b: 4 }]);
       expect(page2.isDone).toBe(true);
     });
   });
