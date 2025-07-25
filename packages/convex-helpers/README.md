@@ -391,7 +391,9 @@ features for validating arguments, this is for you!
 
 See the [Stack post on Zod validation](https://stack.convex.dev/typescript-zod-function-validation) to see how to validate your Convex functions using the [zod](https://www.npmjs.com/package/zod) library.
 
-Example:
+### Zod v3 (Stable)
+
+The default export from `convex-helpers/server/zod` uses Zod v3:
 
 ```js
 import { z } from "zod";
@@ -428,6 +430,76 @@ export const myComplexQuery = zodQuery({
   },
 });
 ```
+
+### Zod v4 Features
+
+We provide a full Zod v4 integration that embraces all the new features and performance improvements. Zod v4 is available in stable releases 3.25.0+ and is imported from the `/v4` subpath:
+
+```bash
+npm upgrade zod@^3.25.0
+```
+
+```js
+import { z } from "zod/v4";
+import { 
+  zCustomQuery, 
+  zid, 
+  string, 
+  file, 
+  globalRegistry,
+  formatZodError 
+} from "convex-helpers/server/zodV4";
+
+// v4 Features: Schema Registry & Metadata
+const userSchema = z.object({
+  id: zid("users", { description: "User ID", example: "abc123" }),
+  email: string.email(),
+  avatar: file().optional(),
+});
+
+// Register schema globally
+globalRegistry.register("User", userSchema);
+
+// v4 Features: Enhanced string validators
+export const validateData = zCustomQuery(query, NoOp)({
+  args: {
+    email: string.email(),
+    url: string.url(),
+    datetime: string.datetime(),
+    ip: string.ipv4(),
+    template: string.template("user-", "-prod"),
+  },
+  handler: async (ctx, args) => {
+    // Benefit from 14x faster string parsing
+  },
+  metadata: {
+    description: "Validates various string formats",
+    generateJsonSchema: true,
+  },
+});
+
+// v4 Features: File validation
+export const uploadFile = zAction({
+  args: {
+    file: file(),
+    category: z.enum(["image", "document"]),
+  },
+  handler: async (ctx, args) => {
+    const buffer = await args.file.arrayBuffer();
+    // Process file...
+  },
+});
+```
+
+Key v4 Features:
+- **Schema Registry** for metadata and JSON Schema generation
+- **Enhanced string validators** with performance optimizations
+- **File validation** support
+- **Template literal types**
+- **Pretty error formatting** with `formatZodError`
+- **14x faster** string parsing
+- **7x faster** array parsing
+- **Built-in JSON Schema** generation
 
 ## Hono for advanced HTTP endpoint definitions
 
