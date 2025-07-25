@@ -633,8 +633,8 @@ describe("finally callback", () => {
       input: async () => ({
         ctx: { foo: "bar" },
         args: {},
-        onSuccess: (params) => {
-          finallyMock(params);
+        onSuccess: ({ result }) => {
+          finallyMock(result);
         },
       }),
     });
@@ -684,8 +684,8 @@ describe("finally callback", () => {
       input: async () => ({
         ctx: { foo: "bar" },
         args: {},
-        onSuccess: (params) => {
-          finallyMock(params);
+        onSuccess: ({ result }) => {
+          finallyMock(result);
         },
       }),
     });
@@ -714,8 +714,8 @@ describe("finally callback", () => {
       input: async () => ({
         ctx: { foo: "bar" },
         args: {},
-        onSuccess: (params) => {
-          finallyMock(params);
+        onSuccess: ({ result }) => {
+          finallyMock(result);
         },
       }),
     });

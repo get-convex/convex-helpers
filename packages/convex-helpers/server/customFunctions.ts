@@ -15,7 +15,6 @@ import type {
   ObjectType,
   PropertyValidators,
   Validator,
-  Value,
 } from "convex/values";
 import { asObjectValidator, v } from "convex/values";
 import type {
@@ -92,12 +91,20 @@ export type Customization<
     | Promise<{
         ctx: CustomCtx;
         args: CustomMadeArgs;
-        onSuccess?: (result: unknown) => void | Promise<void>;
+        onSuccess?: (obj: {
+          ctx: Ctx;
+          args: Record<string, unknown>;
+          result: unknown;
+        }) => void | Promise<void>;
       }>
     | {
         ctx: CustomCtx;
         args: CustomMadeArgs;
-        onSuccess?: (result: unknown) => void | Promise<void>;
+        onSuccess?: (obj: {
+          ctx: Ctx;
+          args: Record<string, unknown>;
+          result: unknown;
+        }) => void | Promise<void>;
       };
 };
 
@@ -201,7 +208,7 @@ export const NoOp = {
  *     return {
  *       ctx: { db, user, session },
  *       args: {},
- *       onSuccess: (result) => {
+ *       onSuccess: ({ result }) => {
  *         // Optional callback that runs after the function executes
  *         // Has access to resources created during input processing
  *         console.log(`Query for ${user.name} returned:`, result);
@@ -289,7 +296,7 @@ export function customQuery<
  *     return {
  *       ctx: { db, user, session },
  *       args: {},
- *       onSuccess: (result) => {
+ *       onSuccess: ({ result }) => {
  *         // Optional callback that runs after the function executes
  *         // Has access to resources created during input processing
  *         console.log(`User ${user.name} returned:`, result);
@@ -381,7 +388,7 @@ export function customMutation<
  *     return {
  *       ctx: { user },
  *       args: {},
- *       onSuccess: (result) => {
+ *       onSuccess: ({ result }) => {
  *         // Optional callback that runs after the function executes
  *         // Has access to resources created during input processing
  *         logger.info(`Action for user ${user.name} returned:`, result);
@@ -484,9 +491,10 @@ function customFnBuilder(
           );
           const args = omit(allArgs, Object.keys(inputArgs));
           const finalCtx = { ...ctx, ...added.ctx };
-          const result = await handler(finalCtx, { ...args, ...added.args });
+          const finalArgs = { ...args, ...added.args };
+          const result = await handler(finalCtx, finalArgs);
           if (added.onSuccess) {
-            await added.onSuccess(result ?? null);
+            await added.onSuccess({ ctx, args, result });
           }
           return result;
         },
@@ -503,9 +511,10 @@ function customFnBuilder(
       handler: async (ctx: any, args: any) => {
         const added = await customInput(ctx, args, extra);
         const finalCtx = { ...ctx, ...added.ctx };
-        const result = await handler(finalCtx, { ...args, ...added.args });
+        const finalArgs = { ...args, ...added.args };
+        const result = await handler(finalCtx, finalArgs);
         if (added.onSuccess) {
-          await added.onSuccess(result ?? null);
+          await added.onSuccess({ ctx, args, result });
         }
         return result;
       },

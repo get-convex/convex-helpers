@@ -65,10 +65,10 @@ const myQueryBuilder = customQuery(query, {
     return {
       ctx: { db, apiUser },
       args: {},
-      onSuccess: (result) => {
+      onSuccess: ({ args, result }) => {
         // Optional callback that runs after the function executes
         // Has access to resources created during input processing
-        console.log(`Query for ${apiUser.name} completed:`, result);
+        console.log(apiUser.name, args, result);
       },
     };
   },
