@@ -38,33 +38,108 @@ import type {
 import { omit, pick } from "../index.js";
 
 /**
- * A modifier for a query, mutation, or action.
+ * A customization of a query, mutation, or action.
  *
- * This defines what arguments are required for the modifier, and how to modify
- * the ctx and args. If the required args are not returned, they will not be
- * provided for the modified function. All returned ctx and args will show up
- * in the type signature for the modified function.
- * To remove something from `ctx`, you can return it as `undefined`.
+ * It can specify common arguments that all defined functions take in,
+ * as well as modify the ctx and args arguments to each function.
+ *
+ * Generally it's defined inline with customQuery, customMutation, etc.
+ * But you can define the type explicitly if you want to reuse it.
+ *
+ * e.g.
+ * ```ts
+ * const myCustomization: Customization<
+ * QueryCtx,
+ * { sessionId: VId<"sessions"> },
+ * { db: DatabaseReader, user: User, session: Session },
+ * {},
+ * > = {
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * };
+ *
+ * const myQueryBuilder = customQuery(query, myCustomization);
+ * ```
+ *
+ * If the required args are not returned, they will not be provided for the
+ * modified function. All returned ctx and args will show up in the type
+ * signature for the modified function. To remove something from `ctx`, you
+ * can return it as `undefined`.
  */
-export type Mod<
+export type Customization<
   Ctx extends Record<string, any>,
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 > = {
-  args: ModArgsValidator;
+  args: CustomArgsValidator;
   input: (
     ctx: Ctx,
-    args: ObjectType<ModArgsValidator>,
+    args: ObjectType<CustomArgsValidator>,
     extra: ExtraArgs,
   ) =>
-    | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
-    | { ctx: ModCtx; args: ModMadeArgs };
+    | Promise<{ ctx: CustomCtx; args: CustomMadeArgs }>
+    | { ctx: CustomCtx; args: CustomMadeArgs };
 };
 
 /**
- * A helper for defining a Mod when your mod doesn't need to add or remove
+ * A helper for defining a custom function that modifies the ctx and args, to
+ * be used with customQuery, customMutation, etc.
+ *
+ * This is helpful to avoid specifying the Customization type explicitly.
+ *
+ * e.g.
+ * ```ts
+ * const myCustomization = customCtxAndArgs({
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * });
+ *
+ * const myQueryBuilder = customQuery(query, myCustomization);
+ * ```
+ * If the required args are not returned, they will not be provided for the
+ * modified function. All returned ctx and args will show up in the type
+ * signature for the modified function. To remove something from `ctx`, you
+ * can return it as `undefined`.
+ */
+export function customCtxAndArgs<
+  Ctx extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators = PropertyValidators,
+  CustomCtx extends Record<string, any> = Record<string, any>,
+  CustomMadeArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = Record<string, any>,
+>(objectWithArgsAndInput: {
+  args: CustomArgsValidator;
+  input: (
+    ctx: Ctx,
+    args: ObjectType<CustomArgsValidator>,
+    extra: ExtraArgs,
+  ) =>
+    | Promise<{ ctx: CustomCtx; args: CustomMadeArgs }>
+    | { ctx: CustomCtx; args: CustomMadeArgs };
+}): Customization<
+  Ctx,
+  CustomArgsValidator,
+  CustomCtx,
+  CustomMadeArgs,
+  ExtraArgs
+> {
+  return objectWithArgsAndInput;
+}
+
+/**
+ * A helper for defining a Customization when your mod doesn't need to add or remove
  * anything from args.
  * @param mod A function that defines how to modify the ctx.
  * @returns A ctx delta to be applied to the original ctx.
@@ -75,7 +150,13 @@ export function customCtx<
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   mod: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
-): Mod<InCtx, Record<string, never>, OutCtx, Record<string, never>, ExtraArgs> {
+): Customization<
+  InCtx,
+  Record<string, never>,
+  OutCtx,
+  Record<string, never>,
+  ExtraArgs
+> {
   return {
     args: {},
     input: async (ctx, _, extra) => ({ ctx: await mod(ctx, extra), args: {} }),
@@ -83,7 +164,7 @@ export function customCtx<
 }
 
 /**
- * A Mod that doesn't add or remove any context or args.
+ * A Customization that doesn't add or remove any context or args.
  */
 export const NoOp = {
   args: {},
@@ -141,31 +222,31 @@ export const NoOp = {
  *
  * @param query The query to be modified. Usually `query` or `internalQuery`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the query, changing ctx and args.
+ * @param customization The modifier to be applied to the query, changing ctx and args.
  * @returns A new query builder to define queries with modified ctx and args.
  */
 export function customQuery<
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   query: QueryBuilder<DataModel, Visibility>,
-  mod: Mod<
+  customization: Customization<
     GenericQueryCtx<DataModel>,
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     ExtraArgs
   >,
 ) {
-  return customFnBuilder(query, mod) as CustomBuilder<
+  return customFnBuilder(query, customization) as CustomBuilder<
     "query",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     GenericQueryCtx<DataModel>,
     Visibility,
     ExtraArgs
@@ -221,31 +302,31 @@ export function customQuery<
  *
  * @param mutation The mutation to be modified. Usually `mutation` or `internalMutation`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the mutation, changing ctx and args.
+ * @param customization The modifier to be applied to the mutation, changing ctx and args.
  * @returns A new mutation builder to define queries with modified ctx and args.
  */
 export function customMutation<
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
-  mod: Mod<
+  mod: Customization<
     GenericMutationCtx<DataModel>,
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     ExtraArgs
   >,
 ) {
   return customFnBuilder(mutation, mod) as CustomBuilder<
     "mutation",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     GenericMutationCtx<DataModel>,
     Visibility,
     ExtraArgs
@@ -307,35 +388,35 @@ export function customMutation<
  * @returns A new action builder to define queries with modified ctx and args.
  */
 export function customAction<
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   action: ActionBuilder<DataModel, Visibility>,
-  mod: Mod<
+  mod: Customization<
     GenericActionCtx<DataModel>,
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     ExtraArgs
   >,
 ): CustomBuilder<
   "action",
-  ModArgsValidator,
-  ModCtx,
-  ModMadeArgs,
+  CustomArgsValidator,
+  CustomCtx,
+  CustomMadeArgs,
   GenericActionCtx<DataModel>,
   Visibility,
   ExtraArgs
 > {
   return customFnBuilder(action, mod) as CustomBuilder<
     "action",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     GenericActionCtx<DataModel>,
     Visibility,
     ExtraArgs
@@ -344,11 +425,11 @@ export function customAction<
 
 function customFnBuilder(
   builder: (args: any) => any,
-  mod: Mod<any, any, any, any, any>,
+  customization: Customization<any, any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
-  const inputMod = mod.input ?? NoOp.input;
-  const inputArgs = mod.args ?? NoOp.args;
+  const customInput = customization.input ?? NoOp.input;
+  const inputArgs = customization.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
     // N.B.: This is fine if it's a function
     const { args, handler = fn, returns, ...extra } = fn;
@@ -357,7 +438,7 @@ function customFnBuilder(
         args: addArgs(args, inputArgs),
         returns,
         handler: async (ctx: any, allArgs: any) => {
-          const added = await inputMod(
+          const added = await customInput(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
             extra,
@@ -370,13 +451,13 @@ function customFnBuilder(
     if (Object.keys(inputArgs).length > 0) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
+          "customization, you must declare the arguments for the function too.",
       );
     }
     return builder({
       returns: fn.returns,
       handler: async (ctx: any, args: any) => {
-        const added = await inputMod(ctx, args, extra);
+        const added = await customInput(ctx, args, extra);
         return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
       },
     });
@@ -435,13 +516,13 @@ type Expand<ObjectType extends Record<any, any>> =
 
 type ArgsForHandlerType<
   OneOrZeroArgs extends [] | [Record<string, any>],
-  ModMadeArgs extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
 > =
-  ModMadeArgs extends Record<string, never>
+  CustomMadeArgs extends Record<string, never>
     ? OneOrZeroArgs
     : OneOrZeroArgs extends [infer A]
-      ? [Expand<A & ModMadeArgs>]
-      : [ModMadeArgs];
+      ? [Expand<A & CustomMadeArgs>]
+      : [CustomMadeArgs];
 
 /**
  * A builder that customizes a Convex function, whether or not it validates
@@ -450,9 +531,9 @@ type ArgsForHandlerType<
  */
 export type CustomBuilder<
   FuncType extends "query" | "mutation" | "action",
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility,
   ExtraArgs extends Record<string, any>,
@@ -469,8 +550,8 @@ export type CustomBuilder<
           args?: ArgsValidator;
           returns?: ReturnsValidator;
           handler: (
-            ctx: Overwrite<InputCtx, ModCtx>,
-            ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
+            ctx: Overwrite<InputCtx, CustomCtx>,
+            ...args: ArgsForHandlerType<OneOrZeroArgs, CustomMadeArgs>
           ) => ReturnValue;
         } & {
           [key in keyof ExtraArgs as key extends "args" | "returns" | "handler"
@@ -479,19 +560,19 @@ export type CustomBuilder<
         })
       | {
           (
-            ctx: Overwrite<InputCtx, ModCtx>,
-            ...args: ArgsForHandlerType<OneOrZeroArgs, ModMadeArgs>
+            ctx: Overwrite<InputCtx, CustomCtx>,
+            ...args: ArgsForHandlerType<OneOrZeroArgs, CustomMadeArgs>
           ): ReturnValue;
         },
   ): Registration<
     FuncType,
     Visibility,
     ArgsArrayToObject<
-      ModArgsValidator extends Record<string, never>
+      CustomArgsValidator extends Record<string, never>
         ? OneOrZeroArgs
         : OneOrZeroArgs extends [infer A]
-          ? [Expand<A & ObjectType<ModArgsValidator>>]
-          : [ObjectType<ModArgsValidator>]
+          ? [Expand<A & ObjectType<CustomArgsValidator>>]
+          : [ObjectType<CustomArgsValidator>]
     >,
     ReturnValue
   >;
@@ -501,13 +582,40 @@ export type CustomCtx<Builder> =
   Builder extends CustomBuilder<
     any,
     any,
-    infer ModCtx,
+    infer CustomCtx,
     any,
     infer InputCtx,
     any,
     any
   >
-    ? Overwrite<InputCtx, ModCtx>
+    ? Overwrite<InputCtx, CustomCtx>
     : never;
 
 type Overwrite<T, U> = keyof U extends never ? T : Omit<T, keyof U> & U;
+
+/**
+ * @deprecated This type has been renamed to `Customization`.
+ * A modifier for a query, mutation, or action.
+ *
+ * This defines what arguments are required for the modifier, and how to modify
+ * the ctx and args. If the required args are not returned, they will not be
+ * provided for the modified function. All returned ctx and args will show up
+ * in the type signature for the modified function.
+ * To remove something from `ctx`, you can return it as `undefined`.
+ */
+export type Mod<
+  Ctx extends Record<string, any>,
+  ModArgsValidator extends PropertyValidators,
+  ModCtx extends Record<string, any>,
+  ModMadeArgs extends Record<string, any>,
+  ExtraArgs extends Record<string, any> = Record<string, any>,
+> = {
+  args: ModArgsValidator;
+  input: (
+    ctx: Ctx,
+    args: ObjectType<ModArgsValidator>,
+    extra: ExtraArgs,
+  ) =>
+    | Promise<{ ctx: ModCtx; args: ModMadeArgs }>
+    | { ctx: ModCtx; args: ModMadeArgs };
+};

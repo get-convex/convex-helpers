@@ -36,7 +36,7 @@ import type {
   DefaultFunctionArgs,
   ArgsArrayToObject,
 } from "convex/server";
-import type { Mod, Registration } from "./customFunctions.js";
+import type { Customization, Registration } from "./customFunctions.js";
 import { NoOp } from "./customFunctions.js";
 import { pick } from "../index.js";
 
@@ -66,12 +66,12 @@ export type ZCustomCtx<Builder> =
   Builder extends CustomBuilder<
     any,
     any,
-    infer ModCtx,
+    infer CustomCtx,
     any,
     infer InputCtx,
     any
   >
-    ? Overwrite<InputCtx, ModCtx>
+    ? Overwrite<InputCtx, CustomCtx>
     : never;
 
 /**
@@ -125,24 +125,29 @@ export type ZCustomCtx<Builder> =
  *
  * @param query The query to be modified. Usually `query` or `internalQuery`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the query, changing ctx and args.
+ * @param customization The customization to be applied to the query, changing ctx and args.
  * @returns A new query builder using zod validation to define queries.
  */
 export function zCustomQuery<
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
 >(
   query: QueryBuilder<DataModel, Visibility>,
-  mod: Mod<GenericQueryCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
+  customization: Customization<
+    GenericQueryCtx<DataModel>,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs
+  >,
 ) {
-  return customFnBuilder(query, mod) as CustomBuilder<
+  return customFnBuilder(query, customization) as CustomBuilder<
     "query",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     GenericQueryCtx<DataModel>,
     Visibility
   >;
@@ -199,29 +204,29 @@ export function zCustomQuery<
  *
  * @param mutation The mutation to be modified. Usually `mutation` or `internalMutation`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the mutation, changing ctx and args.
+ * @param customization The customization to be applied to the mutation, changing ctx and args.
  * @returns A new mutation builder using zod validation to define queries.
  */
 export function zCustomMutation<
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
-  mod: Mod<
+  customization: Customization<
     GenericMutationCtx<DataModel>,
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs
   >,
 ) {
-  return customFnBuilder(mutation, mod) as CustomBuilder<
+  return customFnBuilder(mutation, customization) as CustomBuilder<
     "mutation",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     GenericMutationCtx<DataModel>,
     Visibility
   >;
@@ -278,24 +283,29 @@ export function zCustomMutation<
  *
  * @param action The action to be modified. Usually `action` or `internalAction`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the action, changing ctx and args.
+ * @param customization The customization to be applied to the action, changing ctx and args.
  * @returns A new action builder using zod validation to define queries.
  */
 export function zCustomAction<
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
 >(
   action: ActionBuilder<DataModel, Visibility>,
-  mod: Mod<GenericActionCtx<DataModel>, ModArgsValidator, ModCtx, ModMadeArgs>,
+  customization: Customization<
+    GenericActionCtx<DataModel>,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs
+  >,
 ) {
-  return customFnBuilder(action, mod) as CustomBuilder<
+  return customFnBuilder(action, customization) as CustomBuilder<
     "action",
-    ModArgsValidator,
-    ModCtx,
-    ModMadeArgs,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
     GenericActionCtx<DataModel>,
     Visibility
   >;
@@ -303,11 +313,11 @@ export function zCustomAction<
 
 function customFnBuilder(
   builder: (args: any) => any,
-  mod: Mod<any, any, any, any>,
+  customization: Customization<any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
-  const inputMod = mod.input ?? NoOp.input;
-  const inputArgs = mod.args ?? NoOp.args;
+  const customInput = customization.input ?? NoOp.input;
+  const inputArgs = customization.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
     const { args, handler = fn, returns: maybeObject, ...extra } = fn;
 
@@ -341,7 +351,7 @@ function customFnBuilder(
         },
         ...returnValidator,
         handler: async (ctx: any, allArgs: any) => {
-          const added = await inputMod(
+          const added = await customInput(
             ctx,
             pick(allArgs, Object.keys(inputArgs)) as any,
             extra,
@@ -371,13 +381,13 @@ function customFnBuilder(
     if (Object.keys(inputArgs).length > 0 && !fn.skipConvexValidation) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "modifier, you must declare the arguments for the function too.",
+          "customization, you must declare the arguments for the function too.",
       );
     }
     return builder({
       ...returnValidator,
       handler: async (ctx: any, args: any) => {
-        const added = await inputMod(ctx, args, extra);
+        const added = await customInput(ctx, args, extra);
         if (returns) {
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.
@@ -453,9 +463,9 @@ type Expand<ObjectType extends Record<any, any>> =
  */
 export type CustomBuilder<
   FuncType extends "query" | "mutation" | "action",
-  ModArgsValidator extends PropertyValidators,
-  ModCtx extends Record<string, any>,
-  ModMadeArgs extends Record<string, any>,
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility,
 > = {
@@ -474,10 +484,10 @@ export type CustomBuilder<
            */
           args?: ArgsValidator;
           handler: (
-            ctx: Overwrite<InputCtx, ModCtx>,
+            ctx: Overwrite<InputCtx, CustomCtx>,
             ...args: OneOrZeroArgs extends [infer A]
-              ? [Expand<A & ModMadeArgs>]
-              : [ModMadeArgs]
+              ? [Expand<A & CustomMadeArgs>]
+              : [CustomMadeArgs]
           ) => ReturnValue;
           /**
            * If true, the function will not be validated by Convex,
@@ -506,10 +516,10 @@ export type CustomBuilder<
         ))
       | {
           (
-            ctx: Overwrite<InputCtx, ModCtx>,
+            ctx: Overwrite<InputCtx, CustomCtx>,
             ...args: OneOrZeroArgs extends [infer A]
-              ? [Expand<A & ModMadeArgs>]
-              : [ModMadeArgs]
+              ? [Expand<A & CustomMadeArgs>]
+              : [CustomMadeArgs]
           ): ReturnValue;
         },
   ): Registration<
@@ -519,14 +529,15 @@ export type CustomBuilder<
       [ArgsValidator] extends [ZodValidator]
         ? [
             Expand<
-              z.input<z.ZodObject<ArgsValidator>> & ObjectType<ModArgsValidator>
+              z.input<z.ZodObject<ArgsValidator>> &
+                ObjectType<CustomArgsValidator>
             >,
           ]
         : [ArgsValidator] extends [z.ZodObject<any>]
-          ? [Expand<z.input<ArgsValidator> & ObjectType<ModArgsValidator>>]
+          ? [Expand<z.input<ArgsValidator> & ObjectType<CustomArgsValidator>>]
           : OneOrZeroArgs extends [infer A]
-            ? [Expand<A & ObjectType<ModArgsValidator>>]
-            : [ObjectType<ModArgsValidator>]
+            ? [Expand<A & ObjectType<CustomArgsValidator>>]
+            : [ObjectType<CustomArgsValidator>]
     >,
     ReturnsZodValidator extends void
       ? ReturnValue
