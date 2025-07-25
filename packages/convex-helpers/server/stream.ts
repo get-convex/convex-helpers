@@ -1855,11 +1855,11 @@ function serializeCursor(key: IndexKey): string {
       key.map(
         (v): Value =>
           v === undefined
-            ? "$_"
-            : typeof v === "string" && v.endsWith("$_")
-              ? // in the unlikely case their string was "$_" or "$$_" etc.
-                // we need to escape it. Always add a $ so "$$_" becomes "$$$_"
-                "$" + v
+            ? "undefined"
+            : typeof v === "string" && v.endsWith("undefined")
+              ? // in the unlikely case their string was "undefined"
+                // or "_undefined" etc, we escape it.
+                "_" + v
               : v,
       ),
     ),
@@ -1869,16 +1869,17 @@ function serializeCursor(key: IndexKey): string {
 function deserializeCursor(cursor: string): IndexKey {
   return (jsonToConvex(JSON.parse(cursor)) as Value[]).map((v) => {
     if (typeof v === "string") {
-      if (v === "$_") {
+      if (v === "undefined") {
         // This is a special case for the undefined value.
         // It's not a valid value in the index, but it's a valid value in the
         // cursor.
         return undefined;
       }
-      if (v.endsWith("$_")) {
-        // in the unlikely case their string was "$_" it was changed to "$$_"
-        // in the serialization process. If it was "$$_", it was changed to
-        // "$$$_" and so on.
+      if (v.endsWith("undefined")) {
+        // in the unlikely case their string was "undefined" it was changed to
+        // "_undefined" in the serialization process.
+        // NB: if their string was "_undefined" it was changed to
+        // "__undefined" in the serialization process, and so on.
         return v.slice(1);
       }
     }

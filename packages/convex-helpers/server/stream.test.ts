@@ -763,7 +763,7 @@ describe("stream", () => {
       await ctx.db.insert("foo", { a: undefined, b: 5 });
       const query = stream(ctx.db, schema).query("foo").withIndex("ab");
       const result = await query.paginate({ numItems: 1, cursor: null });
-      expect(result.continueCursor).toMatch('["$_",');
+      expect(result.continueCursor).toMatch('["undefined",');
       expect(result.page.map(stripSystemFields)).toEqual([
         { a: undefined, b: 3 },
       ]);
