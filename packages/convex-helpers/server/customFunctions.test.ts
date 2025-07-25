@@ -36,6 +36,7 @@ import {
   describe,
   expect,
   test,
+  vi,
 } from "vitest";
 import { modules } from "./setup.test.js";
 
@@ -618,6 +619,119 @@ describe("extra args", () => {
     const t = convexTest(schema, modules);
     expect(await t.query(testApi.extraArgQuery, { a: "foo" })).toMatchObject({
       ctxA: "foo",
+    });
+  });
+});
+
+describe("finally callback", () => {
+  test("finally callback is called with result and context", async () => {
+    const t = convexTest(schema, modules);
+    const finallyMock = vi.fn();
+
+    const withFinally = customQuery(query, {
+      args: {},
+      input: async () => ({
+        ctx: { foo: "bar" },
+        args: {},
+        onSuccess: (params) => {
+          finallyMock(params);
+        },
+      }),
+    });
+
+    const successFn = withFinally({
+      args: {},
+      handler: async (ctx) => {
+        return { success: true, foo: ctx.foo };
+      },
+    });
+
+    await t.run(async (ctx) => {
+      const result = await (successFn as any)._handler(ctx, {});
+      expect(result).toEqual({ success: true, foo: "bar" });
+
+      expect(finallyMock).toHaveBeenCalledWith({ success: true, foo: "bar" });
+    });
+
+    finallyMock.mockClear();
+
+    const errorFn = withFinally({
+      args: {},
+      handler: async () => {
+        throw new Error("Test error");
+      },
+    });
+
+    await t.run(async (ctx) => {
+      try {
+        await (errorFn as any)._handler(ctx, {});
+        expect.fail("Should have thrown an error");
+      } catch (e: unknown) {
+        const error = e as Error;
+        expect(error.message).toContain("Test error");
+      }
+
+      expect(finallyMock).not.toHaveBeenCalled();
+    });
+  });
+
+  test("finally callback with mutation", async () => {
+    const t = convexTest(schema, modules);
+    const finallyMock = vi.fn();
+
+    const withFinally = customMutation(mutation, {
+      args: {},
+      input: async () => ({
+        ctx: { foo: "bar" },
+        args: {},
+        onSuccess: (params) => {
+          finallyMock(params);
+        },
+      }),
+    });
+
+    const mutationFn = withFinally({
+      args: {},
+      handler: async (ctx) => {
+        return { updated: true, foo: ctx.foo };
+      },
+    });
+
+    await t.run(async (ctx) => {
+      const result = await (mutationFn as any)._handler(ctx, {});
+      expect(result).toEqual({ updated: true, foo: "bar" });
+
+      expect(finallyMock).toHaveBeenCalledWith({ updated: true, foo: "bar" });
+    });
+  });
+
+  test("finally callback with action", async () => {
+    const t = convexTest(schema, modules);
+    const finallyMock = vi.fn();
+
+    const withFinally = customAction(action, {
+      args: {},
+      input: async () => ({
+        ctx: { foo: "bar" },
+        args: {},
+        onSuccess: (params) => {
+          finallyMock(params);
+        },
+      }),
+    });
+
+    const actionFn = withFinally({
+      args: {},
+      handler: async (ctx) => {
+        return { executed: true, foo: ctx.foo };
+      },
+    });
+
+    await t.run(async (ctx) => {
+      const result = await (actionFn as any)._handler(ctx, {});
+      expect(result).toEqual({ executed: true, foo: "bar" });
+
+      expect(finallyMock).toHaveBeenCalledWith({ executed: true, foo: "bar" });
     });
   });
 });

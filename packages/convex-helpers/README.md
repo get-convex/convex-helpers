@@ -47,6 +47,8 @@ define custom behavior, allowing you to:
 - Consume arguments from the client that are not passed to the action, such
   as taking in an authentication parameter like an API key or session ID.
   These arguments must be sent up by the client along with each request.
+- Execute finalization logic after function execution using the `onSuccess`
+  callback, which has access to the function's result.
 
 See the associated [Stack Post](https://stack.convex.dev/custom-functions)
 
@@ -60,7 +62,15 @@ const myQueryBuilder = customQuery(query, {
   input: async (ctx, args) => {
     const apiUser = await getApiUser(args.apiToken);
     const db = wrapDatabaseReader({ apiUser }, ctx.db, rlsRules);
-    return { ctx: { db, apiUser }, args: {} };
+    return {
+      ctx: { db, apiUser },
+      args: {},
+      onSuccess: (result) => {
+        // Optional callback that runs after the function executes
+        // Has access to resources created during input processing
+        console.log(`Query for ${apiUser.name} completed:`, result);
+      },
+    };
   },
 });
 

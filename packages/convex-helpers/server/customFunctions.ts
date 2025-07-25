@@ -15,6 +15,7 @@ import type {
   ObjectType,
   PropertyValidators,
   Validator,
+  Value,
 } from "convex/values";
 import { asObjectValidator, v } from "convex/values";
 import type {
@@ -70,6 +71,10 @@ import { omit, pick } from "../index.js";
  * modified function. All returned ctx and args will show up in the type
  * signature for the modified function. To remove something from `ctx`, you
  * can return it as `undefined`.
+
+ *  The `input` function can also return an `onSuccess` callback that will be
+ * called after the function executes successfully. The `onSuccess` callback
+ * has access to resources created during input processing via closure.
  */
 export type Customization<
   Ctx extends Record<string, any>,
@@ -84,8 +89,16 @@ export type Customization<
     args: ObjectType<CustomArgsValidator>,
     extra: ExtraArgs,
   ) =>
-    | Promise<{ ctx: CustomCtx; args: CustomMadeArgs }>
-    | { ctx: CustomCtx; args: CustomMadeArgs };
+    | Promise<{
+        ctx: CustomCtx;
+        args: CustomMadeArgs;
+        onSuccess?: (result: Value) => void | Promise<void>;
+      }>
+    | {
+        ctx: CustomCtx;
+        args: CustomMadeArgs;
+        onSuccess?: (result: Value) => void | Promise<void>;
+      };
 };
 
 /**
@@ -185,7 +198,15 @@ export const NoOp = {
  *     const user = await getUserOrNull(ctx);
  *     const session = await db.get(sessionId);
  *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
- *     return { ctx: { db, user, session }, args: {} };
+ *     return {
+ *       ctx: { db, user, session },
+ *       args: {},
+ *       onSuccess: (result) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         console.log(`Query for ${user.name} returned:`, result);
+ *       }
+ *     };
  *   },
  * });
  *
@@ -265,7 +286,15 @@ export function customQuery<
  *     const user = await getUserOrNull(ctx);
  *     const session = await db.get(sessionId);
  *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
- *     return { ctx: { db, user, session }, args: {} };
+ *     return {
+ *       ctx: { db, user, session },
+ *       args: {},
+ *       onSuccess: (result) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         console.log(`User ${user.name} returned:`, result);
+ *       }
+ *     };
  *   },
  * });
  *
@@ -347,7 +376,17 @@ export function customMutation<
  *       throw new Error("Invalid secret key");
  *     }
  *     const user = await ctx.runQuery(internal.users.getUser, {});
- *     return { ctx: { user }, args: {} };
+ *     // Create resources that can be used in the onSuccess callback
+ *     const logger = createLogger();
+ *     return {
+ *       ctx: { user },
+ *       args: {},
+ *       onSuccess: (result) => {
+ *         // Optional callback that runs after the function executes
+ *         // Has access to resources created during input processing
+ *         logger.info(`Action for user ${user.name} returned:`, result);
+ *       }
+ *     };
  *   },
  * });
  *
@@ -444,7 +483,12 @@ function customFnBuilder(
             extra,
           );
           const args = omit(allArgs, Object.keys(inputArgs));
-          return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+          const finalCtx = { ...ctx, ...added.ctx };
+          const result = await handler(finalCtx, { ...args, ...added.args });
+          if (added.onSuccess) {
+            await added.onSuccess(result ?? null);
+          }
+          return result;
         },
       });
     }
@@ -458,7 +502,12 @@ function customFnBuilder(
       returns: fn.returns,
       handler: async (ctx: any, args: any) => {
         const added = await customInput(ctx, args, extra);
-        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+        const finalCtx = { ...ctx, ...added.ctx };
+        const result = await handler(finalCtx, { ...args, ...added.args });
+        if (added.onSuccess) {
+          await added.onSuccess(result ?? null);
+        }
+        return result;
       },
     });
   };
