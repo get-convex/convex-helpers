@@ -82,7 +82,7 @@
  * // v4: This WORKS - refinements live inside schemas
  * z.string()
  *   .refine(val => val.includes("@"))
- *   .min(5);  // ✅ Works perfectly!
+ *   .min(5);  // ✅ Works!
  * ```
  * 
  * In v4, refinements are stored directly inside the schemas themselves, allowing
@@ -106,30 +106,6 @@
  *   }
  * });
  * ```
- * 
- * ## Performance Benefits
- * 
- * These changes weren't just about API design - they enabled massive performance improvements:
- * - 14x faster string parsing
- * - 7x faster array parsing  
- * - 6.5x faster object parsing
- * - 100x reduction in TypeScript compiler instantiations
- * 
- * ## Type Safety Improvements
- * 
- * The split API provides better type safety:
- * - `.transform()` properly changes inferred types
- * - `.refine()` preserves original types for continued chaining
- * - `.overwrite()` allows type-preserving mutations for JSON Schema compatibility
- * 
- * ## Migration Strategy
- * 
- * When migrating from v3 to v4:
- * 1. Replace `z.effect` with `.transform()` for data transformations
- * 2. Replace `z.effect` with `.refine()` for validations
- * 3. Use `.overwrite()` for transforms that need to preserve types
- * 4. Replace `.superRefine()` with `.check()`
- * 5. Take advantage of the improved chaining capabilities
  */
 
 
@@ -215,6 +191,10 @@ interface TransformMetadata {
 }
 
 /**
+ * **THIS IS NOT CURRENTLY USED**
+ * Retaining for reviewers/testers/experimenters who might want to play with it since it could be a useful pattern.
+ * Unused right now as this helper treats transforms as one way trips.
+ * 
  * Global transform registry for storing transform metadata
  */
 class TransformRegistry {
