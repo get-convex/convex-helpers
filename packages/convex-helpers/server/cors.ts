@@ -84,10 +84,10 @@ export type CorsConfig = {
 export type RouteSpecWithCors = RouteSpec & CorsConfig;
 
 /**
-* An HttpRouter with built in cors support.
-*/
+ * An HttpRouter with built in cors support.
+ */
 export type CorsHttpRouter = {
-  http: HttpRouter
+  http: HttpRouter;
   route: (routeSpec: RouteSpecWithCors) => void;
 };
 
@@ -96,7 +96,10 @@ export type CorsHttpRouter = {
  * @param allowedOrigins An array of allowed origins for CORS.
  * @returns A function to use instead of http.route when you want CORS.
  */
-export const corsRouter = (http: HttpRouter, corsConfig?: CorsConfig): CorsHttpRouter => {
+export const corsRouter = (
+  http: HttpRouter,
+  corsConfig?: CorsConfig,
+): CorsHttpRouter => {
   const allowedExactMethodsByPath: Map<string, Set<string>> = new Map();
   const allowedPrefixMethodsByPath: Map<string, Set<string>> = new Map();
   return {
