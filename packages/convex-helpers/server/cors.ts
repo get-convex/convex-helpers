@@ -88,7 +88,7 @@ export type RouteSpecWithCors = RouteSpec & CorsConfig;
 */
 export type CorsHttpRouter = {
   http: HttpRouter
-  route: (routeSpec: RouteSpecWithCors): void;
+  route: (routeSpec: RouteSpecWithCors) => void;
 };
 
 /**
