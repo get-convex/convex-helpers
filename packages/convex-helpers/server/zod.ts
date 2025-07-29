@@ -1353,9 +1353,26 @@ type ZodFromValidatorBase<V extends GenericValidator> =
                       : z.ZodRecord<z.ZodString, ZodValidatorFromConvex<Value>>
                     : V extends VArray<any, any>
                       ? z.ZodArray<ZodValidatorFromConvex<V["element"]>>
-                      : V extends VUnion<any, any, any, any>
+                      : V extends VUnion<
+                            any,
+                            [
+                              infer A extends GenericValidator,
+                              infer B extends GenericValidator,
+                              ...infer Rest extends GenericValidator[],
+                            ],
+                            any,
+                            any
+                          >
                         ? z.ZodUnion<
-                            [ZodValidatorFromConvex<V["members"][number]>]
+                            [
+                              ZodValidatorFromConvex<A>,
+                              ZodValidatorFromConvex<B>,
+                              ...{
+                                [K in keyof Rest]: ZodValidatorFromConvex<
+                                  Rest[K]
+                                >;
+                              },
+                            ]
                           >
                         : z.ZodTypeAny; // fallback for unknown validators
 
