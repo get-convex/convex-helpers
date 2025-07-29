@@ -24,6 +24,8 @@ import type * as sessionsExample from "../sessionsExample.js";
 import type * as streamsExample from "../streamsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 import type * as triggersExample from "../triggersExample.js";
+import type * as zodTest from "../zodTest.js";
+import type * as zodTestSchema from "../zodTestSchema.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -45,6 +47,8 @@ declare const fullApi: ApiFromModules<{
   streamsExample: typeof streamsExample;
   testingFunctions: typeof testingFunctions;
   triggersExample: typeof triggersExample;
+  zodTest: typeof zodTest;
+  zodTestSchema: typeof zodTestSchema;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
