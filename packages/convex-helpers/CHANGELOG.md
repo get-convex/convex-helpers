@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.101 alpha
+
+- Improved Zod union type (credit:Firephoenix25)
+
 ## 0.1.100
 
 - Custom Functions now can take dynamic parameters for each function
