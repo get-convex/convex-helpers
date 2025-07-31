@@ -108,7 +108,6 @@
  * ```
  */
 
-
 import * as z from "zod/v4";
 import type {
   GenericId,
@@ -146,7 +145,7 @@ import type {
   TableNamesInDataModel,
   DefaultFunctionArgs,
   ArgsArrayToObject,
-  ReturnValueForOptionalValidator
+  ReturnValueForOptionalValidator,
 } from "convex/server";
 import type { Mod, Registration } from "convex-helpers/server/customFunctions";
 import { NoOp } from "convex-helpers/server/customFunctions";
@@ -170,7 +169,7 @@ type ConvexSchemaMetadata = {
   // Store JSON schema directly in metadata since v4 registry handles one object per schema
   jsonSchema?: Record<string, any>;
   [key: string]: any;
-}
+};
 
 /**
  * Enhanced transform metadata for bidirectional data flow
@@ -281,8 +280,6 @@ export const registryHelpers = {
  * v4-compatible type definitions
  */
 export type ZodValidator = Record<string, z.ZodType>;
-
-
 
 /**
  * Zid - Convex ID validator using Zod v4 branding (following external reviewer's exact specification)
@@ -886,14 +883,12 @@ function customFnBuilder(builder: any, mod: any): any {
         for (const [key, value] of Object.entries(args)) {
           if (value instanceof z.ZodType) {
             const validator = createTupleAcceptingValidator(value);
-            console.log(`Creating validator for ${key}:`, validator);
             modifiedArgs[key] = validator;
           } else {
             modifiedArgs[key] = value;
           }
         }
 
-        console.log("Modified args:", modifiedArgs);
         args = modifiedArgs;
       }
     }
@@ -1914,41 +1909,8 @@ export function convexToZod<V extends GenericValidator>(
       >;
       const valueValidator = recordValidator.value;
 
-      // Check if the value is a union with null (indicating it was originally optional)
-      if (
-        valueValidator.kind === "union" &&
-        Array.isArray(valueValidator.members)
-      ) {
-        // Check if this is a union of [SomeType, null]
-        const hasNull = valueValidator.members.some(
-          (m: any) => m.kind === "null",
-        );
-        const nonNullMembers = valueValidator.members.filter(
-          (m: any) => m.kind !== "null",
-        );
-
-        if (hasNull && nonNullMembers.length === 1) {
-          // This was originally an optional value - convert back to optional
-          const innerType = convexToZod(nonNullMembers[0]);
-          let optionalType: z.ZodTypeAny = innerType.optional();
-
-          // Check if there's a default value
-          if (
-            "_zodDefault" in valueValidator &&
-            valueValidator._zodDefault !== undefined
-          ) {
-            optionalType = optionalType.default(valueValidator._zodDefault);
-          }
-
-          zodValidator = z.record(z.string(), optionalType);
-        } else {
-          // Regular union, convert normally
-          zodValidator = z.record(z.string(), convexToZod(valueValidator));
-        }
-      } else {
-        // Not a union, convert normally
-        zodValidator = z.record(z.string(), convexToZod(valueValidator));
-      }
+      // Always convert record values normally - don't try to be smart about unions
+      zodValidator = z.record(z.string(), convexToZod(valueValidator));
       break;
     }
     default:
@@ -1958,16 +1920,10 @@ export function convexToZod<V extends GenericValidator>(
       );
   }
 
-  // Handle VOptional - in Convex, optional fields can be omitted
-  // Use .optional() to match Zod's semantics
-  if (
-    isOptional &&
-    zodValidator &&
-    typeof zodValidator === "object" &&
-    "optional" in zodValidator &&
-    typeof zodValidator.optional === "function"
-  ) {
-    zodValidator = zodValidator.optional();
+  // For VOptional validators, create a union with null instead of using .optional()
+  // This matches the expected behavior where optional fields should become unions with null
+  if (isOptional && convexValidator.kind !== "union") {
+    zodValidator = z.union([zodValidator, z.null()]);
   }
 
   // Check for default metadata
@@ -2075,29 +2031,39 @@ function convertZodTupleToConvex(
   useRecursiveCall: boolean = false,
 ): GenericValidator {
   const items = actualValidator.def.items as z.ZodTypeAny[];
-  const fields: Record<string, GenericValidator> = {};
 
-  items.forEach((item, index) => {
-    // Use zodToConvex to preserve optional/default behavior, or zodToConvexInternal for recursive calls
-    fields[`_${index}`] = useRecursiveCall
-      ? zodToConvexInternal(item)
-      : zodToConvex(item);
-  });
+  // Tuples should become arrays in Convex, not objects
+  // We'll use the first element's type as the array element type
+  // If there are multiple different types, we'll create a union
+  if (items.length === 0) {
+    return v.array(v.any());
+  }
 
-  // Handle rest elements if present
-  const rest = actualValidator.def.rest;
-  if (rest) {
-    // Store rest element info in metadata
-    const objectValidator = v.object(fields);
-    (objectValidator as any)._zodTupleRest = useRecursiveCall
-      ? zodToConvexInternal(rest as z.ZodTypeAny)
-      : zodToConvex(rest as z.ZodTypeAny);
-    (objectValidator as any)._zodTuple = true;
-    return objectValidator;
+  // Convert all tuple items to their Convex validators
+  const convexItems = items.map((item) =>
+    useRecursiveCall ? zodToConvexInternal(item) : zodToConvex(item),
+  );
+
+  // If all items have the same kind, use that as the element type
+  const firstKind = convexItems[0]?.kind;
+  const allSameKind = convexItems.every((item) => item.kind === firstKind);
+
+  if (allSameKind && convexItems.length > 0) {
+    // All elements are the same type, use that as the array element type
+    return v.array(convexItems[0]!);
+  } else if (convexItems.length === 1) {
+    // Single element tuple
+    return v.array(convexItems[0]!);
+  } else if (convexItems.length >= 2) {
+    // Multiple different types, create a union for the array element type
+    const unionValidator = v.union(
+      convexItems[0]!,
+      convexItems[1]!,
+      ...convexItems.slice(2),
+    );
+    return v.array(unionValidator);
   } else {
-    const objectValidator = v.object(fields);
-    (objectValidator as any)._zodTuple = true;
-    return objectValidator;
+    return v.array(v.any());
   }
 }
 
@@ -2483,9 +2449,10 @@ function zodToConvexInternal<Z extends z.ZodType>(
     }
   }
 
-  // Wrap with v.optional() for optional fields, matching Convex's field-level optional semantics
+  // For optional fields, create a union with null instead of using v.optional()
+  // This matches the expected behavior where optional Zod types become unions
   const finalValidator = isOptional
-    ? v.optional(convexValidator)
+    ? v.union(convexValidator, v.null())
     : convexValidator;
 
   // Add metadata if there's a default value
@@ -2723,7 +2690,9 @@ type ConvexValidatorFromZodBase<Z extends z.ZodType> = Z extends z.ZodString
 
 // Helper for object fields that always uses "required"
 type ConvexValidatorFromZodFieldsRequired<T extends { [key: string]: any }> = {
-  [K in keyof T]: T[K] extends z.ZodType ? ConvexValidatorFromZodRequired<T[K]> : VAny<"required">;
+  [K in keyof T]: T[K] extends z.ZodType
+    ? ConvexValidatorFromZodRequired<T[K]>
+    : VAny<"required">;
 };
 
 /**
@@ -3022,19 +2991,24 @@ type ConvexValidatorFromZod<
                                                   ? VAny<any, "required"> // Always use "required" for any types
                                                   : Z extends z.ZodUnknown
                                                     ? VAny<any, "required"> // Always use "required" for unknown types
-                                                    : VAny<"VALIDATION_ERROR">;  // THIS LINE IS RESPONSIBLE FOR EVERYTHING BEING ASSIGNED THE 'REQUIRED' TYPE!!
+                                                    : VAny<"VALIDATION_ERROR">; // THIS LINE IS RESPONSIBLE FOR EVERYTHING BEING ASSIGNED THE 'REQUIRED' TYPE!!
 
-type ConvexValidatorFromZodFields<T extends { [key: string]: any }, Constraint extends "required" | "optional" = "required"> = {
-  [K in keyof T]: T[K] extends z.ZodType ? ConvexValidatorFromZod<T[K], Constraint> : VAny<"required">;
+type ConvexValidatorFromZodFields<
+  T extends { [key: string]: any },
+  Constraint extends "required" | "optional" = "required",
+> = {
+  [K in keyof T]: T[K] extends z.ZodType
+    ? ConvexValidatorFromZod<T[K], Constraint>
+    : VAny<"required">;
 };
 
 // Auto-detect optional fields and apply appropriate constraints
 type ConvexValidatorFromZodFieldsAuto<T extends { [key: string]: any }> = {
   [K in keyof T]: T[K] extends z.ZodOptional<any>
-    ? ConvexValidatorFromZod<T[K], "optional">  // Pass "optional" for optional fields
+    ? ConvexValidatorFromZod<T[K], "optional"> // Pass "optional" for optional fields
     : T[K] extends z.ZodType
-    ? ConvexValidatorFromZod<T[K], "required">  // Pass "required" for required fields
-    : VAny<"required">;
+      ? ConvexValidatorFromZod<T[K], "required"> // Pass "required" for required fields
+      : VAny<"required">;
 };
 
 type ConvexValidatorFromZodOutput<
@@ -3051,10 +3025,10 @@ type ConvexValidatorFromZodOutput<
  * v4 Branded types with input/output branding
  * Adds brand metadata and custom error messages for better DX
  */
-export function zBrand<
-  T extends z.ZodType,
-  B extends string | number | symbol,
->(schema: T, brand: B) {
+export function zBrand<T extends z.ZodType, B extends string | number | symbol>(
+  schema: T,
+  brand: B,
+) {
   // Create a transform schema that includes brand information
   const branded = schema.transform((val) => val as z.output<T> & z.BRAND<B>);
 
@@ -3164,10 +3138,13 @@ export function zTransformOneWay<TInput, TOutput>(config: {
 }
 
 // Global registry for custom validator mappings
-const customValidatorRegistry = new Map<string, {
-  convexToZod: (convexValidator: GenericValidator) => z.ZodType;
-  zodToConvex: (zodValidator: z.ZodType) => GenericValidator;
-}>();
+const customValidatorRegistry = new Map<
+  string,
+  {
+    convexToZod: (convexValidator: GenericValidator) => z.ZodType;
+    zodToConvex: (zodValidator: z.ZodType) => GenericValidator;
+  }
+>();
 
 /**
  * Register a custom validator mapping for bidirectional conversion
@@ -3186,7 +3163,7 @@ export function registerCustomValidator(
   mapping: {
     convexToZod: (convexValidator: GenericValidator) => z.ZodType;
     zodToConvex: (zodValidator: z.ZodType) => GenericValidator;
-  }
+  },
 ) {
   customValidatorRegistry.set(key, mapping);
 }
@@ -3404,20 +3381,34 @@ export function zBrandInputOutput<
  * ```
  */
 export function zTemplate<const Parts extends z.core.$ZodTemplateLiteralPart[]>(
-  parts: Parts
+  parts: Parts,
 ): z.ZodTemplateLiteral<z.core.$PartsToTemplateLiteral<Parts>>;
 
 export function zTemplate(
   strings: TemplateStringsArray,
-  ...schemas: (z.ZodString | z.ZodNumber | z.ZodBigInt | z.ZodBoolean | z.ZodLiteral | z.ZodEnum)[]
+  ...schemas: (
+    | z.ZodString
+    | z.ZodNumber
+    | z.ZodBigInt
+    | z.ZodBoolean
+    | z.ZodLiteral
+    | z.ZodEnum
+  )[]
 ): z.ZodTemplateLiteral<string>;
 
 export function zTemplate(
   partsOrStrings: z.core.$ZodTemplateLiteralPart[] | TemplateStringsArray,
-  ...schemas: (z.ZodString | z.ZodNumber | z.ZodBigInt | z.ZodBoolean | z.ZodLiteral | z.ZodEnum)[]
+  ...schemas: (
+    | z.ZodString
+    | z.ZodNumber
+    | z.ZodBigInt
+    | z.ZodBoolean
+    | z.ZodLiteral
+    | z.ZodEnum
+  )[]
 ): z.ZodTemplateLiteral<string> {
   // Handle template literal syntax: zTemplate`hello ${z.string()}`
-  if (Array.isArray(partsOrStrings) && 'raw' in partsOrStrings) {
+  if (Array.isArray(partsOrStrings) && "raw" in partsOrStrings) {
     const strings = partsOrStrings as TemplateStringsArray;
     const parts: z.core.$ZodTemplateLiteralPart[] = [];
 
@@ -3434,13 +3425,12 @@ export function zTemplate(
   return z.templateLiteral(partsOrStrings as z.core.$ZodTemplateLiteralPart[]);
 }
 
-
 /**
  * v4 Recursive schema helper
  */
 export function zRecursive<T>(
   name: string,
-  schema: (self: z.ZodType<T>) => z.ZodType<T>
+  schema: (self: z.ZodType<T>) => z.ZodType<T>,
 ): z.ZodType<T> {
   const baseSchema: z.ZodType<T> = z.lazy(() => schema(baseSchema));
   registryHelpers.register(name, baseSchema);
@@ -3542,7 +3532,7 @@ export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
  * ```
  */
 export function createBidirectionalSchema<T extends Record<string, z.ZodType>>(
-  schemas: T
+  schemas: T,
 ): {
   /** Original Zod schemas */
   zod: T;
@@ -3551,17 +3541,24 @@ export function createBidirectionalSchema<T extends Record<string, z.ZodType>>(
   /** Get all schema keys */
   keys: () => (keyof T)[];
   /** Pick subset of schemas */
-  pick: <K extends keyof T>(...keys: K[]) => {
+  pick: <K extends keyof T>(
+    ...keys: K[]
+  ) => {
     zod: Pick<T, K>;
-    convex: Pick<{ [P in keyof T]: ConvexValidatorFromZod<T[P], "required"> }, K>;
+    convex: Pick<
+      { [P in keyof T]: ConvexValidatorFromZod<T[P], "required"> },
+      K
+    >;
   };
   /** Extend with additional schemas */
   extend: <E extends Record<string, z.ZodType>>(
-    extension: E
+    extension: E,
   ) => ReturnType<typeof createBidirectionalSchema<T & E>>;
 } {
   // Convert all Zod schemas to Convex validators
-  const convexSchemas = {} as { [K in keyof T]: ConvexValidatorFromZod<T[K], "required"> };
+  const convexSchemas = {} as {
+    [K in keyof T]: ConvexValidatorFromZod<T[K], "required">;
+  };
 
   for (const [key, zodSchema] of Object.entries(schemas)) {
     convexSchemas[key as keyof T] = zodToConvex(
