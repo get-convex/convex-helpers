@@ -1,6 +1,6 @@
 /* eslint-disable no-unexpected-multiline */
 import type { Value } from "convex/values";
-import { convexToJson, compareValues, jsonToConvex } from "convex/values";
+import { convexToJson, jsonToConvex } from "convex/values";
 import type {
   DataModelFromSchemaDefinition,
   DocumentByInfo,
@@ -21,6 +21,7 @@ import type {
   SystemDataModel,
   TableNamesInDataModel,
 } from "convex/server";
+import { compareValues } from "./compare.js";
 
 export type IndexKey = (Value | undefined)[];
 
