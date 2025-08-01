@@ -1119,9 +1119,7 @@ describe("zCustomQuery with zid type compatibility", () => {
         userId: zid("users"),
       },
       handler: (ctx, args) => {
-        expectTypeOf(args.userId).toEqualTypeOf<
-          string & { __tableName: "users" }
-        >();
+        expectTypeOf(args.userId).toEqualTypeOf<GenericId<"users">>();
         expectTypeOf(ctx.user).toEqualTypeOf<{ _id: string }>();
         return args.userId;
       },
@@ -1133,11 +1131,7 @@ describe("zCustomQuery with zid type compatibility", () => {
   test("zid input and output types should be consistent", () => {
     const _userIdValidator = zid("users");
 
-    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<
-      string & { __tableName: "users" }
-    >();
-    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<
-      string & { __tableName: "users" }
-    >();
+    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<GenericId<"users">>();
+    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<GenericId<"users">>();
   });
 });
