@@ -1126,9 +1126,9 @@ describe("zCustomQuery with zid type compatibility", () => {
   });
 
   test("zid input and output types should be consistent", () => {
-    const userIdValidator = zid("users");
+    const _userIdValidator = zid("users");
     
-    expectTypeOf<z.input<typeof userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
-    expectTypeOf<z.output<typeof userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
+    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
+    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
   });
 });
