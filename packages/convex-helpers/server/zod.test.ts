@@ -4,6 +4,7 @@ import type {
   ApiFromModules,
   RegisteredQuery,
   DefaultFunctionArgs,
+  GenericQueryCtx,
 } from "convex/server";
 import { defineTable, defineSchema, queryGeneric, anyApi } from "convex/server";
 import type { Equals } from "../index.js";
@@ -1093,4 +1094,41 @@ test("convexToZod object with union of one literal", () => {
   expect(zodUnion.constructor.name).toBe("ZodObject");
   expect(zodUnion.parse({ member: "hello" })).toEqual({ member: "hello" });
   expect(() => zodUnion.parse({ member: "world" })).toThrow();
+});
+
+describe("zCustomQuery with zid type compatibility", () => {
+  test("reproduces issue #708 - zid args should work with custom context", () => {
+    type QueryCtxWithAuth = GenericQueryCtx<DataModel> & {
+      user: { _id: string };
+    };
+
+    const authQueryCtx = customCtx<GenericQueryCtx<DataModel>, QueryCtxWithAuth>(async (ctx) => {
+      return {
+        ...ctx,
+        user: { _id: "user123" },
+      };
+    });
+
+    const zQuery = zCustomQuery(queryGeneric, authQueryCtx);
+
+    const getUser = zQuery({
+      args: {
+        userId: zid("users"),
+      },
+      handler: (ctx, args) => {
+        expectTypeOf(args.userId).toEqualTypeOf<string & { __tableName: "users" }>();
+        expectTypeOf(ctx.user).toEqualTypeOf<{ _id: string }>();
+        return args.userId;
+      },
+    });
+
+    expectTypeOf(getUser).toMatchTypeOf<RegisteredQuery<any, any, any>>();
+  });
+
+  test("zid input and output types should be consistent", () => {
+    const userIdValidator = zid("users");
+    
+    expectTypeOf<z.input<typeof userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
+    expectTypeOf<z.output<typeof userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
+  });
 });

@@ -1257,7 +1257,8 @@ interface ZidDef<TableName extends string> extends ZodTypeDef {
 
 export class Zid<TableName extends string> extends z.ZodType<
   GenericId<TableName>,
-  ZidDef<TableName>
+  ZidDef<TableName>,
+  GenericId<TableName>
 > {
   _parse(input: z.ParseInput) {
     return z.string()._parse(input) as z.ParseReturnType<GenericId<TableName>>;
