@@ -24,7 +24,7 @@ import {
   convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
+import type { VString, VFloat64, VObject, VId, Infer, GenericId } from "convex/values";
 import { v } from "convex/values";
 import { z } from "zod";
 
