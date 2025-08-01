@@ -24,7 +24,14 @@ import {
   convexToZodFields,
 } from "./zod.js";
 import { customCtx } from "./customFunctions.js";
-import type { VString, VFloat64, VObject, VId, Infer, GenericId } from "convex/values";
+import type {
+  VString,
+  VFloat64,
+  VObject,
+  VId,
+  Infer,
+  GenericId,
+} from "convex/values";
 import { v } from "convex/values";
 import { z } from "zod";
 
@@ -1131,7 +1138,11 @@ describe("zCustomQuery with zid type compatibility", () => {
   test("zid input and output types should be consistent", () => {
     const _userIdValidator = zid("users");
 
-    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<GenericId<"users">>();
-    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<GenericId<"users">>();
+    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<
+      GenericId<"users">
+    >();
+    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<
+      GenericId<"users">
+    >();
   });
 });
