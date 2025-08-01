@@ -1102,7 +1102,10 @@ describe("zCustomQuery with zid type compatibility", () => {
       user: { _id: string };
     };
 
-    const authQueryCtx = customCtx<GenericQueryCtx<DataModel>, QueryCtxWithAuth>(async (ctx) => {
+    const authQueryCtx = customCtx<
+      GenericQueryCtx<DataModel>,
+      QueryCtxWithAuth
+    >(async (ctx) => {
       return {
         ...ctx,
         user: { _id: "user123" },
@@ -1116,7 +1119,9 @@ describe("zCustomQuery with zid type compatibility", () => {
         userId: zid("users"),
       },
       handler: (ctx, args) => {
-        expectTypeOf(args.userId).toEqualTypeOf<string & { __tableName: "users" }>();
+        expectTypeOf(args.userId).toEqualTypeOf<
+          string & { __tableName: "users" }
+        >();
         expectTypeOf(ctx.user).toEqualTypeOf<{ _id: string }>();
         return args.userId;
       },
@@ -1127,8 +1132,12 @@ describe("zCustomQuery with zid type compatibility", () => {
 
   test("zid input and output types should be consistent", () => {
     const _userIdValidator = zid("users");
-    
-    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
-    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<string & { __tableName: "users" }>();
+
+    expectTypeOf<z.input<typeof _userIdValidator>>().toEqualTypeOf<
+      string & { __tableName: "users" }
+    >();
+    expectTypeOf<z.output<typeof _userIdValidator>>().toEqualTypeOf<
+      string & { __tableName: "users" }
+    >();
   });
 });
