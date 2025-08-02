@@ -4,6 +4,7 @@ import type {
   ApiFromModules,
   RegisteredQuery,
   DefaultFunctionArgs,
+  FunctionReference,
 } from "convex/server";
 import { defineTable, defineSchema, queryGeneric, anyApi } from "convex/server";
 import type { Equals } from "../index.js";
@@ -361,6 +362,7 @@ const testApi: ApiFromModules<{
     addC: typeof addC;
     addCU: typeof addCU;
     addCU2: typeof addCU2;
+    addCtxWithExistingArg: typeof addCtxWithExistingArg;
     add: typeof add;
     addUnverified: typeof addUnverified;
     addUnverified2: typeof addUnverified2;
@@ -642,6 +644,32 @@ describe("zod functions", () => {
     expect(await t.query(testApi.addCU2, {})).toMatchObject({
       ctxA: "hi",
     });
+  });
+
+  test("add ctx with existing arg", async () => {
+    const t = convexTest(schema, modules);
+    expect(
+      await t.query(testApi.addCtxWithExistingArg, { b: "foo" }),
+    ).toMatchObject({
+      ctxA: "hi",
+      argB: "foo",
+    });
+    expectTypeOf(testApi.addCtxWithExistingArg).toExtend<
+      FunctionReference<
+        "query",
+        "public",
+        { b: string },
+        { ctxA: string; argB: string }
+      >
+    >();
+    expectTypeOf<
+      FunctionReference<
+        "query",
+        "public",
+        { b: string },
+        { ctxA: string; argB: string }
+      >
+    >().toExtend<typeof testApi.addCtxWithExistingArg>();
   });
 
   test("add args", async () => {

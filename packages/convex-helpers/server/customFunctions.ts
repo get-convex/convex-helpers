@@ -76,10 +76,15 @@ import { omit, pick } from "../index.js";
  * has access to resources created during input processing via closure.
  */
 export type Customization<
+  // The ctx object from the original function.
   Ctx extends Record<string, any>,
+  // The validators for the args the customization function consumes.
   CustomArgsValidator extends PropertyValidators,
+  // The ctx object produced: a patch applied to the original ctx.
   CustomCtx extends Record<string, any>,
+  // The args produced by the customization function.
   CustomMadeArgs extends Record<string, any>,
+  // Extra args that are passed to the input function.
   ExtraArgs extends Record<string, any> = Record<string, any>,
 > = {
   args: CustomArgsValidator;
@@ -155,13 +160,14 @@ export function customCtxAndArgs<
   CustomMadeArgs,
   ExtraArgs
 > {
+  // This is already the right type. This function just helps you define it.
   return objectWithArgsAndInput;
 }
 
 /**
  * A helper for defining a Customization when your mod doesn't need to add or remove
  * anything from args.
- * @param mod A function that defines how to modify the ctx.
+ * @param modifyCtx A function that defines how to modify the ctx.
  * @returns A ctx delta to be applied to the original ctx.
  */
 export function customCtx<
@@ -169,17 +175,15 @@ export function customCtx<
   OutCtx extends Record<string, any>,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
-  mod: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
-): Customization<
-  InCtx,
-  Record<string, never>,
-  OutCtx,
-  Record<string, never>,
-  ExtraArgs
-> {
+  modifyCtx: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+): Customization<InCtx, {}, OutCtx, object, ExtraArgs> {
   return {
     args: {},
-    input: async (ctx, _, extra) => ({ ctx: await mod(ctx, extra), args: {} }),
+    input: async (ctx, _, extra) => ({
+      ctx: await modifyCtx(ctx, extra),
+      args: {},
+    }),
   };
 }
 
