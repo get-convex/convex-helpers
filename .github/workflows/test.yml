@@ -23,14 +23,17 @@ jobs:
         with:
           node-version: "18.20.8"
 
-      - run: |
+      - name: Build
+        run: |
           npm i
           npm run build
 
-      - run: |
+      - name: Publish pkg-pr-new
+        run: |
           npx pkg-pr-new publish ./packages/convex-helpers
 
-      - run: |
+      - name: Run lint, test, and codegen
+        run: |
           npm run lint
           npm run test
           npx convex codegen && git diff --exit-code
