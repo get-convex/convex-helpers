@@ -3,6 +3,7 @@
 ## 0.1.101 alpha
 
 - Improved Zod union type (credit:Firephoenix25)
+- Adds Zod4 support!
 
 ## 0.1.100
 
