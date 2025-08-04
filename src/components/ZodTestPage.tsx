@@ -183,7 +183,6 @@ export function ZodTestPage() {
   return (
     <div style={{ padding: "20px", fontFamily: "monospace" }}>
       <h1>Zod to Convex Test Page</h1>
-
       <div
         style={{
           marginBottom: "20px",
@@ -204,7 +203,6 @@ export function ZodTestPage() {
           Create Minimal (Test Defaults)
         </button>
       </div>
-
       <div
         style={{
           marginBottom: "20px",
@@ -234,417 +232,413 @@ export function ZodTestPage() {
           ),
         )}
       </div>
+      {selectedRecord && selectedRecordData && (
+        <div
+          style={{
+            marginBottom: "20px",
+            padding: "10px",
+            border: "1px solid #ccc",
+          }}
+        >
+          <h2>Selected Record Details</h2>
+          <pre style={{ overflow: "auto", maxHeight: "400px" }}>
+            {JSON.stringify(selectedRecordData, null, 2)}
+          </pre>
 
-      {
-        selectedRecord && selectedRecordData && (
+          <div style={{ marginTop: "10px" }}>
+            <h3>Test Record Update</h3>
+            <input
+              type="text"
+              placeholder="Key"
+              value={updateKey}
+              onChange={(e) => setUpdateKey(e.target.value)}
+              style={{ marginRight: "10px" }}
+            />
+            <input
+              type="text"
+              placeholder="Value (number or empty for null)"
+              value={updateValue}
+              onChange={(e) => setUpdateValue(e.target.value)}
+              style={{ marginRight: "10px" }}
+            />
+            <button onClick={handleTestUpdate}>Update Settings/Scores</button>
+            <button
+              onClick={() => deleteRecord({ id: selectedRecord })}
+              style={{ marginLeft: "10px", color: "red" }}
+            >
+              Delete Record
+            </button>
+          </div>
+
           <div
             style={{
-              marginBottom: "20px",
-              padding: "10px",
-              border: "1px solid #ccc",
+              marginTop: "20px",
+              borderTop: "1px solid #eee",
+              paddingTop: "10px",
             }}
           >
-            <h2>Selected Record Details</h2>
-            <pre style={{ overflow: "auto", maxHeight: "400px" }}>
-              {JSON.stringify(selectedRecordData, null, 2)}
-            </pre>
-
-            <div style={{ marginTop: "10px" }}>
-              <h3>Test Record Update</h3>
-              <input
-                type="text"
-                placeholder="Key"
-                value={updateKey}
-                onChange={(e) => setUpdateKey(e.target.value)}
-                style={{ marginRight: "10px" }}
-              />
-              <input
-                type="text"
-                placeholder="Value (number or empty for null)"
-                value={updateValue}
-                onChange={(e) => setUpdateValue(e.target.value)}
-                style={{ marginRight: "10px" }}
-              />
-              <button onClick={handleTestUpdate}>Update Settings/Scores</button>
-              <button
-                onClick={() => deleteRecord({ id: selectedRecord })}
-                style={{ marginLeft: "10px", color: "red" }}
-              >
-                Delete Record
-              </button>
-            </div>
-
-            <div
-              style={{
-                marginTop: "20px",
-                borderTop: "1px solid #eee",
-                paddingTop: "10px",
-              }}
+            <h3>Test Record Field Updates</h3>
+            <p style={{ fontSize: "12px", color: "#666" }}>
+              Update individual fields in Records without overwriting the entire
+              record
+            </p>
+            <select
+              value={recordType}
+              onChange={(e) =>
+                setRecordType(
+                  e.target.value as "settings" | "scores" | "metadata",
+                )
+              }
+              style={{ marginRight: "10px" }}
             >
-              <h3>Test Record Field Updates</h3>
-              <p style={{ fontSize: "12px", color: "#666" }}>
-                Update individual fields in Records without overwriting the
-                entire record
-              </p>
-              <select
-                value={recordType}
-                onChange={(e) =>
-                  setRecordType(
-                    e.target.value as "settings" | "scores" | "metadata",
-                  )
-                }
-                style={{ marginRight: "10px" }}
-              >
-                <option value="settings">
-                  Settings (Record&lt;string, number&gt;)
-                </option>
-                <option value="scores">
-                  Scores (Record&lt;string, number | null&gt;)
-                </option>
-                <option value="metadata">Metadata (nested objects)</option>
-              </select>
-              <input
-                type="text"
-                placeholder="Field key"
-                value={recordFieldKey}
-                onChange={(e) => setRecordFieldKey(e.target.value)}
-                style={{ marginRight: "10px" }}
-              />
-              <input
-                type="text"
-                placeholder={
-                  recordType === "metadata"
-                    ? "JSON value"
-                    : "Value (empty to delete)"
-                }
-                value={recordFieldValue}
-                onChange={(e) => setRecordFieldValue(e.target.value)}
-                style={{ marginRight: "10px" }}
-              />
-              <button
-                onClick={async () => {
-                  if (!selectedRecord || !recordFieldKey) return;
+              <option value="settings">
+                Settings (Record&lt;string, number&gt;)
+              </option>
+              <option value="scores">
+                Scores (Record&lt;string, number | null&gt;)
+              </option>
+              <option value="metadata">Metadata (nested objects)</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Field key"
+              value={recordFieldKey}
+              onChange={(e) => setRecordFieldKey(e.target.value)}
+              style={{ marginRight: "10px" }}
+            />
+            <input
+              type="text"
+              placeholder={
+                recordType === "metadata"
+                  ? "JSON value"
+                  : "Value (empty to delete)"
+              }
+              value={recordFieldValue}
+              onChange={(e) => setRecordFieldValue(e.target.value)}
+              style={{ marginRight: "10px" }}
+            />
+            <button
+              onClick={async () => {
+                if (!selectedRecord || !recordFieldKey) return;
 
-                  try {
-                    let value:
-                      | string
-                      | number
-                      | null
-                      | undefined
-                      | Record<string, unknown> =
-                      recordFieldValue === "" ? undefined : recordFieldValue;
+                try {
+                  let value:
+                    | string
+                    | number
+                    | null
+                    | undefined
+                    | Record<string, unknown> =
+                    recordFieldValue === "" ? undefined : recordFieldValue;
 
-                    // Parse and validate value based on record type using Zod schemas
-                    if (value !== undefined) {
-                      if (recordType === "settings") {
-                        // Validate using the settings value schema
-                        const settingsShape = testRecordSchema.shape.settings;
-                        value = Number(value);
-                        // Validate that it's a valid number for settings
-                        if (isNaN(value)) {
-                          throw new Error("Settings values must be numbers");
-                        }
-                      } else if (recordType === "scores") {
-                        // Validate using the scores value schema
-                        value = value === "null" ? null : Number(value);
-                        if (value !== null && isNaN(value)) {
-                          throw new Error(
-                            "Scores values must be numbers or null",
-                          );
-                        }
-                      } else if (recordType === "metadata") {
-                        // Parse JSON for metadata
-                        try {
-                          value = JSON.parse(value);
-                        } catch (e) {
-                          throw new Error("Invalid JSON for metadata value");
-                        }
+                  // Parse and validate value based on record type using Zod schemas
+                  if (value !== undefined) {
+                    if (recordType === "settings") {
+                      // Validate using the settings value schema
+                      const settingsShape = testRecordSchema.shape.settings;
+                      value = Number(value);
+                      // Validate that it's a valid number for settings
+                      if (isNaN(value)) {
+                        throw new Error("Settings values must be numbers");
+                      }
+                    } else if (recordType === "scores") {
+                      // Validate using the scores value schema
+                      value = value === "null" ? null : Number(value);
+                      if (value !== null && isNaN(value)) {
+                        throw new Error(
+                          "Scores values must be numbers or null",
+                        );
+                      }
+                    } else if (recordType === "metadata") {
+                      // Parse JSON for metadata
+                      try {
+                        value = JSON.parse(value);
+                      } catch (e) {
+                        throw new Error("Invalid JSON for metadata value");
                       }
                     }
-
-                    await updateRecordField({
-                      id: selectedRecord,
-                      recordType,
-                      fieldKey: recordFieldKey,
-                      fieldValue: value,
-                    });
-
-                    setRecordFieldKey("");
-                    setRecordFieldValue("");
-                  } catch (error) {
-                    if (error instanceof Error) {
-                      alert(`Validation error: ${error.message}`);
-                    }
-                    console.error("Field update error:", error);
                   }
-                }}
-              >
-                Update Field
-              </button>
 
-              {selectedRecordData && (
-                <div style={{ marginTop: "10px", fontSize: "12px" }}>
-                  <strong>Current {recordType}:</strong>
-                  <pre
-                    style={{
-                      margin: "5px 0",
-                      padding: "5px",
-                      backgroundColor: "#f5f5f5",
-                    }}
-                  >
-                    {JSON.stringify(selectedRecordData[recordType], null, 2)}
-                  </pre>
-                </div>
-              )}
-            </div>
+                  await updateRecordField({
+                    id: selectedRecord,
+                    recordType,
+                    fieldKey: recordFieldKey,
+                    fieldValue: value,
+                  });
+
+                  setRecordFieldKey("");
+                  setRecordFieldValue("");
+                } catch (error) {
+                  if (error instanceof Error) {
+                    alert(`Validation error: ${error.message}`);
+                  }
+                  console.error("Field update error:", error);
+                }
+              }}
+            >
+              Update Field
+            </button>
+
+            {selectedRecordData && (
+              <div style={{ marginTop: "10px", fontSize: "12px" }}>
+                <strong>Current {recordType}:</strong>
+                <pre
+                  style={{
+                    margin: "5px 0",
+                    padding: "5px",
+                    backgroundColor: "#f5f5f5",
+                  }}
+                >
+                  {JSON.stringify(selectedRecordData[recordType], null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              marginTop: "20px",
+              borderTop: "1px solid #eee",
+              paddingTop: "10px",
+            }}
+          >
+            <h3>Test Advanced Zod v4 Features</h3>
+            <p style={{ fontSize: "12px", color: "#666" }}>
+              Test transforms, refinements, and branded types
+            </p>
 
             <div
               style={{
-                marginTop: "20px",
-                borderTop: "1px solid #eee",
-                paddingTop: "10px",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+                marginBottom: "10px",
               }}
             >
-              <h3>Test Advanced Zod v4 Features</h3>
-              <p style={{ fontSize: "12px", color: "#666" }}>
-                Test transforms, refinements, and branded types
-              </p>
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "10px",
-                  marginBottom: "10px",
-                }}
-              >
-                <div>
-                  <label style={{ fontSize: "12px" }}>
-                    Email (transforms to lowercase)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="USER@EXAMPLE.com"
-                    value={advancedData.email}
-                    onChange={(e) =>
-                      setAdvancedData({
-                        ...advancedData,
-                        email: e.target.value,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px" }}>
-                    Rating (must be positive)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="5"
-                    value={advancedData.rating}
-                    onChange={(e) =>
-                      setAdvancedData({
-                        ...advancedData,
-                        rating: e.target.value,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px" }}>
-                    Completion % (rounds to 2 decimals)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="75.4567"
-                    value={advancedData.completionRate}
-                    onChange={(e) =>
-                      setAdvancedData({
-                        ...advancedData,
-                        completionRate: e.target.value,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px" }}>
-                    Phone (normalizes format)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="(555) 123-4567"
-                    value={advancedData.phone}
-                    onChange={(e) =>
-                      setAdvancedData({
-                        ...advancedData,
-                        phone: e.target.value,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px" }}>
-                    URL Slug (lowercase, hyphens)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="My Cool Page"
-                    value={advancedData.slug}
-                    onChange={(e) =>
-                      setAdvancedData({ ...advancedData, slug: e.target.value })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "12px" }}>
-                    Is Active (flexible: true/false/1/0)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="true, false, 1, 0"
-                    value={advancedData.isActive}
-                    onChange={(e) =>
-                      setAdvancedData({
-                        ...advancedData,
-                        isActive: e.target.value,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={{ fontSize: "12px" }}>
-                    Display Name (capitalizes words)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="john doe"
-                    value={advancedData.displayName}
-                    onChange={(e) =>
-                      setAdvancedData({
-                        ...advancedData,
-                        displayName: e.target.value,
-                      })
-                    }
-                    style={{ width: "100%" }}
-                  />
-                </div>
-
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={{ fontSize: "12px" }}>
-                    Bio (max 500 chars, trims whitespace)
-                  </label>
-                  <textarea
-                    placeholder="  Your bio here...  "
-                    value={advancedData.bio}
-                    onChange={(e) =>
-                      setAdvancedData({ ...advancedData, bio: e.target.value })
-                    }
-                    style={{ width: "100%", minHeight: "60px" }}
-                  />
-                </div>
+              <div>
+                <label style={{ fontSize: "12px" }}>
+                  Email (transforms to lowercase)
+                </label>
+                <input
+                  type="text"
+                  placeholder="USER@EXAMPLE.com"
+                  value={advancedData.email}
+                  onChange={(e) =>
+                    setAdvancedData({
+                      ...advancedData,
+                      email: e.target.value,
+                    })
+                  }
+                  style={{ width: "100%" }}
+                />
               </div>
 
-              <button
-                onClick={async () => {
-                  if (!selectedRecord) {
-                    alert("Please select a record first");
-                    return;
-                  }
-
-                  try {
-                    // Build an object with raw values
-                    const rawData: Record<string, unknown> = {};
-
-                    if (advancedData.email) rawData.email = advancedData.email;
-                    if (advancedData.rating)
-                      rawData.rating = Number(advancedData.rating);
-                    if (advancedData.completionRate)
-                      rawData.completionRate = Number(
-                        advancedData.completionRate,
-                      );
-                    if (advancedData.phone) rawData.phone = advancedData.phone;
-                    if (advancedData.slug) rawData.slug = advancedData.slug;
-                    if (advancedData.isActive)
-                      rawData.isActive = advancedData.isActive;
-
-                    if (advancedData.displayName || advancedData.bio) {
-                      rawData.userProfile = {
-                        displayName: advancedData.displayName,
-                        bio: advancedData.bio,
-                        socialLinks: advancedData.socialLinks,
-                      };
-                    }
-
-                    // Validate and transform using the partial schema
-                    // This will apply all the transforms and branding
-                    const partialSchema = testRecordSchema.partial();
-                    const validatedData = partialSchema.parse(rawData);
-
-                    // Send validated data to the mutation
-                    // The client-side transforms have already been applied
-                    const result = await testAdvancedFeatures({
-                      id: selectedRecord,
-                      email: validatedData.email,
-                      rating: validatedData.rating,
-                      completionRate: validatedData.completionRate,
-                      phone: validatedData.phone,
-                      slug: validatedData.slug,
-                      isActive: validatedData.isActive,
-                      userProfile: validatedData.userProfile,
-                    });
-
-                    console.log("Advanced features test result:", result);
-                    alert(
-                      "Advanced features applied! Check console for transformations.",
-                    );
-
-                    // Clear form
+              <div>
+                <label style={{ fontSize: "12px" }}>
+                  Rating (must be positive)
+                </label>
+                <input
+                  type="number"
+                  placeholder="5"
+                  value={advancedData.rating}
+                  onChange={(e) =>
                     setAdvancedData({
-                      email: "",
-                      rating: "",
-                      completionRate: "",
-                      phone: "",
-                      slug: "",
-                      isActive: "",
-                      displayName: "",
-                      bio: "",
-                      socialLinks: [],
-                    });
-                  } catch (error) {
-                    console.error("Advanced features error:", error);
-                    alert(
-                      `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-                    );
+                      ...advancedData,
+                      rating: e.target.value,
+                    })
                   }
-                }}
-                style={{
-                  backgroundColor: "#007bff",
-                  color: "white",
-                  padding: "8px 16px",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                Apply Advanced Transforms
-              </button>
-            </div>
-          </div>
-        );
-      }
+                  style={{ width: "100%" }}
+                />
+              </div>
 
+              <div>
+                <label style={{ fontSize: "12px" }}>
+                  Completion % (rounds to 2 decimals)
+                </label>
+                <input
+                  type="number"
+                  placeholder="75.4567"
+                  value={advancedData.completionRate}
+                  onChange={(e) =>
+                    setAdvancedData({
+                      ...advancedData,
+                      completionRate: e.target.value,
+                    })
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px" }}>
+                  Phone (normalizes format)
+                </label>
+                <input
+                  type="text"
+                  placeholder="(555) 123-4567"
+                  value={advancedData.phone}
+                  onChange={(e) =>
+                    setAdvancedData({
+                      ...advancedData,
+                      phone: e.target.value,
+                    })
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px" }}>
+                  URL Slug (lowercase, hyphens)
+                </label>
+                <input
+                  type="text"
+                  placeholder="My Cool Page"
+                  value={advancedData.slug}
+                  onChange={(e) =>
+                    setAdvancedData({ ...advancedData, slug: e.target.value })
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: "12px" }}>
+                  Is Active (flexible: true/false/1/0)
+                </label>
+                <input
+                  type="text"
+                  placeholder="true, false, 1, 0"
+                  value={advancedData.isActive}
+                  onChange={(e) =>
+                    setAdvancedData({
+                      ...advancedData,
+                      isActive: e.target.value,
+                    })
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "12px" }}>
+                  Display Name (capitalizes words)
+                </label>
+                <input
+                  type="text"
+                  placeholder="john doe"
+                  value={advancedData.displayName}
+                  onChange={(e) =>
+                    setAdvancedData({
+                      ...advancedData,
+                      displayName: e.target.value,
+                    })
+                  }
+                  style={{ width: "100%" }}
+                />
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "12px" }}>
+                  Bio (max 500 chars, trims whitespace)
+                </label>
+                <textarea
+                  placeholder="  Your bio here...  "
+                  value={advancedData.bio}
+                  onChange={(e) =>
+                    setAdvancedData({ ...advancedData, bio: e.target.value })
+                  }
+                  style={{ width: "100%", minHeight: "60px" }}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                if (!selectedRecord) {
+                  alert("Please select a record first");
+                  return;
+                }
+
+                try {
+                  // Build an object with raw values
+                  const rawData: Record<string, unknown> = {};
+
+                  if (advancedData.email) rawData.email = advancedData.email;
+                  if (advancedData.rating)
+                    rawData.rating = Number(advancedData.rating);
+                  if (advancedData.completionRate)
+                    rawData.completionRate = Number(
+                      advancedData.completionRate,
+                    );
+                  if (advancedData.phone) rawData.phone = advancedData.phone;
+                  if (advancedData.slug) rawData.slug = advancedData.slug;
+                  if (advancedData.isActive)
+                    rawData.isActive = advancedData.isActive;
+
+                  if (advancedData.displayName || advancedData.bio) {
+                    rawData.userProfile = {
+                      displayName: advancedData.displayName,
+                      bio: advancedData.bio,
+                      socialLinks: advancedData.socialLinks,
+                    };
+                  }
+
+                  // Validate and transform using the partial schema
+                  // This will apply all the transforms and branding
+                  const partialSchema = testRecordSchema.partial();
+                  const validatedData = partialSchema.parse(rawData);
+
+                  // Send validated data to the mutation
+                  // The client-side transforms have already been applied
+                  const result = await testAdvancedFeatures({
+                    id: selectedRecord,
+                    email: validatedData.email,
+                    rating: validatedData.rating,
+                    completionRate: validatedData.completionRate,
+                    phone: validatedData.phone,
+                    slug: validatedData.slug,
+                    isActive: validatedData.isActive,
+                    userProfile: validatedData.userProfile,
+                  });
+
+                  console.log("Advanced features test result:", result);
+                  alert(
+                    "Advanced features applied! Check console for transformations.",
+                  );
+
+                  // Clear form
+                  setAdvancedData({
+                    email: "",
+                    rating: "",
+                    completionRate: "",
+                    phone: "",
+                    slug: "",
+                    isActive: "",
+                    displayName: "",
+                    bio: "",
+                    socialLinks: [],
+                  });
+                } catch (error) {
+                  console.error("Advanced features error:", error);
+                  alert(
+                    `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+                  );
+                }
+              }}
+              style={{
+                backgroundColor: "#007bff",
+                color: "white",
+                padding: "8px 16px",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Apply Advanced Transforms
+            </button>
+          </div>
+        </div>
+      )}
       <div
         style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc" }}
       >
@@ -896,8 +890,8 @@ export function ZodTestPage() {
             )}
           </div>
         )}
-      </div>;
-
+      </div>
+      ;
       <div
         style={{ marginTop: "20px", padding: "10px", border: "1px solid #ccc" }}
       >
