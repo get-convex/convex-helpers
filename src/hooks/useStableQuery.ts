@@ -52,3 +52,41 @@ export const useStablePaginatedQuery = ((name, ...args) => {
 
   return stored.current;
 }) as typeof usePaginatedQuery;
+
+/**
+ * Similar to useStableQuery but returns an object with data and isLoading properties.
+ * The data property contains the stable query result, and isLoading indicates whether
+ * new data is currently being fetched (true when the underlying result === undefined).
+ *
+ * This is useful for cases where you want to show loading state while the query is loading,
+ * but also want to show the stable data while it's loading.
+ *
+ * @param name - string naming the query function
+ * @param ...args - arguments to be passed to the query function
+ * @returns Object with data and isLoading properties
+ */
+export const useRicherStableQuery = ((name, ...args) => {
+  const queryResult = useQuery(
+    name as Parameters<typeof useQuery>[0],
+    ...(args as Parameters<typeof useQuery> extends [unknown, ...infer R]
+      ? R
+      : []),
+  );
+  const stableData = useStableQuery(
+    name as Parameters<typeof useQuery>[0],
+    ...(args as Parameters<typeof useQuery> extends [unknown, ...infer R]
+      ? R
+      : []),
+  );
+
+  return {
+    data: stableData,
+    isLoading: queryResult === undefined,
+  };
+}) as <T extends Parameters<typeof useQuery>[0]>(
+  name: T,
+  ..._args: Parameters<typeof useQuery<T>> extends [T, ...infer R] ? R : []
+) => {
+  data: ReturnType<typeof useQuery<T>>;
+  isLoading: boolean;
+};
