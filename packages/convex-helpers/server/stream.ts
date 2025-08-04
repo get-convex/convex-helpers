@@ -214,7 +214,7 @@ type GenericStreamItem = NonNullable<unknown>;
 /**
  * A "QueryStream" is an async iterable of query results, ordered by indexed fields.
  */
-abstract class QueryStream<T extends GenericStreamItem>
+export abstract class QueryStream<T extends GenericStreamItem>
   implements GenericOrderedQuery<T>
 {
   // Methods that subclasses must implement so OrderedQuery can be implemented.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.101 alpha
+
+- Improved Zod union type (credit:Firephoenix25)
+
 ## 0.1.100
 
 - Custom Functions now can take dynamic parameters for each function
@@ -9,7 +13,7 @@
 - Custom Functions exposes a customCtxAndArgs utility to help with types
 - Trigger DB wrapper is now an object, not a class when using
   `.wrapDB()` or `writerWithTriggers` explicitly (credit: front-depiction)
-- zodToConvex now transforms to more specific zod types (credit: Firephoenix25)
+- `convexToZod` now transforms to more specific zod types (credit: Firephoenix25)
 - `crud` helper works for tables with top-level unions
 - `paginator` works over indexes including `undefined` values.
 - `Mod` type is deprecated - renamed to `Customization`

@@ -827,6 +827,10 @@ test("convexToZod complex types", () => {
 
   const unionValidator = convexToZod(v.union(v.string(), v.number()));
   expect(unionValidator.constructor.name).toBe("ZodUnion");
+  expect(unionValidator.options[0].constructor.name).toBe("ZodString");
+  expect(unionValidator.options[1].constructor.name).toBe("ZodNumber");
+  expectTypeOf(unionValidator.options[0]).toEqualTypeOf<z.ZodString>();
+  expectTypeOf(unionValidator.options[1]).toEqualTypeOf<z.ZodNumber>();
 
   const literalValidator = convexToZod(v.literal("hi"));
   expect(literalValidator.constructor.name).toBe("ZodLiteral");
