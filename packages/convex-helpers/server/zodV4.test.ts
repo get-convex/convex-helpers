@@ -1,12 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type {
   DataModelFromSchemaDefinition,
   QueryBuilder,
   MutationBuilder,
   ActionBuilder,
-  ApiFromModules,
-  RegisteredQuery,
-  DefaultFunctionArgs,
 } from "convex/server";
 import {
   defineTable,
@@ -14,12 +11,9 @@ import {
   queryGeneric,
   mutationGeneric,
   actionGeneric,
-  anyApi,
 } from "convex/server";
-import type { Equals } from "convex-helpers";
-import { omit } from "convex-helpers";
 import { convexTest } from "convex-test";
-import { assertType, describe, expect, expectTypeOf, test } from "vitest";
+import { describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
 import {
   zid,
@@ -33,13 +27,11 @@ import {
   convexToZodFields,
   withSystemFields,
   zBrand,
-  ZodBrandedInputAndOutput,
   createBidirectionalSchema,
   convexZodTestUtils,
   registryHelpers,
   createBrandedValidator,
   createParameterizedBrandedValidator,
-  registerCustomValidator,
 } from "./zodV4.js";
 import { z } from "zod/v4";
 import { customCtx } from "convex-helpers/server/customFunctions";
