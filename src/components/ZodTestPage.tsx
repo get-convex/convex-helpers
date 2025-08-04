@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { useMutation, useQuery, useConvex } from 'convex/react';
+import { useState } from "react";
+import { useMutation, useQuery, useConvex } from "convex/react";
 import { api } from "../../convex/_generated/api.js";
 import {
   testRecordSchema,
   settingsValueSchema,
   scoresValueSchema,
 } from "../../convex/zodTestSchema.js";
-import { z } from "zod/v4";
 import type { GenericId } from "convex/values";
 
 export function ZodTestPage() {
@@ -335,6 +334,7 @@ export function ZodTestPage() {
                     if (recordType === "settings") {
                       // Validate using the settings value schema
                       const settingsShape = testRecordSchema.shape.settings;
+                      settingsShape.parse(value);
                       value = Number(value);
                       // Validate that it's a valid number for settings
                       if (isNaN(value)) {
@@ -352,7 +352,7 @@ export function ZodTestPage() {
                       // Parse JSON for metadata
                       try {
                         value = JSON.parse(value);
-                      } catch (e) {
+                      } catch {
                         throw new Error("Invalid JSON for metadata value");
                       }
                     }
