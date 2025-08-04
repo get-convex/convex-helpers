@@ -26,7 +26,7 @@ jobs:
       - run: |
           npm i
           npm run build
+          npx pkg-pr-new publish ./packages/convex-helpers
           npm run lint
           npm run test
           npx convex codegen && git diff --exit-code
-      - run: npx pkg-pr-new publish ./packages/convex-helpers
