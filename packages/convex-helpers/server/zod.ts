@@ -70,6 +70,7 @@ export type ZCustomCtx<Builder> =
     infer CustomCtx,
     any,
     infer InputCtx,
+    any,
     any
   >
     ? Overwrite<InputCtx, CustomCtx>
@@ -135,13 +136,15 @@ export function zCustomQuery<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   query: QueryBuilder<DataModel, Visibility>,
   customization: Customization<
     GenericQueryCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
-    CustomMadeArgs
+    CustomMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(query, customization) as CustomBuilder<
@@ -150,7 +153,8 @@ export function zCustomQuery<
     CustomCtx,
     CustomMadeArgs,
     GenericQueryCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
@@ -214,13 +218,15 @@ export function zCustomMutation<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
   customization: Customization<
     GenericMutationCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
-    CustomMadeArgs
+    CustomMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(mutation, customization) as CustomBuilder<
@@ -229,7 +235,8 @@ export function zCustomMutation<
     CustomCtx,
     CustomMadeArgs,
     GenericMutationCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
@@ -293,13 +300,15 @@ export function zCustomAction<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   action: ActionBuilder<DataModel, Visibility>,
   customization: Customization<
     GenericActionCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
-    CustomMadeArgs
+    CustomMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(action, customization) as CustomBuilder<
@@ -308,13 +317,14 @@ export function zCustomAction<
     CustomCtx,
     CustomMadeArgs,
     GenericActionCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
 function customFnBuilder(
   builder: (args: any) => any,
-  customization: Customization<any, any, any, any>,
+  customization: Customization<any, any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
   const customInput = customization.input ?? NoOp.input;
@@ -469,6 +479,7 @@ export type CustomBuilder<
   CustomMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility,
+  ExtraArgs extends Record<string, any>,
 > = {
   <
     ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
