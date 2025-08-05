@@ -350,7 +350,7 @@ export function customMutation<
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
-  mod: Customization<
+  customization: Customization<
     GenericMutationCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
@@ -358,7 +358,7 @@ export function customMutation<
     ExtraArgs
   >,
 ) {
-  return customFnBuilder(mutation, mod) as CustomBuilder<
+  return customFnBuilder(mutation, customization) as CustomBuilder<
     "mutation",
     CustomArgsValidator,
     CustomCtx,
@@ -430,7 +430,7 @@ export function customMutation<
  *
  * @param action The action to be modified. Usually `action` or `internalAction`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the action, changing ctx and args.
+ * @param customization The modifier to be applied to the action, changing ctx and args.
  * @returns A new action builder to define queries with modified ctx and args.
  */
 export function customAction<
@@ -442,7 +442,7 @@ export function customAction<
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
   action: ActionBuilder<DataModel, Visibility>,
-  mod: Customization<
+  customization: Customization<
     GenericActionCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
@@ -458,7 +458,7 @@ export function customAction<
   Visibility,
   ExtraArgs
 > {
-  return customFnBuilder(action, mod) as CustomBuilder<
+  return customFnBuilder(action, customization) as CustomBuilder<
     "action",
     CustomArgsValidator,
     CustomCtx,
