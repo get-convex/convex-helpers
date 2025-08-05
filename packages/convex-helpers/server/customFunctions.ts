@@ -265,7 +265,7 @@ export function customQuery<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
-  ExtraArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = object,
 >(
   query: QueryBuilder<DataModel, Visibility>,
   customization: Customization<
@@ -353,7 +353,7 @@ export function customMutation<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
-  ExtraArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = object,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
   customization: Customization<
@@ -445,7 +445,7 @@ export function customAction<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
-  ExtraArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = object,
 >(
   action: ActionBuilder<DataModel, Visibility>,
   customization: Customization<
