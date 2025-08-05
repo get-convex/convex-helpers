@@ -415,12 +415,9 @@ function customFnBuilder(
 type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
   [ArgsObject];
 
-
 // Copied from convex/src/server/api.ts since they aren't exported
 type NullToUndefinedOrNull<T> = T extends null ? T | undefined | void : T;
-type Returns<T> =
-  | Promise<NullToUndefinedOrNull<T>>
-  | NullToUndefinedOrNull<T>;
+type Returns<T> = Promise<NullToUndefinedOrNull<T>> | NullToUndefinedOrNull<T>;
 
 // The return value before it's been validated: returned by the handler
 type ReturnValueInput<
