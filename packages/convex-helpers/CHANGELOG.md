@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.101 alpha
+## 0.1.101
 
 - Improved Zod union type (credit:Firephoenix25)
 - Fixes zCustom\* function type inference regression
