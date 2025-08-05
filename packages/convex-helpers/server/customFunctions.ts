@@ -175,7 +175,7 @@ export function customCtx<
   OutCtx extends Record<string, any>,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
-  mod: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
+  modifyCtx: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
 ): Customization<
   InCtx,
   Record<string, never>,
@@ -185,7 +185,10 @@ export function customCtx<
 > {
   return {
     args: {},
-    input: async (ctx, _, extra) => ({ ctx: await mod(ctx, extra), args: {} }),
+    input: async (ctx, _, extra) => ({
+      ctx: await modifyCtx(ctx, extra),
+      args: {},
+    }),
   };
 }
 

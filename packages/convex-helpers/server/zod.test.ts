@@ -617,7 +617,7 @@ test("zod output compliance", async () => {
   // number should fail
   await expect(() =>
     t.query(testApi.zodOutputCompliance, {
-      optionalString: 1,
+      optionalString: 1 as any,
     }),
   ).rejects.toThrow();
 });
