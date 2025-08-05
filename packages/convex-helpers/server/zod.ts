@@ -39,6 +39,7 @@ import type {
 import type { Customization, Registration } from "./customFunctions.js";
 import { NoOp } from "./customFunctions.js";
 import { pick } from "../index.js";
+import { addFieldsToValidator } from "../validators.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
@@ -345,10 +346,7 @@ function customFnBuilder(
       }
       const convexValidator = zodToConvexFields(argsValidator);
       return builder({
-        args: {
-          ...convexValidator,
-          ...inputArgs,
-        },
+        args: addFieldsToValidator(convexValidator, inputArgs),
         ...returnValidator,
         handler: async (ctx: any, allArgs: any) => {
           const added = await customInput(

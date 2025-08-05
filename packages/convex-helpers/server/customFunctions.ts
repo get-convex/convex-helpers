@@ -16,7 +16,6 @@ import type {
   PropertyValidators,
   Validator,
 } from "convex/values";
-import { asObjectValidator, v } from "convex/values";
 import type {
   ActionBuilder,
   ArgsArrayForOptionalValidator,
@@ -36,6 +35,7 @@ import type {
   ReturnValueForOptionalValidator,
 } from "convex/server";
 import { omit, pick } from "../index.js";
+import { addFieldsToValidator } from "../validators.js";
 
 /**
  * A customization of a query, mutation, or action.
@@ -481,7 +481,7 @@ function customFnBuilder(
     const { args, handler = fn, returns, ...extra } = fn;
     if (args) {
       return builder({
-        args: addArgs(args, inputArgs),
+        args: addFieldsToValidator(args, inputArgs),
         returns,
         handler: async (ctx: any, allArgs: any) => {
           const added = await customInput(
@@ -520,28 +520,6 @@ function customFnBuilder(
       },
     });
   };
-}
-
-// Adds args to a property validator or validator
-// Needs to call recursively in the case of unions.
-function addArgs(
-  validatorOrPropertyValidator: PropertyValidators | Validator<any, any, any>,
-  args: PropertyValidators,
-): Validator<any, any, any> {
-  if (Object.keys(args).length === 0) {
-    return asObjectValidator(validatorOrPropertyValidator);
-  }
-  const validator = asObjectValidator(validatorOrPropertyValidator);
-  switch (validator.kind) {
-    case "object":
-      return v.object({ ...validator.fields, ...args });
-    case "union":
-      return v.union(...validator.members.map((m) => addArgs(m, args)));
-    default:
-      throw new Error(
-        "Cannot add arguments to a validator that is not an object or union.",
-      );
-  }
 }
 
 /**
