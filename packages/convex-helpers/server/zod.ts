@@ -363,14 +363,15 @@ function customFnBuilder(
               ) as Value[],
             });
           }
-          const result = await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...parsed.data, ...added.args },
-          );
-          if (returns) {
-            // We don't catch the error here. It's a developer error and we
-            // don't want to risk exposing the unexpected value to the client.
-            return returns.parse(result);
+          const args = parsed.data;
+          const finalCtx = { ...ctx, ...added.ctx };
+          const finalArgs = { ...args, ...added.args };
+          const ret = await handler(finalCtx, finalArgs);
+          // We don't catch the error here. It's a developer error and we
+          // don't want to risk exposing the unexpected value to the client.
+          const result = returns ? returns.parse(ret) : ret;
+          if (added.onSuccess) {
+            await added.onSuccess({ ctx, args, result });
           }
           return result;
         },
@@ -386,14 +387,16 @@ function customFnBuilder(
       ...returnValidator,
       handler: async (ctx: any, args: any) => {
         const added = await customInput(ctx, args, extra);
-        if (returns) {
-          // We don't catch the error here. It's a developer error and we
-          // don't want to risk exposing the unexpected value to the client.
-          return returns.parse(
-            await handler({ ...ctx, ...added.ctx }, { ...args, ...added.args }),
-          );
+        const finalCtx = { ...ctx, ...added.ctx };
+        const finalArgs = { ...args, ...added.args };
+        const ret = await handler(finalCtx, finalArgs);
+        // We don't catch the error here. It's a developer error and we
+        // don't want to risk exposing the unexpected value to the client.
+        const result = returns ? returns.parse(ret) : ret;
+        if (added.onSuccess) {
+          await added.onSuccess({ ctx, args, result });
         }
-        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+        return result;
       },
     });
   };
