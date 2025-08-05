@@ -523,7 +523,10 @@ describe("stream", () => {
         workspaceId,
         isPublic: false,
       });
-      await ctx.db.insert("channelMembers", { channelId: privateChannelId, userId });
+      await ctx.db.insert("channelMembers", {
+        channelId: privateChannelId,
+        userId,
+      });
       await ctx.db.insert("channels", { workspaceId, isPublic: true });
 
       const userMemberships = stream(ctx.db, schema)
@@ -537,7 +540,9 @@ describe("stream", () => {
             .withIndex("by_isPublicWorkspace", (q) =>
               q.eq("isPublic", false).eq("workspaceId", workspaceId),
             )
-            .filterWith(async (channel) => channel._id === membership.channelId),
+            .filterWith(
+              async (channel) => channel._id === membership.channelId,
+            ),
         [],
       );
 
