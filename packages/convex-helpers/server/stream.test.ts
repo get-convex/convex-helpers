@@ -25,7 +25,8 @@ const schema = defineSchema({
   channels: defineTable({
     workspaceId: v.string(),
     isPublic: v.boolean(),
-  }).index("by_isPublicWorkspace", ["isPublic", "workspaceId"]),
+    ownerId: v.string(),
+  }).index("by_isPublicWorkspace", ["isPublic", "workspaceId", "ownerId"]),
   channelMembers: defineTable({
     channelId: v.id("channels"),
     userId: v.string(),
@@ -522,12 +523,17 @@ describe("stream", () => {
       const privateChannelId = await ctx.db.insert("channels", {
         workspaceId,
         isPublic: false,
+        ownerId: userId,
       });
       await ctx.db.insert("channelMembers", {
         channelId: privateChannelId,
         userId,
       });
-      await ctx.db.insert("channels", { workspaceId, isPublic: true });
+      await ctx.db.insert("channels", {
+        workspaceId,
+        isPublic: true,
+        ownerId: userId,
+      });
 
       const userMemberships = stream(ctx.db, schema)
         .query("channelMembers")
@@ -552,7 +558,10 @@ describe("stream", () => {
           q.eq("isPublic", true).eq("workspaceId", workspaceId),
         );
 
-      const merged = mergedStream([privateChannels, publicChannels], []);
+      const merged = mergedStream(
+        [privateChannels, publicChannels],
+        ["userId"],
+      );
       const result = await merged.collect();
       expect(result.map(stripSystemFields)).toEqual([
         { workspaceId, isPublic: false },
