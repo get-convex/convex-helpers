@@ -1,9 +1,15 @@
 # Changelog
 
-## 0.1.101 alpha
+## 0.1.101
 
 - Improved Zod union type (credit:Firephoenix25)
-- Adds Zod4 support!
+- Fixes zCustom\* function type inference regression
+- Adds a helper function `addFieldsToValidator` which recursively adds fields
+  to either a `{ key: v.string() }`, a `v.object(..)`, or `v.union(...` of objects/unions.
+- Tightens the types when not using extra args, so it catches typos
+- Removes the long-deprecated "output" argument (use `returns` instead)- Improved Zod union type (credit:Firephoenix25)
+- Bumps the Convex peer dependency as we rely on compareValues (credit:nicolas)
+- Exports types for QueryStream
 
 ## 0.1.100
 

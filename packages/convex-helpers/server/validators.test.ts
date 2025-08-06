@@ -1,5 +1,6 @@
 // Note: this is in the server/ folder b/c it defines test query/mutations.
 import {
+  addFieldsToValidator,
   brandedString,
   deprecated,
   doc,
@@ -26,7 +27,13 @@ import {
   internalMutationGeneric,
   internalQueryGeneric,
 } from "convex/server";
-import { type GenericId, v, type Infer, type ObjectType } from "convex/values";
+import {
+  type GenericId,
+  v,
+  type Infer,
+  type ObjectType,
+  VString,
+} from "convex/values";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
 import { getOrThrow } from "./relationships.js";
@@ -173,6 +180,73 @@ test("vv generates the right types for objects", async () => {
   const doc = await t.query(testApi.getSink, { docId });
   expect(doc).toBeDefined();
   expect(doc!._creationTime).toBeTypeOf("number");
+});
+
+describe("addFieldsToValidator", () => {
+  test("adds fields to a property validator", () => {
+    const validator = addFieldsToValidator(
+      {
+        foo: v.string(),
+      },
+      { bar: v.string() },
+    );
+    expectTypeOf(validator.fields).toEqualTypeOf<
+      { foo: VString } & { bar: VString }
+    >();
+    expect(validator.fields.bar).toBeDefined();
+    expect(validate(validator, { foo: "foo", bar: "bar" })).toBe(true);
+    expect(validate(v.object(validator.fields), { foo: "foo" })).toBe(false);
+  });
+  test("adds fields to an object validator", () => {
+    const validator = v.object({ foo: v.string() });
+    const rawValidator = addFieldsToValidator(validator, { bar: v.string() });
+    expectTypeOf(rawValidator["type"]).toEqualTypeOf<
+      { foo: string } & { bar: string }
+    >();
+    expectTypeOf(rawValidator.kind).toEqualTypeOf<"object">();
+    const newValidator: any = rawValidator;
+    expect(newValidator.fields.bar).toBeDefined();
+    expect(validate(newValidator, { foo: "foo", bar: "bar" })).toBe(true);
+  });
+  test("adds fields to a union validator", () => {
+    const validator = v.union(
+      v.object({ foo: v.string() }),
+      v.object({ bar: v.string() }),
+    );
+    const rawValidator = addFieldsToValidator(validator, {
+      baz: v.string(),
+    });
+    expectTypeOf(rawValidator["type"]).toEqualTypeOf<
+      | {
+          foo: string;
+          baz: string;
+        }
+      | {
+          bar: string;
+          baz: string;
+        }
+    >();
+    const newValidator: any = rawValidator; // TODO: fix this
+    expect(newValidator.members[0]!.fields.baz).toBeDefined();
+    expect(newValidator.members[1]!.fields.baz).toBeDefined();
+    expect(validate(newValidator, { foo: "foo", baz: "baz" })).toBe(true);
+    expect(validate(newValidator, { bar: "bar", baz: "baz" })).toBe(true);
+  });
+  test("adds fields to a union of objects and unions", () => {
+    const validator = v.union(
+      v.object({ foo: v.string() }),
+      v.union(v.object({ bar: v.string() }), v.object({ baz: v.string() })),
+    );
+    const newValidator: any = addFieldsToValidator(validator, {
+      qux: v.string(),
+    });
+    expect(newValidator.members[0]!.fields.qux).toBeDefined();
+    expect(newValidator.members[1]!.members[0]!.fields.qux).toBeDefined();
+    expect(newValidator.members[1]!.members[1]!.fields.qux).toBeDefined();
+    expect(validate(newValidator, { foo: "foo", qux: "qux" })).toBe(true);
+    expect(validate(newValidator, { bar: "bar", qux: "qux" })).toBe(true);
+    expect(validate(newValidator, { baz: "baz", qux: "qux" })).toBe(true);
+  });
 });
 
 test("vv generates the right types for unions", async () => {

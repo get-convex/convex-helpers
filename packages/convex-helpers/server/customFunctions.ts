@@ -16,7 +16,6 @@ import type {
   PropertyValidators,
   Validator,
 } from "convex/values";
-import { asObjectValidator, v } from "convex/values";
 import type {
   ActionBuilder,
   ArgsArrayForOptionalValidator,
@@ -36,6 +35,7 @@ import type {
   ReturnValueForOptionalValidator,
 } from "convex/server";
 import { omit, pick } from "../index.js";
+import { addFieldsToValidator } from "../validators.js";
 
 /**
  * A customization of a query, mutation, or action.
@@ -76,10 +76,15 @@ import { omit, pick } from "../index.js";
  * has access to resources created during input processing via closure.
  */
 export type Customization<
+  // The ctx object from the original function.
   Ctx extends Record<string, any>,
+  // The validators for the args the customization function consumes.
   CustomArgsValidator extends PropertyValidators,
+  // The ctx object produced: a patch applied to the original ctx.
   CustomCtx extends Record<string, any>,
+  // The args produced by the customization function.
   CustomMadeArgs extends Record<string, any>,
+  // Extra args that are passed to the input function.
   ExtraArgs extends Record<string, any> = Record<string, any>,
 > = {
   args: CustomArgsValidator;
@@ -155,13 +160,14 @@ export function customCtxAndArgs<
   CustomMadeArgs,
   ExtraArgs
 > {
+  // This is already the right type. This function just helps you define it.
   return objectWithArgsAndInput;
 }
 
 /**
  * A helper for defining a Customization when your mod doesn't need to add or remove
  * anything from args.
- * @param mod A function that defines how to modify the ctx.
+ * @param modifyCtx A function that defines how to modify the ctx.
  * @returns A ctx delta to be applied to the original ctx.
  */
 export function customCtx<
@@ -169,7 +175,7 @@ export function customCtx<
   OutCtx extends Record<string, any>,
   ExtraArgs extends Record<string, any> = Record<string, any>,
 >(
-  mod: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
+  modifyCtx: (original: InCtx, extra: ExtraArgs) => Promise<OutCtx> | OutCtx,
 ): Customization<
   InCtx,
   Record<string, never>,
@@ -179,7 +185,10 @@ export function customCtx<
 > {
   return {
     args: {},
-    input: async (ctx, _, extra) => ({ ctx: await mod(ctx, extra), args: {} }),
+    input: async (ctx, _, extra) => ({
+      ctx: await modifyCtx(ctx, extra),
+      args: {},
+    }),
   };
 }
 
@@ -259,7 +268,7 @@ export function customQuery<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
-  ExtraArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = object,
 >(
   query: QueryBuilder<DataModel, Visibility>,
   customization: Customization<
@@ -347,10 +356,10 @@ export function customMutation<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
-  ExtraArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = object,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
-  mod: Customization<
+  customization: Customization<
     GenericMutationCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
@@ -358,7 +367,7 @@ export function customMutation<
     ExtraArgs
   >,
 ) {
-  return customFnBuilder(mutation, mod) as CustomBuilder<
+  return customFnBuilder(mutation, customization) as CustomBuilder<
     "mutation",
     CustomArgsValidator,
     CustomCtx,
@@ -430,7 +439,7 @@ export function customMutation<
  *
  * @param action The action to be modified. Usually `action` or `internalAction`
  *   from `_generated/server`.
- * @param mod The modifier to be applied to the action, changing ctx and args.
+ * @param customization The modifier to be applied to the action, changing ctx and args.
  * @returns A new action builder to define queries with modified ctx and args.
  */
 export function customAction<
@@ -439,10 +448,10 @@ export function customAction<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
-  ExtraArgs extends Record<string, any> = Record<string, any>,
+  ExtraArgs extends Record<string, any> = object,
 >(
   action: ActionBuilder<DataModel, Visibility>,
-  mod: Customization<
+  customization: Customization<
     GenericActionCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
@@ -458,7 +467,7 @@ export function customAction<
   Visibility,
   ExtraArgs
 > {
-  return customFnBuilder(action, mod) as CustomBuilder<
+  return customFnBuilder(action, customization) as CustomBuilder<
     "action",
     CustomArgsValidator,
     CustomCtx,
@@ -481,7 +490,7 @@ function customFnBuilder(
     const { args, handler = fn, returns, ...extra } = fn;
     if (args) {
       return builder({
-        args: addArgs(args, inputArgs),
+        args: addFieldsToValidator(args, inputArgs),
         returns,
         handler: async (ctx: any, allArgs: any) => {
           const added = await customInput(
@@ -520,28 +529,6 @@ function customFnBuilder(
       },
     });
   };
-}
-
-// Adds args to a property validator or validator
-// Needs to call recursively in the case of unions.
-function addArgs(
-  validatorOrPropertyValidator: PropertyValidators | Validator<any, any, any>,
-  args: PropertyValidators,
-): Validator<any, any, any> {
-  if (Object.keys(args).length === 0) {
-    return asObjectValidator(validatorOrPropertyValidator);
-  }
-  const validator = asObjectValidator(validatorOrPropertyValidator);
-  switch (validator.kind) {
-    case "object":
-      return v.object({ ...validator.fields, ...args });
-    case "union":
-      return v.union(...validator.members.map((m) => addArgs(m, args)));
-    default:
-      throw new Error(
-        "Cannot add arguments to a validator that is not an object or union.",
-      );
-  }
 }
 
 /**

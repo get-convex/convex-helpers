@@ -18,7 +18,7 @@ import type {
   VString,
   VUnion,
 } from "convex/values";
-import { v } from "convex/values";
+import { asObjectValidator, v } from "convex/values";
 import type { Expand } from "./index.js";
 import { assert } from "./index.js";
 
@@ -322,6 +322,68 @@ export type AddFieldsToValidator<
           }[keyof Fields & string] &
           string
       >;
+
+/**
+ * Equivalent to `v.object({ ...validator, ...fields })`.
+ */
+export function addFieldsToValidator<
+  Props extends PropertyValidators,
+  Fields extends PropertyValidators,
+>(
+  validator: Props,
+  fields: Fields,
+): VObject<ObjectType<Props & Fields>, Props & Fields, "required">;
+/**
+ * Add fields to an object validator.
+ * Equivalent to `v.object({ ...validator.fields, ...fields })`.
+ */
+export function addFieldsToValidator<
+  V extends VObject<any, any, any>,
+  Fields extends PropertyValidators,
+>(
+  validator: V,
+  fields: Fields,
+): VObject<
+  V["type"] & ObjectType<Fields>,
+  V["fields"] & Fields,
+  V["isOptional"]
+>;
+/**
+ * Add fields to a union validator.
+ * Equivalent to `v.union(...validator.members.map((m) => addFieldsToValidator(m, fields)))`.
+ */
+export function addFieldsToValidator<
+  V extends VUnion<any, any[], any>,
+  Fields extends PropertyValidators,
+>(validator: V, fields: Fields): AddFieldsToValidator<V, Fields>;
+export function addFieldsToValidator<
+  V extends VObject<any, any, any> | VUnion<any, any[], any>,
+  Fields extends PropertyValidators,
+>(validator: V, fields: Fields): AddFieldsToValidator<V, Fields>;
+export function addFieldsToValidator<
+  V extends
+    | PropertyValidators
+    | VObject<any, any, any>
+    | VUnion<any, any[], any>,
+  Fields extends PropertyValidators,
+>(validatorOrFields: V, fields: Fields) {
+  const validator = asObjectValidator(validatorOrFields);
+  if (Object.keys(fields).length === 0) {
+    return validator;
+  }
+  switch (validator.kind) {
+    case "object":
+      return v.object({ ...validator.fields, ...fields });
+    case "union":
+      return v.union(
+        ...validator.members.map((m) => addFieldsToValidator(m, fields)),
+      );
+    default:
+      throw new Error(
+        "Cannot add arguments to a validator that is not an object or union.",
+      );
+  }
+}
 
 export const doc = <
   Schema extends SchemaDefinition<any, boolean>,

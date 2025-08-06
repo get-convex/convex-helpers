@@ -39,6 +39,7 @@ import type {
 import type { Customization, Registration } from "./customFunctions.js";
 import { NoOp } from "./customFunctions.js";
 import { pick } from "../index.js";
+import { addFieldsToValidator } from "../validators.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
@@ -69,6 +70,7 @@ export type ZCustomCtx<Builder> =
     infer CustomCtx,
     any,
     infer InputCtx,
+    any,
     any
   >
     ? Overwrite<InputCtx, CustomCtx>
@@ -134,13 +136,15 @@ export function zCustomQuery<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = object,
 >(
   query: QueryBuilder<DataModel, Visibility>,
   customization: Customization<
     GenericQueryCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
-    CustomMadeArgs
+    CustomMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(query, customization) as CustomBuilder<
@@ -149,7 +153,8 @@ export function zCustomQuery<
     CustomCtx,
     CustomMadeArgs,
     GenericQueryCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
@@ -213,13 +218,15 @@ export function zCustomMutation<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = object,
 >(
   mutation: MutationBuilder<DataModel, Visibility>,
   customization: Customization<
     GenericMutationCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
-    CustomMadeArgs
+    CustomMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(mutation, customization) as CustomBuilder<
@@ -228,7 +235,8 @@ export function zCustomMutation<
     CustomCtx,
     CustomMadeArgs,
     GenericMutationCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
@@ -292,13 +300,15 @@ export function zCustomAction<
   CustomMadeArgs extends Record<string, any>,
   Visibility extends FunctionVisibility,
   DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = object,
 >(
   action: ActionBuilder<DataModel, Visibility>,
   customization: Customization<
     GenericActionCtx<DataModel>,
     CustomArgsValidator,
     CustomCtx,
-    CustomMadeArgs
+    CustomMadeArgs,
+    ExtraArgs
   >,
 ) {
   return customFnBuilder(action, customization) as CustomBuilder<
@@ -307,13 +317,14 @@ export function zCustomAction<
     CustomCtx,
     CustomMadeArgs,
     GenericActionCtx<DataModel>,
-    Visibility
+    Visibility,
+    ExtraArgs
   >;
 }
 
 function customFnBuilder(
   builder: (args: any) => any,
-  customization: Customization<any, any, any, any>,
+  customization: Customization<any, any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
   const customInput = customization.input ?? NoOp.input;
@@ -345,10 +356,7 @@ function customFnBuilder(
       }
       const convexValidator = zodToConvexFields(argsValidator);
       return builder({
-        args: {
-          ...convexValidator,
-          ...inputArgs,
-        },
+        args: addFieldsToValidator(convexValidator, inputArgs),
         ...returnValidator,
         handler: async (ctx: any, allArgs: any) => {
           const added = await customInput(
@@ -365,14 +373,15 @@ function customFnBuilder(
               ) as Value[],
             });
           }
-          const result = await fn.handler(
-            { ...ctx, ...added.ctx },
-            { ...parsed.data, ...added.args },
-          );
-          if (returns) {
-            // We don't catch the error here. It's a developer error and we
-            // don't want to risk exposing the unexpected value to the client.
-            return returns.parse(result);
+          const args = parsed.data;
+          const finalCtx = { ...ctx, ...added.ctx };
+          const finalArgs = { ...args, ...added.args };
+          const ret = await handler(finalCtx, finalArgs);
+          // We don't catch the error here. It's a developer error and we
+          // don't want to risk exposing the unexpected value to the client.
+          const result = returns ? returns.parse(ret) : ret;
+          if (added.onSuccess) {
+            await added.onSuccess({ ctx, args, result });
           }
           return result;
         },
@@ -388,14 +397,16 @@ function customFnBuilder(
       ...returnValidator,
       handler: async (ctx: any, args: any) => {
         const added = await customInput(ctx, args, extra);
-        if (returns) {
-          // We don't catch the error here. It's a developer error and we
-          // don't want to risk exposing the unexpected value to the client.
-          return returns.parse(
-            await handler({ ...ctx, ...added.ctx }, { ...args, ...added.args }),
-          );
+        const finalCtx = { ...ctx, ...added.ctx };
+        const finalArgs = { ...args, ...added.args };
+        const ret = await handler(finalCtx, finalArgs);
+        // We don't catch the error here. It's a developer error and we
+        // don't want to risk exposing the unexpected value to the client.
+        const result = returns ? returns.parse(ret) : ret;
+        if (added.onSuccess) {
+          await added.onSuccess({ ctx, args, result });
         }
-        return handler({ ...ctx, ...added.ctx }, { ...args, ...added.args });
+        return result;
       },
     });
   };
@@ -404,42 +415,44 @@ function customFnBuilder(
 type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
   [ArgsObject];
 
-export type ArgsArray = OneArgArray | [];
+// Copied from convex/src/server/api.ts since they aren't exported
+type NullToUndefinedOrNull<T> = T extends null ? T | undefined | void : T;
+type Returns<T> = Promise<NullToUndefinedOrNull<T>> | NullToUndefinedOrNull<T>;
 
-export type ReturnValueForOptionalZodValidator<
+// The return value before it's been validated: returned by the handler
+type ReturnValueInput<
   ReturnsValidator extends z.ZodTypeAny | ZodValidator | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
-  ? z.input<ReturnsValidator> | Promise<z.input<ReturnsValidator>>
+  ? Returns<z.input<ReturnsValidator>>
   : [ReturnsValidator] extends [ZodValidator]
-    ?
-        | z.input<z.ZodObject<ReturnsValidator>>
-        | Promise<z.input<z.ZodObject<ReturnsValidator>>>
+    ? Returns<z.input<z.ZodObject<ReturnsValidator>>>
     : any;
 
-export type OutputValueForOptionalZodValidator<
+// The return value after it's been validated: returned to the client
+type ReturnValueOutput<
   ReturnsValidator extends z.ZodTypeAny | ZodValidator | void,
 > = [ReturnsValidator] extends [z.ZodTypeAny]
-  ? z.output<ReturnsValidator> | Promise<z.output<ReturnsValidator>>
+  ? Returns<z.output<ReturnsValidator>>
   : [ReturnsValidator] extends [ZodValidator]
-    ?
-        | z.output<z.ZodObject<ReturnsValidator>>
-        | Promise<z.output<z.ZodObject<ReturnsValidator>>>
+    ? Returns<z.output<z.ZodObject<ReturnsValidator>>>
     : any;
 
-export type ArgsArrayForOptionalValidator<
-  ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
-> = [ArgsValidator] extends [ZodValidator]
-  ? [z.output<z.ZodObject<ArgsValidator>>]
-  : [ArgsValidator] extends [z.ZodObject<any>]
-    ? [z.output<ArgsValidator>]
-    : ArgsArray;
-export type DefaultArgsForOptionalValidator<
-  ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
-> = [ArgsValidator] extends [ZodValidator]
-  ? [z.output<z.ZodObject<ArgsValidator>>]
-  : [ArgsValidator] extends [z.ZodObject<any>]
-    ? [z.output<ArgsValidator>]
+// The args before they've been validated: passed from the client
+type ArgsInput<ArgsValidator extends ZodValidator | z.ZodObject<any> | void> = [
+  ArgsValidator,
+] extends [z.ZodObject<any>]
+  ? [z.input<ArgsValidator>]
+  : [ArgsValidator] extends [ZodValidator]
+    ? [z.input<z.ZodObject<ArgsValidator>>]
     : OneArgArray;
+
+// The args after they've been validated: passed to the handler
+type ArgsOutput<ArgsValidator extends ZodValidator | z.ZodObject<any> | void> =
+  [ArgsValidator] extends [z.ZodObject<any>]
+    ? [z.output<ArgsValidator>]
+    : [ArgsValidator] extends [ZodValidator]
+      ? [z.output<z.ZodObject<ArgsValidator>>]
+      : OneArgArray;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
 
@@ -456,6 +469,16 @@ type Expand<ObjectType extends Record<any, any>> =
       }
     : never;
 
+type ArgsForHandlerType<
+  OneOrZeroArgs extends [] | [Record<string, any>],
+  CustomMadeArgs extends Record<string, any>,
+> =
+  CustomMadeArgs extends Record<string, never>
+    ? OneOrZeroArgs
+    : OneOrZeroArgs extends [infer A]
+      ? [Expand<A & CustomMadeArgs>]
+      : [CustomMadeArgs];
+
 /**
  * A builder that customizes a Convex function, whether or not it validates
  * arguments. If the customization requires arguments, however, the resulting
@@ -468,14 +491,16 @@ export type CustomBuilder<
   CustomMadeArgs extends Record<string, any>,
   InputCtx,
   Visibility extends FunctionVisibility,
+  ExtraArgs extends Record<string, any>,
 > = {
   <
     ArgsValidator extends ZodValidator | z.ZodObject<any> | void,
     ReturnsZodValidator extends z.ZodTypeAny | ZodValidator | void = void,
-    ReturnValue extends
-      ReturnValueForOptionalZodValidator<ReturnsZodValidator> = any,
-    OneOrZeroArgs extends
-      ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
+    ReturnValue extends ReturnValueInput<ReturnsZodValidator> = any,
+    // Note: this differs from customFunctions.ts b/c we don't need to track
+    // the exact args to match the standard builder types. For zod we don't
+    // try to ever pass a custom function as a builder to another custom
+    // function, so we can be looser here.
   >(
     func:
       | ({
@@ -485,63 +510,53 @@ export type CustomBuilder<
           args?: ArgsValidator;
           handler: (
             ctx: Overwrite<InputCtx, CustomCtx>,
-            ...args: OneOrZeroArgs extends [infer A]
-              ? [Expand<A & CustomMadeArgs>]
-              : [CustomMadeArgs]
+            ...args: ArgsForHandlerType<
+              ArgsOutput<ArgsValidator>,
+              CustomMadeArgs
+            >
           ) => ReturnValue;
+          /**
+           * Validates the value returned by the function.
+           * Note: you can't pass an object directly without wrapping it
+           * in `z.object()`.
+           */
+          returns?: ReturnsZodValidator;
           /**
            * If true, the function will not be validated by Convex,
            * in case you're seeing performance issues with validating twice.
            */
           skipConvexValidation?: boolean;
-        } & (
-          | {
-              /**
-               * @deprecated Use `returns` instead.
-               * Older version of `returns` that does not also do convex
-               * validation on the output value of the function.
-               * Note: you can't pass an object directly without wrapping it
-               * in `z.object()`.
-               */
-              output?: ReturnsZodValidator;
-            }
-          | {
-              /**
-               * Validates the value returned by the function.
-               * Note: you can't pass an object directly without wrapping it
-               * in `z.object()`.
-               */
-              returns?: ReturnsZodValidator;
-            }
-        ))
+        } & {
+          [key in keyof ExtraArgs as key extends
+            | "args"
+            | "handler"
+            | "skipConvexValidation"
+            | "returns"
+            ? never
+            : key]: ExtraArgs[key];
+        })
       | {
           (
             ctx: Overwrite<InputCtx, CustomCtx>,
-            ...args: OneOrZeroArgs extends [infer A]
-              ? [Expand<A & CustomMadeArgs>]
-              : [CustomMadeArgs]
+            ...args: ArgsForHandlerType<
+              ArgsOutput<ArgsValidator>,
+              CustomMadeArgs
+            >
           ): ReturnValue;
         },
   ): Registration<
     FuncType,
     Visibility,
     ArgsArrayToObject<
-      [ArgsValidator] extends [ZodValidator]
-        ? [
-            Expand<
-              z.input<z.ZodObject<ArgsValidator>> &
-                ObjectType<CustomArgsValidator>
-            >,
-          ]
-        : [ArgsValidator] extends [z.ZodObject<any>]
-          ? [Expand<z.input<ArgsValidator> & ObjectType<CustomArgsValidator>>]
-          : OneOrZeroArgs extends [infer A]
-            ? [Expand<A & ObjectType<CustomArgsValidator>>]
-            : [ObjectType<CustomArgsValidator>]
+      CustomArgsValidator extends Record<string, never>
+        ? ArgsInput<ArgsValidator>
+        : ArgsInput<ArgsValidator> extends [infer A]
+          ? [Expand<A & ObjectType<CustomArgsValidator>>]
+          : [ObjectType<CustomArgsValidator>]
     >,
     ReturnsZodValidator extends void
       ? ReturnValue
-      : OutputValueForOptionalZodValidator<ReturnsZodValidator>
+      : ReturnValueOutput<ReturnsZodValidator>
   >;
 };
 
