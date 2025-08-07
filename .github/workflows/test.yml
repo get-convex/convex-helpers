@@ -27,7 +27,6 @@ jobs:
         run: |
           npm i
           npm run build
-
       - name: Publish pkg-pr-new
         run: |
           npx pkg-pr-new publish ./packages/convex-helpers

@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.101",
+  "version": "0.1.101-alpha.1",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
@@ -114,6 +114,10 @@
     "./server/zod": {
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"
+    },
+    "./server/zodV4": {
+      "types": "./server/zodV4.d.ts",
+      "default": "./server/zodV4.js"
     },
     "./react/*": {
       "types": "./react/*.d.ts",
