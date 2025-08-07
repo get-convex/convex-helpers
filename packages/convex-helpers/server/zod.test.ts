@@ -273,6 +273,15 @@ export const consume = consumeArg({
 });
 queryMatches(consume, { a: "" }, { ctxA: "" });
 
+export const necromanceArg = consumeArg({
+  args: { a: z.string() },
+  handler: async (ctx, args) => {
+    assertType<{ a: string }>(args);
+    return { ctxA: ctx.a, argsA: args.a };
+  },
+});
+queryMatches(necromanceArg, { a: "" }, { ctxA: "", argsA: "" });
+
 /**
  * Passing Through arg, also add to ctx for fun
  */
@@ -378,6 +387,7 @@ const testApi: ApiFromModules<{
     addUnverified: typeof addUnverified;
     addUnverified2: typeof addUnverified2;
     consume: typeof consume;
+    necromanceArg: typeof necromanceArg;
     passThrough: typeof passThrough;
     modify: typeof modify;
     redefine: typeof redefine;
@@ -700,6 +710,14 @@ describe("zod functions", () => {
     const t = convexTest(schema, modules);
     expect(await t.query(testApi.consume, { a: "foo" })).toMatchObject({
       ctxA: "foo",
+    });
+  });
+
+  test("necromance arg", async () => {
+    const t = convexTest(schema, modules);
+    expect(await t.query(testApi.necromanceArg, { a: "foo" })).toMatchObject({
+      ctxA: "foo",
+      argsA: "foo",
     });
   });
 
