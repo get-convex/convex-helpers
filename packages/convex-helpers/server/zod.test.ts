@@ -324,24 +324,35 @@ export const redefine = redefineArg({
 queryMatches(redefine, { a: "" }, { argsA: "" });
 
 /**
+ * Refine arg type with a more specific type: OK!
+ */
+const refineArg = zCustomQuery(query, {
+  args: { a: v.optional(v.string()) },
+  input: async (_ctx, args) => ({ ctx: {}, args }),
+});
+export const refined = refineArg({
+  args: { a: z.string() },
+  handler: async (_ctx, args) => {
+    return { argsA: args.a };
+  },
+});
+queryMatches(refined, { a: "" }, { argsA: "" });
+
+/**
  * Redefine arg type with different type: error!
  */
 const badRedefineArg = zCustomQuery(query, {
   args: { a: v.string(), b: v.number() },
   input: async (_ctx, args) => ({ ctx: {}, args }),
 });
-export const badRedefine = badRedefineArg({
-  args: { a: z.number() },
-  handler: async (_ctx, args) => {
-    return { argsA: args.a };
-  },
-});
-const never: never = null as never;
-// Errors if you pass a string or number to "a".
-// It doesn't show never in the handler or return type, but input args is where
-// we expect the never, so should be sufficient.
-queryMatches(badRedefine, { b: 3, a: never }, { argsA: 2 }); // !!!
-
+expect(() =>
+  badRedefineArg({
+    args: { a: z.number() },
+    handler: async (_ctx, args) => {
+      return { argsA: args.a };
+    },
+  }),
+).toThrow();
 /**
  * Test helpers
  */
@@ -370,7 +381,7 @@ const testApi: ApiFromModules<{
     passThrough: typeof passThrough;
     modify: typeof modify;
     redefine: typeof redefine;
-    badRedefine: typeof badRedefine;
+    refined: typeof refined;
   };
 }>["fns"] = anyApi["zod.test"] as any;
 
@@ -715,14 +726,14 @@ describe("zod functions", () => {
     });
   });
 
-  test("bad redefinition", async () => {
+  test("refined arg", async () => {
     const t = convexTest(schema, modules);
+    expect(await t.query(testApi.refined, { a: "foo" })).toMatchObject({
+      argsA: "foo",
+    });
     await expect(() =>
-      t.query(testApi.badRedefine, {
-        a: "foo" as never,
-        b: 0,
-      }),
-    ).rejects.toThrow();
+      t.query(testApi.refined, { a: undefined as any }),
+    ).rejects.toThrow("Validator error: Missing required field `a`");
   });
 });
 

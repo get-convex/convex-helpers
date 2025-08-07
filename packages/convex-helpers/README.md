@@ -54,7 +54,7 @@ See the associated [Stack Post](https://stack.convex.dev/custom-functions)
 For example:
 
 ```ts
-import { customQuery } from "convex-helpers/server/customFunctions.js";
+import { customQuery } from "convex-helpers/server/customFunctions";
 
 const myQueryBuilder = customQuery(query, {
   args: { apiToken: v.id("api_tokens") },

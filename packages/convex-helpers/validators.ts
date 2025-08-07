@@ -373,7 +373,7 @@ export function addFieldsToValidator<
   }
   switch (validator.kind) {
     case "object":
-      return v.object({ ...validator.fields, ...fields });
+      return v.object(intersectValidators(validator.fields, fields));
     case "union":
       return v.union(
         ...validator.members.map((m) => addFieldsToValidator(m, fields)),
@@ -383,6 +383,33 @@ export function addFieldsToValidator<
         "Cannot add arguments to a validator that is not an object or union.",
       );
   }
+}
+
+function intersectValidators(
+  fields: PropertyValidators,
+  fields2: PropertyValidators,
+): PropertyValidators {
+  const specificFields = { ...fields };
+  for (const [k, v] of Object.entries(fields2)) {
+    const existing = specificFields[k];
+    if (existing) {
+      if (existing.kind !== v.kind) {
+        // TODO: handle unions & literals & other sub-types (incl. optionals)
+        throw new Error(
+          `Cannot intersect validators with different kinds: ${existing.kind} and ${v.kind}`,
+        );
+      }
+      if (existing.isOptional !== v.isOptional) {
+        if (existing.isOptional === "optional") {
+          // prefer the required validator
+          specificFields[k] = v;
+        }
+      }
+    } else {
+      specificFields[k] = v;
+    }
+  }
+  return specificFields;
 }
 
 export const doc = <

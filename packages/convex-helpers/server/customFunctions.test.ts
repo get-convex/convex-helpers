@@ -271,14 +271,18 @@ queryMatches(consume, { a: "" }, { ctxA: "" });
 
 // NOTE: We don't test for unvalidated functions when args are present
 
-// These are all errors, as expected
-// const consumeUnvalidated = consumeArg({
-//   handler: async (ctx, emptyArgs: {}) => {
-//     assertType<{}>(emptyArgs); // !!!
-//     return { ctxA: ctx.a };
-//   },
-// });
-// queryMatches(consumeUnvalidated, { a: "" }, { ctxA: "" });
+expect(() =>
+  consumeArg({
+    // @ts-expect-error because the custom function requires args, we can't have
+    // an unvalidated function that expects args
+    handler: async (ctx, emptyArgs: object) => {
+      assertType<object>(emptyArgs); // !!!
+      return { ctxA: ctx.a };
+    },
+  }),
+).toThrow();
+
+// TODO: this should be a type error (currently just push-time error)
 // const consumeUnvalidatedWithArgs = consumeArg(
 //   async (ctx, args: { b: number }) => {
 //     assertType<{ b: number }>(args); // !!!
@@ -338,23 +342,35 @@ export const redefine = redefineArg({
 queryMatches(redefine, { a: "" }, { argsA: "" });
 
 /**
+ * Refine arg type with a more specific type: OK!
+ */
+const refineArg = customQuery(query, {
+  args: { a: v.optional(v.string()) },
+  input: async (_ctx, args) => ({ ctx: {}, args }),
+});
+export const refined = refineArg({
+  args: { a: v.string() },
+  handler: async (_ctx, args) => {
+    return { argsA: args.a };
+  },
+});
+queryMatches(refined, { a: "" }, { argsA: "" });
+
+/**
  * Redefine arg type with different type: error!
  */
 const badRedefineArg = customQuery(query, {
   args: { a: v.string(), b: v.number() },
   input: async (_ctx, args) => ({ ctx: {}, args }),
 });
-export const badRedefine = badRedefineArg({
-  args: { a: v.number() },
-  handler: async (_ctx, args) => {
-    return { argsA: args.a };
-  },
-});
-const never: never = null as never;
-// Errors if you pass a string or number to "a".
-// It doesn't show never in the handler or return type, but input args is where
-// we expect the never, so should be sufficient.
-queryMatches(badRedefine, { b: 3, a: never }, { argsA: "" }); // !!!
+expect(() => {
+  badRedefineArg({
+    args: { a: v.number() },
+    handler: async (_ctx, args) => {
+      return { argsA: args.a };
+    },
+  });
+}).toThrow();
 
 /**
  * Nested custom functions
@@ -429,7 +445,7 @@ const testApi: ApiFromModules<{
     passThrough: typeof passThrough;
     modify: typeof modify;
     redefine: typeof redefine;
-    badRedefine: typeof badRedefine;
+    refined: typeof refined;
     create: typeof create;
     outerAdds: typeof outerAdds;
     outerRemoved: typeof outerRemoved;
@@ -565,18 +581,14 @@ describe("custom functions", () => {
     });
   });
 
-  test("bad redefinition", async () => {
+  test("refined arg", async () => {
     const t = convexTest(schema, modules);
-    expect(
-      await t.query(testApi.badRedefine, {
-        a: "foo" as never,
-        b: 0,
-      }),
-    ).toMatchObject({
-      // Note: argsA is still "foo" because the custom function takes precedent.
-      // Ideally this would throw instead, or refuse to let you re-define args.
+    expect(await t.query(testApi.refined, { a: "foo" })).toMatchObject({
       argsA: "foo",
     });
+    await expect(() =>
+      t.query(testApi.refined, { a: undefined as any }),
+    ).rejects.toThrow("Validator error: Missing required field `a`");
   });
 
   test("still validates args", async () => {
