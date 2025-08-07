@@ -26,6 +26,15 @@ export type Rules<Ctx, DataModel extends GenericDataModel> = {
   };
 };
 
+export type RLSConfig = {
+  /**
+   * Default policy when no rule is defined for a table.
+   * - "allow": Allow access by default (default behavior)
+   * - "deny": Deny access by default
+   */
+  defaultPolicy?: "allow" | "deny";
+};
+
 /**
  * Apply row level security (RLS) to queries and mutations with the returned
  * middleware functions.
@@ -153,16 +162,18 @@ export function wrapDatabaseReader<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
   db: GenericDatabaseReader<DataModel>,
   rules: Rules<Ctx, DataModel>,
+  config?: RLSConfig,
 ): GenericDatabaseReader<DataModel> {
-  return new WrapReader(ctx, db, rules);
+  return new WrapReader(ctx, db, rules, config);
 }
 
 export function wrapDatabaseWriter<Ctx, DataModel extends GenericDataModel>(
   ctx: Ctx,
   db: GenericDatabaseWriter<DataModel>,
   rules: Rules<Ctx, DataModel>,
+  config?: RLSConfig,
 ): GenericDatabaseWriter<DataModel> {
-  return new WrapWriter(ctx, db, rules);
+  return new WrapWriter(ctx, db, rules, config);
 }
 
 type ArgsArray = [] | [FunctionArgs<any>];
@@ -178,16 +189,19 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   db: GenericDatabaseReader<DataModel>;
   system: GenericDatabaseReader<DataModel>["system"];
   rules: Rules<Ctx, DataModel>;
+  config: RLSConfig;
 
   constructor(
     ctx: Ctx,
     db: GenericDatabaseReader<DataModel>,
     rules: Rules<Ctx, DataModel>,
+    config?: RLSConfig,
   ) {
     this.ctx = ctx;
     this.db = db;
     this.system = db.system;
     this.rules = rules;
+    this.config = config ?? { defaultPolicy: "allow" };
   }
 
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
@@ -213,7 +227,7 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     doc: DocumentByInfo<T>,
   ): Promise<boolean> {
     if (!this.rules[tableName]?.read) {
-      return true;
+      return (this.config.defaultPolicy ?? "allow") === "allow";
     }
     return await this.rules[tableName]!.read!(this.ctx, doc);
   }
@@ -249,13 +263,14 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   system: GenericDatabaseWriter<DataModel>["system"];
   reader: GenericDatabaseReader<DataModel>;
   rules: Rules<Ctx, DataModel>;
+  config: RLSConfig;
 
   async modifyPredicate<T extends GenericTableInfo>(
     tableName: string,
     doc: DocumentByInfo<T>,
   ): Promise<boolean> {
     if (!this.rules[tableName]?.modify) {
-      return true;
+      return (this.config.defaultPolicy ?? "allow") === "allow";
     }
     return await this.rules[tableName]!.modify!(this.ctx, doc);
   }
@@ -264,12 +279,14 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     ctx: Ctx,
     db: GenericDatabaseWriter<DataModel>,
     rules: Rules<Ctx, DataModel>,
+    config?: RLSConfig,
   ) {
     this.ctx = ctx;
     this.db = db;
     this.system = db.system;
-    this.reader = new WrapReader(ctx, db, rules);
+    this.reader = new WrapReader(ctx, db, rules, config);
     this.rules = rules;
+    this.config = config ?? { defaultPolicy: "allow" };
   }
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
@@ -282,7 +299,11 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     value: any,
   ): Promise<any> {
     const rules = this.rules[table];
-    if (rules?.insert && !(await rules.insert(this.ctx, value))) {
+    if (rules?.insert) {
+      if (!(await rules.insert(this.ctx, value))) {
+        throw new Error("insert access not allowed");
+      }
+    } else if ((this.config.defaultPolicy ?? "allow") === "deny") {
       throw new Error("insert access not allowed");
     }
     return await this.db.insert(table, value);
