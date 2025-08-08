@@ -291,7 +291,9 @@ export abstract class QueryStream<T extends GenericStreamItem>
     mapper: (doc: T) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
   ): QueryStream<U> {
-    normalizeIndexFields(mappedIndexFields);
+    if (mappedIndexFields.length > 0) {
+      normalizeIndexFields(mappedIndexFields);
+    }
     return new FlatMapStream(this, mapper, mappedIndexFields);
   }
 
@@ -1269,10 +1271,13 @@ class FlatMapStreamIterator<
     } else {
       innerStream = await this.#mapper(t);
       if (
+        this.#mappedIndexFields.length > 0 &&
         !equalIndexFields(innerStream.getIndexFields(), this.#mappedIndexFields)
       ) {
         throw new Error(
-          `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(innerStream.getIndexFields())} vs ${JSON.stringify(this.#mappedIndexFields)}`,
+          `FlatMapStream: inner stream has different index fields than expected: ${JSON.stringify(
+            innerStream.getIndexFields(),
+          )} vs ${JSON.stringify(this.#mappedIndexFields)}`,
         );
       }
       if (innerStream.getOrder() !== this.#outerStream.getOrder()) {
