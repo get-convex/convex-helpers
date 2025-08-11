@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { migrationsTable } from "convex-helpers/server/migrations";
+import { zodTestTable } from "./zodTestSchema";
 
 export default defineSchema({
   users: defineTable({
@@ -45,4 +46,5 @@ export default defineSchema({
     .index("from", ["from", "sentAt"])
     // pairwise
     .index("from_to", ["from", "to", "sentAt"]),
+  zodTest: zodTestTable,
 });
