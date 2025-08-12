@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.102
+
+- You can use Zod4 alongside convex-helpers.
+  Note: convex-helpers/zod supports zod3 only. Zod4 support is WIP
+
 ## 0.1.101
 
 - Improved Zod union type (credit:Firephoenix25)
