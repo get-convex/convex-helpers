@@ -1,5 +1,5 @@
-import type { ZodTypeDef } from "zod";
-import { ZodFirstPartyTypeKind, z } from "zod";
+import type { ZodTypeDef } from "zod/v3";
+import { ZodFirstPartyTypeKind, z } from "zod/v3";
 import type {
   GenericId,
   Infer,

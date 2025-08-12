@@ -26,7 +26,7 @@ import {
 import { customCtx } from "./customFunctions.js";
 import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { v } from "convex/values";
-import { z } from "zod";
+import { z } from "zod/v3";
 
 // This is an example of how to make a version of `zid` that
 // enforces that the type matches one of your defined tables.
