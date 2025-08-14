@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.103
+
+- Parsing validators with optional fields and explicit { field: undefined } works
+
 ## 0.1.102
 
 - You can use Zod4 alongside convex-helpers.
