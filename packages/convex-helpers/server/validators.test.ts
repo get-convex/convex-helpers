@@ -669,6 +669,28 @@ describe("validate", () => {
     });
   });
 
+  test("parse strips unknown fields from optional fields", () => {
+    const validator = v.optional(
+      v.object({
+        name: v.optional(v.string()),
+      }),
+    );
+    const result = parse(validator, {
+      name: "Alice",
+      unknown: "field",
+    });
+    expect(result).toEqual({ name: "Alice" });
+    const result2 = parse(validator, {
+      name: undefined,
+      unknown: "field",
+    });
+    expect(result2).toEqual({});
+    const result3 = parse(validator, undefined);
+    expect(result3).toEqual(undefined);
+    const result4 = parse(validator, {});
+    expect(result4).toEqual({});
+  });
+
   test("union matches first member with unknown fields", () => {
     const validator = v.union(
       v.object({ name: v.string() }),

@@ -834,11 +834,15 @@ function stripUnknownFields<T extends Validator<any, any, any>>(
   validator: T,
   value: Infer<T>,
 ): Infer<T> {
+  if (validator.isOptional === "optional" && value === undefined) {
+    return value;
+  }
+  assert(value !== undefined);
   switch (validator.kind) {
     case "object": {
       const result: Infer<T> = {};
       for (const [k, v] of Object.entries(value)) {
-        if (validator.fields[k] !== undefined) {
+        if (validator.fields[k] !== undefined && v !== undefined) {
           result[k] = stripUnknownFields(validator.fields[k], v);
         }
       }
