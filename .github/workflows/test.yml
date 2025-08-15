@@ -34,6 +34,7 @@ jobs:
 
       - name: Run lint, test, and codegen
         run: |
-          npm run lint
           npm run test
+          npm run lint
+          npm run typecheck
           npx convex codegen && git diff --exit-code
