@@ -340,6 +340,7 @@ import {
 } from "convex-helpers/server/customFunctions";
 import {
   Rules,
+  RLSConfig,
   wrapDatabaseReader,
   wrapDatabaseWriter,
 } from "convex-helpers/server/rowLevelSecurity";
@@ -368,17 +369,20 @@ async function rlsRules(ctx: QueryCtx) {
   } satisfies Rules<QueryCtx, DataModel>;
 }
 
+// By default, tables with no rule have `defaultPolicy` set to "allow".
+const config: RLSConfig = { defaultPolicy: "deny" };
+
 const queryWithRLS = customQuery(
   query,
   customCtx(async (ctx) => ({
-    db: wrapDatabaseReader(ctx, ctx.db, await rlsRules(ctx)),
+    db: wrapDatabaseReader(ctx, ctx.db, await rlsRules(ctx), config),
   })),
 );
 
 const mutationWithRLS = customMutation(
   mutation,
   customCtx(async (ctx) => ({
-    db: wrapDatabaseWriter(ctx, ctx.db, await rlsRules(ctx)),
+    db: wrapDatabaseWriter(ctx, ctx.db, await rlsRules(ctx), config),
   })),
 );
 ```
