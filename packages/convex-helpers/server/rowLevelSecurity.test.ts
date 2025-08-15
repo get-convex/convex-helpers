@@ -5,7 +5,6 @@ import { wrapDatabaseReader, wrapDatabaseWriter } from "./rowLevelSecurity.js";
 import type {
   Auth,
   DataModelFromSchemaDefinition,
-  GenericDatabaseReader,
   GenericDatabaseWriter,
   MutationBuilder,
 } from "convex/server";
@@ -38,7 +37,6 @@ const schema = defineSchema({
 
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 type DatabaseWriter = GenericDatabaseWriter<DataModel>;
-type DatabaseReader = GenericDatabaseReader<DataModel>;
 
 const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
   const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
@@ -113,16 +111,22 @@ describe("row level security", () => {
   test("default allow policy permits access to tables without rules", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
+      const userId = await ctx.db.insert("users", {
+        tokenIdentifier: "Person A",
+      });
       await ctx.db.insert("publicData", { content: "Public content" });
-      await ctx.db.insert("privateData", { content: "Private content", ownerId: userId });
+      await ctx.db.insert("privateData", {
+        content: "Private content",
+        ownerId: userId,
+      });
     });
 
     const asA = t.withIdentity({ tokenIdentifier: "Person A" });
     const result = await asA.run(async (ctx) => {
-      const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+      const tokenIdentifier = (await ctx.auth.getUserIdentity())
+        ?.tokenIdentifier;
       if (!tokenIdentifier) throw new Error("Unauthenticated");
-      
+
       // Default allow - no config specified
       const db = wrapDatabaseReader({ tokenIdentifier }, ctx.db, {
         notes: {
@@ -132,15 +136,15 @@ describe("row level security", () => {
           },
         },
       });
-      
+
       // Should be able to read publicData (no rules defined)
       const publicData = await db.query("publicData").collect();
       // Should be able to read privateData (no rules defined)
       const privateData = await db.query("privateData").collect();
-      
+
       return { publicData, privateData };
     });
-    
+
     expect(result.publicData).toHaveLength(1);
     expect(result.privateData).toHaveLength(1);
   });
@@ -148,38 +152,49 @@ describe("row level security", () => {
   test("default deny policy blocks access to tables without rules", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
+      const userId = await ctx.db.insert("users", {
+        tokenIdentifier: "Person A",
+      });
       await ctx.db.insert("publicData", { content: "Public content" });
-      await ctx.db.insert("privateData", { content: "Private content", ownerId: userId });
+      await ctx.db.insert("privateData", {
+        content: "Private content",
+        ownerId: userId,
+      });
     });
 
     const asA = t.withIdentity({ tokenIdentifier: "Person A" });
     const result = await asA.run(async (ctx) => {
-      const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+      const tokenIdentifier = (await ctx.auth.getUserIdentity())
+        ?.tokenIdentifier;
       if (!tokenIdentifier) throw new Error("Unauthenticated");
-      
+
       // Default deny policy
-      const db = wrapDatabaseReader({ tokenIdentifier }, ctx.db, {
-        notes: {
-          read: async ({ tokenIdentifier }, doc) => {
-            const author = await ctx.db.get(doc.userId);
-            return tokenIdentifier === author?.tokenIdentifier;
+      const db = wrapDatabaseReader(
+        { tokenIdentifier },
+        ctx.db,
+        {
+          notes: {
+            read: async ({ tokenIdentifier }, doc) => {
+              const author = await ctx.db.get(doc.userId);
+              return tokenIdentifier === author?.tokenIdentifier;
+            },
+          },
+          // Explicitly allow publicData
+          publicData: {
+            read: async () => true,
           },
         },
-        // Explicitly allow publicData
-        publicData: {
-          read: async () => true,
-        },
-      }, { defaultPolicy: "deny" });
-      
+        { defaultPolicy: "deny" },
+      );
+
       // Should be able to read publicData (has explicit allow rule)
       const publicData = await db.query("publicData").collect();
       // Should NOT be able to read privateData (no rules, default deny)
       const privateData = await db.query("privateData").collect();
-      
+
       return { publicData, privateData };
     });
-    
+
     expect(result.publicData).toHaveLength(1);
     expect(result.privateData).toHaveLength(0);
   });
@@ -191,14 +206,20 @@ describe("row level security", () => {
     });
 
     const asA = t.withIdentity({ tokenIdentifier: "Person A" });
-    
+
     // Test with default allow
     await asA.run(async (ctx) => {
-      const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+      const tokenIdentifier = (await ctx.auth.getUserIdentity())
+        ?.tokenIdentifier;
       if (!tokenIdentifier) throw new Error("Unauthenticated");
-      
-      const db = wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {}, { defaultPolicy: "allow" });
-      
+
+      const db = wrapDatabaseWriter(
+        { tokenIdentifier },
+        ctx.db,
+        {},
+        { defaultPolicy: "allow" },
+      );
+
       // Should be able to insert (no rules, default allow)
       await db.insert("publicData", { content: "Allowed content" });
     });
@@ -206,11 +227,17 @@ describe("row level security", () => {
     // Test with default deny
     await expect(() =>
       asA.run(async (ctx) => {
-        const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+        const tokenIdentifier = (await ctx.auth.getUserIdentity())
+          ?.tokenIdentifier;
         if (!tokenIdentifier) throw new Error("Unauthenticated");
-        
-        const db = wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {}, { defaultPolicy: "deny" });
-        
+
+        const db = wrapDatabaseWriter(
+          { tokenIdentifier },
+          ctx.db,
+          {},
+          { defaultPolicy: "deny" },
+        );
+
         // Should NOT be able to insert (no rules, default deny)
         await db.insert("publicData", { content: "Blocked content" });
       }),
@@ -225,18 +252,24 @@ describe("row level security", () => {
     });
 
     const asA = t.withIdentity({ tokenIdentifier: "Person A" });
-    
+
     // Test with default allow
     await asA.run(async (ctx) => {
-      const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+      const tokenIdentifier = (await ctx.auth.getUserIdentity())
+        ?.tokenIdentifier;
       if (!tokenIdentifier) throw new Error("Unauthenticated");
-      
-      const db = wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
-        publicData: {
-          read: async () => true, // Allow reads
+
+      const db = wrapDatabaseWriter(
+        { tokenIdentifier },
+        ctx.db,
+        {
+          publicData: {
+            read: async () => true, // Allow reads
+          },
         },
-      }, { defaultPolicy: "allow" });
-      
+        { defaultPolicy: "allow" },
+      );
+
       // Should be able to modify (no modify rule, default allow)
       await db.patch(docId, { content: "Modified content" });
     });
@@ -244,15 +277,21 @@ describe("row level security", () => {
     // Test with default deny
     await expect(() =>
       asA.run(async (ctx) => {
-        const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+        const tokenIdentifier = (await ctx.auth.getUserIdentity())
+          ?.tokenIdentifier;
         if (!tokenIdentifier) throw new Error("Unauthenticated");
-        
-        const db = wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
-          publicData: {
-            read: async () => true, // Allow reads but no modify rule
+
+        const db = wrapDatabaseWriter(
+          { tokenIdentifier },
+          ctx.db,
+          {
+            publicData: {
+              read: async () => true, // Allow reads but no modify rule
+            },
           },
-        }, { defaultPolicy: "deny" });
-        
+          { defaultPolicy: "deny" },
+        );
+
         // Should NOT be able to modify (no modify rule, default deny)
         await db.patch(docId, { content: "Blocked modification" });
       }),
