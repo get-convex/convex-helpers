@@ -56,7 +56,8 @@ export type RLSConfig = {
  *        const user = await getUser(auth, db);
  *        return user.isParent;  // only parents can reach the cookies.
  *      },
- *  }
+ *  },
+ *  { defaultPolicy: "deny" }
  * );
  * // Mutation with row level security enabled.
  * export const eatCookie = mutation(withMutationRLS(
@@ -70,14 +71,15 @@ export type RLSConfig = {
  * Notes:
  * * Rules may read any row in `db` -- rules do not apply recursively within the
  *   rule functions themselves.
- * * Tables with no rule default to full access.
+ * * Tables with no rule have `defaultPolicy` set to "allow" by default.
  * * Middleware functions like `withUser` can be composed with RowLevelSecurity
  *   to cache fetches in `ctx`. e.g.
  * ```
  * const {withQueryRLS} = RowLevelSecurity<{user: Doc<"users">}, DataModel>(
  *  {
  *    cookies: async ({user}, cookie) => user.isParent,
- *  }
+ *  },
+ *  { defaultPolicy: "deny" }
  * );
  * export default query(withUser(withRLS(...)));
  * ```
@@ -93,6 +95,7 @@ export type RLSConfig = {
  */
 export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
   rules: Rules<RuleCtx, DataModel>,
+  config?: RLSConfig,
 ) => {
   const withMutationRLS = <
     Ctx extends GenericMutationCtx<DataModel>,
@@ -102,7 +105,7 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
     f: Handler<Ctx, Args, Output>,
   ): Handler<Ctx, Args, Output> => {
     return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapWriter(ctx, ctx.db, rules);
+      const wrappedDb = new WrapWriter(ctx, ctx.db, rules, config);
       return (f as any)({ ...ctx, db: wrappedDb }, ...args);
     }) as Handler<Ctx, Args, Output>;
   };
@@ -114,7 +117,7 @@ export const RowLevelSecurity = <RuleCtx, DataModel extends GenericDataModel>(
     f: Handler<Ctx, Args, Output>,
   ): Handler<Ctx, Args, Output> => {
     return ((ctx: any, ...args: any[]) => {
-      const wrappedDb = new WrapReader(ctx, ctx.db, rules);
+      const wrappedDb = new WrapReader(ctx, ctx.db, rules, config);
       return (f as any)({ ...ctx, db: wrappedDb }, ...args);
     }) as Handler<Ctx, Args, Output>;
   };
