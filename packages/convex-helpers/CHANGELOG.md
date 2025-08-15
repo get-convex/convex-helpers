@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.104
+
+- Allows RLS to deny access by default
+
 ## 0.1.103
 
 - Parsing validators with optional fields and explicit { field: undefined } works
