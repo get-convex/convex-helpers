@@ -98,7 +98,7 @@ export type SessionArgsAndOptions<
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject, options?: Options]
   : Partial<ArgsWithoutSession<Fn>> extends ArgsWithoutSession<Fn>
-    ? [args: ArgsWithoutSession<Fn>, options?: Options]
+    ? [args?: ArgsWithoutSession<Fn>, options?: Options]
     : [args: ArgsWithoutSession<Fn>, options?: Options];
 
 type SessionPaginatedQueryFunction<
