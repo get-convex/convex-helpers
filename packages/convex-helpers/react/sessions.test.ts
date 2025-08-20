@@ -28,6 +28,17 @@ expectTypeOf<
 
 expectTypeOf<
   SessionQueryArgsArray<
+    FunctionReference<
+      "query",
+      "public",
+      { arg?: string; sessionId: SessionId | null },
+      any
+    >
+  >
+>().toEqualTypeOf<[args?: { arg?: string } | "skip"]>();
+
+expectTypeOf<
+  SessionQueryArgsArray<
     FunctionReference<"query", "public", { sessionId: SessionId | null }, any>
   >
 >().toEqualTypeOf<[args?: EmptyObject | "skip" | undefined]>();
@@ -42,6 +53,17 @@ expectTypeOf<
     >
   >
 >().toEqualTypeOf<[{ arg: string }]>();
+
+expectTypeOf<
+  SessionArgsArray<
+    FunctionReference<
+      "mutation",
+      "public",
+      { arg?: string; sessionId: SessionId },
+      any
+    >
+  >
+>().toEqualTypeOf<[args?: { arg?: string }]>();
 
 expectTypeOf<
   SessionArgsArray<

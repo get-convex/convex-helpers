@@ -73,23 +73,33 @@ type SessionFunction<
   Args = any,
 > = FunctionReference<T, "public", { sessionId: SessionId } & Args>;
 
+type ArgsWithoutSession<
+  Fn extends SessionFunction<"query" | "mutation" | "action">,
+> = BetterOmit<FunctionArgs<Fn>, "sessionId">;
+
 export type SessionQueryArgsArray<Fn extends SessionFunction<"query">> =
   keyof FunctionArgs<Fn> extends "sessionId"
     ? [args?: EmptyObject | "skip"]
-    : [args: BetterOmit<FunctionArgs<Fn>, "sessionId"> | "skip"];
+    : Partial<ArgsWithoutSession<Fn>> extends ArgsWithoutSession<Fn>
+      ? [args?: ArgsWithoutSession<Fn> | "skip"]
+      : [args: ArgsWithoutSession<Fn> | "skip"];
 
 export type SessionArgsArray<
   Fn extends SessionFunction<"query" | "mutation" | "action">,
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject]
-  : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">];
+  : Partial<ArgsWithoutSession<Fn>> extends ArgsWithoutSession<Fn>
+    ? [args?: ArgsWithoutSession<Fn>]
+    : [args: ArgsWithoutSession<Fn>];
 
 export type SessionArgsAndOptions<
   Fn extends SessionFunction<"mutation">,
   Options,
 > = keyof FunctionArgs<Fn> extends "sessionId"
   ? [args?: EmptyObject, options?: Options]
-  : [args: BetterOmit<FunctionArgs<Fn>, "sessionId">, options?: Options];
+  : Partial<ArgsWithoutSession<Fn>> extends ArgsWithoutSession<Fn>
+    ? [args?: ArgsWithoutSession<Fn>, options?: Options]
+    : [args: ArgsWithoutSession<Fn>, options?: Options];
 
 type SessionPaginatedQueryFunction<
   Args extends { paginationOpts: PaginationOptions } = {
