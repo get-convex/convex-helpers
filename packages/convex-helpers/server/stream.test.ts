@@ -22,6 +22,15 @@ const schema = defineSchema({
     d: v.number(),
     e: v.number(),
   }).index("cde", ["c", "d", "e"]),
+  channels: defineTable({
+    workspaceId: v.string(),
+    isPublic: v.boolean(),
+    ownerId: v.string(),
+  }).index("by_isPublicWorkspace", ["isPublic", "workspaceId", "ownerId"]),
+  channelMembers: defineTable({
+    channelId: v.id("channels"),
+    userId: v.string(),
+  }).index("by_user", ["userId"]),
 });
 
 function stripSystemFields(doc: GenericDocument) {
@@ -502,6 +511,61 @@ describe("stream", () => {
         { a: 1, b: 2, c: 3, d: 1, e: 2 },
         { a: 1, b: 2, c: 3, d: 4, e: 5 },
         { a: 1, b: 3, c: 4, d: 2, e: 3 },
+      ]);
+    });
+  });
+
+  test("merge with flatMap and default index fields", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const workspaceId = "w";
+      const userId = "u";
+      const privateChannelId = await ctx.db.insert("channels", {
+        workspaceId,
+        isPublic: false,
+        ownerId: userId,
+      });
+      await ctx.db.insert("channelMembers", {
+        channelId: privateChannelId,
+        userId,
+      });
+      await ctx.db.insert("channels", {
+        workspaceId,
+        isPublic: true,
+        ownerId: userId,
+      });
+
+      const userMemberships = stream(ctx.db, schema)
+        .query("channelMembers")
+        .withIndex("by_user", (q) => q.eq("userId", userId));
+
+      const privateChannels = userMemberships.flatMap(
+        async (membership) =>
+          stream(ctx.db, schema)
+            .query("channels")
+            .withIndex("by_isPublicWorkspace", (q) =>
+              q.eq("isPublic", false).eq("workspaceId", workspaceId),
+            )
+            .filterWith(
+              async (channel) => channel._id === membership.channelId,
+            ),
+        [],
+      );
+
+      const publicChannels = stream(ctx.db, schema)
+        .query("channels")
+        .withIndex("by_isPublicWorkspace", (q) =>
+          q.eq("isPublic", true).eq("workspaceId", workspaceId),
+        );
+
+      const merged = mergedStream(
+        [privateChannels, publicChannels],
+        ["userId"],
+      );
+      const result = await merged.collect();
+      expect(result.map(stripSystemFields)).toEqual([
+        { workspaceId, isPublic: false },
+        { workspaceId, isPublic: true },
       ]);
     });
   });
