@@ -39,7 +39,7 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.2",
     "@edge-runtime/vm": "5.0.0",
-    "@eslint/js": "9.36.0",
+    "@eslint/js": "9.37.0",
     "@redocly/cli": "2.3.0",
     "@standard-schema/spec": "1.0.0",
     "@testing-library/react": "16.3.0",
@@ -52,7 +52,7 @@
     "@vitest/coverage-v8": "3.2.4",
     "chokidar-cli": "3.0.0",
     "convex-test": "0.0.38",
-    "eslint": "9.36.0",
+    "eslint": "9.37.0",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "6.1.1",
     "globals": "16.4.0",
