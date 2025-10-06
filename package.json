@@ -40,7 +40,7 @@
     "@arethetypeswrong/cli": "0.18.2",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/js": "9.37.0",
-    "@redocly/cli": "2.3.0",
+    "@redocly/cli": "2.3.1",
     "@standard-schema/spec": "1.0.0",
     "@testing-library/react": "16.3.0",
     "@types/babel__core": "7.20.5",
