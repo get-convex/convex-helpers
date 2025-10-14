@@ -432,6 +432,258 @@ export const myComplexQuery = zodQuery({
 });
 ```
 
+### Zod v4 usage
+
+If you are using Zod v4 (peer dependency zod >= 4.1.12), use the v4-native helper entrypoint at `convex-helpers/server/zod4`:
+
+```ts
+import { z } from "zod";
+import { zCustomQuery, zid, zodToConvex, zodOutputToConvex } from "convex-helpers/server/zod4";
+
+// Define this once - and customize like you would customQuery
+const zodQuery = zCustomQuery(query, NoOp);
+
+export const myComplexQuery = zodQuery({
+  args: {
+    userId: zid("users"),
+    email: z.string().email(),
+    num: z.number().min(0),
+    nullableBigint: z.nullable(z.bigint()),
+    boolWithDefault: z.boolean().default(true),
+    array: z.array(z.string()),
+    optionalObject: z.object({ a: z.string(), b: z.number() }).optional(),
+    union: z.union([z.string(), z.number()]),
+    discriminatedUnion: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("a"), a: z.string() }),
+      z.object({ kind: z.literal("b"), b: z.number() }),
+    ]),
+    readonly: z.object({ a: z.string(), b: z.number() }).readonly(),
+    pipeline: z.number().pipe(z.coerce.string()),
+  },
+  handler: async (ctx, args) => {
+    // args are fully typed according to Zod v4 parsing
+  },
+});
+```
+
+#### Full Zod v4 guide (using convex-helpers/server/zod4)
+
+This mirrors the structure from zodvex, adapted for the zod4 monolith in convex-helpers.
+
+##### Installation
+
+Ensure peer dependency `zod` is v4.1.12 or later.
+
+```bash
+npm i zod convex convex-helpers
+```
+
+##### Quick Start
+
+Define reusable builders using `zCustomQuery`, `zCustomMutation`, `zCustomAction` with your preferred customization (NoOp is fine to start):
+
+```ts
+// convex/util.ts
+import { query, mutation, action } from "./_generated/server";
+import { zCustomQuery, zCustomMutation, zCustomAction } from "convex-helpers/server/zod4";
+import { NoOp } from "convex-helpers/server/customFunctions";
+
+export const zq = zCustomQuery(query, NoOp);
+export const zm = zCustomMutation(mutation, NoOp);
+export const za = zCustomAction(action, NoOp);
+```
+
+Use the builders in functions:
+
+```ts
+// convex/users.ts
+import { z } from "zod";
+import { zid } from "convex-helpers/server/zod4";
+import { zq, zm } from "./util";
+
+export const getUser = zq({
+  args: { id: zid("users") },
+  returns: z.object({ _id: z.string(), name: z.string() }).nullable(),
+  handler: async (ctx, { id }) => ctx.db.get(id),
+});
+
+export const createUser = zm({
+  args: { name: z.string(), email: z.string().email() },
+  returns: zid("users"),
+  handler: async (ctx, user) => ctx.db.insert("users", user),
+});
+```
+
+##### Defining Schemas
+
+Author your schemas as plain object shapes for best inference:
+
+```ts
+import { z } from "zod";
+import { zid } from "convex-helpers/server/zod4";
+
+export const userShape = {
+  name: z.string(),
+  email: z.string().email(),
+  age: z.number().optional(),
+  avatarUrl: z.string().url().nullable(),
+  teamId: zid("teams").optional(),
+};
+
+export const User = z.object(userShape);
+```
+
+##### Table Definitions (using zodToConvexFields)
+
+Use Convex's `defineTable` with `zodToConvexFields(shape)` to derive the validators:
+
+```ts
+// convex/schema.ts
+import { defineSchema, defineTable } from "convex/server";
+import { zodToConvexFields } from "convex-helpers/server/zod4";
+import { userShape } from "./tables/users";
+
+export default defineSchema({
+  users: defineTable(zodToConvexFields(userShape))
+    .index("by_email", ["email"]) // you can add indexes as usual
+});
+```
+
+##### Defining Functions
+
+```ts
+import { z } from "zod";
+import { zid } from "convex-helpers/server/zod4";
+import { zq, zm } from "./util";
+
+export const listUsers = zq({
+  args: {},
+  returns: z.array(z.object({ _id: z.string(), name: z.string() })),
+  handler: async (ctx) => ctx.db.query("users").collect(),
+});
+
+export const deleteUser = zm({
+  args: { id: zid("users") },
+  returns: z.null(),
+  handler: async (ctx, { id }) => {
+    await ctx.db.delete(id);
+    return null;
+  },
+});
+
+export const createUser = zm({
+  args: userShape,
+  returns: zid("users"),
+  handler: async (ctx, user) => ctx.db.insert("users", user),
+});
+```
+
+##### Working with Subsets
+
+Use Zod's `.pick()` or object shape manipulation:
+
+```ts
+const UpdateFields = User.pick({ name: true, email: true });
+
+export const updateUserProfile = zm({
+  args: { id: zid("users"), ...UpdateFields.shape },
+  handler: async (ctx, { id, ...fields }) => {
+    await ctx.db.patch(id, fields);
+  },
+});
+```
+
+##### Form Validation
+
+Use your Zod schemas for client-side form validation (e.g. with react-hook-form). Parse/validate on the server using the same schema via the zod4 builders.
+
+##### API Reference (zod4 subset)
+
+- Builders: `zCustomQuery`, `zCustomMutation`, `zCustomAction`
+- Mapping: `zodToConvex`, `zodToConvexFields`, `zodOutputToConvex`
+- Zid: `zid(tableName)`
+- Codecs: `toConvexJS`, `fromConvexJS`, `convexCodec`
+
+Mapping helpers examples:
+
+```ts
+import { z } from "zod";
+import { zodToConvex, zodToConvexFields } from "convex-helpers/server/zod4";
+
+const v1 = zodToConvex(z.string().optional()); // → v.optional(v.string())
+
+const fields = zodToConvexFields({
+  name: z.string(),
+  age: z.number().nullable(),
+});
+// → { name: v.string(), age: v.union(v.float64(), v.null()) }
+```
+
+Codecs:
+
+```ts
+import { convexCodec } from "convex-helpers/server/zod4";
+import { z } from "zod";
+
+const UserSchema = z.object({ name: z.string(), birthday: z.date().optional() });
+const codec = convexCodec(UserSchema);
+
+const encoded = codec.encode({ name: "Alice", birthday: new Date("1990-01-01") });
+// → { name: 'Alice', birthday: 631152000000 }
+
+const decoded = codec.decode(encoded);
+// → { name: 'Alice', birthday: Date('1990-01-01') }
+```
+
+Supported types (Zod → Convex):
+
+| Zod Type          | Convex Validator                 |
+| ----------------- | -------------------------------- |
+| `z.string()`      | `v.string()`                     |
+| `z.number()`      | `v.float64()`                    |
+| `z.bigint()`      | `v.int64()`                      |
+| `z.boolean()`     | `v.boolean()`                    |
+| `z.date()`        | `v.float64()` (timestamp)        |
+| `z.null()`        | `v.null()`                       |
+| `z.array(T)`      | `v.array(T)`                     |
+| `z.object({...})` | `v.object({...})`                |
+| `z.record(T)`     | `v.record(v.string(), T)`        |
+| `z.union([...])`  | `v.union(...)`                   |
+| `z.literal(x)`    | `v.literal(x)`                   |
+| `z.enum([...])`   | `v.union(literals...)`           |
+| `z.optional(T)`   | `v.optional(T)`                  |
+| `z.nullable(T)`   | `v.union(T, v.null())`           |
+| `zid('table')`    | `v.id('table')` (via `zid`)      |
+
+##### Advanced Usage: Custom Context Builders
+
+Inject auth/permissions logic using `customCtx` from `server/customFunctions` and compose with zod4 builders:
+
+```ts
+import { customCtx } from "convex-helpers/server/customFunctions";
+import { zCustomQuery, zCustomMutation } from "convex-helpers/server/zod4";
+import { query, mutation } from "./_generated/server";
+
+const authQuery = zCustomQuery(query, customCtx(async (ctx) => {
+  const user = await getUserOrThrow(ctx);
+  return { ctx: { user }, args: {} };
+}));
+
+export const updateProfile = authQuery({
+  args: { name: z.string() },
+  returns: z.null(),
+  handler: async (ctx, { name }) => {
+    await ctx.db.patch(ctx.user._id, { name });
+    return null;
+  },
+});
+```
+
+##### Date Handling
+
+Dates are automatically encoded/decoded by codecs. When mapping, `z.date()` becomes a `v.float64()` timestamp. Builders allow you to validate returns with `z.date()` and roundtrip via `toConvexJS`/`fromConvexJS` where needed.
+
+
 ## Hono for advanced HTTP endpoint definitions
 
 [Hono](https://hono.dev/) is an optimized web framework you can use to define
