@@ -805,7 +805,7 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
  * but might be broader than the Zod validator:
  *
  * ```js
- * zodToConvex(z.string().email()) // returns v.string()
+ * zodToConvex(z.string().email()) // → v.string()
  * ```
  *
  * This function is useful when running the Zod validator _after_ running the Convex validator
@@ -814,11 +814,11 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
  * ```js
  * zodToConvex(z.object({
  *   name: z.string().default("Nicolas"),
- * })) // v.object({ name: v.optional(v.string()) })
+ * })) // → v.object({ name: v.optional(v.string()) })
  *
  * zodToConvex(z.object({
  *   name: z.string().transform(s => s.length)
- * })) // v.object({ name: v.string() })
+ * })) // → v.object({ name: v.string() })
  * ````
  *
  * This function is useful for:
@@ -831,19 +831,17 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
  *       (e.g. argument validation/prefilling in the function runner on the Convex dashboard)
  *     - still run the full Zod validation when the function runs
  *       (which is useful for more advanced Zod validators like `z.string().email()`)
- * * **Validating data after reading it from the database**: if you want to define your Convex database
- *   schema using Zod, you may run Zod validation after reading from the database to check that the data
- *   still matches the schema. Note that this approach won’t ensure that the data at rest matches your
- *   Zod schema, and doesn’t work for non-idempotent Zod transformations (e.g. Zod `.transform` from one type to the other); see
+ * * **Validating data after reading it from the database**: if you want to write your DB schema
+ *   with Zod, you can run Zod whenever you read from the database to check that the data
+ *   still matches the schema. Note that this approach won’t ensure that the data stored in the DB
+ *   matches the Zod schema; see
  *   https://stack.convex.dev/typescript-zod-function-validation#can-i-use-zod-to-define-my-database-types-too
  *   for more details.
  *
  * Note that some values might be valid in Zod but not in Convex,
  * in the same way that valid JavaScript values might not be valid
- * Convex values for the corresponding Convex type (e.g. `BigInt`
- * can contain a value that is larger than the maximum `v.int64()`
- * value). See the limits of Convex data types
- * on https://docs.convex.dev/database/types
+ * Convex values for the corresponding Convex type.
+ * (see the limits of Convex data types on https://docs.convex.dev/database/types).
  *
  * #### Comparison with `zodOutputToConvex`
  * | **zodToConvex**                                                                                        | {@link zodOutputToConvex}                                                                                             |
@@ -1175,21 +1173,36 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
  * ```js
  * zodOutputToConvex(z.object({
  *   name: z.string().default("Nicolas"),
- * })) // v.object({ name: v.string() })
+ * })) // → v.object({ name: v.string() })
  *
  * zodOutputToConvex(z.object({
  *   name: z.string().transform(s => s.length)
- * })) // v.object({ name: v.number() })
+ * })) // → v.object({ name: v.number() })
  * ````
  *
  * This function can be useful for:
  * - **Validating function return values with Zod**: through {@link zCustomQuery},
  *   {@link zCustomMutation} and {@link zCustomAction}, you can define the `returns` property
  *   of a function using Zod validators instead of Convex validators.
- * - **Validating data before writing it to the database**: if you want to define your Convex database
- *   schema using Zod, you may run Zod validation on the data before writing it to the database
- *   to make sure that it matches the schema.
+ * - **Validating data after reading it from the database**: if you want to write your DB schema
+ *   Zod validators, you can run Zod whenever you write to the database to ensure your data matches
+ *   the expected format. Note that this approach won’t ensure that the data stored in the DB
+ *   isn’t modified manually in a way that doesn’t match your Zod schema; see
+ *   https://stack.convex.dev/typescript-zod-function-validation#can-i-use-zod-to-define-my-database-types-too
+ *   for more details.
  *
+ * #### Comparison with `zodOutputToConvex`
+ * | {@link zodToConvex}                                                                                    | **zodOutputToConvex**                                                                                                 |
+ * | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+ * | For when the Zod validator runs _after_ the Convex validator                                           | For when the Zod validator runs _before_ the Convex validator                                                         |
+ * | Convex types use the input types of Zod transformations                                                | Convex types use the return types of Zod transformations                                                              |
+ * | The Convex validator can be less strict (some inputs might be accepted by Convex then rejected by Zod) | The Convex validator can be less strict (i.e. the type in Convex can be less precise than the type in the Zod output) |
+ * | When using Zod schemas for function definitions: used for _arguments_                                  | When using Zod schemas for function definitions: used for _return values_                                             |
+ * | When validating contents of the database with a Zod schema: used to validate data _after reading_      | When validating contents of the database with a Zod schema: used to validate data _before writing_                    |
+ *
+ * @param z The zod validaotr
+ * @returns Convex Validator (e.g. `v.string()` from "convex/values")
+ * @throws If there is no equivalent Convex validator for the value (e.g. `z.date()`)
  */
 export function zodOutputToConvex<Z extends z.ZodTypeAny>(
   zod: Z,
@@ -1330,8 +1343,14 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
 }
 
 /**
- * Like zodToConvex, but it takes in a bare object, as expected by Convex
- * function arguments, or the argument to defineTable.
+ * Like {@link zodToConvex}, but it takes in a bare object, as expected by Convex
+ * function arguments, or the argument to `defineTable`.
+ *
+ * ```js
+ * zodToConvex({
+ *   name: z.string().default("Nicolas"),
+ * }) // → { name: v.optional(v.string()) }
+ * ```
  *
  * @param zod Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
@@ -1343,10 +1362,19 @@ export function zodToConvexFields<Z extends ZodValidator>(zod: Z) {
 }
 
 /**
- * Like zodOutputToConvex, but it takes in a bare object, as expected by Convex
- * function arguments, or the argument to defineTable.
- * This is different from zodToConvexFields because it generates the Convex
- * validator for the output of the zod validator, not the input.
+ * Like {@link zodOutputToConvex}, but it takes in a bare object, as expected by
+ * Convex function arguments, or the argument to `defineTable`.
+ *
+ * ```js
+ * zodOutputToConvexFields({
+ *   name: z.string().default("Nicolas"),
+ * }) // → { name: v.string() }
+ * ```
+ *
+ * This is different from {@link zodToConvexFields} because it generates the
+ * Convex validator for the output of the Zod validator, not the input;
+ * see the documentation of {@link zodToConvex} and {@link zodOutputToConvex}
+ * for more details.
  *
  * @param zod Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
@@ -1362,6 +1390,9 @@ interface ZidDef<TableName extends string> extends ZodTypeDef {
   tableName: TableName;
 }
 
+/**
+ * A Zod validator for a Convex ID.
+ */
 export class Zid<TableName extends string> extends z.ZodType<
   GenericId<TableName>,
   ZidDef<TableName>
@@ -1373,6 +1404,17 @@ export class Zid<TableName extends string> extends z.ZodType<
 
 /**
  * Zod helper for adding Convex system fields to a record to return.
+ *
+ * ```js
+ * withSystemFields("users", {
+ *   name: z.string(),
+ * })
+ * // → {
+ * //   name: z.string(),
+ * //   _id: zid("users"),
+ * //   _creationTime: z.number(),
+ * // }
+ * ```
  *
  * @param tableName - The table where records are from, i.e. Doc<tableName>
  * @param zObject - Validators for the user-defined fields on the document.
@@ -1412,7 +1454,7 @@ export class ZodBrandedInputAndOutput<
 }
 
 /**
- * Add a brand to a zod validator. Used like `zBrand(z.string(), "MyBrand")`.
+ * Adds a brand to a Zod validator. Used like `zBrand(z.string(), "MyBrand")`.
  * Compared to zod's `.brand`, this also brands the input type, so if you use
  * the branded validator as an argument to a function, the input type will also
  * be branded. The normal `.brand` only brands the output type, so only the type
@@ -1501,7 +1543,15 @@ export type ZodValidatorFromConvex<V extends GenericValidator> =
     : ZodFromValidatorBase<V>;
 
 /**
- * Turn a Convex validator into a Zod validator.
+ * Turns a Convex validator into a Zod validator.
+ *
+ * This is useful when you want to use types you defined using Convex validators
+ * with external libraries that expect to receive a Zod validator.
+ *
+ * ```js
+ * convexToZod(v.string()) // → z.string()
+ * ```
+ *
  * @param convexValidator Convex validator can be any validator from "convex/values" e.g. `v.string()`
  * @returns Zod validator (e.g. `z.string()`) with inferred type matching the Convex validator
  */
@@ -1585,8 +1635,14 @@ export function convexToZod<V extends GenericValidator>(
 }
 
 /**
- * Like convexToZod, but it takes in a bare object, as expected by Convex
- * function arguments, or the argument to defineTable.
+ * Like {@link convexToZod}, but it takes in a bare object, as expected by Convex
+ * function arguments, or the argument to `defineTable`.
+ *
+ * ```js
+ * convexToZodFields({
+ *   name: v.string(),
+ * }) // → { name: z.string() }
+ * ```
  *
  * @param convexValidators Object with string keys and Convex validators as values
  * @returns Object with the same keys, but with Zod validators as values
