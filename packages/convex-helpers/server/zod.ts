@@ -57,10 +57,10 @@ export type ZodValidator = Record<string, z.ZodTypeAny>;
  * Creates a validator for a Convex `Id`.
  *
  * - When **used within Zod**, it will only check that the ID is a string.
- * - When **converted to a Convex validator** (through `zodToConvex`),
+ * - When **converted to a Convex validator** (e.g. through {@link zodToConvex}),
  *   it will check that it's for the right table.
  *
- * @param tableName - The table that the `Id` references. i.e.` Id<tableName>`
+ * @param tableName - The table that the `Id` references. i.e. `Id<tableName>`
  * @returns A Zod object representing a Convex `Id`
  */
 export const zid = <
