@@ -507,7 +507,7 @@ export type CustomBuilder<
     ReturnsZodValidator extends z.ZodTypeAny | ZodValidator | void = void,
     ReturnValue extends ReturnValueInput<ReturnsZodValidator> = any,
     // Note: this differs from customFunctions.ts b/c we don't need to track
-    // the exact args to match the standard builder types. For zod we don't
+    // the exact args to match the standard builder types. For Zod we don't
     // try to ever pass a custom function as a builder to another custom
     // function, so we can be looser here.
   >(
@@ -597,7 +597,9 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
  * Converts a Zod validator type
  * to the corresponding Convex validator type from `convex/values`.
  *
- * For instance, `ConvexValidatorFromZod<Z.ZodString>` evaluates to `VString`.
+ * ```ts
+ * ConvexValidatorFromZod<z.ZodString> // → VString
+ * ```
  */
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
@@ -963,7 +965,7 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
     case "ZodPipeline":
       return zodToConvex(zod._def.in) as ConvexValidatorFromZod<Z>;
     default:
-      throw new Error(`Unknown zod type: ${typeName}`);
+      throw new Error(`Unknown Zod type: ${typeName}`);
     // N/A or not supported
     // case "ZodDate":
     // case "ZodSymbol":
@@ -981,8 +983,12 @@ export function zodToConvex<Z extends z.ZodTypeAny>(
 }
 
 /**
- * This is the type of a convex validator that checks the value *after* it has
- * been validated (and possibly transformed) by a zod validator.
+ * This is the type of a Convex validator that checks the value *after* it has
+ * been validated (and possibly transformed) by a Zod validator.
+ *
+ * The difference between {@link ConvexValidatorFromZod}
+ * and `ConvexValidatorFromZodOutput` are explained in the documentation of
+ * {@link zodToConvex}/{@link zodOutputToConvex}.
  */
 export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
   // Keep this in sync with the zodOutputToConvex implementation
@@ -1430,7 +1436,10 @@ export const withSystemFields = <
   return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
 };
 
-// This is a copy of zod's ZodBranded which also brands the input.
+/**
+ * This is a copy of Zod’s `ZodBranded` which also brands the input
+ * (see {@link zBrand})
+ */
 export class ZodBrandedInputAndOutput<
   T extends z.ZodTypeAny,
   B extends string | number | symbol,
@@ -1471,14 +1480,14 @@ export function zBrand<
   return validator.brand(brand);
 }
 
-/** Simple type conversion from a Convex validator to a Zod validator. */
-export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
-
-/** Better type conversion from a Convex validator to a Zod validator where the output is not a generetic ZodType but it's more specific.
+/**
+ * Simple type conversion from a Convex validator to a Zod validator.
  *
- * ES: z.ZodString instead of z.ZodType<string, z.ZodTypeDef, string>
- * so you can use methods of z.ZodString like .min() or .email()
+ * ```ts
+ * ConvexToZod<typeof v.string()> // → z.ZodType<string>
+ * ```
  */
+export type ConvexToZod<V extends GenericValidator> = z.ZodType<Infer<V>>;
 
 type ZodFromValidatorBase<V extends GenericValidator> =
   V extends VId<GenericId<infer TableName extends string>>
@@ -1536,7 +1545,16 @@ type ZodFromValidatorBase<V extends GenericValidator> =
                           >
                         : z.ZodTypeAny; // fallback for unknown validators
 
-/** Main type with optional handling. */
+/**
+ * Better type conversion from a Convex validator to a Zod validator
+ * where the output is not a generic ZodType but it's more specific.
+ *
+ * This allows you to use methods specific to the Zod type (e.g. `.email()` for `z.ZodString).
+ *
+ * ```ts
+ * ZodFromValidatorBase<typeof v.string()> // → z.ZodString
+ * ```
+ */
 export type ZodValidatorFromConvex<V extends GenericValidator> =
   V extends Validator<any, "optional", any>
     ? z.ZodOptional<ZodFromValidatorBase<V>>
