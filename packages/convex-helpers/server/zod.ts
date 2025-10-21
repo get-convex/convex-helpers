@@ -1420,7 +1420,8 @@ export function convexToZod<V extends GenericValidator>(
 
   let zodValidator: z.ZodTypeAny;
 
-  switch (convexValidator.kind) {
+  const { kind } = convexValidator;
+  switch (kind) {
     case "id":
       zodValidator = zid((convexValidator as VId<any>).tableName);
       break;
@@ -1483,8 +1484,11 @@ export function convexToZod<V extends GenericValidator>(
       );
       break;
     }
+    case "bytes":
+      throw new Error("v.bytes() is not supported");
     default:
-      throw new Error(`Unknown convex validator type: ${convexValidator.kind}`);
+      kind satisfies never;
+      throw new Error(`Unknown convex validator type: ${kind}`);
   }
 
   return isOptional
