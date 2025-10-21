@@ -35,6 +35,8 @@ import type {
   TableNamesInDataModel,
   DefaultFunctionArgs,
   ArgsArrayToObject,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in docs only
+  defineTable,
 } from "convex/server";
 import type { Customization, Registration } from "./customFunctions.js";
 import {
@@ -1350,7 +1352,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
 
 /**
  * Like {@link zodToConvex}, but it takes in a bare object, as expected by Convex
- * function arguments, or the argument to `defineTable`.
+ * function arguments, or the argument to {@link defineTable}.
  *
  * ```js
  * zodToConvex({
@@ -1369,7 +1371,7 @@ export function zodToConvexFields<Z extends ZodValidator>(zod: Z) {
 
 /**
  * Like {@link zodOutputToConvex}, but it takes in a bare object, as expected by
- * Convex function arguments, or the argument to `defineTable`.
+ * Convex function arguments, or the argument to {@link defineTable}.
  *
  * ```js
  * zodOutputToConvexFields({
@@ -1654,7 +1656,7 @@ export function convexToZod<V extends GenericValidator>(
 
 /**
  * Like {@link convexToZod}, but it takes in a bare object, as expected by Convex
- * function arguments, or the argument to `defineTable`.
+ * function arguments, or the argument to {@link defineTable}.
  *
  * ```js
  * convexToZodFields({
