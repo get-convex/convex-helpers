@@ -37,20 +37,29 @@ import type {
   ArgsArrayToObject,
 } from "convex/server";
 import type { Customization, Registration } from "./customFunctions.js";
-import { NoOp } from "./customFunctions.js";
+import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in docs only
+  customQuery,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in docs only
+  customMutation,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Used in docs only
+  customAction,
+  NoOp,
+} from "./customFunctions.js";
 import { pick } from "../index.js";
 import { addFieldsToValidator } from "../validators.js";
 
 export type ZodValidator = Record<string, z.ZodTypeAny>;
 
 /**
- * Create a validator for a Convex `Id`.
+ * Creates a validator for a Convex `Id`.
  *
- * When used as a validator, it will check that it's for the right table.
- * When used as a parser, it will only check that the Id is a string.
+ * - When **used within Zod**, it will only check that the ID is a string.
+ * - When **converted to a Convex validator** (through `zodToConvex`),
+ *   it will check that it's for the right table.
  *
  * @param tableName - The table that the `Id` references. i.e.` Id<tableName>`
- * @returns - A Zod object representing a Convex `Id`
+ * @returns A Zod object representing a Convex `Id`
  */
 export const zid = <
   DataModel extends GenericDataModel,
@@ -61,7 +70,7 @@ export const zid = <
 ) => new Zid({ typeName: "ConvexId", tableName });
 
 /**
- * Useful to get the input context type for a custom function using zod.
+ * Useful to get the input context type for a custom function using Zod.
  */
 export type ZCustomCtx<Builder> =
   Builder extends CustomBuilder<
@@ -77,9 +86,9 @@ export type ZCustomCtx<Builder> =
     : never;
 
 /**
- * zCustomQuery is like customQuery, but allows validation via zod.
+ * `zCustomQuery` is like {@link customQuery}, but allows validation via Zod.
  * You can define custom behavior on top of `query` or `internalQuery`
- * by passing a function that modifies the ctx and args. Or NoOp to do nothing.
+ * by passing a function that modifies the ctx and args. Or {@link NoOp} to do nothing.
  *
  * Example usage:
  * ```js
@@ -128,7 +137,7 @@ export type ZCustomCtx<Builder> =
  * @param query The query to be modified. Usually `query` or `internalQuery`
  *   from `_generated/server`.
  * @param customization The customization to be applied to the query, changing ctx and args.
- * @returns A new query builder using zod validation to define queries.
+ * @returns A new query builder using Zod validation to define queries.
  */
 export function zCustomQuery<
   CustomArgsValidator extends PropertyValidators,
@@ -159,9 +168,9 @@ export function zCustomQuery<
 }
 
 /**
- * zCustomMutation is like customMutation, but allows validation via zod.
+ * `zCustomMutation` is like {@link customMutation}, but allows validation via Zod.
  * You can define custom behavior on top of `mutation` or `internalMutation`
- * by passing a function that modifies the ctx and args. Or NoOp to do nothing.
+ * by passing a function that modifies the ctx and args. Or {@link NoOp} to do nothing.
  *
  * Example usage:
  * ```js
@@ -210,7 +219,7 @@ export function zCustomQuery<
  * @param mutation The mutation to be modified. Usually `mutation` or `internalMutation`
  *   from `_generated/server`.
  * @param customization The customization to be applied to the mutation, changing ctx and args.
- * @returns A new mutation builder using zod validation to define queries.
+ * @returns A new mutation builder using Zod validation to define queries.
  */
 export function zCustomMutation<
   CustomArgsValidator extends PropertyValidators,
@@ -241,9 +250,9 @@ export function zCustomMutation<
 }
 
 /**
- * zCustomAction is like customAction, but allows validation via zod.
+ * `zCustomAction` is like {@link customAction}, but allows validation via Zod.
  * You can define custom behavior on top of `action` or `internalAction`
- * by passing a function that modifies the ctx and args. Or NoOp to do nothing.
+ * by passing a function that modifies the ctx and args. Or {@link NoOp} to do nothing.
  *
  * Example usage:
  * ```js
@@ -292,7 +301,7 @@ export function zCustomMutation<
  * @param action The action to be modified. Usually `action` or `internalAction`
  *   from `_generated/server`.
  * @param customization The customization to be applied to the action, changing ctx and args.
- * @returns A new action builder using zod validation to define queries.
+ * @returns A new action builder using Zod validation to define queries.
  */
 export function zCustomAction<
   CustomArgsValidator extends PropertyValidators,
@@ -584,6 +593,12 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
   }
 >;
 
+/**
+ * Converts a Zod validator type
+ * to the corresponding Convex validator type from `convex/values`.
+ *
+ * For instance, `ConvexValidatorFromZod<Z.ZodString>` evaluates to `VString`.
+ */
 type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
   // and the ConvexValidatorFromZodOutput type
@@ -784,9 +799,64 @@ type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                       never;
 
 /**
- * Turn a Zod validator into a Convex Validator.
+ * Turns a Zod validator into a Convex Validator.
+ *
+ * The Convex validator will be as close to possible to the Zod validator,
+ * but might be broader than the Zod validator:
+ *
+ * ```js
+ * zodToConvex(z.string().email()) // returns v.string()
+ * ```
+ *
+ * This function is useful when running the Zod validator _after_ running the Convex validator
+ * (i.e. the Convex validator validates the input of the Zod validator). Hence, the Convex types
+ * will match the _input type_ of Zod transformations:
+ * ```js
+ * zodToConvex(z.object({
+ *   name: z.string().default("Nicolas"),
+ * })) // v.object({ name: v.optional(v.string()) })
+ *
+ * zodToConvex(z.object({
+ *   name: z.string().transform(s => s.length)
+ * })) // v.object({ name: v.string() })
+ * ````
+ *
+ * This function is useful for:
+ * * **Validating function arguments with Zod**: through {@link zCustomQuery},
+ *   {@link zCustomMutation} and {@link zCustomAction}, you can define the argument validation logic
+ *   using Zod validators instead of Convex validators. `zodToConvex` will generate a Convex validator
+ *   from your Zod validator. This will allow you to:
+ *     - validate at run time that Convex IDs are from the right table (using {@link zid})
+ *     - allow some features of Convex to understand the expected shape of the arguments
+ *       (e.g. argument validation/prefilling in the function runner on the Convex dashboard)
+ *     - still run the full Zod validation when the function runs
+ *       (which is useful for more advanced Zod validators like `z.string().email()`)
+ * * **Validating data after reading it from the database**: if you want to define your Convex database
+ *   schema using Zod, you may run Zod validation after reading from the database to check that the data
+ *   still matches the schema. Note that this approach won’t ensure that the data at rest matches your
+ *   Zod schema, and doesn’t work for non-idempotent Zod transformations (e.g. Zod `.transform` from one type to the other); see
+ *   https://stack.convex.dev/typescript-zod-function-validation#can-i-use-zod-to-define-my-database-types-too
+ *   for more details.
+ *
+ * Note that some values might be valid in Zod but not in Convex,
+ * in the same way that valid JavaScript values might not be valid
+ * Convex values for the corresponding Convex type (e.g. `BigInt`
+ * can contain a value that is larger than the maximum `v.int64()`
+ * value). See the limits of Convex data types
+ * on https://docs.convex.dev/database/types
+ *
+ * #### Comparison with `zodOutputToConvex`
+ * | **zodToConvex**                                                                                        | {@link zodOutputToConvex}                                                                                             |
+ * | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+ * | For when the Zod validator runs _after_ the Convex validator                                           | For when the Zod validator runs _before_ the Convex validator                                                         |
+ * | Convex types use the input types of Zod transformations                                                | Convex types use the return types of Zod transformations                                                              |
+ * | The Convex validator can be less strict (some inputs might be accepted by Convex then rejected by Zod) | The Convex validator can be less strict (i.e. the type in Convex can be less precise than the type in the Zod output) |
+ * | When using Zod schemas for function definitions: used for _arguments_                                  | When using Zod schemas for function definitions: used for _return values_                                             |
+ * | When validating contents of the database with a Zod schema: used to validate data _after reading_      | When validating contents of the database with a Zod schema: used to validate data _before writing_                    |
+ *
  * @param zod Zod validator can be a Zod object, or a Zod type like `z.string()`
  * @returns Convex Validator (e.g. `v.string()` from "convex/values")
+ * @throws If there is no equivalent Convex validator for the value (e.g. `z.date()`)
  */
 export function zodToConvex<Z extends z.ZodTypeAny>(
   zod: Z,
@@ -1096,8 +1166,30 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
                                                     : never;
 
 /**
- * Convert a zod validator to a convex validator that checks the value after
- * it has been validated (and possibly transformed) by the zod validator.
+ * Converts a Zod validator to a Convex validator that checks the value _after_
+ * it has been validated (and possibly transformed) by the Zod validator.
+ *
+ * This is similar to {@link zodToConvex}, but is meant for cases where the Convex
+ * validator runs _after_ the Zod validator. Thus, the Convex type refers to the
+ * _output_ type of the Zod transformations:
+ * ```js
+ * zodOutputToConvex(z.object({
+ *   name: z.string().default("Nicolas"),
+ * })) // v.object({ name: v.string() })
+ *
+ * zodOutputToConvex(z.object({
+ *   name: z.string().transform(s => s.length)
+ * })) // v.object({ name: v.number() })
+ * ````
+ *
+ * This function can be useful for:
+ * - **Validating function return values with Zod**: through {@link zCustomQuery},
+ *   {@link zCustomMutation} and {@link zCustomAction}, you can define the `returns` property
+ *   of a function using Zod validators instead of Convex validators.
+ * - **Validating data before writing it to the database**: if you want to define your Convex database
+ *   schema using Zod, you may run Zod validation on the data before writing it to the database
+ *   to make sure that it matches the schema.
+ *
  */
 export function zodOutputToConvex<Z extends z.ZodTypeAny>(
   zod: Z,
@@ -1284,7 +1376,7 @@ export class Zid<TableName extends string> extends z.ZodType<
  *
  * @param tableName - The table where records are from, i.e. Doc<tableName>
  * @param zObject - Validators for the user-defined fields on the document.
- * @returns - Zod shape for use with `z.object(shape)` that includes system fields.
+ * @returns Zod shape for use with `z.object(shape)` that includes system fields.
  */
 export const withSystemFields = <
   Table extends string,
