@@ -3,6 +3,7 @@ import pluginJs from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactPlugin from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
+import convexPlugin from "@convex-dev/eslint-plugin";
 
 export default [
   { files: ["src/**/*.{js,mjs,cjs,ts,tsx}", "convex/**/*.{ts,tsx}"] },
@@ -20,6 +21,14 @@ export default [
       "vite.config.mts",
       "vitest.workspace.ts",
     ],
+  },
+  {
+    files: ["convex/**/*.ts", "packages/convex-helpers/server/**/*.ts"],
+    ignores: ["packages/convex-helpers/server/_generated/**/*"],
+    plugins: {
+      "@convex-dev": convexPlugin,
+    },
+    rules: convexPlugin.configs.recommended[0].rules,
   },
   {
     languageOptions: {
