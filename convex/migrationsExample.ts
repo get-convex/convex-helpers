@@ -55,11 +55,12 @@ const standardMigrations = [
   internal.migrationsExample.cleanUpBrokenRefs,
 ];
 
-export const status = internalQuery(
-  async (ctx): Promise<MigrationStatus<"migrations">[]> => {
+export const status = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<MigrationStatus<"migrations">[]> => {
     return await getStatus(ctx, { migrationTable: "migrations" });
   },
-);
+});
 
 export const cancel = internalMutation({
   args: { fn: v.string() },

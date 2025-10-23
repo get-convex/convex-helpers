@@ -30,8 +30,11 @@ export const getCountersPaginated = query({
   },
 });
 
-export const getCounterOrThrow = query(
-  async (ctx, { counterName }: { counterName: string }): Promise<number> => {
+export const getCounterOrThrow = query({
+  args: {
+    counterName: v.string(),
+  },
+  handler: async (ctx, { counterName }): Promise<number> => {
     const counterDoc = await ctx.db
       .query("counter_table")
       .filter((q) => q.eq(q.field("name"), counterName))
@@ -41,7 +44,7 @@ export const getCounterOrThrow = query(
     }
     return counterDoc.counter;
   },
-);
+});
 
 export const upload = action({
   args: { data: v.any() },
