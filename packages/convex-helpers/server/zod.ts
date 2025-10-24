@@ -1236,7 +1236,7 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
  * └───────────────────────────────────────────────┴───────────────────────────────────────────────┘
  * ```
  *
- * @param z The zod validaotr
+ * @param z The zod validator
  * @returns Convex Validator (e.g. `v.string()` from "convex/values")
  * @throws If there is no equivalent Convex validator for the value (e.g. `z.date()`)
  */
