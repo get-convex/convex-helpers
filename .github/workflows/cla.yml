@@ -18,5 +18,7 @@ jobs:
         if: ${{ (startsWith(github.head_ref, 'dependabot') || startsWith(github.head_ref, 'renovate')) == false }}
         env:
           PR_DESCRIPTION: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./scripts/check_cla.py
