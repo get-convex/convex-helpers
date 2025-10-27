@@ -2,8 +2,8 @@
 import os
 import re
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 
 CLA_TEXT = "By submitting this pull request, I confirm that you can use, modify, copy, and redistribute this contribution, under the terms of your choice."
 ORGANIZATION = "get-convex"
@@ -11,8 +11,8 @@ ORGANIZATION = "get-convex"
 def is_org_member(username, github_token):
     """
     Check if a user is a member of the get-convex GitHub organization.
-    Returns True if the user is a member, False otherwise.
-    Returns None if the check fails.
+    Returns True if the user is a confirmed member.
+    Returns None if the check fails or membership cannot be determined.
     """
     try:
         # GitHub API endpoint to check organization membership
@@ -29,16 +29,18 @@ def is_org_member(username, github_token):
         request = urllib.request.Request(url, headers=headers)
         
         # Try to fetch the membership status
-        # A 204 response means the user is a member
-        # A 404 response means the user is not a member or membership is not public
+        # A 204 response means the user is a confirmed member
+        # A 404 response could mean: not a member, membership is private, or org doesn't exist
+        # In all uncertain cases, we return None to fall back to CLA check
         try:
             with urllib.request.urlopen(request) as response:
                 if response.status == 204:
                     return True
-                return False
+                return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return False
+                # Cannot determine membership - could be private or user is not a member
+                return None
             # For other HTTP errors, return None to indicate failure
             return None
             
