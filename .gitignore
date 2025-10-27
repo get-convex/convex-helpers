@@ -110,3 +110,4 @@ dist
 tsconfig.tsbuildinfo
 convex-local-backend*
 .mypy_cache
+__pycache__/
