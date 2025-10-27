@@ -12,7 +12,8 @@ def is_org_member(username, github_token):
     """
     Check if a user is a member of the get-convex GitHub organization.
     Returns True if the user is a confirmed member.
-    Returns None if the check fails or membership cannot be determined.
+    Returns False if the user is not a member (404 response).
+    Returns None if the check fails (network error, API error, etc.).
     """
     try:
         # GitHub API endpoint to check organization membership
@@ -30,8 +31,8 @@ def is_org_member(username, github_token):
         
         # Try to fetch the membership status
         # A 204 response means the user is a confirmed member
-        # A 404 response could mean: not a member, membership is private, or org doesn't exist
-        # In all uncertain cases, we return None to fall back to CLA check
+        # A 404 response means the user is not a member (or membership is private)
+        # Other errors indicate API failure and we return None to show a warning
         try:
             with urllib.request.urlopen(request) as response:
                 if response.status == 204:
@@ -39,8 +40,8 @@ def is_org_member(username, github_token):
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                # Cannot determine membership - could be private or user is not a member
-                return None
+                # User is not a member or membership is private
+                return False
             # For other HTTP errors, return None to indicate failure
             return None
             
