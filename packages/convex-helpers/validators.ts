@@ -1,5 +1,6 @@
 import type {
   DataModelFromSchemaDefinition,
+  Expand,
   GenericDatabaseReader,
   GenericDataModel,
   SchemaDefinition,
@@ -19,7 +20,6 @@ import type {
   VUnion,
 } from "convex/values";
 import { asObjectValidator, v } from "convex/values";
-import type { Expand } from "./index.js";
 import { assert } from "./index.js";
 
 /**
@@ -39,12 +39,12 @@ import { assert } from "./index.js";
  * @param args Values you want to use in a union of literals.
  * @returns A validator for the union of the literals.
  */
-export const literals = <T extends (string | number | boolean | bigint)[]>(
+export const literals = <T extends Array<string | number | boolean | bigint>>(
   ...args: T
 ) => {
   return v.union(...args.map(v.literal)) as VUnion<
     T[number],
-    VLiteral<T[number]>[]
+    { [K in keyof T]: VLiteral<T[K]> }
   >;
 };
 
