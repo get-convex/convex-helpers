@@ -12,7 +12,7 @@ import { omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
-import type { ZCustomCtx } from "./zod.js";
+import type { ZCustomCtx } from "./zod3.js";
 import {
   zBrand,
   zCustomQuery,
@@ -22,7 +22,7 @@ import {
   zodToConvex,
   convexToZod,
   convexToZodFields,
-} from "./zod.js";
+} from "./zod3.js";
 import { customCtx } from "./customFunctions.js";
 import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { v } from "convex/values";
