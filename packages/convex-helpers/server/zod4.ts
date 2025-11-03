@@ -257,7 +257,11 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
 export function zodToConvexFields<Z extends zCore.$ZodType>(zod: Z) {
   return Object.fromEntries(
     Object.entries(zod).map(([k, v]) => [k, zodToConvex(v)]),
-  ) as { [k in keyof Z]: ConvexValidatorFromZod<Z[k]> };
+  ) as {
+    [k in keyof Z]: Z[k] extends zCore.$ZodType
+      ? ConvexValidatorFromZod<Z[k]>
+      : never;
+  };
 }
 
 /**
