@@ -1588,7 +1588,7 @@ type ZodFromValidatorBase<V extends GenericValidator> =
  * This allows you to use methods specific to the Zod type (e.g. `.email()` for `z.ZodString).
  *
  * ```ts
- * ZodFromValidatorBase<typeof v.string()> // → z.ZodString
+ * ZodValidatorFromConvex<typeof v.string()> // → z.ZodString
  * ```
  */
 export type ZodValidatorFromConvex<V extends GenericValidator> =

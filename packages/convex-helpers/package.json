@@ -119,6 +119,10 @@
       "types": "./server/zod3.d.ts",
       "default": "./server/zod3.js"
     },
+    "./server/zod4": {
+      "types": "./server/zod4.d.ts",
+      "default": "./server/zod4.js"
+    },
     "./react/*": {
       "types": "./react/*.d.ts",
       "default": "./react/*.js"
