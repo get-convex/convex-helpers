@@ -190,8 +190,8 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
             ? z.ZodBoolean
             : V extends VNull<any, any>
               ? z.ZodNull
-              : V extends VArray<any, any>
-                ? z.ZodArray<V["element"]>
+              : V extends VArray<any, infer Element extends GenericValidator>
+                ? z.ZodArray<ZodFromValidatorBase<Element>>
                 : V extends VLiteral<infer T extends zCore.util.Literal, any>
                   ? z.ZodLiteral<T>
                   : V extends VRecord<any, infer Key, infer Value, any, any>

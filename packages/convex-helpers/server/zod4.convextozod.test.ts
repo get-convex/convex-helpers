@@ -11,6 +11,7 @@ import {
 } from "convex/values";
 import { convexToZod, Zid, zid, ZodValidatorFromConvex } from "./zod4";
 import { isSameType } from "zod-compare/zod4";
+import { isAssertEntry } from "typescript";
 
 test("Zid is a record key", () => {
   const myZid = zid("users");
@@ -26,8 +27,9 @@ describe("convexToZod", () => {
     expect(isSameType(actual, expected)).toBe(true);
   }
 
-  test("id", () =>
-    testConvexToZod(v.id("users"), z.custom<GenericId<"users">>()));
+  test("id", () => {
+    expectTypeOf(convexToZod(v.id("users"))).toEqualTypeOf<Zid<"users">>();
+  });
   test("string", () => testConvexToZod(v.string(), z.string()));
   test("number", () => testConvexToZod(v.number(), z.number()));
   test("int64", () => testConvexToZod(v.int64(), z.bigint()));
@@ -36,7 +38,8 @@ describe("convexToZod", () => {
 
   test("optional", () =>
     testConvexToZod(v.optional(v.string()), z.string().optional()));
-  test("array", () => testConvexToZod(v.array(v.string()), z.string().array()));
+  test("array", () =>
+    testConvexToZod(v.array(v.string()), z.array(z.string())));
 
   describe("union", () => {
     test("never", () => testConvexToZod(v.union(), z.never()));
