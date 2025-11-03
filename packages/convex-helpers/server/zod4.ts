@@ -29,7 +29,7 @@ type ConvexUnionValidatorFromZod<T> = T extends readonly zCore.$ZodType[] // TOD
       [
         ...{
           [Index in keyof T]: T[Index] extends zCore.$ZodType
-            ? ConvexValidatorFromZod<T[Index]>
+            ? ConvexValidatorFromZod<T[Index], "required">
             : never;
         },
       ],
@@ -272,8 +272,8 @@ export type ConvexValidatorFromZod<
                                               : // Unencodable types
                                                 IsConvexUncodableType<Z> extends true
                                                 ? never
-                                                : // Unknown type, falling back to VAny
-                                                  VAny<any, any>;
+                                                : // Unknown type
+                                                  never; // FIXME change to `any`
 
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 
