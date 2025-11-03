@@ -34,6 +34,10 @@ describe("convexToZod", () => {
   test("int64", () => testConvexToZod(v.int64(), z.bigint()));
   test("boolean", () => testConvexToZod(v.boolean(), z.boolean()));
   test("null", () => testConvexToZod(v.null(), z.null()));
+  test("any", () => testConvexToZod(v.any(), z.any()));
+  test("bytes", () => {
+    expect(() => convexToZod(v.bytes())).toThrow();
+  });
 
   test("optional", () =>
     testConvexToZod(v.optional(v.string()), z.string().optional()));
