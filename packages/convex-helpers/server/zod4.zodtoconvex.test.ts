@@ -1,7 +1,13 @@
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import { describe, expect, test } from "vitest";
-import { GenericValidator, v, ValidatorJSON } from "convex/values";
+import {
+  GenericValidator,
+  v,
+  ValidatorJSON,
+  VFloat64,
+  VString,
+} from "convex/values";
 import { zodToConvex, zid, ConvexValidatorFromZod } from "./zod4";
 
 describe("zodToConvex", () => {
@@ -47,10 +53,16 @@ describe("zodToConvex", () => {
   });
 
   test("branded string", () => {
-    testZodToConvex(z.string().brand("myBrand"), v.string());
+    testZodToConvex(
+      z.string().brand("myBrand"),
+      v.string() as VString<string & zCore.$brand<"myBrand">>,
+    );
   });
   test("branded number", () => {
-    testZodToConvex(z.number().brand("myBrand"), v.number());
+    testZodToConvex(
+      z.number().brand("myBrand"),
+      v.number() as VFloat64<number & zCore.$brand<"myBrand">>,
+    );
   });
 
   test("object", () => {
