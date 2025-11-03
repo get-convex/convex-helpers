@@ -123,4 +123,19 @@ describe("zodToConvex", () => {
     ));
 
   // TODO Lazy
+
+  describe("nullable", () => {
+    test("nullable(string)", () =>
+      testZodToConvex(z.string().nullable(), v.union(v.string(), v.null())));
+    test("nullable(number)", () =>
+      testZodToConvex(z.number().nullable(), v.union(v.number(), v.null())));
+    test("nullable(optional(string))", () =>
+      testZodToConvex(
+        z.string().nullable().optional(),
+        v.optional(v.union(v.string(), v.null())),
+      ));
+  });
+
+  test("optional", () =>
+    testZodToConvex(z.string().optional(), v.optional(v.string())));
 });
