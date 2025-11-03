@@ -68,6 +68,8 @@ describe("zodToConvex", () => {
     );
   });
 
+  // TODO Strict object
+
   describe("record", () => {
     test("key = string", () =>
       testZodToConvex(
@@ -94,4 +96,16 @@ describe("zodToConvex", () => {
       );
     });
   });
+
+  // TODO Partial record
+
+  test("readonly", () =>
+    testZodToConvex(z.array(z.string()).readonly(), v.array(v.string())));
+
+  // TODO Discriminated union
+
+  // TODO Enum
+
+  // TODO Tuple
+  // TODO Lazy
 });
