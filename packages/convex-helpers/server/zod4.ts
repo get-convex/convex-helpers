@@ -141,11 +141,11 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
                               >
                             : never;
 
-export type ConvexValidatorFromZod<
+// Conversions used for both zodToConvex and zodOutputToConvex
+type ConvexValidatorFromZodCommon<
   Z extends zCore.$ZodType,
   Constraint extends "required" | "optional" = "required",
-> =
-  // Basic types
+> = // Basic types
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends zCore.$ZodString
@@ -362,19 +362,46 @@ export type ConvexValidatorFromZod<
                                                   >
                                                 : // z.catch
                                                   Z extends zCore.$ZodCatch<
-                                                      infer T
+                                                      infer T extends
+                                                        zCore.$ZodType
                                                     >
                                                   ? ConvexValidatorFromZod<
                                                       T,
                                                       Constraint
                                                     >
-                                                  : // Unencodable types
-                                                    IsConvexUncodableType<Z> extends true
-                                                    ? never
-                                                    : // Unknown type
-                                                      never; // FIXME change to `any`
+                                                  : never;
 
-export type ConvexValidatorFromZodOutput<_X> = never; // TODO
+export type ConvexValidatorFromZod<
+  Z extends zCore.$ZodType,
+  Constraint extends "required" | "optional" = "required",
+> =
+  ConvexValidatorFromZodCommon<Z, Constraint> extends any
+    ? ConvexValidatorFromZodCommon<Z, Constraint>
+    : // TODO Transform
+      // TODO Pipe
+      // TODO Success
+
+      // Unencodable types
+      IsConvexUncodableType<Z> extends true
+      ? never
+      : // Unknown type
+        never; // FIXME change to `any`
+
+export type ConvexValidatorFromZodOutput<
+  Z extends zCore.$ZodType,
+  Constraint extends "required" | "optional" = "required",
+> =
+  ConvexValidatorFromZodCommon<Z, Constraint> extends any
+    ? ConvexValidatorFromZodCommon<Z, Constraint>
+    : // TODO Transform
+      // TODO Pipe
+      // TODO Success
+
+      // Unencodable types
+      IsConvexUncodableType<Z> extends true
+      ? never
+      : // Unknown type
+        never; // FIXME change to `any`
 
 export function zodToConvex<Z extends zCore.$ZodType>(
   validator: Z,
