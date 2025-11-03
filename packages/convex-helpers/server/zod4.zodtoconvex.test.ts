@@ -27,6 +27,7 @@ describe("zodToConvex", () => {
   test("string", () => testZodToConvex(zid("users"), v.id("users")));
   test("string", () => testZodToConvex(z.string(), v.string()));
   test("number", () => testZodToConvex(z.number(), v.number()));
+  test("nan", () => testZodToConvex(z.nan(), v.number()));
   test("int64", () => testZodToConvex(z.int64(), v.int64()));
   test("bigint", () => testZodToConvex(z.bigint(), v.int64()));
   test("boolean", () => testZodToConvex(z.boolean(), v.boolean()));
@@ -217,6 +218,29 @@ describe("zodToConvex", () => {
 
   test("catch", () => {
     testZodToConvex(z.string().catch("hello"), v.string());
+  });
+
+  describe("template literals", () => {
+    testZodToConvex(
+      z.templateLiteral(["hi there"]),
+      v.string() as VString<"hi there", "required">,
+    );
+    testZodToConvex(
+      z.templateLiteral(["email: ", z.string()]),
+      v.string() as VString<`email: ${string}`, "required">,
+    );
+    testZodToConvex(
+      z.templateLiteral(["high", z.literal(5)]),
+      v.string() as VString<"high5", "required">,
+    );
+    testZodToConvex(
+      z.templateLiteral([z.nullable(z.literal("grassy"))]),
+      v.string() as VString<"grassy" | "null", "required">,
+    );
+    testZodToConvex(
+      z.templateLiteral([z.number(), z.enum(["px", "em", "rem"])]),
+      v.string() as VString<`${number}${"px" | "em" | "rem"}`, "required">,
+    );
   });
 
   describe("unencodable types", () => {

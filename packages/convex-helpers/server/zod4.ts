@@ -266,10 +266,14 @@ export type ConvexValidatorFromZod<
                                                 Inner,
                                                 Constraint
                                               >
-                                            : IsConvexUncodableType<Z> extends true
-                                              ? never
-                                              : // Unknown type, falling back to VAny
-                                                VAny<any, any>;
+                                            : // z.templateLiteral()
+                                              Z extends zCore.$ZodTemplateLiteral<any>
+                                              ? VString<z.Infer<Z>, Constraint>
+                                              : // Unencodable types
+                                                IsConvexUncodableType<Z> extends true
+                                                ? never
+                                                : // Unknown type, falling back to VAny
+                                                  VAny<any, any>;
 
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 
