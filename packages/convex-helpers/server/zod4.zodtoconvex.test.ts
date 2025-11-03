@@ -32,37 +32,47 @@ describe("zodToConvex", () => {
   test("null", () => testZodToConvex(z.null(), v.null()));
   test("any", () => testZodToConvex(z.any(), v.any()));
 
-  test("optional", () =>
-    testZodToConvex(z.optional(z.string()), v.optional(v.string())));
-  test("optional (chained)", () =>
-    testZodToConvex(z.string().optional(), v.optional(v.string())));
-  test("array", () =>
-    testZodToConvex(z.array(z.string()), v.array(v.string())));
+  test("optional", () => {
+    testZodToConvex(z.optional(z.string()), v.optional(v.string()));
+  });
+  test("optional (chained)", () => {
+    testZodToConvex(z.string().optional(), v.optional(v.string()));
+  });
+  test("array", () => {
+    testZodToConvex(z.array(z.string()), v.array(v.string()));
+  });
 
   describe("union", () => {
-    test("never", () => testZodToConvex(z.never(), v.union()));
-    test("one element (number)", () =>
-      testZodToConvex(z.union([z.number()]), v.union(v.number())));
-    test("one element (string)", () =>
-      testZodToConvex(z.union([z.string()]), v.union(v.string())));
-    test("multiple elements", () =>
+    test("never", () => {
+      testZodToConvex(z.never(), v.union());
+    });
+    test("one element (number)", () => {
+      testZodToConvex(z.union([z.number()]), v.union(v.number()));
+    });
+    test("one element (string)", () => {
+      testZodToConvex(z.union([z.string()]), v.union(v.string()));
+    });
+    test("multiple elements", () => [
       testZodToConvex(
         z.union([z.string(), z.number()]),
         v.union(v.string(), v.number()),
-      ));
+      ),
+    ]);
   });
 
-  test("branded string", () => {
-    testZodToConvex(
-      z.string().brand("myBrand"),
-      v.string() as VString<string & zCore.$brand<"myBrand">>,
-    );
-  });
-  test("branded number", () => {
-    testZodToConvex(
-      z.number().brand("myBrand"),
-      v.number() as VFloat64<number & zCore.$brand<"myBrand">>,
-    );
+  describe("brand", () => {
+    test("string", () => {
+      testZodToConvex(
+        z.string().brand("myBrand"),
+        v.string() as VString<string & zCore.$brand<"myBrand">>,
+      );
+    });
+    test("number", () => {
+      testZodToConvex(
+        z.number().brand("myBrand"),
+        v.number() as VFloat64<number & zCore.$brand<"myBrand">>,
+      );
+    });
   });
 
   test("object", () => {
@@ -83,73 +93,88 @@ describe("zodToConvex", () => {
   // TODO Strict object
 
   describe("record", () => {
-    test("key = string", () =>
+    test("key = string", () => {
       testZodToConvex(
         z.record(z.string(), z.number()),
         v.record(v.string(), v.number()),
-      ));
+      );
+    });
 
-    test("key = literal", () =>
+    test("key = literal", () => {
       testZodToConvex(
         z.record(z.literal("user"), z.number()),
         v.record(v.literal("user"), v.number()),
-      ));
+      );
+    });
 
-    test("key = union of literals", () =>
+    test("key = union of literals", () => {
       testZodToConvex(
         z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
         v.record(v.union(v.literal("user"), v.literal("admin")), v.number()),
-      ));
+      );
+    });
 
     test("key = v.id()", () => {
-      testZodToConvex(
-        z.record(zid("documents"), z.number()),
-        v.record(v.id("documents"), v.number()),
-      );
+      {
+        testZodToConvex(
+          z.record(zid("documents"), z.number()),
+          v.record(v.id("documents"), v.number()),
+        );
+      }
     });
   });
 
   // TODO Partial record
 
-  test("readonly", () =>
-    testZodToConvex(z.array(z.string()).readonly(), v.array(v.string())));
+  test("readonly", () => {
+    testZodToConvex(z.array(z.string()).readonly(), v.array(v.string()));
+  });
 
   // TODO Discriminated union
 
   // TODO Enum
 
   // Tuple
-  test("tuple (fixed elements, same type)", () =>
-    testZodToConvex(z.tuple([z.string(), z.string()]), v.array(v.string())));
-  test("tuple (fixed elements)", () =>
+  test("tuple (fixed elements, same type)", () => {
+    testZodToConvex(z.tuple([z.string(), z.string()]), v.array(v.string()));
+  });
+  test("tuple (fixed elements)", () => {
     testZodToConvex(
       z.tuple([z.string(), z.number()]),
       v.array(v.union([v.string(), v.number()])),
-    ));
-  test("tuple (variadic element, same type)", () =>
-    testZodToConvex(z.tuple([z.string()], z.string()), v.array(v.string())));
-  test("tuple (variadic element)", () =>
+    );
+  });
+  test("tuple (variadic element, same type)", () => {
+    testZodToConvex(z.tuple([z.string()], z.string()), v.array(v.string()));
+  });
+  test("tuple (variadic element)", () => {
     testZodToConvex(
       z.tuple([z.string()], z.number()),
       v.tuple([v.string(), v.number(), v.array(v.string())]),
-    ));
+    );
+  });
 
   // TODO Lazy
 
   describe("nullable", () => {
-    test("nullable(string)", () =>
-      testZodToConvex(z.string().nullable(), v.union(v.string(), v.null())));
-    test("nullable(number)", () =>
-      testZodToConvex(z.number().nullable(), v.union(v.number(), v.null())));
-    test("nullable(optional(string))", () =>
+    test("nullable(string)", () => {
+      testZodToConvex(z.string().nullable(), v.union(v.string(), v.null()));
+    });
+    test("nullable(number)", () => {
+      testZodToConvex(z.number().nullable(), v.union(v.number(), v.null()));
+    });
+    test("nullable(optional(string))", () => {
       testZodToConvex(
         z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
-      ));
+      );
+    });
   });
 
-  test("default", () =>
-    testZodToConvex(z.string().default("hello"), v.optional(v.string())));
-  test("optional", () =>
-    testZodToConvex(z.string().optional(), v.optional(v.string())));
+  test("default", () => {
+    testZodToConvex(z.string().default("hello"), v.optional(v.string()));
+  });
+  test("optional", () => {
+    testZodToConvex(z.string().optional(), v.optional(v.string()));
+  });
 });
