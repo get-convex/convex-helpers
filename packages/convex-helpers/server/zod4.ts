@@ -138,7 +138,6 @@ export type ConvexToZod<V extends GenericValidator> = zCore.$ZodType<Infer<V>>;
 
 export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
   zCore.$ZodRecordKey;
-type aaa = zCore.$ZodRecordKey;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
@@ -322,7 +321,7 @@ export function convexToZod<V extends GenericValidator>(
     case "record": {
       convexValidator satisfies VRecord<any, any, any, any, any>;
       zodValidator = z.record(
-        convexToZod(convexValidator.key),
+        convexToZod(convexValidator.key) as zCore.$ZodRecordKey,
         convexToZod(convexValidator.value),
       );
       break;
