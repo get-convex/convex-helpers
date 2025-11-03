@@ -214,6 +214,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
     );
   });
 
+  test("custom", () => {
+    testZodToConvexNoTransform(
+      z.custom<string & { __myBrand: true }>(() => true),
+      v.any(),
+    );
+  });
+
   test("recursive type", () => {
     const category = z.object({
       name: z.string(),

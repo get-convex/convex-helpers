@@ -369,7 +369,10 @@ type ConvexValidatorFromZodCommon<
                                                       T,
                                                       Constraint
                                                     >
-                                                  : never;
+                                                  : // z.custom
+                                                    Z extends zCore.$ZodCustom<any>
+                                                    ? VAny<any, any>
+                                                    : never;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
