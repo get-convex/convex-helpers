@@ -191,6 +191,10 @@ describe("zodToConvex", () => {
   test("optional", () => {
     testZodToConvex(z.string().optional(), v.optional(v.string()));
   });
+  test("non-optional", () => {
+    testZodToConvex(z.string().optional().nonoptional(), v.string());
+    testZodToConvex(z.string().nonoptional(), v.string());
+  });
 
   test("lazy", () => {
     testZodToConvex(
