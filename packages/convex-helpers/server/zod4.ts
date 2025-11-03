@@ -168,7 +168,7 @@ type ZodFromStringValidator<V extends StringValidator> =
                   any
                 >
               ? z.ZodUnion<
-                  [
+                  readonly [
                     ZodFromStringValidator<A>,
                     ...{
                       [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
@@ -225,7 +225,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                               any
                             >
                           ? z.ZodUnion<
-                              [
+                              readonly [
                                 ZodValidatorFromConvex<A>,
                                 ...{
                                   [K in keyof Rest]: ZodValidatorFromConvex<
