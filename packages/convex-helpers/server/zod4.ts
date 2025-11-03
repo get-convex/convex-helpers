@@ -269,11 +269,19 @@ export type ConvexValidatorFromZod<
                                             : // z.templateLiteral()
                                               Z extends zCore.$ZodTemplateLiteral<any>
                                               ? VString<z.Infer<Z>, Constraint>
-                                              : // Unencodable types
-                                                IsConvexUncodableType<Z> extends true
-                                                ? never
-                                                : // Unknown type
-                                                  never; // FIXME change to `any`
+                                              : // z.catch
+                                                Z extends zCore.$ZodCatch<
+                                                    infer T
+                                                  >
+                                                ? ConvexValidatorFromZod<
+                                                    T,
+                                                    Constraint
+                                                  >
+                                                : // Unencodable types
+                                                  IsConvexUncodableType<Z> extends true
+                                                  ? never
+                                                  : // Unknown type
+                                                    never; // FIXME change to `any`
 
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 
