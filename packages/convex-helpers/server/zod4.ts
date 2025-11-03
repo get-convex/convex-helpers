@@ -307,6 +307,17 @@ export function convexToZod<V extends GenericValidator>(
     }
     case "union": {
       convexValidator satisfies VUnion<any, any, any, any>;
+
+      if (convexValidator.members.length === 0) {
+        zodValidator = z.never();
+        break;
+      }
+
+      if (convexValidator.members.length === 1) {
+        zodValidator = convexToZod(convexValidator.members[0]!);
+        break;
+      }
+
       const memberValidators = convexValidator.members.map(
         (member: GenericValidator) => convexToZod(member),
       );
