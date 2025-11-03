@@ -1,6 +1,6 @@
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
-import { describe, expect, test } from "vitest";
+import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import {
   GenericId,
   GenericValidator,
@@ -9,8 +9,13 @@ import {
   VFloat64,
   VString,
 } from "convex/values";
-import { convexToZod, ZodValidatorFromConvex } from "./zod4";
+import { convexToZod, Zid, zid, ZodValidatorFromConvex } from "./zod4";
 import { isSameType } from "zod-compare/zod4";
+
+test("Zid is a record key", () => {
+  const myZid = zid("users");
+  expectTypeOf(myZid).toExtend<zCore.$ZodRecordKey>();
+});
 
 describe("convexToZod", () => {
   function testConvexToZod<
@@ -85,6 +90,13 @@ describe("convexToZod", () => {
         z.record(z.string(), z.number()),
       ));
 
+    test("key = literal", () => {
+      testConvexToZod(
+        v.record(v.literal("user"), v.number()),
+        z.record(z.literal("user"), z.number()),
+      );
+    });
+
     test("key = union of literals", () => {
       const convexValidator = v.record(
         v.union(v.literal("user"), v.literal("admin")),
@@ -102,6 +114,19 @@ describe("convexToZod", () => {
       const _asConvex: Infer<typeof convexValidator> = partial;
       // @ts-expect-error
       const _asZod: z.output<typeof zodSchema> = partial;
+    });
+
+    test("key = v.id()", () => {
+      const convexValidator = v.record(v.id("users"), v.number());
+      const zodSchema = z.record(zid("users"), z.number());
+      testConvexToZod(convexValidator, zodSchema);
+
+      const sampleId = "abc" as GenericId<"users">;
+      const sampleValue: Record<GenericId<"users">, number> = {
+        [sampleId]: 42,
+      };
+      assertType<Infer<typeof convexValidator>>(sampleValue);
+      assertType<zCore.output<typeof zodSchema>>(sampleValue);
     });
   });
 });

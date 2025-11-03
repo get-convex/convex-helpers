@@ -94,7 +94,8 @@ export const zid = <
     TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
 >(
   _tableName: TableName,
-) => z.custom<GenericId<TableName>>((val) => typeof val === "string");
+): Zid<TableName> =>
+  z.custom<GenericId<TableName>>((val) => typeof val === "string");
 
 /**
  * Zod helper for adding Convex system fields to a record to return.
@@ -135,12 +136,47 @@ export const withSystemFields = <
  */
 export type ConvexToZod<V extends GenericValidator> = zCore.$ZodType<Infer<V>>;
 
-type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>>;
+export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
+  zCore.$ZodRecordKey;
+type aaa = zCore.$ZodRecordKey;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
     ? zCore.$ZodBranded<Validator, Brand>
     : Validator;
+
+type StringValidator = Validator<string, "required", any>;
+type ZodFromStringValidator<V extends StringValidator> =
+  V extends VId<GenericId<infer TableName extends string>>
+    ? Zid<TableName>
+    : V extends VString<infer T, any>
+      ? BrandIfBranded<T, z.ZodString>
+      : // Literals
+        V extends VLiteral<infer Literal extends string>
+        ? z.ZodLiteral<Literal>
+        : // Union (see below)
+          V extends VUnion<any, [], any, any>
+          ? z.ZodNever
+          : V extends VUnion<any, [infer I extends GenericValidator], any, any>
+            ? ZodFromStringValidator<I>
+            : V extends VUnion<
+                  any,
+                  [
+                    infer A extends GenericValidator,
+                    ...infer Rest extends GenericValidator[],
+                  ],
+                  any,
+                  any
+                >
+              ? z.ZodUnion<
+                  [
+                    ZodFromStringValidator<A>,
+                    ...{
+                      [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
+                    },
+                  ]
+                >
+              : never;
 
 export type ZodFromValidatorBase<V extends GenericValidator> =
   V extends VId<GenericId<infer TableName extends string>>
@@ -157,42 +193,47 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
               ? z.ZodNull
               : V extends VLiteral<infer T extends zCore.util.Literal, any>
                 ? z.ZodLiteral<T>
-                : // Union: must handle separately cases for 0/1/2+ elements
-                  // instead of simply writing it as
-                  // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                  //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                  //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                  //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                  // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                  V extends VUnion<any, [], any, any>
-                  ? z.ZodNever
-                  : V extends VUnion<
-                        any,
-                        [infer I extends GenericValidator],
-                        any,
-                        any
-                      >
-                    ? ZodValidatorFromConvex<I>
+                : V extends VRecord<any, infer Key, infer Value, any, any>
+                  ? z.ZodRecord<
+                      ZodFromStringValidator<Key>,
+                      ZodFromValidatorBase<Value>
+                    >
+                  : // Union: must handle separately cases for 0/1/2+ elements
+                    // instead of simply writing it as
+                    // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
+                    //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
+                    //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
+                    V extends VUnion<any, [], any, any>
+                    ? z.ZodNever
                     : V extends VUnion<
                           any,
-                          [
-                            infer A extends GenericValidator,
-                            ...infer Rest extends GenericValidator[],
-                          ],
+                          [infer I extends StringValidator],
                           any,
                           any
                         >
-                      ? z.ZodUnion<
-                          [
-                            ZodValidatorFromConvex<A>,
-                            ...{
-                              [K in keyof Rest]: ZodValidatorFromConvex<
-                                Rest[K]
-                              >;
-                            },
-                          ]
-                        >
-                      : z.ZodTypeAny;
+                      ? ZodValidatorFromConvex<I>
+                      : V extends VUnion<
+                            any,
+                            [
+                              infer A extends StringValidator,
+                              ...infer Rest extends StringValidator[],
+                            ],
+                            any,
+                            any
+                          >
+                        ? z.ZodUnion<
+                            [
+                              ZodValidatorFromConvex<A>,
+                              ...{
+                                [K in keyof Rest]: ZodValidatorFromConvex<
+                                  Rest[K]
+                                >;
+                              },
+                            ]
+                          >
+                        : z.ZodTypeAny;
 
 /**
  * Better type conversion from a Convex validator to a Zod validator
