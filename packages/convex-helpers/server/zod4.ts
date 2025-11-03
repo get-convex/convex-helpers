@@ -154,13 +154,7 @@ export type ConvexValidatorFromZod<
                                       : Inner extends z.ZodBigInt
                                         ? VInt64<bigint & zCore.$brand<Brand>>
                                         : ConvexValidatorFromZod<Inner>
-                                  : // : Z extends z.ZodDefault<infer Inner> // Treat like optional
-                                    //   ? ConvexValidatorFromZod<Inner> extends GenericValidator
-                                    //     ? VOptional<
-                                    //         ConvexValidatorFromZod<Inner>
-                                    //       >
-                                    //     : never
-                                    // : Z extends z.ZodRecord<
+                                  : // : Z extends z.ZodRecord<
                                     //       infer K,
                                     //       infer V
                                     //     >
@@ -219,7 +213,19 @@ export type ConvexValidatorFromZod<
                                       //                               // : Validator<any, "required", string>
                                       //                               // We avoid doing this catch-all to avoid over-promising on types
                                       //                               // : Z extends z.ZodTypeAny
-                                      never;
+
+                                      // -------------------------------------------------
+
+                                      Z extends z.ZodDefault<
+                                          infer Inner extends zCore.$ZodType
+                                        > // Treat like optional
+                                      ? ConvexValidatorFromZod<Inner> extends GenericValidator
+                                        ? VOptional<
+                                            ConvexValidatorFromZod<Inner>
+                                          >
+                                        : never
+                                      : never;
+
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 
 export function zodToConvex<Z extends zCore.$ZodType>(

@@ -148,6 +148,8 @@ describe("zodToConvex", () => {
       ));
   });
 
+  test("default", () =>
+    testZodToConvex(z.string().default("hello"), v.optional(v.string())));
   test("optional", () =>
     testZodToConvex(z.string().optional(), v.optional(v.string())));
 });
