@@ -130,7 +130,19 @@ describe("zodToConvex", () => {
     testZodToConvex(z.array(z.string()).readonly(), v.array(v.string()));
   });
 
-  // TODO Discriminated union
+  // Discriminated union
+  test("discriminated union", () => {
+    testZodToConvex(
+      z.discriminatedUnion("status", [
+        z.object({ status: z.literal("success"), data: z.string() }),
+        z.object({ status: z.literal("failed"), error: z.string() }),
+      ]),
+      v.union(
+        v.object({ status: v.literal("success"), data: v.string() }),
+        v.object({ status: v.literal("failed"), error: v.string() }),
+      ),
+    );
+  });
 
   // TODO Enum
 
@@ -176,5 +188,29 @@ describe("zodToConvex", () => {
   });
   test("optional", () => {
     testZodToConvex(z.string().optional(), v.optional(v.string()));
+  });
+
+  test("lazy", () => {
+    testZodToConvex(
+      z.lazy(() => z.string()),
+      v.string(),
+    );
+  });
+
+  test("recursive type", () => {
+    const category = z.object({
+      name: z.string(),
+      get subcategories() {
+        return z.array(category);
+      },
+    });
+
+    testZodToConvex(
+      category,
+      v.object({
+        name: v.string(),
+        subcategories: v.array(v.any()),
+      }),
+    );
   });
 });

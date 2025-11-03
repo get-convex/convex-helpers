@@ -246,7 +246,17 @@ export type ConvexValidatorFromZod<
                                                 ConvexValidatorFromZod<Inner>
                                               >
                                             : never
-                                          : never;
+                                          : // z.lazy()
+                                            Z extends z.ZodLazy<
+                                                infer Inner extends
+                                                  zCore.$ZodType
+                                              >
+                                            ? ConvexValidatorFromZod<
+                                                Inner,
+                                                Constraint
+                                              >
+                                            : // TODO Change this to any?
+                                              never;
 
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 
