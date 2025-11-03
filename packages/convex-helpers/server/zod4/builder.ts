@@ -9,11 +9,13 @@ import type {
   QueryBuilder,
 } from "convex/server";
 import type { Value } from "convex/values";
+import type { Registration } from '../customFunctions.js'
+import type { ArgsArrayToObject} from 'convex/server';
 
 import { pick } from "convex-helpers";
 import { NoOp } from "convex-helpers/server/customFunctions";
 import { addFieldsToValidator } from "convex-helpers/validators";
-import { ConvexError } from "convex/values";
+import { ConvexError, type ObjectType } from "convex/values";
 
 import { fromConvexJS, toConvexJS } from "./codec.js";
 import { zodOutputToConvex, zodToConvexFields } from "./zodToConvex.js";
@@ -37,6 +39,24 @@ type ReturnValueInput<
     ? Returns<z.input<z.$ZodObject<ReturnsValidator>>>
     : any;
 
+// The return value after it's been validated: returned to the client
+type ReturnValueOutput<
+  ReturnsValidator extends z.$ZodType | ZodValidator | void,
+> = [ReturnsValidator] extends [z.$ZodType]
+  ? Returns<z.output<ReturnsValidator>>
+  : [ReturnsValidator] extends [ZodValidator]
+    ? Returns<z.output<z.$ZodObject<ReturnsValidator>>>
+    : any;
+
+// The args before they've been validated: passed from the client
+type ArgsInput<ArgsValidator extends ZodValidator | z.$ZodObject<any> | void> = [
+  ArgsValidator,
+] extends [z.$ZodObject<any>]
+  ? [z.input<ArgsValidator>]
+  : [ArgsValidator] extends [ZodValidator]
+    ? [z.input<z.$ZodObject<ArgsValidator>>]
+    : OneArgArray;
+
 // The args after they've been validated: passed to the handler
 type ArgsOutput<ArgsValidator extends ZodValidator | z.$ZodObject<any> | void> =
   [ArgsValidator] extends [z.$ZodObject<any>]
@@ -54,6 +74,7 @@ type ArgsForHandlerType<
     : OneOrZeroArgs extends [infer A]
       ? [Expand<A & CustomMadeArgs>]
       : [CustomMadeArgs];
+
 
 /**
  * Useful to get the input context type for a custom function using zod.
@@ -77,8 +98,8 @@ export type ZCustomCtx<Builder> =
  * builder will require argument validation too.
  */
 export type CustomBuilder<
-  _FuncType extends "query" | "mutation" | "action",
-  _CustomArgsValidator extends PropertyValidators,
+  FuncType extends "query" | "mutation" | "action",
+  CustomArgsValidator extends PropertyValidators,
   CustomCtx extends Record<string, any>,
   CustomMadeArgs extends Record<string, any>,
   InputCtx,
@@ -89,9 +110,16 @@ export type CustomBuilder<
     ArgsValidator extends ZodValidator | z.$ZodObject<any> | void,
     ReturnsZodValidator extends z.$ZodType | ZodValidator | void = void,
     ReturnValue extends ReturnValueInput<ReturnsZodValidator> = any,
+    // Note: this differs from customFunctions.ts b/c we don't need to track
+    // the exact args to match the standard builder types. For Zod we don't
+    // try to ever pass a custom function as a builder to another custom
+    // function, so we can be looser here.
   >(
     func:
       | ({
+          /**
+           * Specify the arguments to the function as a Zod validator.
+           */
           args?: ArgsValidator;
           handler: (
             ctx: Overwrite<InputCtx, CustomCtx>,
@@ -100,7 +128,16 @@ export type CustomBuilder<
               CustomMadeArgs
             >
           ) => ReturnValue;
+          /**
+           * Validates the value returned by the function.
+           * Note: you can't pass an object directly without wrapping it
+           * in `z.object()`.
+           */
           returns?: ReturnsZodValidator;
+          /**
+           * If true, the function will not be validated by Convex,
+           * in case you're seeing performance issues with validating twice.
+           */
           skipConvexValidation?: boolean;
         } & {
           [key in keyof ExtraArgs as key extends
@@ -120,9 +157,20 @@ export type CustomBuilder<
             >
           ): ReturnValue;
         },
-  ): import("convex/server").RegisteredQuery<Visibility, any, any> &
-    import("convex/server").RegisteredMutation<Visibility, any, any> &
-    import("convex/server").RegisteredAction<Visibility, any, any>;
+  ): Registration<
+    FuncType,
+    Visibility,
+    ArgsArrayToObject<
+      CustomArgsValidator extends Record<string, never>
+        ? ArgsInput<ArgsValidator>
+        : ArgsInput<ArgsValidator> extends [infer A]
+          ? [Expand<A & ObjectType<CustomArgsValidator>>]
+          : [ObjectType<CustomArgsValidator>]
+    >,
+    ReturnsZodValidator extends void
+      ? ReturnValue
+      : ReturnValueOutput<ReturnsZodValidator>
+  >;
 };
 
 function handleZodValidationError(
@@ -143,44 +191,35 @@ export function customFnBuilder(
   builder: (args: any) => any,
   customization: Customization<any, any, any, any, any>,
 ) {
+  // Looking forward to when input / args / ... are optional
   const customInput = customization.input ?? NoOp.input;
   const inputArgs = customization.args ?? NoOp.args;
-
   return function customBuilder(fn: any): any {
     const { args, handler = fn, returns: maybeObject, ...extra } = fn;
+
     const returns =
       maybeObject && !(maybeObject instanceof z.$ZodType)
         ? zValidate.object(maybeObject)
         : maybeObject;
+
     const returnValidator =
       returns && !fn.skipConvexValidation
         ? { returns: zodOutputToConvex(returns) }
-        : undefined;
+        : null;
 
     if (args && !fn.skipConvexValidation) {
-      let argsValidator = args as
-        | Record<string, z.$ZodType>
-        | z.$ZodObject<any>;
-      let argsSchema: ZodObject<any>;
-
-      if (argsValidator instanceof ZodType) {
-        if (argsValidator instanceof ZodObject) {
-          argsSchema = argsValidator;
-          argsValidator = argsValidator.shape;
+      let argsValidator = args;
+      if (argsValidator instanceof z.$ZodType) {
+        if (argsValidator instanceof z.$ZodObject) {
+          argsValidator = argsValidator._zod.def.shape;
         } else {
           throw new Error(
-            "Unsupported non-object Zod schema for args; " +
-              "please provide an args schema using z.object({...})",
+            "Unsupported zod type as args validator: " +
+              argsValidator.constructor.name,
           );
         }
-      } else {
-        argsSchema = zValidate.object(argsValidator);
       }
-
-      const convexValidator = zodToConvexFields(
-        argsValidator as Record<string, z.$ZodType>,
-      );
-
+      const convexValidator = zodToConvexFields(argsValidator);
       return builder({
         args: addFieldsToValidator(convexValidator, inputArgs),
         ...returnValidator,
@@ -190,95 +229,49 @@ export function customFnBuilder(
             pick(allArgs, Object.keys(inputArgs)) as any,
             extra,
           );
-          const argKeys = Object.keys(
-            argsValidator as Record<string, z.$ZodType>,
-          );
-          const rawArgs = pick(allArgs, argKeys);
-          const decoded = fromConvexJS(rawArgs, argsSchema);
-          const parsed = argsSchema.safeParse(decoded);
-
-          if (!parsed.success) handleZodValidationError(parsed.error, "args");
-
-          const finalCtx = {
-            ...ctx,
-            ...(added?.ctx ?? {}),
-          };
-          const baseArgs = parsed.data as Record<string, unknown>;
-          const addedArgs = (added?.args as Record<string, unknown>) ?? {};
-          const finalArgs = { ...baseArgs, ...addedArgs };
-          const ret = await handler(finalCtx, finalArgs);
-
-          if (returns && !fn.skipConvexValidation) {
-            let validated: any;
-            try {
-              validated = (returns as ZodType).parse(ret);
-            } catch (e) {
-              handleZodValidationError(e, "returns");
-            }
-
-            if (added?.onSuccess)
-              await added.onSuccess({
-                ctx,
-                args: parsed.data,
-                result: validated,
-              });
-
-            return toConvexJS(returns as z.$ZodType, validated);
-          }
-
-          if (added?.onSuccess)
-            await added.onSuccess({
-              ctx,
-              args: parsed.data,
-              result: ret,
+          const rawArgs = pick(allArgs, Object.keys(argsValidator));
+          const parsed = zValidate.object(argsValidator).safeParse(rawArgs);
+          if (!parsed.success) {
+            throw new ConvexError({
+              ZodError: JSON.parse(
+                JSON.stringify(parsed.error, null, 2),
+              ) as Value[],
             });
-
-          return ret;
+          }
+          const args = parsed.data;
+          const finalCtx = { ...ctx, ...added.ctx };
+          const finalArgs = { ...args, ...added.args };
+          const ret = await handler(finalCtx, finalArgs);
+          // We don't catch the error here. It's a developer error and we
+          // don't want to risk exposing the unexpected value to the client.
+          const result = returns ? returns.parse(ret) : ret;
+          if (added.onSuccess) {
+            await added.onSuccess({ ctx, args, result });
+          }
+          return result;
         },
       });
     }
-
+    if (Object.keys(inputArgs).length > 0 && !fn.skipConvexValidation) {
+      throw new Error(
+        "If you're using a custom function with arguments for the input " +
+          "customization, you must declare the arguments for the function too.",
+      );
+    }
     return builder({
-      args: inputArgs,
       ...returnValidator,
-      handler: async (ctx: any, allArgs: any) => {
-        const added = await customInput(
-          ctx,
-          pick(allArgs, Object.keys(inputArgs)) as any,
-          extra,
-        );
-        const finalCtx = { ...ctx, ...(added?.ctx ?? {}) };
-        const baseArgs = allArgs as Record<string, unknown>;
-        const addedArgs = (added?.args as Record<string, unknown>) ?? {};
-        const finalArgs = { ...baseArgs, ...addedArgs };
+      handler: async (ctx: any, args: any) => {
+        const added = await customInput(ctx, args, extra);
+        const finalCtx = { ...ctx, ...added.ctx };
+        const finalArgs = { ...args, ...added.args };
         const ret = await handler(finalCtx, finalArgs);
-
-        if (returns && !fn.skipConvexValidation) {
-          let validated: any;
-          try {
-            validated = (returns as ZodType).parse(ret);
-          } catch (e) {
-            handleZodValidationError(e, "returns");
-          }
-
-          if (added?.onSuccess)
-            await added.onSuccess({
-              ctx,
-              args: allArgs,
-              result: validated,
-            });
-
-          return toConvexJS(returns as z.$ZodType, validated);
+        // We don't catch the error here. It's a developer error and we
+        // don't want to risk exposing the unexpected value to the client.
+        const result = returns ? returns.parse(ret) : ret;
+        if (added.onSuccess) {
+          await added.onSuccess({ ctx, args, result });
         }
-
-        if (added?.onSuccess)
-          await added.onSuccess({
-            ctx,
-            args: allArgs,
-            result: ret,
-          });
-
-        return ret;
+        return result;
       },
     });
   };
