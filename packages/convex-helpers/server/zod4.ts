@@ -42,21 +42,21 @@ export type ConvexValidatorFromZod<
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends zCore.$ZodString
-      ? VString
+      ? VString<z.infer<Z>, Constraint>
       : Z extends zCore.$ZodNumber
-        ? VFloat64
+        ? VFloat64<z.infer<Z>, Constraint>
         : Z extends zCore.$ZodNaN
-          ? VFloat64
+          ? VFloat64<z.infer<Z>, Constraint>
           : Z extends zCore.$ZodBigInt
-            ? VInt64
+            ? VInt64<z.infer<Z>, Constraint>
             : Z extends zCore.$ZodBoolean
-              ? VBoolean
+              ? VBoolean<z.infer<Z>, Constraint>
               : Z extends zCore.$ZodNull
-                ? VNull
+                ? VNull<z.infer<Z>, Constraint>
                 : Z extends zCore.$ZodUnknown
-                  ? VAny
+                  ? VAny<z.infer<Z>, Constraint>
                   : Z extends zCore.$ZodAny
-                    ? VAny
+                    ? VAny<z.infer<Z>, Constraint>
                     : Z extends zCore.$ZodArray<
                           infer Inner extends zCore.$ZodType
                         >
