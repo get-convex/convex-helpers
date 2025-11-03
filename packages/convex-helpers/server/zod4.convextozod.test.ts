@@ -43,8 +43,10 @@ describe("convexToZod", () => {
 
   describe("union", () => {
     test("never", () => testConvexToZod(v.union(), z.never()));
-    test("one element", () =>
-      testConvexToZod(v.union(v.string()), z.union([z.string()])));
+    test("one element (number)", () =>
+      testConvexToZod(v.union(v.number()), z.number()));
+    test("one element (number)", () =>
+      testConvexToZod(v.union(v.string()), z.string()));
     test("multiple elements", () =>
       testConvexToZod(
         v.union(v.string(), v.number()),
