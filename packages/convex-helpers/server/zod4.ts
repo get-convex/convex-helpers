@@ -64,6 +64,17 @@ type ConvexUnionValidatorForRecordKey<T> = T extends readonly zCore.$ZodType[]
     >
   : never;
 
+type IsConvexUncodableType<Z extends zCore.$ZodType> = Z extends
+  | zCore.$ZodDate
+  | zCore.$ZodSymbol
+  | zCore.$ZodMap
+  | zCore.$ZodSet
+  | zCore.$ZodPromise
+  | zCore.$ZodFile
+  | zCore.$ZodFunction
+  ? true
+  : false;
+
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
   Constraint extends "required" | "optional" = "required",
@@ -255,8 +266,10 @@ export type ConvexValidatorFromZod<
                                                 Inner,
                                                 Constraint
                                               >
-                                            : // TODO Change this to any?
-                                              never;
+                                            : IsConvexUncodableType<Z> extends true
+                                              ? never
+                                              : // Unknown type, falling back to VAny
+                                                VAny<any, any>;
 
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 

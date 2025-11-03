@@ -28,6 +28,7 @@ describe("zodToConvex", () => {
   test("string", () => testZodToConvex(z.string(), v.string()));
   test("number", () => testZodToConvex(z.number(), v.number()));
   test("int64", () => testZodToConvex(z.int64(), v.int64()));
+  test("bigint", () => testZodToConvex(z.bigint(), v.int64()));
   test("boolean", () => testZodToConvex(z.boolean(), v.boolean()));
   test("null", () => testZodToConvex(z.null(), v.null()));
   test("any", () => testZodToConvex(z.any(), v.any()));
@@ -212,5 +213,47 @@ describe("zodToConvex", () => {
         subcategories: v.array(v.any()),
       }),
     );
+  });
+
+  test("catch", () => {
+    testZodToConvex(z.string().catch("hello"), v.string());
+  });
+
+  describe("unencodable types", () => {
+    test("z.date", () => {
+      expect(() => {
+        zodToConvex(z.date()) satisfies never;
+      }).toThrowError();
+    });
+    test("z.symbol", () => {
+      expect(() => {
+        zodToConvex(z.symbol()) satisfies never;
+      }).toThrowError();
+    });
+    test("z.map", () => {
+      expect(() => {
+        zodToConvex(z.map(z.string(), z.string())) satisfies never;
+      }).toThrowError();
+    });
+    test("z.set", () => {
+      expect(() => {
+        zodToConvex(z.set(z.string())) satisfies never;
+      }).toThrowError();
+    });
+    test("z.promise", () => {
+      expect(() => {
+        zodToConvex(z.promise(z.string())) satisfies never;
+      }).toThrowError();
+    });
+    test("z.file", () => {
+      expect(() => {
+        zodToConvex(z.file()) satisfies never;
+      }).toThrowError();
+    });
+    test("z.function", () => {
+      expect(() => {
+        zodToConvex(z.function()) satisfies never;
+      }).toThrowError();
+    });
   });
 });
