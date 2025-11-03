@@ -106,6 +106,21 @@ describe("zodToConvex", () => {
 
   // TODO Enum
 
-  // TODO Tuple
+  // Tuple
+  test("tuple (fixed elements, same type)", () =>
+    testZodToConvex(z.tuple([z.string(), z.string()]), v.array(v.string())));
+  test("tuple (fixed elements)", () =>
+    testZodToConvex(
+      z.tuple([z.string(), z.number()]),
+      v.array(v.union([v.string(), v.number()])),
+    ));
+  test("tuple (variadic element, same type)", () =>
+    testZodToConvex(z.tuple([z.string()], z.string()), v.array(v.string())));
+  test("tuple (variadic element)", () =>
+    testZodToConvex(
+      z.tuple([z.string()], z.number()),
+      v.tuple([v.string(), v.number(), v.array(v.string())]),
+    ));
+
   // TODO Lazy
 });
