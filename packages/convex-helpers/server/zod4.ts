@@ -23,20 +23,22 @@ import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
 
-type ConvexUnionValidatorFromZod<T> = T extends zCore.$ZodType[] // TODO Try to use this trick more often
+type ConvexUnionValidatorFromZod<T> = T extends readonly zCore.$ZodType[] // TODO Try to use this trick more often
   ? VUnion<
       ConvexValidatorFromZod<T[number]>["type"],
-      {
-        [Index in keyof T]: T[Index] extends zCore.$ZodType
-          ? ConvexValidatorFromZod<T[Index]>
-          : never;
-      },
+      [
+        ...{
+          [Index in keyof T]: T[Index] extends zCore.$ZodType
+            ? ConvexValidatorFromZod<T[Index]>
+            : never;
+        },
+      ],
       "required",
       ConvexValidatorFromZod<T[number]>["fieldPaths"]
     >
   : never;
 
-type ConvexValidatorFromZodString<Z extends zCore.$ZodType> =
+type ConvexValidatorForRecordKey<Z extends zCore.$ZodType> =
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends zCore.$ZodString
@@ -44,21 +46,21 @@ type ConvexValidatorFromZodString<Z extends zCore.$ZodType> =
       : Z extends zCore.$ZodLiteral<infer Literal extends string>
         ? VLiteral<Literal>
         : Z extends zCore.$ZodUnion<infer T>
-          ? ConvexUnionValidatorFromZodString<T>
+          ? ConvexUnionValidatorForRecordKey<T>
           : never;
 
-type ConvexUnionValidatorFromZodString<T> = T extends readonly zCore.$ZodType[]
+type ConvexUnionValidatorForRecordKey<T> = T extends readonly zCore.$ZodType[]
   ? VUnion<
-      ConvexValidatorFromZodString<T[number]>["type"],
+      ConvexValidatorForRecordKey<T[number]>["type"],
       [
         ...{
           [Index in keyof T]: T[Index] extends zCore.$ZodType
-            ? ConvexValidatorFromZodString<T[Index]>
+            ? ConvexValidatorForRecordKey<T[Index]>
             : never;
         },
       ],
-      "required",
-      ConvexValidatorFromZodString<T[number]>["fieldPaths"]
+      "required", // record keys are always required
+      ConvexValidatorForRecordKey<T[number]>["fieldPaths"]
     >
   : never;
 
@@ -96,151 +98,155 @@ export type ConvexValidatorFromZod<
                       : // z.object()
                         Z extends zCore.$ZodObject
                         ? VObject<unknown, any> // FIXME
-                        : Z extends zCore.$ZodUnion<infer T>
-                          ? ConvexUnionValidatorFromZod<T>
-                          : //   : Z extends z.ZodDiscriminatedUnion<any, infer T>
-                            //     ? VUnion<
-                            //         ConvexValidatorFromZod<T[number]>["type"],
-                            //         {
-                            //           -readonly [Index in keyof T]: ConvexValidatorFromZod<
-                            //             T[Index]
-                            //           >;
-                            //         },
-                            //         "required",
-                            //         ConvexValidatorFromZod<T[number]>["fieldPaths"]
-                            //       >
-                            //     : Z extends z.ZodTuple<infer Inner>
-                            //       ? VArray<
-                            //           ConvexValidatorFromZod<Inner[number]>["type"][],
-                            //           ConvexValidatorFromZod<Inner[number]>
-                            //         >
-                            //       : Z extends z.ZodLazy<infer Inner>
-                            //         ? ConvexValidatorFromZod<Inner>
+                        : // z.never() (→ z.union() with no elements)
+                          Z extends zCore.$ZodNever
+                          ? VUnion<never, [], Constraint, never>
+                          : // z.union()
+                            Z extends zCore.$ZodUnion<infer T>
+                            ? ConvexUnionValidatorFromZod<T>
+                            : //   : Z extends z.ZodDiscriminatedUnion<any, infer T>
+                              //     ? VUnion<
+                              //         ConvexValidatorFromZod<T[number]>["type"],
+                              //         {
+                              //           -readonly [Index in keyof T]: ConvexValidatorFromZod<
+                              //             T[Index]
+                              //           >;
+                              //         },
+                              //         "required",
+                              //         ConvexValidatorFromZod<T[number]>["fieldPaths"]
+                              //       >
+                              //     : Z extends z.ZodTuple<infer Inner>
+                              //       ? VArray<
+                              //           ConvexValidatorFromZod<Inner[number]>["type"][],
+                              //           ConvexValidatorFromZod<Inner[number]>
+                              //         >
+                              //       : Z extends z.ZodLazy<infer Inner>
+                              //         ? ConvexValidatorFromZod<Inner>
 
-                            // z.literal()
-                            Z extends zCore.$ZodLiteral<infer Literal>
-                            ? VLiteral<Literal>
-                            : //           : Z extends z.ZodEnum<infer T>
-                              //             ? T extends Array<any>
-                              //               ? VUnion<
-                              //                   T[number],
-                              //                   {
-                              //                     [Index in keyof T]: VLiteral<
-                              //                       T[Index]
-                              //                     >;
-                              //                   },
-                              //                   "required",
-                              //                   ConvexValidatorFromZod<
-                              //                     T[number]
-                              //                   >["fieldPaths"]
-                              //                 >
-                              //               : never
-                              //             : Z extends z.ZodEffects<infer Inner>
-                              //               ? ConvexValidatorFromZod<Inner>
+                              // z.literal()
+                              Z extends zCore.$ZodLiteral<infer Literal>
+                              ? VLiteral<Literal>
+                              : //           : Z extends z.ZodEnum<infer T>
+                                //             ? T extends Array<any>
+                                //               ? VUnion<
+                                //                   T[number],
+                                //                   {
+                                //                     [Index in keyof T]: VLiteral<
+                                //                       T[Index]
+                                //                     >;
+                                //                   },
+                                //                   "required",
+                                //                   ConvexValidatorFromZod<
+                                //                     T[number]
+                                //                   >["fieldPaths"]
+                                //                 >
+                                //               : never
+                                //             : Z extends z.ZodEffects<infer Inner>
+                                //               ? ConvexValidatorFromZod<Inner>
 
-                              // z.optional()
-                              Z extends z.ZodOptional<
-                                  infer Inner extends zCore.$ZodType
-                                >
-                              ? ConvexValidatorFromZod<Inner> extends GenericValidator // TODO Try to reuse this trick?
-                                ? VOptional<ConvexValidatorFromZod<Inner>>
-                                : never
-                              : // z.nullable()
-                                Z extends z.ZodNullable<
+                                // z.optional()
+                                Z extends z.ZodOptional<
                                     infer Inner extends zCore.$ZodType
                                   >
-                                ? ConvexValidatorFromZod<Inner> extends Validator<
-                                    any,
-                                    "required",
-                                    any
-                                  >
-                                  ? VUnion<
-                                      | null
-                                      | ConvexValidatorFromZod<Inner>["type"],
-                                      [ConvexValidatorFromZod<Inner>, VNull],
-                                      "required",
-                                      ConvexValidatorFromZod<Inner>["fieldPaths"]
+                                ? ConvexValidatorFromZod<Inner> extends GenericValidator // TODO Try to reuse this trick?
+                                  ? VOptional<ConvexValidatorFromZod<Inner>>
+                                  : never
+                                : // z.nullable()
+                                  Z extends z.ZodNullable<
+                                      infer Inner extends zCore.$ZodType
                                     >
-                                  : // Swap nullable(optional(foo)) for optional(nullable(foo))
-                                    ConvexValidatorFromZod<Inner> extends Validator<
-                                        infer T,
-                                        "optional",
-                                        infer F
-                                      >
+                                  ? ConvexValidatorFromZod<Inner> extends Validator<
+                                      any,
+                                      "required",
+                                      any
+                                    >
                                     ? VUnion<
-                                        null | Exclude<
-                                          ConvexValidatorFromZod<Inner>["type"],
-                                          undefined
-                                        >,
-                                        [Validator<T, "required", F>, VNull],
-                                        "optional",
+                                        | null
+                                        | ConvexValidatorFromZod<Inner>["type"],
+                                        [ConvexValidatorFromZod<Inner>, VNull],
+                                        "required",
                                         ConvexValidatorFromZod<Inner>["fieldPaths"]
                                       >
-                                    : never
-                                : // z.brand()
-                                  Z extends zCore.$ZodBranded<
-                                      infer Inner extends zCore.$ZodType,
-                                      infer Brand
-                                    >
-                                  ? Inner extends z.ZodString
-                                    ? VString<string & zCore.$brand<Brand>>
-                                    : Inner extends z.ZodNumber
-                                      ? VFloat64<number & zCore.$brand<Brand>>
-                                      : Inner extends z.ZodBigInt
-                                        ? VInt64<bigint & zCore.$brand<Brand>>
-                                        : ConvexValidatorFromZod<Inner>
-                                  : // z.record()
-                                    Z extends zCore.$ZodRecord<
-                                        infer Key extends zCore.$ZodRecordKey,
-                                        infer Value extends zCore.$ZodType
-                                      >
-                                    ? VRecord<
-                                        Record<z.infer<Key>, z.infer<Value>>,
-                                        ConvexValidatorFromZodString<Key>,
-                                        ConvexValidatorFromZod<Value>,
-                                        "required",
-                                        string
-                                      >
-                                    : Z extends zCore.$ZodReadonly<
-                                          infer Inner extends zCore.$ZodType
+                                    : // Swap nullable(optional(foo)) for optional(nullable(foo))
+                                      ConvexValidatorFromZod<Inner> extends Validator<
+                                          infer T,
+                                          "optional",
+                                          infer F
                                         >
-                                      ? ConvexValidatorFromZod<Inner>
-                                      : //                           : Z extends z.ZodPipeline<
-                                        //                                 infer Inner,
-                                        //                                 any
-                                        //                               > // Validate input type
-                                        //                             ? ConvexValidatorFromZod<Inner>
-                                        //                             : // Some that are a bit unknown
-                                        //                               // : Z extends z.ZodDate ? Validator<number>
-                                        //                               // : Z extends z.ZodSymbol ? Validator<symbol>
-                                        //                               // : Z extends z.ZodNever ? Validator<never>
-                                        //                               // : Z extends z.ZodIntersection<infer T, infer U>
-                                        //                               // ? Validator<
-                                        //                               //     ConvexValidatorFromZod<T>["type"] &
-                                        //                               //       ConvexValidatorFromZod<U>["type"],
-                                        //                               //     "required",
-                                        //                               //     ConvexValidatorFromZod<T>["fieldPaths"] |
-                                        //                               //       ConvexValidatorFromZod<U>["fieldPaths"]
-                                        //                               //   >
-                                        //                               // Is arraybuffer a thing?
-                                        //                               // Z extends z.??? ? Validator<ArrayBuffer> :
-                                        //                               // Note: we don't handle z.undefined() in union, nullable, etc.
-                                        //                               // : Validator<any, "required", string>
-                                        //                               // We avoid doing this catch-all to avoid over-promising on types
-                                        //                               // : Z extends z.ZodTypeAny
-
-                                        // -------------------------------------------------
-
-                                        // z.default()
-                                        Z extends z.ZodDefault<
+                                      ? VUnion<
+                                          null | Exclude<
+                                            ConvexValidatorFromZod<Inner>["type"],
+                                            undefined
+                                          >,
+                                          [Validator<T, "required", F>, VNull],
+                                          "optional",
+                                          ConvexValidatorFromZod<Inner>["fieldPaths"]
+                                        >
+                                      : never
+                                  : // z.brand()
+                                    Z extends zCore.$ZodBranded<
+                                        infer Inner extends zCore.$ZodType,
+                                        infer Brand
+                                      >
+                                    ? Inner extends z.ZodString
+                                      ? VString<string & zCore.$brand<Brand>>
+                                      : Inner extends z.ZodNumber
+                                        ? VFloat64<number & zCore.$brand<Brand>>
+                                        : Inner extends z.ZodBigInt
+                                          ? VInt64<bigint & zCore.$brand<Brand>>
+                                          : ConvexValidatorFromZod<Inner>
+                                    : // z.record()
+                                      Z extends zCore.$ZodRecord<
+                                          infer Key extends zCore.$ZodRecordKey,
+                                          infer Value extends zCore.$ZodType
+                                        >
+                                      ? VRecord<
+                                          Record<z.infer<Key>, z.infer<Value>>,
+                                          ConvexValidatorForRecordKey<Key>,
+                                          ConvexValidatorFromZod<Value>,
+                                          "required",
+                                          string
+                                        >
+                                      : Z extends zCore.$ZodReadonly<
                                             infer Inner extends zCore.$ZodType
-                                          > // Treat like optional
-                                        ? ConvexValidatorFromZod<Inner> extends GenericValidator
-                                          ? VOptional<
-                                              ConvexValidatorFromZod<Inner>
-                                            >
-                                          : never
-                                        : never;
+                                          >
+                                        ? ConvexValidatorFromZod<Inner>
+                                        : //                           : Z extends z.ZodPipeline<
+                                          //                                 infer Inner,
+                                          //                                 any
+                                          //                               > // Validate input type
+                                          //                             ? ConvexValidatorFromZod<Inner>
+                                          //                             : // Some that are a bit unknown
+                                          //                               // : Z extends z.ZodDate ? Validator<number>
+                                          //                               // : Z extends z.ZodSymbol ? Validator<symbol>
+                                          //                               // : Z extends z.ZodNever ? Validator<never>
+                                          //                               // : Z extends z.ZodIntersection<infer T, infer U>
+                                          //                               // ? Validator<
+                                          //                               //     ConvexValidatorFromZod<T>["type"] &
+                                          //                               //       ConvexValidatorFromZod<U>["type"],
+                                          //                               //     "required",
+                                          //                               //     ConvexValidatorFromZod<T>["fieldPaths"] |
+                                          //                               //       ConvexValidatorFromZod<U>["fieldPaths"]
+                                          //                               //   >
+                                          //                               // Is arraybuffer a thing?
+                                          //                               // Z extends z.??? ? Validator<ArrayBuffer> :
+                                          //                               // Note: we don't handle z.undefined() in union, nullable, etc.
+                                          //                               // : Validator<any, "required", string>
+                                          //                               // We avoid doing this catch-all to avoid over-promising on types
+                                          //                               // : Z extends z.ZodTypeAny
+
+                                          // -------------------------------------------------
+
+                                          // z.default()
+                                          Z extends z.ZodDefault<
+                                              infer Inner extends zCore.$ZodType
+                                            > // Treat like optional
+                                          ? ConvexValidatorFromZod<Inner> extends GenericValidator
+                                            ? VOptional<
+                                                ConvexValidatorFromZod<Inner>
+                                              >
+                                            : never
+                                          : never;
 
 export type ConvexValidatorFromZodOutput<_X> = never; // TODO
 
