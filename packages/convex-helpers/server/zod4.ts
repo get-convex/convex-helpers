@@ -35,33 +35,38 @@ type ConvexUnionValidatorFromZod<T> = T extends zCore.$ZodType[] // TODO Try to 
     >
   : never;
 
-export type ConvexValidatorFromZod<Z extends zCore.$ZodType> =
+export type ConvexValidatorFromZod<
+  Z extends zCore.$ZodType,
+  Constraint extends "required" | "optional" = "required",
+> =
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
-    : Z extends z.ZodString
+    : Z extends zCore.$ZodString
       ? VString
-      : Z extends z.ZodNumber
+      : Z extends zCore.$ZodNumber
         ? VFloat64
-        : Z extends z.ZodNaN
+        : Z extends zCore.$ZodNaN
           ? VFloat64
-          : Z extends z.ZodBigInt
+          : Z extends zCore.$ZodBigInt
             ? VInt64
-            : Z extends z.ZodBoolean
+            : Z extends zCore.$ZodBoolean
               ? VBoolean
-              : Z extends z.ZodNull
+              : Z extends zCore.$ZodNull
                 ? VNull
-                : Z extends z.ZodUnknown
+                : Z extends zCore.$ZodUnknown
                   ? VAny
-                  : Z extends z.ZodAny
+                  : Z extends zCore.$ZodAny
                     ? VAny
-                    : Z extends z.ZodArray<infer Inner extends zCore.$ZodType>
+                    : Z extends zCore.$ZodArray<
+                          infer Inner extends zCore.$ZodType
+                        >
                       ? VArray<
                           ConvexValidatorFromZod<Inner>["type"][],
                           ConvexValidatorFromZod<Inner>
                         >
-                      : Z extends z.ZodObject
+                      : Z extends zCore.$ZodObject
                         ? VObject<unknown, any> // FIXME
-                        : Z extends z.ZodUnion<infer T>
+                        : Z extends zCore.$ZodUnion<infer T>
                           ? ConvexUnionValidatorFromZod<T>
                           : //   : Z extends z.ZodDiscriminatedUnion<any, infer T>
                             //     ? VUnion<
@@ -81,7 +86,7 @@ export type ConvexValidatorFromZod<Z extends zCore.$ZodType> =
                             //         >
                             //       : Z extends z.ZodLazy<infer Inner>
                             //         ? ConvexValidatorFromZod<Inner>
-                            Z extends z.ZodLiteral<infer Literal>
+                            Z extends zCore.$ZodLiteral<infer Literal>
                             ? VLiteral<Literal>
                             : //           : Z extends z.ZodEnum<infer T>
                               //             ? T extends Array<any>
@@ -199,7 +204,7 @@ export type ConvexValidatorFromZod<Z extends zCore.$ZodType> =
                               //         ConvexValidatorFromZod<V>
                               //       >
                               //                           : never
-                              Z extends z.ZodReadonly<
+                              Z extends zCore.$ZodReadonly<
                                   infer Inner extends zCore.$ZodType
                                 >
                               ? ConvexValidatorFromZod<Inner>
