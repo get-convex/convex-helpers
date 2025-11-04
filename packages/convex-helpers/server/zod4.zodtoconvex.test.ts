@@ -379,10 +379,10 @@ function validatorToJson(validator: GenericValidator): ValidatorJSON {
 
 function assertUnrepresentableType<
   Z extends zCore.$ZodType &
-    (ConvexValidatorFromZod<Z> extends "This type doesn’t have an equivalent Convex validator."
+    ([ConvexValidatorFromZod<Z>] extends [never]
       ? {}
       : "expecting return type of zodToConvex/zodOutputToConvex to be never") &
-    (ConvexValidatorFromZodOutput<Z> extends "This type doesn’t have an equivalent Convex validator."
+    ([ConvexValidatorFromZodOutput<Z>] extends [never]
       ? {}
       : "expecting return type of zodToConvex/zodOutputToConvex to be never"),
 >(validator: Z) {

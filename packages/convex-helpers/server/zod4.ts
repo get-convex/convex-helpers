@@ -73,6 +73,9 @@ type IsConvexUnencodableType<Z extends zCore.$ZodType> = Z extends
   | zCore.$ZodPromise
   | zCore.$ZodFile
   | zCore.$ZodFunction
+  // undefined is not a valid Convex value. Consider using v.optional() or v.null() instead
+  | zCore.$ZodUndefined
+  | zCore.$ZodVoid
   ? true
   : false;
 
@@ -382,7 +385,7 @@ type ConvexValidatorFromZodCommon<
                                                       ? VAny<any, any>
                                                       : // unencodable types
                                                         IsConvexUnencodableType<Z> extends true
-                                                        ? "This type doesn’t have an equivalent Convex validator."
+                                                        ? never
                                                         : VAny<any, any>;
 
 export type ConvexValidatorFromZod<
