@@ -171,10 +171,12 @@ type ConvexValidatorFromZodCommon<
                       Z extends zCore.$ZodArray<
                           infer Inner extends zCore.$ZodType
                         >
-                      ? VArray<
-                          ConvexValidatorFromZod<Inner>["type"][],
-                          ConvexValidatorFromZod<Inner>
-                        >
+                      ? ConvexValidatorFromZod<Inner> extends GenericValidator
+                        ? VArray<
+                            ConvexValidatorFromZod<Inner>["type"][],
+                            ConvexValidatorFromZod<Inner>
+                          >
+                        : never
                       : // z.object()
                         Z extends zCore.$ZodObject
                         ? VObject<unknown, any> // FIXME
