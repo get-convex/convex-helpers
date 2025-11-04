@@ -276,6 +276,33 @@ describe("zodToConvex + zodOutputToConvex", () => {
       v.string() as VString<`${number}${"px" | "em" | "rem"}`, "required">,
     );
   });
+
+  describe("unencodable types", () => {
+    test("z.string", () => {
+      assertUnrepresentableType(z.string());
+    });
+    test("z.date", () => {
+      assertUnrepresentableType(z.date());
+    });
+    test("z.symbol", () => {
+      assertUnrepresentableType(z.symbol());
+    });
+    test("z.map", () => {
+      assertUnrepresentableType(z.map(z.string(), z.string()));
+    });
+    test("z.set", () => {
+      assertUnrepresentableType(z.set(z.string()));
+    });
+    test("z.promise", () => {
+      assertUnrepresentableType(z.promise(z.string()));
+    });
+    test("z.file", () => {
+      assertUnrepresentableType(z.file());
+    });
+    test("z.function", () => {
+      assertUnrepresentableType(z.function());
+    });
+  });
 });
 
 describe("zodToConvex", () => {
@@ -295,44 +322,6 @@ describe("zodToConvex", () => {
       v.string(), // input type
     );
   });
-
-  describe("unencodable types", () => {
-    test("z.date", () => {
-      expect(() => {
-        zodToConvex(z.date()) satisfies never;
-      }).toThrowError();
-    });
-    test("z.symbol", () => {
-      expect(() => {
-        zodToConvex(z.symbol()) satisfies never;
-      }).toThrowError();
-    });
-    test("z.map", () => {
-      expect(() => {
-        zodToConvex(z.map(z.string(), z.string())) satisfies never;
-      }).toThrowError();
-    });
-    test("z.set", () => {
-      expect(() => {
-        zodToConvex(z.set(z.string())) satisfies never;
-      }).toThrowError();
-    });
-    test("z.promise", () => {
-      expect(() => {
-        zodToConvex(z.promise(z.string())) satisfies never;
-      }).toThrowError();
-    });
-    test("z.file", () => {
-      expect(() => {
-        zodToConvex(z.file()) satisfies never;
-      }).toThrowError();
-    });
-    test("z.function", () => {
-      expect(() => {
-        zodToConvex(z.function()) satisfies never;
-      }).toThrowError();
-    });
-  });
 });
 
 describe("zodOutputToConvex", () => {
@@ -351,43 +340,6 @@ describe("zodOutputToConvex", () => {
       }),
       v.number(), // output type
     );
-  });
-  describe("unencodable types", () => {
-    test("z.date", () => {
-      expect(() => {
-        zodOutputToConvex(z.date()) satisfies never;
-      }).toThrowError();
-    });
-    test("z.symbol", () => {
-      expect(() => {
-        zodOutputToConvex(z.symbol()) satisfies never;
-      }).toThrowError();
-    });
-    test("z.map", () => {
-      expect(() => {
-        zodOutputToConvex(z.map(z.string(), z.string())) satisfies never;
-      }).toThrowError();
-    });
-    test("z.set", () => {
-      expect(() => {
-        zodOutputToConvex(z.set(z.string())) satisfies never;
-      }).toThrowError();
-    });
-    test("z.promise", () => {
-      expect(() => {
-        zodOutputToConvex(z.promise(z.string())) satisfies never;
-      }).toThrowError();
-    });
-    test("z.file", () => {
-      expect(() => {
-        zodOutputToConvex(z.file()) satisfies never;
-      }).toThrowError();
-    });
-    test("z.function", () => {
-      expect(() => {
-        zodOutputToConvex(z.function()) satisfies never;
-      }).toThrowError();
-    });
   });
 });
 
@@ -420,4 +372,21 @@ function testZodToConvexBothDirections<Z extends zCore.$ZodType>(
 function validatorToJson(validator: GenericValidator): ValidatorJSON {
   // @ts-expect-error Internal type
   return validator.json();
+}
+
+function assertUnrepresentableType<
+  Z extends zCore.$ZodType &
+    ([ConvexValidatorFromZod<Z>] extends [never]
+      ? {}
+      : "expecting return value to be never") &
+    ([ConvexValidatorFromZodOutput<Z>] extends [never]
+      ? {}
+      : "expecting return value to be never"),
+>(validator: Z) {
+  expect(() => {
+    zodToConvex(z.symbol()) satisfies never;
+  }).toThrowError();
+  expect(() => {
+    zodOutputToConvex(z.symbol()) satisfies never;
+  }).toThrowError();
 }
