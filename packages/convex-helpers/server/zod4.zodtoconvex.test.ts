@@ -278,9 +278,6 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("unencodable types", () => {
-    test("z.string", () => {
-      assertUnrepresentableType(z.string());
-    });
     test("z.date", () => {
       assertUnrepresentableType(z.date());
     });
@@ -301,6 +298,12 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
     test("z.function", () => {
       assertUnrepresentableType(z.function());
+    });
+    test("z.void", () => {
+      assertUnrepresentableType(z.void());
+    });
+    test("z.undefined", () => {
+      assertUnrepresentableType(z.undefined());
     });
   });
 });
@@ -376,17 +379,17 @@ function validatorToJson(validator: GenericValidator): ValidatorJSON {
 
 function assertUnrepresentableType<
   Z extends zCore.$ZodType &
-    ([ConvexValidatorFromZod<Z>] extends [never]
+    (ConvexValidatorFromZod<Z> extends "This type doesn’t have an equivalent Convex validator."
       ? {}
-      : "expecting return value to be never") &
-    ([ConvexValidatorFromZodOutput<Z>] extends [never]
+      : "expecting return type of zodToConvex/zodOutputToConvex to be never") &
+    (ConvexValidatorFromZodOutput<Z> extends "This type doesn’t have an equivalent Convex validator."
       ? {}
-      : "expecting return value to be never"),
+      : "expecting return type of zodToConvex/zodOutputToConvex to be never"),
 >(validator: Z) {
   expect(() => {
-    zodToConvex(z.symbol()) satisfies never;
+    zodToConvex(validator);
   }).toThrowError();
   expect(() => {
-    zodOutputToConvex(z.symbol()) satisfies never;
+    zodOutputToConvex(validator);
   }).toThrowError();
 }

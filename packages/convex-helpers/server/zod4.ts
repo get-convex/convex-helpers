@@ -65,7 +65,7 @@ type ConvexUnionValidatorForRecordKey<T> = T extends readonly zCore.$ZodType[]
     >
   : never;
 
-type IsConvexUncodableType<Z extends zCore.$ZodType> = Z extends
+type IsConvexUnencodableType<Z extends zCore.$ZodType> = Z extends
   | zCore.$ZodDate
   | zCore.$ZodSymbol
   | zCore.$ZodMap
@@ -295,16 +295,18 @@ type ConvexValidatorFromZodCommon<
                                               zCore.$ZodRecordKey,
                                             infer Value extends zCore.$ZodType
                                           >
-                                        ? VRecord<
-                                            Record<
-                                              z.infer<Key>,
-                                              z.infer<Value>
-                                            >,
-                                            ConvexValidatorForRecordKey<Key>,
-                                            ConvexValidatorFromZod<Value>,
-                                            "required",
-                                            string
-                                          >
+                                        ? ConvexValidatorFromZod<Value> extends GenericValidator
+                                          ? VRecord<
+                                              Record<
+                                                z.infer<Key>,
+                                                z.infer<Value>
+                                              >,
+                                              ConvexValidatorForRecordKey<Key>,
+                                              ConvexValidatorFromZod<Value>,
+                                              "required",
+                                              string
+                                            >
+                                          : ConvexValidatorFromZod<Value>
                                         : Z extends zCore.$ZodReadonly<
                                               infer Inner extends zCore.$ZodType
                                             >
@@ -378,7 +380,10 @@ type ConvexValidatorFromZodCommon<
                                                     : // z.custom
                                                       Z extends zCore.$ZodCustom<any>
                                                       ? VAny<any, any>
-                                                      : never;
+                                                      : // unencodable types
+                                                        IsConvexUnencodableType<Z> extends true
+                                                        ? "This type doesn’t have an equivalent Convex validator."
+                                                        : VAny<any, any>;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
