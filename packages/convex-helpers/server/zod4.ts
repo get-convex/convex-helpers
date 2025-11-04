@@ -376,7 +376,7 @@ type ConvexValidatorFromZodCommon<
                                                       T,
                                                       Constraint
                                                     >
-                                                  : // Transform
+                                                  : // z.transform
                                                     Z extends zCore.$ZodTransform<
                                                         any,
                                                         any
@@ -385,10 +385,16 @@ type ConvexValidatorFromZodCommon<
                                                     : // z.custom
                                                       Z extends zCore.$ZodCustom<any>
                                                       ? VAny<any, any>
-                                                      : // unencodable types
-                                                        IsConvexUnencodableType<Z> extends true
-                                                        ? never
-                                                        : VAny<any, any>;
+                                                      : // z.intersection
+                                                        // We could do some more advanced logic here where we compute
+                                                        // the Convex validator that results from the intersection.
+                                                        // For now, we simply use v.any()
+                                                        Z extends zCore.$ZodIntersection<any>
+                                                        ? VAny<any, any>
+                                                        : // unencodable types
+                                                          IsConvexUnencodableType<Z> extends true
+                                                          ? never
+                                                          : VAny<any, any>;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,

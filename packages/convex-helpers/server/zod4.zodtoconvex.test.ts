@@ -277,6 +277,19 @@ describe("zodToConvex + zodOutputToConvex", () => {
     );
   });
 
+  test("intersection", () => {
+    // We could do some more advanced logic here where we compute
+    // the Convex validator that results from the intersection.
+    // For now, we simply use v.any()
+    testZodToConvexBothDirections(
+      z.intersection(
+        z.object({ key1: z.string() }),
+        z.object({ key2: z.string() }),
+      ),
+      v.any(),
+    );
+  });
+
   describe("unencodable types", () => {
     test("z.date", () => {
       assertUnrepresentableType(z.date());
