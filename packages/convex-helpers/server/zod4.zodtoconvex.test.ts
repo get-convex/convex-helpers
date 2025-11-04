@@ -17,38 +17,46 @@ import {
 } from "./zod4";
 
 describe("zodToConvex + zodOutputToConvex", () => {
-  test("string", () => testZodToConvexNoTransform(zid("users"), v.id("users")));
-  test("string", () => testZodToConvexNoTransform(z.string(), v.string()));
-  test("number", () => testZodToConvexNoTransform(z.number(), v.number()));
-  test("nan", () => testZodToConvexNoTransform(z.nan(), v.number()));
-  test("int64", () => testZodToConvexNoTransform(z.int64(), v.int64()));
-  test("bigint", () => testZodToConvexNoTransform(z.bigint(), v.int64()));
-  test("boolean", () => testZodToConvexNoTransform(z.boolean(), v.boolean()));
-  test("null", () => testZodToConvexNoTransform(z.null(), v.null()));
-  test("any", () => testZodToConvexNoTransform(z.any(), v.any()));
+  test("string", () =>
+    testZodToConvexBothDirections(zid("users"), v.id("users")));
+  test("string", () => testZodToConvexBothDirections(z.string(), v.string()));
+  test("number", () => testZodToConvexBothDirections(z.number(), v.number()));
+  test("nan", () => testZodToConvexBothDirections(z.nan(), v.number()));
+  test("int64", () => testZodToConvexBothDirections(z.int64(), v.int64()));
+  test("bigint", () => testZodToConvexBothDirections(z.bigint(), v.int64()));
+  test("boolean", () =>
+    testZodToConvexBothDirections(z.boolean(), v.boolean()));
+  test("null", () => testZodToConvexBothDirections(z.null(), v.null()));
+  test("any", () => testZodToConvexBothDirections(z.any(), v.any()));
 
   test("optional", () => {
-    testZodToConvexNoTransform(z.optional(z.string()), v.optional(v.string()));
+    testZodToConvexBothDirections(
+      z.optional(z.string()),
+      v.optional(v.string()),
+    );
   });
   test("optional (chained)", () => {
-    testZodToConvexNoTransform(z.string().optional(), v.optional(v.string()));
+    testZodToConvexBothDirections(
+      z.string().optional(),
+      v.optional(v.string()),
+    );
   });
   test("array", () => {
-    testZodToConvexNoTransform(z.array(z.string()), v.array(v.string()));
+    testZodToConvexBothDirections(z.array(z.string()), v.array(v.string()));
   });
 
   describe("union", () => {
     test("never", () => {
-      testZodToConvexNoTransform(z.never(), v.union());
+      testZodToConvexBothDirections(z.never(), v.union());
     });
     test("one element (number)", () => {
-      testZodToConvexNoTransform(z.union([z.number()]), v.union(v.number()));
+      testZodToConvexBothDirections(z.union([z.number()]), v.union(v.number()));
     });
     test("one element (string)", () => {
-      testZodToConvexNoTransform(z.union([z.string()]), v.union(v.string()));
+      testZodToConvexBothDirections(z.union([z.string()]), v.union(v.string()));
     });
     test("multiple elements", () => [
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.union([z.string(), z.number()]),
         v.union(v.string(), v.number()),
       ),
@@ -57,13 +65,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("brand", () => {
     test("string", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.string().brand("myBrand"),
         v.string() as VString<string & zCore.$brand<"myBrand">>,
       );
     });
     test("number", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.number().brand("myBrand"),
         v.number() as VFloat64<number & zCore.$brand<"myBrand">>,
       );
@@ -71,7 +79,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("object", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.object({
         name: z.string(),
         age: z.number(),
@@ -89,21 +97,21 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("record", () => {
     test("key = string", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.record(z.string(), z.number()),
         v.record(v.string(), v.number()),
       );
     });
 
     test("key = literal", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.record(z.literal("user"), z.number()),
         v.record(v.literal("user"), v.number()),
       );
     });
 
     test("key = union of literals", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
         v.record(v.union(v.literal("user"), v.literal("admin")), v.number()),
       );
@@ -111,7 +119,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     test("key = v.id()", () => {
       {
-        testZodToConvexNoTransform(
+        testZodToConvexBothDirections(
           z.record(zid("documents"), z.number()),
           v.record(v.id("documents"), v.number()),
         );
@@ -122,7 +130,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   // TODO Partial record
 
   test("readonly", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.array(z.string()).readonly(),
       v.array(v.string()),
     );
@@ -130,7 +138,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   // Discriminated union
   test("discriminated union", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.discriminatedUnion("status", [
         z.object({ status: z.literal("success"), data: z.string() }),
         z.object({ status: z.literal("failed"), error: z.string() }),
@@ -146,47 +154,45 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   // Tuple
   test("tuple (fixed elements, same type)", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.tuple([z.string(), z.string()]),
       v.array(v.string()),
     );
   });
   test("tuple (fixed elements)", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.tuple([z.string(), z.number()]),
       v.array(v.union([v.string(), v.number()])),
     );
   });
   test("tuple (variadic element, same type)", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.tuple([z.string()], z.string()),
       v.array(v.string()),
     );
   });
   test("tuple (variadic element)", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.tuple([z.string()], z.number()),
       v.tuple([v.string(), v.number(), v.array(v.string())]),
     );
   });
 
-  // TODO Lazy
-
   describe("nullable", () => {
     test("nullable(string)", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.string().nullable(),
         v.union(v.string(), v.null()),
       );
     });
     test("nullable(number)", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.number().nullable(),
         v.union(v.number(), v.null()),
       );
     });
     test("nullable(optional(string))", () => {
-      testZodToConvexNoTransform(
+      testZodToConvexBothDirections(
         z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
       );
@@ -194,28 +200,34 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("default", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.string().default("hello"),
       v.optional(v.string()),
     );
   });
   test("optional", () => {
-    testZodToConvexNoTransform(z.string().optional(), v.optional(v.string()));
+    testZodToConvexBothDirections(
+      z.string().optional(),
+      v.optional(v.string()),
+    );
   });
   test("non-optional", () => {
-    testZodToConvexNoTransform(z.string().optional().nonoptional(), v.string());
-    testZodToConvexNoTransform(z.string().nonoptional(), v.string());
+    testZodToConvexBothDirections(
+      z.string().optional().nonoptional(),
+      v.string(),
+    );
+    testZodToConvexBothDirections(z.string().nonoptional(), v.string());
   });
 
   test("lazy", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.lazy(() => z.string()),
       v.string(),
     );
   });
 
   test("custom", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.custom<string & { __myBrand: true }>(() => true),
       v.any(),
     );
@@ -229,7 +241,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
       },
     });
 
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       category,
       v.object({
         name: v.string(),
@@ -239,27 +251,27 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("catch", () => {
-    testZodToConvexNoTransform(z.string().catch("hello"), v.string());
+    testZodToConvexBothDirections(z.string().catch("hello"), v.string());
   });
 
   describe("template literals", () => {
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.templateLiteral(["hi there"]),
       v.string() as VString<"hi there", "required">,
     );
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.templateLiteral(["email: ", z.string()]),
       v.string() as VString<`email: ${string}`, "required">,
     );
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.templateLiteral(["high", z.literal(5)]),
       v.string() as VString<"high5", "required">,
     );
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.templateLiteral([z.nullable(z.literal("grassy"))]),
       v.string() as VString<"grassy" | "null", "required">,
     );
-    testZodToConvexNoTransform(
+    testZodToConvexBothDirections(
       z.templateLiteral([z.number(), z.enum(["px", "em", "rem"])]),
       v.string() as VString<`${number}${"px" | "em" | "rem"}`, "required">,
     );
@@ -267,6 +279,23 @@ describe("zodToConvex + zodOutputToConvex", () => {
 });
 
 describe("zodToConvex", () => {
+  test("pipe", () => {
+    testZodToConvex(
+      z.number().pipe(z.transform((s) => s.toString())),
+      v.number(), // input type
+    );
+  });
+
+  test("codec", () => {
+    testZodToConvex(
+      z.codec(z.string(), z.number(), {
+        decode: (s: string) => parseInt(s, 10),
+        encode: (n: number) => n.toString(),
+      }),
+      v.string(), // input type
+    );
+  });
+
   describe("unencodable types", () => {
     test("z.date", () => {
       expect(() => {
@@ -307,6 +336,22 @@ describe("zodToConvex", () => {
 });
 
 describe("zodOutputToConvex", () => {
+  test("pipe", () => {
+    testZodOutputToConvex(
+      z.number().pipe(z.transform((s) => s.toString())),
+      v.any(), // this transform doesn’t hold runtime info about the output type
+    );
+  });
+
+  test("codec", () => {
+    testZodOutputToConvex(
+      z.codec(z.string(), z.number(), {
+        decode: (s: string) => parseInt(s, 10),
+        encode: (n: number) => n.toString(),
+      }),
+      v.number(), // output type
+    );
+  });
   describe("unencodable types", () => {
     test("z.date", () => {
       expect(() => {
@@ -362,7 +407,7 @@ function testZodOutputToConvex<Z extends zCore.$ZodType>(
   expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
 }
 
-function testZodToConvexNoTransform<Z extends zCore.$ZodType>(
+function testZodToConvexBothDirections<Z extends zCore.$ZodType>(
   validator: Z,
   expected: GenericValidator &
     ConvexValidatorFromZod<Z> &
