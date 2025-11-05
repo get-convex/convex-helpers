@@ -110,17 +110,17 @@ describe("convexToZod", () => {
 
       // On both Zod and Convex, the record must be exhaustive when the key is a union of literals.
       const partial = { user: 42 } as const;
-      // @ts-expect-error
+      // @ts-expect-error -- This should not typecheck
       const _asConvex: Infer<typeof convexValidator> = partial;
-      // @ts-expect-error
+      // @ts-expect-error -- This should not typecheck
       const _asZod: z.output<typeof zodSchema> = partial;
     });
 
     test("key = v.id()", () => {
       const convexValidator = v.record(v.id("users"), v.number());
-      const zodSchema = z.record(zid("users"), z.number());
+      const _zodSchema = z.record(zid("users"), z.number());
       expectTypeOf(convexToZod(convexValidator)).toEqualTypeOf<
-        typeof zodSchema
+        typeof _zodSchema
       >();
 
       const sampleId = "abc" as GenericId<"users">;
@@ -128,7 +128,7 @@ describe("convexToZod", () => {
         [sampleId]: 42,
       };
       assertType<Infer<typeof convexValidator>>(sampleValue);
-      assertType<zCore.output<typeof zodSchema>>(sampleValue);
+      assertType<zCore.output<typeof _zodSchema>>(sampleValue);
     });
   });
 });
@@ -146,7 +146,8 @@ function testConvexToZod<
   validator: C,
   expected: Expected &
     (Equals<Expected, ZodValidatorFromConvex<C>> extends true
-      ? {}
+      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        {}
       : "Expected type must exactly match ZodValidatorFromConvex<C>"),
 ) {
   const actual = convexToZod(validator);

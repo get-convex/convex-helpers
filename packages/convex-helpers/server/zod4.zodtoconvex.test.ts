@@ -508,7 +508,8 @@ function testZodToConvexBothDirections<
     (ExtractOptional<Expected> extends infer IsOpt extends OptionalProperty
       ? Equals<Expected, ConvexValidatorFromZod<Z, IsOpt>> extends true
         ? Equals<Expected, ConvexValidatorFromZodOutput<Z, IsOpt>> extends true
-          ? {}
+          ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+            {}
           : "Expected type must exactly match ConvexValidatorFromZodOutput<Z, IsOptional>"
         : "Expected type must exactly match ConvexValidatorFromZod<Z, IsOptional>"
       : "Could not extract IsOptional from Expected"),
