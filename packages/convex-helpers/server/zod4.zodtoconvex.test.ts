@@ -3,6 +3,7 @@ import * as z from "zod/v4";
 import { describe, expect, test } from "vitest";
 import {
   GenericValidator,
+  OptionalProperty,
   v,
   ValidatorJSON,
   VFloat64,
@@ -29,18 +30,27 @@ describe("zodToConvex + zodOutputToConvex", () => {
   test("null", () => testZodToConvexBothDirections(z.null(), v.null()));
   test("any", () => testZodToConvexBothDirections(z.any(), v.any()));
 
-  test("optional", () => {
-    testZodToConvexBothDirections(
-      z.optional(z.string()),
-      v.optional(v.string()),
-    );
+  describe("optional", () => {
+    test("z.optional()", () => {
+      testZodToConvexBothDirections(
+        z.optional(z.string()),
+        v.optional(v.string()),
+      );
+    });
+    test("z.XYZ.optional()", () => {
+      testZodToConvexBothDirections(
+        z.string().optional(),
+        v.optional(v.string()),
+      );
+    });
+    test("optional doesn’t propagate to array elements", () => {
+      testZodToConvexBothDirections(
+        z.array(z.number()).optional(),
+        v.optional(v.array(v.number())), // and not v.optional(v.array(v.optional(v.number())))
+      );
+    });
   });
-  test("optional (chained)", () => {
-    testZodToConvexBothDirections(
-      z.string().optional(),
-      v.optional(v.string()),
-    );
-  });
+
   test("array", () => {
     testZodToConvexBothDirections(z.array(z.string()), v.array(v.string()));
   });
@@ -193,6 +203,12 @@ describe("zodToConvex + zodOutputToConvex", () => {
         v.union(v.number(), v.null()),
       );
     });
+    test("optional(nullable(string))", () => {
+      testZodToConvexBothDirections(
+        z.string().optional().nullable(),
+        v.optional(v.union(v.string(), v.null())),
+      );
+    });
     test("nullable(optional(string))", () => {
       testZodToConvexBothDirections(
         z.string().nullable().optional(),
@@ -335,6 +351,9 @@ describe("zodToConvex", () => {
     );
   });
 
+  const vopt = v.optional(v.string());
+  const houasdf = zodToConvex(z.optional(z.string()));
+
   test("default", () => {
     testZodToConvex(z.string().default("hello"), v.optional(v.string()));
   });
@@ -365,7 +384,7 @@ describe("zodOutputToConvex", () => {
 
 function testZodToConvex<Z extends zCore.$ZodType>(
   validator: Z,
-  expected: GenericValidator & ConvexValidatorFromZod<Z>,
+  expected: GenericValidator & ConvexValidatorFromZod<Z, any>,
 ) {
   const actual = zodToConvex(validator);
   expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
@@ -373,7 +392,7 @@ function testZodToConvex<Z extends zCore.$ZodType>(
 
 function testZodOutputToConvex<Z extends zCore.$ZodType>(
   validator: Z,
-  expected: GenericValidator & ConvexValidatorFromZodOutput<Z>,
+  expected: GenericValidator & ConvexValidatorFromZodOutput<Z, any>,
 ) {
   const actual = zodOutputToConvex(validator);
   expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
@@ -382,8 +401,8 @@ function testZodOutputToConvex<Z extends zCore.$ZodType>(
 function testZodToConvexBothDirections<Z extends zCore.$ZodType>(
   validator: Z,
   expected: GenericValidator &
-    ConvexValidatorFromZod<Z> &
-    ConvexValidatorFromZodOutput<Z>,
+    ConvexValidatorFromZod<Z, OptionalProperty> &
+    ConvexValidatorFromZodOutput<Z, OptionalProperty>,
 ) {
   testZodToConvex(validator, expected);
   testZodOutputToConvex(validator, expected);
@@ -396,10 +415,10 @@ function validatorToJson(validator: GenericValidator): ValidatorJSON {
 
 function assertUnrepresentableType<
   Z extends zCore.$ZodType &
-    ([ConvexValidatorFromZod<Z>] extends [never]
+    ([ConvexValidatorFromZod<Z, OptionalProperty>] extends [never]
       ? {}
       : "expecting return type of zodToConvex/zodOutputToConvex to be never") &
-    ([ConvexValidatorFromZodOutput<Z>] extends [never]
+    ([ConvexValidatorFromZodOutput<Z, OptionalProperty>] extends [never]
       ? {}
       : "expecting return type of zodToConvex/zodOutputToConvex to be never"),
 >(validator: Z) {
