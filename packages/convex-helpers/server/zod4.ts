@@ -97,6 +97,14 @@ type ConvexUnionValidatorForRecordKeyMembers<
     ? []
     : Validator<any, "required", any>[];
 
+type ObjectFromShape<Fields extends Readonly<zCore.$ZodShape>> = {
+  [K in keyof Fields]: Fields[K] extends zCore.$ZodType
+    ? ConvexValidatorFromZod<Fields[K], "required">
+    : VAny<"required">;
+};
+
+// Record<string, GenericValidator>
+
 type IsConvexUnencodableType<Z extends zCore.$ZodType> = Z extends
   | zCore.$ZodDate
   | zCore.$ZodSymbol
@@ -215,14 +223,12 @@ type ConvexValidatorFromZodCommon<
                           >
                         : never
                       : // z.object()
-                        Z extends zCore.$ZodObject<infer Fields>
+                        Z extends zCore.$ZodObject<
+                            infer Fields extends Readonly<zCore.$ZodShape>
+                          >
                         ? VObject<
                             z.infer<Z>,
-                            {
-                              [K in keyof Fields]: Fields[K] extends zCore.$ZodType
-                                ? ConvexValidatorFromZod<Fields[K], "required">
-                                : VAny<"required">;
-                            },
+                            ObjectFromShape<Fields>,
                             IsOptional
                           >
                         : // z.never() (→ z.union() with no elements)
