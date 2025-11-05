@@ -393,8 +393,10 @@ type ConvexValidatorFromZodCommon<
                                                 IsOptional
                                               >
                                             : // z.templateLiteral()
-                                              Z extends zCore.$ZodTemplateLiteral<any>
-                                              ? VString<z.Infer<Z>, IsOptional>
+                                              Z extends zCore.$ZodTemplateLiteral<
+                                                  infer Template extends string
+                                                >
+                                              ? VString<Template, IsOptional>
                                               : // z.catch
                                                 Z extends zCore.$ZodCatch<
                                                     infer T extends
