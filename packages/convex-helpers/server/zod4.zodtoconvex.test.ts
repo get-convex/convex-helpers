@@ -7,7 +7,9 @@ import {
   v,
   ValidatorJSON,
   VFloat64,
+  VNull,
   VString,
+  VUnion,
 } from "convex/values";
 import {
   zodToConvex,
@@ -208,12 +210,24 @@ describe("zodToConvex + zodOutputToConvex", () => {
         z.string().optional().nullable(),
         v.optional(v.union(v.string(), v.null())),
       );
+
+      zodToConvex(z.string().optional().nullable()) satisfies VUnion<
+        string | null | undefined,
+        [VString, VNull],
+        "optional"
+      >;
     });
     test("nullable(optional(string)) → swap nullable and optional", () => {
       testZodToConvexBothDirections(
         z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
       );
+
+      zodToConvex(z.string().nullable().optional()) satisfies VUnion<
+        string | null | undefined,
+        [VString, VNull],
+        "optional"
+      >;
     });
   });
 

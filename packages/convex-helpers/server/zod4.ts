@@ -240,54 +240,50 @@ type ConvexValidatorFromZodCommon<
                                     ? ConvexValidatorFromZod<
                                         Inner,
                                         IsOptional
-                                      > extends Validator<any, any, any>
+                                      > extends Validator<any, "optional", any>
                                       ? VUnion<
+                                          | ConvexValidatorFromZod<
+                                              Inner,
+                                              IsOptional
+                                            >["type"]
+                                          | null
+                                          | undefined,
+                                          [
+                                            VRequired<
+                                              ConvexValidatorFromZod<
+                                                Inner,
+                                                IsOptional
+                                              >
+                                            >,
+                                            VNull,
+                                          ],
+                                          "optional",
+                                          ConvexValidatorFromZod<
+                                            Inner,
+                                            IsOptional
+                                          >["fieldPaths"]
+                                        >
+                                      : VUnion<
                                           | ConvexValidatorFromZod<
                                               Inner,
                                               IsOptional
                                             >["type"]
                                           | null,
                                           [
-                                            ConvexValidatorFromZod<
-                                              Inner,
-                                              IsOptional
+                                            VRequired<
+                                              ConvexValidatorFromZod<
+                                                Inner,
+                                                IsOptional
+                                              >
                                             >,
                                             VNull,
                                           ],
-                                          "required",
+                                          IsOptional,
                                           ConvexValidatorFromZod<
                                             Inner,
                                             IsOptional
                                           >["fieldPaths"]
                                         >
-                                      : // Swap nullable(optional(foo)) for optional(nullable(foo))
-                                        ConvexValidatorFromZod<
-                                            Inner,
-                                            IsOptional
-                                          > extends Validator<
-                                            infer T,
-                                            "optional",
-                                            infer F
-                                          >
-                                        ? VUnion<
-                                            null | Exclude<
-                                              ConvexValidatorFromZod<
-                                                Inner,
-                                                IsOptional
-                                              >["type"],
-                                              undefined
-                                            >,
-                                            [
-                                              Validator<T, "required", F>,
-                                              VNull,
-                                            ],
-                                            "optional",
-                                            ConvexValidatorFromZod<
-                                              Inner,
-                                              IsOptional
-                                            >["fieldPaths"]
-                                          >
-                                        : never
                                     : // z.brand()
                                       Z extends zCore.$ZodBranded<
                                           infer Inner extends zCore.$ZodType,
