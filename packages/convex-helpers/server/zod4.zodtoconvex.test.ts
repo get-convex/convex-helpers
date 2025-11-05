@@ -2,21 +2,21 @@ import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import { describe, expect, test } from "vitest";
 import {
-  GenericValidator,
-  OptionalProperty,
+  type GenericValidator,
+  type OptionalProperty,
   v,
-  Validator,
-  ValidatorJSON,
-  VFloat64,
-  VNull,
-  VString,
-  VUnion,
+  type Validator,
+  type ValidatorJSON,
+  type VFloat64,
+  type VNull,
+  type VString,
+  type VUnion,
 } from "convex/values";
 import {
   zodToConvex,
   zid,
-  ConvexValidatorFromZod,
-  ConvexValidatorFromZodOutput,
+  type ConvexValidatorFromZod,
+  type ConvexValidatorFromZodOutput,
   zodOutputToConvex,
 } from "./zod4";
 
