@@ -147,26 +147,26 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
   Z extends zCore.$ZodType,
-  Constraint extends "required" | "optional" = "required",
+  IsRequired extends "required" | "optional" = "required",
 > = // Basic types
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends zCore.$ZodString
-      ? VString<z.infer<Z>, Constraint>
+      ? VString<z.infer<Z>, IsRequired>
       : Z extends zCore.$ZodNumber
-        ? VFloat64<z.infer<Z>, Constraint>
+        ? VFloat64<z.infer<Z>, IsRequired>
         : Z extends zCore.$ZodNaN
-          ? VFloat64<z.infer<Z>, Constraint>
+          ? VFloat64<z.infer<Z>, IsRequired>
           : Z extends zCore.$ZodBigInt
-            ? VInt64<z.infer<Z>, Constraint>
+            ? VInt64<z.infer<Z>, IsRequired>
             : Z extends zCore.$ZodBoolean
-              ? VBoolean<z.infer<Z>, Constraint>
+              ? VBoolean<z.infer<Z>, IsRequired>
               : Z extends zCore.$ZodNull
-                ? VNull<z.infer<Z>, Constraint>
+                ? VNull<z.infer<Z>, IsRequired>
                 : Z extends zCore.$ZodUnknown
-                  ? VAny<z.infer<Z>, Constraint>
+                  ? VAny<z.infer<Z>, IsRequired>
                   : Z extends zCore.$ZodAny
-                    ? VAny<z.infer<Z>, Constraint>
+                    ? VAny<z.infer<Z>, IsRequired>
                     : // z.array()
                       Z extends zCore.$ZodArray<
                           infer Inner extends zCore.$ZodType
@@ -182,7 +182,7 @@ type ConvexValidatorFromZodCommon<
                         ? VObject<unknown, any> // FIXME
                         : // z.never() (→ z.union() with no elements)
                           Z extends zCore.$ZodNever
-                          ? VUnion<never, [], Constraint, never>
+                          ? VUnion<never, [], IsRequired, never>
                           : // z.union()
                             Z extends zCore.$ZodUnion<infer T>
                             ? ConvexUnionValidatorFromZod<T>
@@ -312,11 +312,11 @@ type ConvexValidatorFromZodCommon<
                                               >
                                             ? ConvexValidatorFromZod<
                                                 Inner,
-                                                Constraint
+                                                IsRequired
                                               >
                                             : // z.templateLiteral()
                                               Z extends zCore.$ZodTemplateLiteral<any>
-                                              ? VString<z.Infer<Z>, Constraint>
+                                              ? VString<z.Infer<Z>, IsRequired>
                                               : // z.catch
                                                 Z extends zCore.$ZodCatch<
                                                     infer T extends
@@ -324,7 +324,7 @@ type ConvexValidatorFromZodCommon<
                                                   >
                                                 ? ConvexValidatorFromZod<
                                                     T,
-                                                    Constraint
+                                                    IsRequired
                                                   >
                                                 : // z.transform
                                                   Z extends zCore.$ZodTransform<
@@ -348,7 +348,7 @@ type ConvexValidatorFromZodCommon<
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
-  Constraint extends "required" | "optional" = "required",
+  IsRequired extends "required" | "optional" = "required",
 > =
   // z.default()
   Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // input: Treat like optional
@@ -360,13 +360,13 @@ export type ConvexValidatorFromZod<
           infer Input extends zCore.$ZodType,
           infer _Output extends zCore.$ZodType
         >
-      ? ConvexValidatorFromZod<Input, Constraint>
+      ? ConvexValidatorFromZod<Input, IsRequired>
       : // All other schemas have the same input/output types
-        ConvexValidatorFromZodCommon<Z, Constraint>;
+        ConvexValidatorFromZodCommon<Z, IsRequired>;
 
 export type ConvexValidatorFromZodOutput<
   Z extends zCore.$ZodType,
-  Constraint extends "required" | "optional" = "required",
+  IsRequired extends "required" | "optional" = "required",
 > =
   // z.default()
   Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // output: always there
@@ -376,9 +376,9 @@ export type ConvexValidatorFromZodOutput<
           infer _Input extends zCore.$ZodType,
           infer Output extends zCore.$ZodType
         >
-      ? ConvexValidatorFromZod<Output, Constraint>
+      ? ConvexValidatorFromZod<Output, IsRequired>
       : // All other schemas have the same input/output types
-        ConvexValidatorFromZodCommon<Z, Constraint>;
+        ConvexValidatorFromZodCommon<Z, IsRequired>;
 
 export function zodToConvex<Z extends zCore.$ZodType>(
   validator: Z,
