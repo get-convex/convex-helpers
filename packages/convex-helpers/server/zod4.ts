@@ -361,7 +361,8 @@ export type ConvexValidatorFromZod<
           infer _Output extends zCore.$ZodType
         >
       ? ConvexValidatorFromZod<Input, Constraint>
-      : ConvexValidatorFromZodCommon<Z, Constraint>;
+      : // All other schemas have the same input/output types
+        ConvexValidatorFromZodCommon<Z, Constraint>;
 
 export type ConvexValidatorFromZodOutput<
   Z extends zCore.$ZodType,
@@ -376,7 +377,8 @@ export type ConvexValidatorFromZodOutput<
           infer Output extends zCore.$ZodType
         >
       ? ConvexValidatorFromZod<Output, Constraint>
-      : ConvexValidatorFromZodCommon<Z, Constraint>;
+      : // All other schemas have the same input/output types
+        ConvexValidatorFromZodCommon<Z, Constraint>;
 
 export function zodToConvex<Z extends zCore.$ZodType>(
   validator: Z,
