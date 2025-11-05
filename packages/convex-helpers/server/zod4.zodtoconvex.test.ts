@@ -5,9 +5,12 @@ import {
   GenericValidator,
   OptionalProperty,
   v,
+  Validator,
   ValidatorJSON,
+  VArray,
   VFloat64,
   VNull,
+  VObject,
   VString,
   VUnion,
 } from "convex/values";
@@ -55,6 +58,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   test("array", () => {
     testZodToConvexBothDirections(z.array(z.string()), v.array(v.string()));
+
+    // TODO Remove this
+    zodToConvex(z.array(z.string())) satisfies VArray<
+      string[],
+      VString,
+      "required"
+    >;
   });
 
   describe("union", () => {
@@ -103,6 +113,17 @@ describe("zodToConvex + zodOutputToConvex", () => {
         picture: v.optional(v.string()),
       }),
     );
+
+    // TODO Remove this
+    zodToConvex(
+      z.object({ name: z.string(), nickname: z.string().optional() }),
+    ) satisfies VObject<
+      { name: string; nickname?: string },
+      {
+        name: VString<string, "required">;
+        nickname: VString<string, "optional">;
+      }
+    >;
   });
 
   // TODO Strict object
@@ -450,30 +471,64 @@ describe("testing infrastructure", () => {
   });
 });
 
-function testZodToConvex<Z extends zCore.$ZodType>(
+function testZodToConvex<
+  Z extends zCore.$ZodType,
+  Expected extends GenericValidator,
+>(
   validator: Z,
-  expected: GenericValidator & ConvexValidatorFromZod<Z, any>,
+  expected: Expected &
+    (ExtractOptional<Expected> extends infer IsOpt extends OptionalProperty
+      ? Equals<Expected, ConvexValidatorFromZod<Z, IsOpt>> extends true
+        ? {}
+        : "Expected type must exactly match ConvexValidatorFromZod<Z, IsOptional>"
+      : "Could not extract IsOptional from Expected"),
 ) {
   const actual = zodToConvex(validator);
   expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
 }
 
-function testZodOutputToConvex<Z extends zCore.$ZodType>(
+function testZodOutputToConvex<
+  Z extends zCore.$ZodType,
+  Expected extends GenericValidator,
+>(
   validator: Z,
-  expected: GenericValidator & ConvexValidatorFromZodOutput<Z, any>,
+  expected: Expected &
+    (ExtractOptional<Expected> extends infer IsOpt extends OptionalProperty
+      ? Equals<Expected, ConvexValidatorFromZodOutput<Z, IsOpt>> extends true
+        ? {}
+        : "Expected type must exactly match ConvexValidatorFromZodOutput<Z, IsOptional>"
+      : "Could not extract IsOptional from Expected"),
 ) {
   const actual = zodOutputToConvex(validator);
   expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
 }
 
-function testZodToConvexBothDirections<Z extends zCore.$ZodType>(
+// Type equality helper: checks if two types are exactly equal (bidirectionally assignable)
+type Equals<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+    ? true
+    : false;
+
+// Extract the optionality (IsOptional) from a validator type
+type ExtractOptional<V> =
+  V extends Validator<any, infer IsOptional, any> ? IsOptional : never;
+
+function testZodToConvexBothDirections<
+  Z extends zCore.$ZodType,
+  Expected extends GenericValidator,
+>(
   validator: Z,
-  expected: GenericValidator &
-    ConvexValidatorFromZod<Z, OptionalProperty> &
-    ConvexValidatorFromZodOutput<Z, OptionalProperty>,
+  expected: Expected &
+    (ExtractOptional<Expected> extends infer IsOpt extends OptionalProperty
+      ? Equals<Expected, ConvexValidatorFromZod<Z, IsOpt>> extends true
+        ? Equals<Expected, ConvexValidatorFromZodOutput<Z, IsOpt>> extends true
+          ? {}
+          : "Expected type must exactly match ConvexValidatorFromZodOutput<Z, IsOptional>"
+        : "Expected type must exactly match ConvexValidatorFromZod<Z, IsOptional>"
+      : "Could not extract IsOptional from Expected"),
 ) {
-  testZodToConvex(validator, expected);
-  testZodOutputToConvex(validator, expected);
+  testZodToConvex(validator, expected as any);
+  testZodOutputToConvex(validator, expected as any);
 }
 
 function validatorToJson(validator: GenericValidator): ValidatorJSON {
