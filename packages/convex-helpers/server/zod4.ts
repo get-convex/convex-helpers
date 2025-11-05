@@ -178,12 +178,13 @@ type ConvexValidatorFromZodCommon<
                         > extends GenericValidator
                         ? VArray<
                             ConvexValidatorFromZod<Inner, "required">["type"][],
-                            ConvexValidatorFromZod<Inner, "required">
+                            ConvexValidatorFromZod<Inner, "required">,
+                            IsOptional
                           >
                         : never
                       : // z.object()
                         Z extends zCore.$ZodObject
-                        ? VObject<unknown, any> // FIXME
+                        ? VObject<unknown, any, IsOptional> // FIXME
                         : // z.never() (→ z.union() with no elements)
                           Z extends zCore.$ZodNever
                           ? VUnion<never, [], IsOptional, never>
@@ -200,7 +201,7 @@ type ConvexValidatorFromZodCommon<
 
                               // z.literal()
                               Z extends zCore.$ZodLiteral<infer Literal>
-                              ? VLiteral<Literal>
+                              ? VLiteral<Literal, IsOptional>
                               : //           : Z extends z.ZodEnum<infer T>
                                 //             ? T extends Array<any>
                                 //               ? VUnion<
@@ -301,7 +302,8 @@ type ConvexValidatorFromZodCommon<
                                             >
                                           : Inner extends z.ZodBigInt
                                             ? VInt64<
-                                                bigint & zCore.$brand<Brand>
+                                                bigint & zCore.$brand<Brand>,
+                                                IsOptional
                                               >
                                             : ConvexValidatorFromZod<
                                                 Inner,
@@ -327,7 +329,7 @@ type ConvexValidatorFromZodCommon<
                                                 Value,
                                                 "required"
                                               >,
-                                              "required",
+                                              IsOptional,
                                               string
                                             >
                                           : never
@@ -365,20 +367,20 @@ type ConvexValidatorFromZodCommon<
                                                       any,
                                                       any
                                                     >
-                                                  ? VAny<any, any> // No runtime info about types so we use v.any()
+                                                  ? VAny<any, IsOptional> // No runtime info about types so we use v.any()
                                                   : // z.custom
                                                     Z extends zCore.$ZodCustom<any>
-                                                    ? VAny<any, any>
+                                                    ? VAny<any, IsOptional>
                                                     : // z.intersection
                                                       // We could do some more advanced logic here where we compute
                                                       // the Convex validator that results from the intersection.
                                                       // For now, we simply use v.any()
                                                       Z extends zCore.$ZodIntersection<any>
-                                                      ? VAny<any, any>
+                                                      ? VAny<any, IsOptional>
                                                       : // unencodable types
                                                         IsConvexUnencodableType<Z> extends true
                                                         ? never
-                                                        : VAny<any, any>;
+                                                        : VAny<any, IsOptional>;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
