@@ -153,29 +153,31 @@ describe("zodToConvex + zodOutputToConvex", () => {
   // TODO Enum
 
   // Tuple
-  test("tuple (fixed elements, same type)", () => {
-    testZodToConvexBothDirections(
-      z.tuple([z.string(), z.string()]),
-      v.array(v.string()),
-    );
-  });
-  test("tuple (fixed elements)", () => {
-    testZodToConvexBothDirections(
-      z.tuple([z.string(), z.number()]),
-      v.array(v.union([v.string(), v.number()])),
-    );
-  });
-  test("tuple (variadic element, same type)", () => {
-    testZodToConvexBothDirections(
-      z.tuple([z.string()], z.string()),
-      v.array(v.string()),
-    );
-  });
-  test("tuple (variadic element)", () => {
-    testZodToConvexBothDirections(
-      z.tuple([z.string()], z.number()),
-      v.tuple([v.string(), v.number(), v.array(v.string())]),
-    );
+  describe("tuple", () => {
+    test("fixed elements, same type", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string(), z.string()]),
+        v.array(v.string()),
+      );
+    });
+    test("fixed elements", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string(), z.number()]),
+        v.array(v.union([v.string(), v.number()])),
+      );
+    });
+    test("variadic element, same type", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string()], z.string()),
+        v.array(v.string()),
+      );
+    });
+    test("variadic element", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string()], z.number()),
+        v.tuple([v.string(), v.number(), v.array(v.string())]),
+      );
+    });
   });
 
   describe("nullable", () => {
