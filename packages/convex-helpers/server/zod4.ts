@@ -637,9 +637,7 @@ type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
   Fields extends infer F // dark magic to get the TypeScript compiler happy about circular types
     ? {
         [K in keyof F]: F[K] extends GenericValidator
-          ? F[K] extends Validator<any, "optional", any>
-            ? z.ZodOptional<ZodFromValidatorBase<F[K]>>
-            : ZodFromValidatorBase<F[K]>
+          ? ZodValidatorFromConvex<F[K]>
           : never;
       }
     : never;
