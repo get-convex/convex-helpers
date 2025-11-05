@@ -215,8 +215,16 @@ type ConvexValidatorFromZodCommon<
                           >
                         : never
                       : // z.object()
-                        Z extends zCore.$ZodObject
-                        ? VObject<unknown, any, IsOptional> // FIXME
+                        Z extends zCore.$ZodObject<infer Fields>
+                        ? VObject<
+                            z.infer<Z>,
+                            {
+                              [K in keyof Fields]: Fields[K] extends zCore.$ZodType
+                                ? ConvexValidatorFromZod<Fields[K], "required">
+                                : VAny<"required">;
+                            },
+                            IsOptional
+                          >
                         : // z.never() (→ z.union() with no elements)
                           Z extends zCore.$ZodNever
                           ? VUnion<never, [], IsOptional, never>

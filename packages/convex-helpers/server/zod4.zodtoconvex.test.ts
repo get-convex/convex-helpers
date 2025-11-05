@@ -91,23 +91,38 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
   });
 
-  // TODO Fix
-  // test("object", () => {
-  //   testZodToConvexBothDirections(
-  //     z.object({
-  //       name: z.string(),
-  //       age: z.number(),
-  //       picture: z.string().optional(),
-  //     }),
-  //     v.object({
-  //       name: v.string(),
-  //       age: v.number(),
-  //       picture: v.optional(v.string()),
-  //     }),
-  //   );
-  // });
+  test("object", () => {
+    testZodToConvexBothDirections(
+      z.object({
+        name: z.string(),
+        age: z.number(),
+        picture: z.string().optional(),
+      }),
 
-  // TODO Strict object
+      // v.object() is a strict object, not a loose object,
+      // but we still convert z.object() to it for convenience
+      v.object({
+        name: v.string(),
+        age: v.number(),
+        picture: v.optional(v.string()),
+      }),
+    );
+  });
+
+  test("strict object", () => {
+    testZodToConvexBothDirections(
+      z.strictObject({
+        name: z.string(),
+        age: z.number(),
+        picture: z.string().optional(),
+      }),
+      v.object({
+        name: v.string(),
+        age: v.number(),
+        picture: v.optional(v.string()),
+      }),
+    );
+  });
 
   describe("record", () => {
     test("key = string", () => {
@@ -124,13 +139,12 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
 
-    // TODO Fix
-    // test("key = union of literals", () => {
-    //   testZodToConvexBothDirections(
-    //     z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
-    //     v.record(v.union(v.literal("user"), v.literal("admin")), v.number()),
-    //   );
-    // });
+    test("key = union of literals", () => {
+      testZodToConvexBothDirections(
+        z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
+        v.record(v.union(v.literal("user"), v.literal("admin")), v.number()),
+      );
+    });
 
     test("key = v.id()", () => {
       {
@@ -152,19 +166,18 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   // Discriminated union
-  // TODO Fix
-  // test("discriminated union", () => {
-  //   testZodToConvexBothDirections(
-  //     z.discriminatedUnion("status", [
-  //       z.object({ status: z.literal("success"), data: z.string() }),
-  //       z.object({ status: z.literal("failed"), error: z.string() }),
-  //     ]),
-  //     v.union(
-  //       v.object({ status: v.literal("success"), data: v.string() }),
-  //       v.object({ status: v.literal("failed"), error: v.string() }),
-  //     ),
-  //   );
-  // });
+  test("discriminated union", () => {
+    testZodToConvexBothDirections(
+      z.discriminatedUnion("status", [
+        z.object({ status: z.literal("success"), data: z.string() }),
+        z.object({ status: z.literal("failed"), error: z.string() }),
+      ]),
+      v.union(
+        v.object({ status: v.literal("success"), data: v.string() }),
+        v.object({ status: v.literal("failed"), error: v.string() }),
+      ),
+    );
+  });
 
   // TODO Enum
 
