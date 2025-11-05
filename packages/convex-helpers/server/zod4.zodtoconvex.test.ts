@@ -290,6 +290,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     testZodToConvexBothDirections(
       category,
+      // @ts-expect-error TypeScript can’t compute the full type and uses `unknown`
       v.object({
         name: v.string(),
         subcategories: v.array(v.any()),
@@ -386,9 +387,6 @@ describe("zodToConvex", () => {
     );
   });
 
-  const vopt = v.optional(v.string());
-  const houasdf = zodToConvex(z.optional(z.string()));
-
   test("default", () => {
     testZodToConvex(z.string().default("hello"), v.optional(v.string()));
   });
@@ -484,7 +482,7 @@ function testZodToConvex<
       : "Could not extract IsOptional from Expected"),
 ) {
   const actual = zodToConvex(validator);
-  expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
+  expect(validatorToJson(actual)).to.deep.equal(validatorToJson(expected));
 }
 
 function testZodOutputToConvex<
@@ -500,7 +498,7 @@ function testZodOutputToConvex<
       : "Could not extract IsOptional from Expected"),
 ) {
   const actual = zodOutputToConvex(validator);
-  expect(validatorToJson(actual)).toEqual(validatorToJson(expected));
+  expect(validatorToJson(actual)).to.deep.equal(validatorToJson(expected));
 }
 
 // Type equality helper: checks if two types are exactly equal (bidirectionally assignable)
