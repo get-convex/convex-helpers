@@ -31,8 +31,9 @@ describe("convexToZod", () => {
     expect(() => convexToZod(v.bytes())).toThrow();
   });
 
-  test("optional", () =>
-    testConvexToZod(v.optional(v.string()), z.string().optional()));
+  test("optional", () => {
+    testConvexToZod(v.optional(v.string()), z.string().optional());
+  });
 
   // TODO Fix
   // test("array", () =>
@@ -71,21 +72,21 @@ describe("convexToZod", () => {
     );
   });
 
-  // TODO Fix
-  // test("object", () => {
-  //   testConvexToZod(
-  //     v.object({
-  //       name: v.string(),
-  //       age: v.number(),
-  //       picture: v.optional(v.string()),
-  //     }),
-  //     z.object({
-  //       name: z.string(),
-  //       age: z.number(),
-  //       picture: z.string().optional(),
-  //     }),
-  //   );
-  // });
+  // Fix
+  test("object", () => {
+    testConvexToZod(
+      v.object({
+        name: v.string(),
+        age: v.number(),
+        picture: v.optional(v.string()),
+      }),
+      z.strictObject({
+        name: z.string(),
+        age: z.number(),
+        picture: z.string().optional(),
+      }),
+    );
+  });
 
   describe("record", () => {
     test("key = string", () =>
