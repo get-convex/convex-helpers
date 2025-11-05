@@ -58,13 +58,6 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   test("array", () => {
     testZodToConvexBothDirections(z.array(z.string()), v.array(v.string()));
-
-    // TODO Remove this
-    zodToConvex(z.array(z.string())) satisfies VArray<
-      string[],
-      VString,
-      "required"
-    >;
   });
 
   describe("union", () => {
@@ -113,17 +106,6 @@ describe("zodToConvex + zodOutputToConvex", () => {
         picture: v.optional(v.string()),
       }),
     );
-
-    // TODO Remove this
-    zodToConvex(
-      z.object({ name: z.string(), nickname: z.string().optional() }),
-    ) satisfies VObject<
-      { name: string; nickname?: string },
-      {
-        name: VString<string, "required">;
-        nickname: VString<string, "optional">;
-      }
-    >;
   });
 
   // TODO Strict object
