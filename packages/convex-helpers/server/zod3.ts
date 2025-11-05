@@ -1389,7 +1389,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
  * function arguments, or the argument to {@link defineTable}.
  *
  * ```js
- * zodToConvex({
+ * zodToConvexFields({
  *   name: z.string().default("Nicolas"),
  * }) // → { name: v.optional(v.string()) }
  * ```

@@ -431,22 +431,26 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
  * function arguments, or the argument to {@link defineTable}.
  *
  * ```js
- * zodToConvex({
+ * zodToConvexFields({
  *   name: z.string().default("Nicolas"),
  * }) // → { name: v.optional(v.string()) }
  * ```
  *
- * @param zod Object with string keys and Zod validators as values
+ * @param fields Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
  */
-export function zodToConvexFields<Z extends zCore.$ZodType>(zod: Z) {
+export function zodToConvexFields<
+  Fields extends Record<string, zCore.$ZodType>,
+>(fields: Fields) {
   return Object.fromEntries(
-    Object.entries(zod).map(([k, v]) => [k, zodToConvex(v)]),
+    Object.entries(fields).map(([k, v]) => [k, zodToConvex(v)]),
   ) as {
-    [k in keyof Z]: Z[k] extends zCore.$ZodType
-      ? ConvexValidatorFromZod<Z[k], OptionalProperty>
+    [k in keyof Fields]: Fields[k] extends zCore.$ZodType
+      ? ConvexValidatorFromZod<Fields[k], "required">
       : never;
   };
+
+  // TODO Test
 }
 
 /**
@@ -467,10 +471,16 @@ export function zodToConvexFields<Z extends zCore.$ZodType>(zod: Z) {
  * @param zod Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
  */
-export function zodOutputToConvexFields<Z extends zCore.$ZodType>(zod: Z) {
+export function zodOutputToConvexFields<
+  Fields extends Record<string, zCore.$ZodType>,
+>(fields: Fields) {
   return Object.fromEntries(
-    Object.entries(zod).map(([k, v]) => [k, zodOutputToConvex(v)]),
-  ) as { [k in keyof Z]: ConvexValidatorFromZodOutput<Z[k], OptionalProperty> };
+    Object.entries(fields).map(([k, v]) => [k, zodOutputToConvex(v)]),
+  ) as {
+    [k in keyof Fields]: ConvexValidatorFromZodOutput<Fields[k], "required">;
+  };
+
+  // TODO Test
 }
 
 /**
