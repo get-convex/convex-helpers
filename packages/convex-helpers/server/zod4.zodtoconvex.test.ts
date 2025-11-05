@@ -7,10 +7,8 @@ import {
   v,
   Validator,
   ValidatorJSON,
-  VArray,
   VFloat64,
   VNull,
-  VObject,
   VString,
   VUnion,
 } from "convex/values";
@@ -277,7 +275,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     testZodToConvexBothDirections(
       category,
-      // @ts-expect-error TypeScript can’t compute the full type and uses `unknown`
+      // @ts-expect-error -- TypeScript can’t compute the full type and uses `unknown`
       v.object({
         name: v.string(),
         subcategories: v.array(v.any()),
@@ -404,38 +402,39 @@ describe("zodOutputToConvex", () => {
 
 describe("testing infrastructure", () => {
   test("test methods don’t typecheck if the IsOptional value of the result isn’t set correctly", () => {
+    // eslint-disable-next-line no-constant-condition
     if (false) {
       // typecheck only
       testZodToConvex(
         z.string(),
-        // @ts-expect-error
+        // @ts-expect-error -- This error should be caught by TypeScript
         v.optional(v.string()),
       );
       testZodToConvex(
         z.string().optional(),
-        // @ts-expect-error
+        // @ts-expect-error -- This error should be caught by TypeScript
         v.string(),
       );
 
       testZodOutputToConvex(
         z.string(),
-        // @ts-expect-error
+        // @ts-expect-error -- This error should be caught by TypeScript
         v.optional(v.string()),
       );
       testZodOutputToConvex(
         z.string().optional(),
-        // @ts-expect-error
+        // @ts-expect-error -- This error should be caught by TypeScript
         v.string(),
       );
 
       testZodToConvexBothDirections(
         z.string(),
-        // @ts-expect-error
+        // @ts-expect-error -- This error should be caught by TypeScript
         v.optional(v.string()),
       );
       testZodToConvexBothDirections(
         z.string().optional(),
-        // @ts-expect-error
+        // @ts-expect-error -- This error should be caught by TypeScript
         v.string(),
       );
     }
@@ -464,7 +463,8 @@ function testZodToConvex<
   expected: Expected &
     (ExtractOptional<Expected> extends infer IsOpt extends OptionalProperty
       ? Equals<Expected, ConvexValidatorFromZod<Z, IsOpt>> extends true
-        ? {}
+        ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+          {}
         : "Expected type must exactly match ConvexValidatorFromZod<Z, IsOptional>"
       : "Could not extract IsOptional from Expected"),
 ) {
@@ -480,7 +480,8 @@ function testZodOutputToConvex<
   expected: Expected &
     (ExtractOptional<Expected> extends infer IsOpt extends OptionalProperty
       ? Equals<Expected, ConvexValidatorFromZodOutput<Z, IsOpt>> extends true
-        ? {}
+        ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+          {}
         : "Expected type must exactly match ConvexValidatorFromZodOutput<Z, IsOptional>"
       : "Could not extract IsOptional from Expected"),
 ) {
@@ -524,10 +525,12 @@ function validatorToJson(validator: GenericValidator): ValidatorJSON {
 function assertUnrepresentableType<
   Z extends zCore.$ZodType &
     ([ConvexValidatorFromZod<Z, OptionalProperty>] extends [never]
-      ? {}
+      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        {}
       : "expecting return type of zodToConvex/zodOutputToConvex to be never") &
     ([ConvexValidatorFromZodOutput<Z, OptionalProperty>] extends [never]
-      ? {}
+      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        {}
       : "expecting return type of zodToConvex/zodOutputToConvex to be never"),
 >(validator: Z) {
   expect(() => {

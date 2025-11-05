@@ -415,13 +415,13 @@ export type ConvexValidatorFromZodOutput<
         ConvexValidatorFromZodCommon<Z, IsOptional>;
 
 export function zodToConvex<Z extends zCore.$ZodType>(
-  validator: Z,
+  _validator: Z,
 ): ConvexValidatorFromZod<Z, "required"> {
   throw new Error("TODO");
 }
 
 export function zodOutputToConvex<Z extends zCore.$ZodType>(
-  validator: Z,
+  _validator: Z,
 ): ConvexValidatorFromZodOutput<Z, "required"> {
   throw new Error("TODO");
 }
