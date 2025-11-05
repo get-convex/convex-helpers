@@ -209,7 +209,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
         v.optional(v.union(v.string(), v.null())),
       );
     });
-    test("nullable(optional(string))", () => {
+    test("nullable(optional(string)) → swap nullable and optional", () => {
       testZodToConvexBothDirections(
         z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
@@ -379,6 +379,60 @@ describe("zodOutputToConvex", () => {
 
   test("default", () => {
     testZodOutputToConvex(z.string().default("hello"), v.string());
+  });
+});
+
+describe("testing infrastructure", () => {
+  test("test methods don’t typecheck if the IsOptional value of the result isn’t set correctly", () => {
+    if (false) {
+      // typecheck only
+      testZodToConvex(
+        z.string(),
+        // @ts-expect-error
+        v.optional(v.string()),
+      );
+      testZodToConvex(
+        z.string().optional(),
+        // @ts-expect-error
+        v.string(),
+      );
+
+      testZodOutputToConvex(
+        z.string(),
+        // @ts-expect-error
+        v.optional(v.string()),
+      );
+      testZodOutputToConvex(
+        z.string().optional(),
+        // @ts-expect-error
+        v.string(),
+      );
+
+      testZodToConvexBothDirections(
+        z.string(),
+        // @ts-expect-error
+        v.optional(v.string()),
+      );
+      testZodToConvexBothDirections(
+        z.string().optional(),
+        // @ts-expect-error
+        v.string(),
+      );
+    }
+  });
+
+  test("test methods typecheck if the IsOptional value of the result is set correctly", () => {
+    testZodToConvex(z.string().optional(), v.optional(v.string()));
+    testZodToConvex(z.string(), v.string());
+
+    testZodOutputToConvex(z.string().optional(), v.optional(v.string()));
+    testZodOutputToConvex(z.string(), v.string());
+
+    testZodToConvexBothDirections(
+      z.string().optional(),
+      v.optional(v.string()),
+    );
+    testZodToConvexBothDirections(z.string(), v.string());
   });
 });
 
