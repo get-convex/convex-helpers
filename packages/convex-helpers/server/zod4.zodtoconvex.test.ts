@@ -58,7 +58,6 @@ describe("zodToConvex + zodOutputToConvex", () => {
     testZodToConvexBothDirections(z.array(z.string()), v.array(v.string()));
   });
 
-  // TODO Fix
   describe("union", () => {
     test("never", () => {
       testZodToConvexBothDirections(z.never(), v.union());
