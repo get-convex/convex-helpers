@@ -28,13 +28,9 @@ type ConvexUnionValidatorFromZod<T> = T extends readonly zCore.$ZodType[] // TOD
   ? VUnion<
       ConvexValidatorFromZod<T[number], "required">["type"],
       {
-        [Index in keyof T]: T[Index] extends zCore.$ZodType
-          ? VRequired<
-              ConvexValidatorFromZod<T[Index], "required">
-            > extends Validator<any, "required", any>
-            ? VRequired<ConvexValidatorFromZod<T[Index], "required">>
-            : never
-          : never;
+        [Index in keyof T]: VRequired<
+          ConvexValidatorFromZod<T[Index], "required">
+        >;
       },
       "required",
       ConvexValidatorFromZod<T[number], "required">["fieldPaths"]
@@ -56,9 +52,7 @@ type ConvexUnionValidatorForRecordKey<T> = T extends readonly zCore.$ZodType[]
   ? VUnion<
       ConvexValidatorForRecordKey<T[number]>["type"],
       {
-        [Index in keyof T]: T[Index] extends zCore.$ZodType
-          ? ConvexValidatorForRecordKey<T[Index]>
-          : never;
+        [Index in keyof T]: VRequired<ConvexValidatorForRecordKey<T[Index]>>;
       },
       "required", // record keys are always required
       ConvexValidatorForRecordKey<T[number]>["fieldPaths"]
