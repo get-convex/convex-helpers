@@ -18,14 +18,6 @@ test("Zid is a record key", () => {
 });
 
 describe("convexToZod", () => {
-  function testConvexToZod<
-    C extends GenericValidator,
-    Z extends zCore.$ZodType & ZodValidatorFromConvex<C>,
-  >(validator: C, expected: Z) {
-    const actual = convexToZod(validator);
-    expect(isSameType(actual, expected)).toBe(true);
-  }
-
   test("id", () => {
     expectTypeOf(convexToZod(v.id("users"))).toEqualTypeOf<Zid<"users">>();
   });
@@ -140,3 +132,23 @@ describe("convexToZod", () => {
     });
   });
 });
+
+// Type equality helper: checks if two types are exactly equal (bidirectionally assignable)
+type Equals<X, Y> =
+  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
+    ? true
+    : false;
+
+function testConvexToZod<
+  C extends GenericValidator,
+  Expected extends zCore.$ZodType,
+>(
+  validator: C,
+  expected: Expected &
+    (Equals<Expected, ZodValidatorFromConvex<C>> extends true
+      ? {}
+      : "Expected type must exactly match ZodValidatorFromConvex<C>"),
+) {
+  const actual = convexToZod(validator);
+  expect(isSameType(actual, expected)).toBe(true);
+}
