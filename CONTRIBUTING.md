@@ -1,5 +1,19 @@
 # Contributing to convex-helpers
 
+## Installing dependencies for development
+
+Run the following command in the _root_ of the repository (not `packages/convex-helpers`):
+
+```sh
+npm install
+```
+
+> [!NOTE]
+> There are two `package.json` files in the repository, one in the root and one in `packages/convex-helpers`. The dependencies in the root are a superset of all dependencies, including dependencies used during development only.
+
+> [!IMPORTANT]
+> Do not run `npm install` in `packages/convex-helpers`: this might cause some dependencies to be installed twice, causing type errors.
+
 ## Adding a helper
 
 Adding helpers usually involves:
