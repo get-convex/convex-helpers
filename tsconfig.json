@@ -13,8 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "verbatimModuleSyntax": true
+    "jsx": "react-jsx"
   },
   "include": ["./src", "./convex", "./packages/convex-helpers/**/*.test.ts"]
 }

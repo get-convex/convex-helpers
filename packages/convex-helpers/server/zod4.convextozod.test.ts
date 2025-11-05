@@ -2,19 +2,14 @@ import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import {
-  type GenericId,
-  type GenericValidator,
-  type Infer,
+  GenericId,
+  GenericValidator,
+  Infer,
   v,
-  type VFloat64,
-  type VString,
+  VFloat64,
+  VString,
 } from "convex/values";
-import {
-  convexToZod,
-  type Zid,
-  zid,
-  type ZodValidatorFromConvex,
-} from "./zod4";
+import { convexToZod, Zid, zid, ZodValidatorFromConvex } from "./zod4";
 import { isSameType } from "zod-compare/zod4";
 
 test("Zid is a record key", () => {
