@@ -27,13 +27,13 @@ import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
 type ConvexUnionValidatorFromZod<T> = T extends readonly zCore.$ZodType[] // TODO Try to use this trick more often
   ? VUnion<
       ConvexValidatorFromZod<T[number], "required">["type"],
-      [
-        ...{
-          [Index in keyof T]: T[Index] extends zCore.$ZodType
-            ? ConvexValidatorFromZod<T[Index], "required">
-            : never;
-        },
-      ],
+      {
+        [Index in keyof T as Index extends number
+          ? Index
+          : never]: T[Index] extends zCore.$ZodType
+          ? VRequired<ConvexValidatorFromZod<T[Index], "required">>
+          : never;
+      } & Validator<any, "required", any>[],
       "required",
       ConvexValidatorFromZod<T[number], "required">["fieldPaths"]
     >
@@ -53,13 +53,13 @@ type ConvexValidatorForRecordKey<Z extends zCore.$ZodType> =
 type ConvexUnionValidatorForRecordKey<T> = T extends readonly zCore.$ZodType[]
   ? VUnion<
       ConvexValidatorForRecordKey<T[number]>["type"],
-      [
-        ...{
-          [Index in keyof T]: T[Index] extends zCore.$ZodType
-            ? ConvexValidatorForRecordKey<T[Index]>
-            : never;
-        },
-      ],
+      {
+        [Index in keyof T as Index extends number
+          ? Index
+          : never]: T[Index] extends zCore.$ZodType
+          ? ConvexValidatorForRecordKey<T[Index]>
+          : never;
+      } & Validator<any, "required", any>[],
       "required", // record keys are always required
       ConvexValidatorForRecordKey<T[number]>["fieldPaths"]
     >
@@ -165,9 +165,9 @@ type ConvexValidatorFromZodCommon<
               : Z extends zCore.$ZodNull
                 ? VNull<z.infer<Z>, IsOptional>
                 : Z extends zCore.$ZodUnknown
-                  ? VAny<z.infer<Z>, IsOptional>
+                  ? VAny<z.infer<Z>, "required">
                   : Z extends zCore.$ZodAny
-                    ? VAny<z.infer<Z>, IsOptional>
+                    ? VAny<z.infer<Z>, "required">
                     : // z.array()
                       Z extends zCore.$ZodArray<
                           infer Inner extends zCore.$ZodType
@@ -367,20 +367,20 @@ type ConvexValidatorFromZodCommon<
                                                       any,
                                                       any
                                                     >
-                                                  ? VAny<any, IsOptional> // No runtime info about types so we use v.any()
+                                                  ? VAny<any, "required"> // No runtime info about types so we use v.any()
                                                   : // z.custom
                                                     Z extends zCore.$ZodCustom<any>
-                                                    ? VAny<any, IsOptional>
+                                                    ? VAny<any, "required">
                                                     : // z.intersection
                                                       // We could do some more advanced logic here where we compute
                                                       // the Convex validator that results from the intersection.
                                                       // For now, we simply use v.any()
                                                       Z extends zCore.$ZodIntersection<any>
-                                                      ? VAny<any, IsOptional>
+                                                      ? VAny<any, "required">
                                                       : // unencodable types
                                                         IsConvexUnencodableType<Z> extends true
                                                         ? never
-                                                        : VAny<any, IsOptional>;
+                                                        : VAny<any, "required">;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
