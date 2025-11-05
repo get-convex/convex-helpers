@@ -24,18 +24,23 @@ import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
 
-type ConvexUnionValidatorFromZod<T> = T extends readonly zCore.$ZodType[] // TODO Try to use this trick more often
-  ? VUnion<
-      ConvexValidatorFromZod<T[number], "required">["type"],
-      {
-        [Index in keyof T]: VRequired<
-          ConvexValidatorFromZod<T[Index], "required">
-        >;
-      },
-      "required",
-      ConvexValidatorFromZod<T[number], "required">["fieldPaths"]
-    >
-  : never;
+type ConvexUnionValidatorFromZod<T extends readonly zCore.$ZodType[]> = VUnion<
+  ConvexValidatorFromZod<T[number], "required">["type"],
+  T extends readonly [infer Head extends zCore.$ZodType, ...infer Tail extends zCore.$ZodType[]]
+    ? [VRequired<ConvexValidatorFromZod<Head, "required">>, ...ConvexUnionValidatorFromZodMembers<Tail>]
+    : T extends readonly []
+      ? []
+      : Validator<any, "required", any>[],
+  "required",
+  ConvexValidatorFromZod<T[number], "required">["fieldPaths"]
+>;
+
+type ConvexUnionValidatorFromZodMembers<T extends readonly zCore.$ZodType[]> =
+  T extends readonly [infer Head extends zCore.$ZodType, ...infer Tail extends zCore.$ZodType[]]
+    ? [VRequired<ConvexValidatorFromZod<Head, "required">>, ...ConvexUnionValidatorFromZodMembers<Tail>]
+    : T extends readonly []
+      ? []
+      : Validator<any, "required", any>[];
 
 type ConvexValidatorForRecordKey<Z extends zCore.$ZodType> =
   Z extends Zid<infer TableName>
@@ -44,20 +49,27 @@ type ConvexValidatorForRecordKey<Z extends zCore.$ZodType> =
       ? VString<z.infer<Z>>
       : Z extends zCore.$ZodLiteral<infer Literal extends string>
         ? VLiteral<Literal>
-        : Z extends zCore.$ZodUnion<infer T>
+        : Z extends zCore.$ZodUnion<infer T extends readonly zCore.$ZodType[]>
           ? ConvexUnionValidatorForRecordKey<T>
           : never;
 
-type ConvexUnionValidatorForRecordKey<T> = T extends readonly zCore.$ZodType[]
-  ? VUnion<
-      ConvexValidatorForRecordKey<T[number]>["type"],
-      {
-        [Index in keyof T]: VRequired<ConvexValidatorForRecordKey<T[Index]>>;
-      },
-      "required", // record keys are always required
-      ConvexValidatorForRecordKey<T[number]>["fieldPaths"]
-    >
-  : never;
+type ConvexUnionValidatorForRecordKey<T extends readonly zCore.$ZodType[]> = VUnion<
+  ConvexValidatorForRecordKey<T[number]>["type"],
+  T extends readonly [infer Head extends zCore.$ZodType, ...infer Tail extends zCore.$ZodType[]]
+    ? [VRequired<ConvexValidatorForRecordKey<Head>>, ...ConvexUnionValidatorForRecordKeyMembers<Tail>]
+    : T extends readonly []
+      ? []
+      : Validator<any, "required", any>[],
+  "required", // record keys are always required
+  ConvexValidatorForRecordKey<T[number]>["fieldPaths"]
+>;
+
+type ConvexUnionValidatorForRecordKeyMembers<T extends readonly zCore.$ZodType[]> =
+  T extends readonly [infer Head extends zCore.$ZodType, ...infer Tail extends zCore.$ZodType[]]
+    ? [VRequired<ConvexValidatorForRecordKey<Head>>, ...ConvexUnionValidatorForRecordKeyMembers<Tail>]
+    : T extends readonly []
+      ? []
+      : Validator<any, "required", any>[];
 
 type IsConvexUnencodableType<Z extends zCore.$ZodType> = Z extends
   | zCore.$ZodDate
@@ -183,7 +195,7 @@ type ConvexValidatorFromZodCommon<
                           Z extends zCore.$ZodNever
                           ? VUnion<never, [], IsOptional, never>
                           : // z.union()
-                            Z extends zCore.$ZodUnion<infer T>
+                            Z extends zCore.$ZodUnion<infer T extends readonly zCore.$ZodType[]>
                             ? ConvexUnionValidatorFromZod<T>
                             : //     : Z extends z.ZodTuple<infer Inner>
                               //       ? VArray<
