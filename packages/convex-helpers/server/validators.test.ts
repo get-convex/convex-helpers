@@ -32,7 +32,7 @@ import {
   v,
   type Infer,
   type ObjectType,
-  VString,
+  type VString,
 } from "convex/values";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
