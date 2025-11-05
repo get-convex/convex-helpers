@@ -305,81 +305,78 @@ type ConvexValidatorFromZodCommon<
                                               infer Inner extends zCore.$ZodType
                                             >
                                           ? ConvexValidatorFromZod<Inner>
-                                          : // z.default()
-                                            Z extends z.ZodDefault<
+                                          : // z.lazy()
+                                            Z extends z.ZodLazy<
                                                 infer Inner extends
                                                   zCore.$ZodType
-                                              > // Treat like optional
-                                            ? ConvexValidatorFromZod<Inner> extends GenericValidator
-                                              ? VOptional<
-                                                  ConvexValidatorFromZod<Inner>
-                                                >
-                                              : never
-                                            : // z.lazy()
-                                              Z extends z.ZodLazy<
-                                                  infer Inner extends
-                                                    zCore.$ZodType
-                                                >
-                                              ? ConvexValidatorFromZod<
-                                                  Inner,
-                                                  Constraint
-                                                >
-                                              : // z.templateLiteral()
-                                                Z extends zCore.$ZodTemplateLiteral<any>
-                                                ? VString<
-                                                    z.Infer<Z>,
+                                              >
+                                            ? ConvexValidatorFromZod<
+                                                Inner,
+                                                Constraint
+                                              >
+                                            : // z.templateLiteral()
+                                              Z extends zCore.$ZodTemplateLiteral<any>
+                                              ? VString<z.Infer<Z>, Constraint>
+                                              : // z.catch
+                                                Z extends zCore.$ZodCatch<
+                                                    infer T extends
+                                                      zCore.$ZodType
+                                                  >
+                                                ? ConvexValidatorFromZod<
+                                                    T,
                                                     Constraint
                                                   >
-                                                : // z.catch
-                                                  Z extends zCore.$ZodCatch<
-                                                      infer T extends
-                                                        zCore.$ZodType
+                                                : // z.transform
+                                                  Z extends zCore.$ZodTransform<
+                                                      any,
+                                                      any
                                                     >
-                                                  ? ConvexValidatorFromZod<
-                                                      T,
-                                                      Constraint
-                                                    >
-                                                  : // z.transform
-                                                    Z extends zCore.$ZodTransform<
-                                                        any,
-                                                        any
-                                                      >
-                                                    ? VAny<any, any> // No runtime info about types so we use v.any()
-                                                    : // z.custom
-                                                      Z extends zCore.$ZodCustom<any>
+                                                  ? VAny<any, any> // No runtime info about types so we use v.any()
+                                                  : // z.custom
+                                                    Z extends zCore.$ZodCustom<any>
+                                                    ? VAny<any, any>
+                                                    : // z.intersection
+                                                      // We could do some more advanced logic here where we compute
+                                                      // the Convex validator that results from the intersection.
+                                                      // For now, we simply use v.any()
+                                                      Z extends zCore.$ZodIntersection<any>
                                                       ? VAny<any, any>
-                                                      : // z.intersection
-                                                        // We could do some more advanced logic here where we compute
-                                                        // the Convex validator that results from the intersection.
-                                                        // For now, we simply use v.any()
-                                                        Z extends zCore.$ZodIntersection<any>
-                                                        ? VAny<any, any>
-                                                        : // unencodable types
-                                                          IsConvexUnencodableType<Z> extends true
-                                                          ? never
-                                                          : VAny<any, any>;
+                                                      : // unencodable types
+                                                        IsConvexUnencodableType<Z> extends true
+                                                        ? never
+                                                        : VAny<any, any>;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
   Constraint extends "required" | "optional" = "required",
 > =
-  Z extends zCore.$ZodPipe<
-    infer Input extends zCore.$ZodType,
-    infer _Output extends zCore.$ZodType
-  >
-    ? ConvexValidatorFromZod<Input, Constraint>
-    : ConvexValidatorFromZodCommon<Z, Constraint>;
+  // z.default()
+  Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // input: Treat like optional
+    ? ConvexValidatorFromZod<Inner> extends GenericValidator
+      ? VOptional<ConvexValidatorFromZod<Inner>>
+      : never
+    : // z.pipe()
+      Z extends zCore.$ZodPipe<
+          infer Input extends zCore.$ZodType,
+          infer _Output extends zCore.$ZodType
+        >
+      ? ConvexValidatorFromZod<Input, Constraint>
+      : ConvexValidatorFromZodCommon<Z, Constraint>;
 
 export type ConvexValidatorFromZodOutput<
   Z extends zCore.$ZodType,
   Constraint extends "required" | "optional" = "required",
 > =
-  Z extends zCore.$ZodPipe<
-    infer _Input extends zCore.$ZodType,
-    infer Output extends zCore.$ZodType
-  >
-    ? ConvexValidatorFromZod<Output, Constraint>
-    : ConvexValidatorFromZodCommon<Z, Constraint>;
+  // z.default()
+  Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // output: always there
+    ? ConvexValidatorFromZod<Inner, "required">
+    : // z.pipe()
+      Z extends zCore.$ZodPipe<
+          infer _Input extends zCore.$ZodType,
+          infer Output extends zCore.$ZodType
+        >
+      ? ConvexValidatorFromZod<Output, Constraint>
+      : ConvexValidatorFromZodCommon<Z, Constraint>;
 
 export function zodToConvex<Z extends zCore.$ZodType>(
   validator: Z,

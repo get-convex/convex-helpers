@@ -336,10 +336,7 @@ describe("zodToConvex", () => {
   });
 
   test("default", () => {
-    testZodToConvexBothDirections(
-      z.string().default("hello"),
-      v.optional(v.string()),
-    );
+    testZodToConvex(z.string().default("hello"), v.optional(v.string()));
   });
 });
 
@@ -362,7 +359,7 @@ describe("zodOutputToConvex", () => {
   });
 
   test("default", () => {
-    testZodToConvexBothDirections(z.string().default("hello"), v.string());
+    testZodOutputToConvex(z.string().default("hello"), v.string());
   });
 });
 
