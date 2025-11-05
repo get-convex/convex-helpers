@@ -646,7 +646,9 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : z.ZodTypeAny;
+                              : V extends VAny<any, any, any>
+                                ? z.ZodAny
+                                : never;
 
 /**
  * Better type conversion from a Convex validator to a Zod validator
