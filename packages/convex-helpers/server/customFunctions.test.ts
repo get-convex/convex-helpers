@@ -1,4 +1,4 @@
-import type { CustomCtx } from "./customFunctions.js";
+import type { CustomCtx, Registration } from "./customFunctions.js";
 import {
   customAction,
   customCtx,
@@ -62,7 +62,11 @@ const authenticatedQueryBuilder = customQuery(
 type AuthQueryCtx = CustomCtx<typeof authenticatedQueryBuilder>;
 
 // Example query that doesn't specify argument validation (no `args` param).
-export const unvalidatedArgsQuery = authenticatedQueryBuilder((ctx) => {
+export const unvalidatedArgsQuery: RegisteredQuery<
+  "public",
+  {},
+  { user: any }
+> = authenticatedQueryBuilder((ctx) => {
   return { user: ctx.user };
 });
 
@@ -195,17 +199,20 @@ export const addC = addCtxArg({
 queryMatches(addC, {}, { ctxA: "" });
 
 // Unvalidated
-export const addCU = addCtxArg({
-  handler: async (ctx) => {
-    return { ctxA: ctx.a }; // !!!
+export const addCU: RegisteredQuery<"public", {}, { ctxA: string }> = addCtxArg(
+  {
+    handler: async (ctx) => {
+      return { ctxA: ctx.a }; // !!!
+    },
   },
-});
+);
 queryMatches(addCU, {}, { ctxA: "" });
 
 // Unvalidated variant 2
-export const addCU2 = addCtxArg(async (ctx) => {
-  return { ctxA: ctx.a }; // !!!
-});
+export const addCU2: RegisteredQuery<"public", {}, { ctxA: string }> =
+  addCtxArg(async (ctx) => {
+    return { ctxA: ctx.a }; // !!!
+  });
 queryMatches(addCU2, {}, { ctxA: "" });
 
 // Unvalidated with type annotation
