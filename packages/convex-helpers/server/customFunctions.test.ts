@@ -1,4 +1,4 @@
-import type { CustomCtx, Registration } from "./customFunctions.js";
+import type { CustomCtx } from "./customFunctions.js";
 import {
   customAction,
   customCtx,
