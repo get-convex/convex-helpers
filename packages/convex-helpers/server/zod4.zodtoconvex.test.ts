@@ -8,6 +8,7 @@ import {
   Validator,
   ValidatorJSON,
   VFloat64,
+  VLiteral,
   VNull,
   VString,
   VUnion,
@@ -179,7 +180,58 @@ describe("zodToConvex + zodOutputToConvex", () => {
     );
   });
 
-  // TODO Enum
+  describe("enum", () => {
+    test("array as const", () => {
+      const fish = ["Salmon", "Tuna", "Trout"] as const;
+      testEnum(
+        z.enum(fish),
+        v.union(v.literal("Trout"), v.literal("Tuna"), v.literal("Salmon")),
+      );
+    });
+
+    test("enum-like object literal", () => {
+      const Fish = {
+        Salmon: "Salmon",
+        Tuna: "Tuna",
+        Trout: "Trout",
+      } as const;
+      testEnum(
+        z.enum(Fish),
+        v.union(v.literal("Trout"), v.literal("Tuna"), v.literal("Salmon")),
+      );
+    });
+
+    test("TypeScript string enum", () => {
+      enum Fish {
+        Salmon = "Salmon",
+        Tuna = "Tuna",
+        Trout = "Trout",
+      }
+      testEnum(
+        z.enum(Fish),
+        v.union(v.literal("Trout"), v.literal("Tuna"), v.literal("Salmon")),
+      );
+    });
+
+    function testEnum<
+      T extends string,
+      V extends Validator<T, "required", any>[],
+    >(
+      zodEnum: zCore.$ZodEnum<{
+        Salmon: "Salmon";
+        Tuna: "Tuna";
+        Trout: "Trout";
+      }>,
+      expectedConvexResult: VUnion<T, V, "required">,
+    ) {
+      testZodToConvexBothDirections(
+        zodEnum,
+        // Not checking the type here because the order of the tuple in VUnion
+        // depends on unspecified behavior of the TypeScript compiler
+        expectedConvexResult as any,
+      );
+    }
+  });
 
   // Tuple
   // TODO FIX
