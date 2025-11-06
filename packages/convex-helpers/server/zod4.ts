@@ -240,12 +240,12 @@ type ConvexValidatorFromZodCommon<
                                 infer T extends readonly zCore.$ZodType[]
                               >
                             ? ConvexUnionValidatorFromZod<T>
-                            : //     : Z extends z.ZodTuple<infer Inner>
+                            : //     : Z extends zCore.$ZodTuple<infer Inner>
                               //       ? VArray<
                               //           ConvexValidatorFromZod<Inner[number]>["type"][],
                               //           ConvexValidatorFromZod<Inner[number]>
                               //         >
-                              //       : Z extends z.ZodLazy<infer Inner>
+                              //       : Z extends zCore.$ZodLazy<infer Inner>
                               //         ? ConvexValidatorFromZod<Inner>
                               // z.literal()
                               Z extends zCore.$ZodLiteral<infer Literal>
@@ -264,15 +264,14 @@ type ConvexValidatorFromZodCommon<
                                     IsOptional
                                   >
                                 : // z.optional()
-                                  // TODO Use zCore
-                                  Z extends z.ZodOptional<
+                                  Z extends zCore.$ZodOptional<
                                       infer Inner extends zCore.$ZodType
                                     >
                                   ? VOptional<
                                       ConvexValidatorFromZod<Inner, "optional">
                                     >
                                   : // z.nonoptional()
-                                    Z extends z.ZodNonOptional<
+                                    Z extends zCore.$ZodNonOptional<
                                         infer Inner extends zCore.$ZodType
                                       >
                                     ? VRequired<
@@ -282,7 +281,7 @@ type ConvexValidatorFromZodCommon<
                                         >
                                       >
                                     : // z.nullable()
-                                      Z extends z.ZodNullable<
+                                      Z extends zCore.$ZodNullable<
                                           infer Inner extends zCore.$ZodType
                                         >
                                       ? ConvexValidatorFromZod<
@@ -341,17 +340,17 @@ type ConvexValidatorFromZodCommon<
                                             infer Inner extends zCore.$ZodType,
                                             infer Brand
                                           >
-                                        ? Inner extends z.ZodString
+                                        ? Inner extends zCore.$ZodString
                                           ? VString<
                                               string & zCore.$brand<Brand>,
                                               IsOptional
                                             >
-                                          : Inner extends z.ZodNumber
+                                          : Inner extends zCore.$ZodNumber
                                             ? VFloat64<
                                                 number & zCore.$brand<Brand>,
                                                 IsOptional
                                               >
-                                            : Inner extends z.ZodBigInt
+                                            : Inner extends zCore.$ZodBigInt
                                               ? VInt64<
                                                   bigint & zCore.$brand<Brand>,
                                                   IsOptional
@@ -394,7 +393,7 @@ type ConvexValidatorFromZodCommon<
                                                 IsOptional
                                               >
                                             : // z.lazy()
-                                              Z extends z.ZodLazy<
+                                              Z extends zCore.$ZodLazy<
                                                   infer Inner extends
                                                     zCore.$ZodType
                                                 >
