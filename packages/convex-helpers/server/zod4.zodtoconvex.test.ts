@@ -3,6 +3,7 @@ import * as z from "zod/v4";
 import { describe, expect, test } from "vitest";
 import {
   GenericValidator,
+  Infer,
   OptionalProperty,
   v,
   Validator,
@@ -133,17 +134,53 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
 
+    test("key = string, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(z.string(), z.number().optional()),
+        v.record(v.string(), v.number()),
+      );
+    });
+
     test("key = literal", () => {
       testZodToConvexBothDirections(
         z.record(z.literal("user"), z.number()),
-        v.record(v.literal("user"), v.number()),
+        // Convex records can’t have string literals as keys
+        v.object({
+          user: v.number(),
+        }),
+      );
+    });
+
+    test("key = literal, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(z.literal("user"), z.number().optional()),
+        // Convex records can’t have string literals as keys
+        v.object({
+          user: v.optional(v.number()),
+        }),
       );
     });
 
     test("key = union of literals", () => {
       testZodToConvexBothDirections(
         z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
-        v.record(v.union(v.literal("user"), v.literal("admin")), v.number()),
+        v.object({
+          user: v.number(),
+          admin: v.number(),
+        }),
+      );
+    });
+
+    test("key = union of literals, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(
+          z.union([z.literal("user"), z.literal("admin")]),
+          z.number().optional(),
+        ),
+        v.object({
+          user: v.optional(v.number()),
+          admin: v.optional(v.number()),
+        }),
       );
     });
 
@@ -155,9 +192,96 @@ describe("zodToConvex + zodOutputToConvex", () => {
         );
       }
     });
+
+    test("key = v.id(), optional", () => {
+      {
+        testZodToConvexBothDirections(
+          z.record(zid("documents"), z.number().optional()),
+          v.record(v.id("documents"), v.number()),
+        );
+      }
+    });
   });
 
-  // TODO Partial record
+  describe("partial record", () => {
+    test("key = string", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.string(), z.number()),
+        v.record(v.string(), v.number()),
+      );
+    });
+
+    test("key = string, optional", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.string(), z.number().optional()),
+        v.record(v.string(), v.number()),
+      );
+    });
+
+    test("key = literal", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.literal("user"), z.number()),
+        // Convex records can’t have string literals as keys
+        v.object({
+          user: v.optional(v.number()),
+        }),
+      );
+    });
+
+    test("key = literal, optional", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.literal("user"), z.number().optional()),
+        // Convex records can’t have string literals as keys
+        v.object({
+          user: v.optional(v.number()),
+        }),
+      );
+    });
+
+    test("key = union of literals", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(
+          z.union([z.literal("user"), z.literal("admin")]),
+          z.number(),
+        ),
+        v.object({
+          user: v.optional(v.number()),
+          admin: v.optional(v.number()),
+        }),
+      );
+    });
+
+    test("key = union of literals, optional", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(
+          z.union([z.literal("user"), z.literal("admin")]),
+          z.number().optional(),
+        ),
+        v.object({
+          user: v.optional(v.number()),
+          admin: v.optional(v.number()),
+        }),
+      );
+    });
+
+    test("key = v.id()", () => {
+      {
+        testZodToConvexBothDirections(
+          z.partialRecord(zid("documents"), z.number()),
+          v.record(v.id("documents"), v.number()),
+        );
+      }
+    });
+
+    test("key = v.id(), optional", () => {
+      {
+        testZodToConvexBothDirections(
+          z.partialRecord(zid("documents"), z.number().optional()),
+          v.record(v.id("documents"), v.number()),
+        );
+      }
+    });
+  });
 
   test("readonly", () => {
     testZodToConvexBothDirections(
