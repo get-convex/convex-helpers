@@ -127,6 +127,22 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("record", () => {
+    test("key = any", () => {
+      testZodToConvexBothDirections(
+        z.record(z.any(), z.number()),
+        // v.record(v.any(), …) is not allowed in Convex validators
+        v.record(v.string(), v.number()),
+      );
+    });
+
+    test("key = any, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(z.any(), z.number().optional()),
+        // v.record(v.any(), …) is not allowed in Convex validators
+        v.record(v.string(), v.number()),
+      );
+    });
+
     test("key = string", () => {
       testZodToConvexBothDirections(
         z.record(z.string(), z.number()),
@@ -204,6 +220,22 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("partial record", () => {
+    test("key = any", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.any(), z.number()),
+        // v.record(v.any(), …) is not allowed in Convex validators
+        v.record(v.string(), v.number()),
+      );
+    });
+
+    test("key = any, optional", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.any(), z.number().optional()),
+        // v.record(v.any(), …) is not allowed in Convex validators
+        v.record(v.string(), v.number()),
+      );
+    });
+
     test("key = string", () => {
       testZodToConvexBothDirections(
         z.partialRecord(z.string(), z.number()),
