@@ -602,30 +602,60 @@ function vRequired(validator: GenericValidator) {
 export function zodToConvex<Z extends zCore.$ZodType>(
   validator: Z,
 ): ConvexValidatorFromZod<Z, "required"> {
-  if (validator instanceof zCore.$ZodDefault) {
-    return v.optional(zodToConvex(validator._zod.def.innerType)) as any;
+  const visited = new Set<zCore.$ZodType>();
+
+  function zodToConvexInner(validator: zCore.$ZodType): GenericValidator {
+    // Circular validator definitions are not supported by Convex validators,
+    // so we use v.any() when there is a cycle.
+    if (visited.has(validator)) {
+      return v.any();
+    }
+    visited.add(validator);
+
+    if (validator instanceof zCore.$ZodDefault) {
+      return v.optional(zodToConvexInner(validator._zod.def.innerType));
+    }
+
+    if (validator instanceof zCore.$ZodPipe) {
+      return zodToConvexInner(validator._zod.input as any); // as any since the type here is `unknown`, but we know it’s a Zod validator
+    }
+
+    return zodToConvexCommon(validator, zodToConvexInner);
   }
 
-  if (validator instanceof zCore.$ZodPipe) {
-    return zodToConvex(validator._zod.input as unknown as any) as any;
-  }
-
-  return zodToConvexCommon(validator, zodToConvex) as any;
+  // `as any` because ConvexValidatorFromZod is defined from the behavior of zodToConvex.
+  // We assume the type is correct to simplify the life of the compiler.
+  return zodToConvexInner(validator) as any;
 }
 
 export function zodOutputToConvex<Z extends zCore.$ZodType>(
   validator: Z,
 ): ConvexValidatorFromZodOutput<Z, "required"> {
-  if (validator instanceof zCore.$ZodDefault) {
-    // Output: always there
-    return zodToConvex(validator._zod.def.innerType) as any;
+  const visited = new Set<zCore.$ZodType>();
+
+  function zodOutputToConvexInner(validator: zCore.$ZodType): GenericValidator {
+    // Circular validator definitions are not supported by Convex validators,
+    // so we use v.any() when there is a cycle.
+    if (visited.has(validator)) {
+      return v.any();
+    }
+    visited.add(validator);
+
+    if (validator instanceof zCore.$ZodDefault) {
+      // Output: always there
+      return zodOutputToConvexInner(validator._zod.def.innerType);
+    }
+
+    if (validator instanceof zCore.$ZodPipe) {
+      return zodOutputToConvexInner(validator._zod.output); // as any since the type here is `unknown`, but we know it’s a Zod validator
+    }
+
+    return zodToConvexCommon(validator, zodOutputToConvexInner);
   }
 
-  if (validator instanceof zCore.$ZodPipe) {
-    return zodToConvex(validator._zod.output as unknown as any) as any;
-  }
-
-  return zodToConvexCommon(validator, zodOutputToConvex) as any;
+  // `as any` because ConvexValidatorFromZodOutput is defined from the behavior of zodOutputToConvex.
+  // We assume the type is correct to simplify the life of the compiler.
+  return zodOutputToConvexInner(validator) as any;
 }
 
 function zodToConvexCommon<Z extends zCore.$ZodType>(
@@ -677,7 +707,7 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
       Object.fromEntries(
         Object.entries(validator._zod.def.shape).map(([k, v]) => [
           k,
-          zodToConvex(v),
+          toConvex(v),
         ]),
       ),
     );
@@ -764,7 +794,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     return v.string();
   }
 
-  // TODO Catch
   // TODO Transform
 
   if (
