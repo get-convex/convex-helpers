@@ -436,33 +436,39 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   // Tuple
-  // TODO FIX
-  // describe("tuple", () => {
-  //   test("fixed elements, same type", () => {
-  //     testZodToConvexBothDirections(
-  //       z.tuple([z.string(), z.string()]),
-  //       v.array(v.string()),
-  //     );
-  //   });
-  //   test("fixed elements", () => {
-  //     testZodToConvexBothDirections(
-  //       z.tuple([z.string(), z.number()]),
-  //       v.array(v.union([v.string(), v.number()])),
-  //     );
-  //   });
-  //   test("variadic element, same type", () => {
-  //     testZodToConvexBothDirections(
-  //       z.tuple([z.string()], z.string()),
-  //       v.array(v.string()),
-  //     );
-  //   });
-  //   test("variadic element", () => {
-  //     testZodToConvexBothDirections(
-  //       z.tuple([z.string()], z.number()),
-  //       v.tuple([v.string(), v.number(), v.array(v.string())]),
-  //     );
-  //   });
-  // });
+  const actual = zodToConvex(z.tuple([z.string()]));
+  describe("tuple", () => {
+    test("one-element tuple", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string()]),
+        v.array(v.union(v.string())), // simplified
+      );
+    });
+    test("fixed elements, same type", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string(), z.string()]),
+        v.array(v.union(v.string(), v.string())), // suboptimal
+      );
+    });
+    test("fixed elements", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string(), z.number()]),
+        v.array(v.union(v.string(), v.number())),
+      );
+    });
+    test("variadic element, same type", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string()], z.string()),
+        v.array(v.union(v.string(), v.string())), // suboptimal
+      );
+    });
+    test("variadic element", () => {
+      testZodToConvexBothDirections(
+        z.tuple([z.string()], z.number()),
+        v.array(v.union(v.string(), v.number())),
+      );
+    });
+  });
 
   describe("nullable", () => {
     test("nullable(string)", () => {
