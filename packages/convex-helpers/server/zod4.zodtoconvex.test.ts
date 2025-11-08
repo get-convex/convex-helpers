@@ -3,13 +3,11 @@ import * as z from "zod/v4";
 import { describe, expect, test } from "vitest";
 import {
   GenericValidator,
-  Infer,
   OptionalProperty,
   v,
   Validator,
   ValidatorJSON,
   VFloat64,
-  VLiteral,
   VNull,
   VString,
   VUnion,
@@ -217,6 +215,30 @@ describe("zodToConvex + zodOutputToConvex", () => {
         );
       }
     });
+
+    test("key = union of ids", () => {
+      testZodToConvexBothDirections(
+        z.record(z.union([zid("users"), zid("documents")]), z.number()),
+        v.record(v.union(v.id("users"), v.id("documents")), v.number()),
+      );
+    });
+
+    test("key = union of ids, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(
+          z.union([zid("users"), zid("documents")]),
+          z.number().optional(),
+        ),
+        v.record(v.union(v.id("users"), v.id("documents")), v.number()),
+      );
+    });
+
+    test("key = other", () => {
+      testZodToConvexBothDirections(
+        z.record(z.union([zid("users"), z.literal("none")]), z.number()),
+        v.record(v.string(), v.number()),
+      );
+    });
   });
 
   describe("partial record", () => {
@@ -312,6 +334,30 @@ describe("zodToConvex + zodOutputToConvex", () => {
           v.record(v.id("documents"), v.number()),
         );
       }
+    });
+
+    test("key = union of ids", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(z.union([zid("users"), zid("documents")]), z.number()),
+        v.record(v.union(v.id("users"), v.id("documents")), v.number()),
+      );
+    });
+
+    test("key = union of ids, optional", () => {
+      testZodToConvexBothDirections(
+        z.partialRecord(
+          z.union([zid("users"), zid("documents")]),
+          z.number().optional(),
+        ),
+        v.record(v.union(v.id("users"), v.id("documents")), v.number()),
+      );
+    });
+
+    test("key = other", () => {
+      testZodToConvexBothDirections(
+        z.record(z.union([zid("users"), z.literal("none")]), z.number()),
+        v.record(v.string(), v.number()),
+      );
     });
   });
 

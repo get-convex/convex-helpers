@@ -56,49 +56,6 @@ type ConvexUnionValidatorFromZodMembers<T extends readonly zCore.$ZodType[]> =
       ? []
       : Validator<any, "required", any>[];
 
-type ConvexValidatorForRecordKey<Z extends zCore.$ZodType> =
-  Z extends Zid<infer TableName>
-    ? VId<GenericId<TableName>>
-    : Z extends zCore.$ZodString
-      ? VString<z.infer<Z>>
-      : Z extends zCore.$ZodLiteral<infer Literal extends string>
-        ? VLiteral<Literal>
-        : Z extends zCore.$ZodUnion<infer T extends readonly zCore.$ZodType[]>
-          ? ConvexUnionValidatorForRecordKey<T>
-          : never;
-
-type ConvexUnionValidatorForRecordKey<T extends readonly zCore.$ZodType[]> =
-  VUnion<
-    ConvexValidatorForRecordKey<T[number]>["type"],
-    T extends readonly [
-      infer Head extends zCore.$ZodType,
-      ...infer Tail extends zCore.$ZodType[],
-    ]
-      ? [
-          VRequired<ConvexValidatorForRecordKey<Head>>,
-          ...ConvexUnionValidatorForRecordKeyMembers<Tail>,
-        ]
-      : T extends readonly []
-        ? []
-        : Validator<any, "required", any>[],
-    "required", // record keys are always required
-    ConvexValidatorForRecordKey<T[number]>["fieldPaths"]
-  >;
-
-type ConvexUnionValidatorForRecordKeyMembers<
-  T extends readonly zCore.$ZodType[],
-> = T extends readonly [
-  infer Head extends zCore.$ZodType,
-  ...infer Tail extends zCore.$ZodType[],
-]
-  ? [
-      VRequired<ConvexValidatorForRecordKey<Head>>,
-      ...ConvexUnionValidatorForRecordKeyMembers<Tail>,
-    ]
-  : T extends readonly []
-    ? []
-    : Validator<any, "required", any>[];
-
 type ConvexObjectFromZodShape<Fields extends Readonly<zCore.$ZodShape>> =
   Fields extends infer F // dark magic to get the TypeScript compiler happy about circular types
     ? {
@@ -107,6 +64,81 @@ type ConvexObjectFromZodShape<Fields extends Readonly<zCore.$ZodShape>> =
           : Validator<any, "required", any>;
       }
     : never;
+
+type ConvexObjectValidatorFromRecord<
+  Key extends string,
+  Value extends zCore.$ZodType,
+  IsOptional extends "required" | "optional",
+> = VObject<
+  MakeUndefinedPropertiesOptional<{
+    [K in Key]: zCore.infer<Value>;
+  }>,
+  {
+    [K in Key]: ConvexValidatorFromZod<Value, "required">;
+  },
+  IsOptional
+>;
+
+/*
+ * Hack! This type causes TypeScript to simplify how it renders object types.
+ *
+ * It is functionally the identity for object types, but in practice it can
+ * simplify expressions like `A & B`.
+ */
+type Expand<ObjectType extends Record<any, any>> =
+  ObjectType extends Record<any, any>
+    ? {
+        [Key in keyof ObjectType]: ObjectType[Key];
+      }
+    : never;
+
+// MakeUndefinedPropertiesOptional<{ a: string | undefined; b: string }> = { a?: string | undefined; b: string }
+//                                                                            ^
+type MakeUndefinedPropertiesOptional<Obj extends object> = Expand<
+  {
+    [K in keyof Obj as undefined extends Obj[K] ? never : K]: Obj[K];
+  } & {
+    [K in keyof Obj as undefined extends Obj[K] ? K : never]?: Obj[K];
+  }
+>;
+
+type ConvexValidatorFromZodRecord<
+  Key extends zCore.$ZodRecordKey,
+  Value extends zCore.$ZodType,
+  IsOptional extends "required" | "optional",
+> =
+  // key = v.string() / v.id() / v.union(v.id())
+  Key extends
+    | zCore.$ZodString
+    | Zid<any>
+    | zCore.$ZodUnion<infer _Ids extends readonly Zid<any>[]>
+    ? VRecord<
+        Record<zCore.infer<Key>, NotUndefined<zCore.infer<Value>>>,
+        VRequired<ConvexValidatorFromZod<Key, "required">>,
+        VRequired<ConvexValidatorFromZod<Value, "required">>,
+        IsOptional
+      >
+    : // key = v.literal()
+      Key extends zCore.$ZodLiteral<infer Literal extends string>
+      ? ConvexObjectValidatorFromRecord<Literal, Value, IsOptional>
+      : // key = v.union(v.literal())
+        Key extends zCore.$ZodUnion<
+            infer Literals extends readonly zCore.$ZodLiteral[]
+          >
+        ? ConvexObjectValidatorFromRecord<
+            zCore.infer<Literals[number]> extends string
+              ? zCore.infer<Literals[number]>
+              : never,
+            Value,
+            IsOptional
+          >
+        : // key = v.any() / otehr
+          VRecord<
+            Record<string, NotUndefined<zCore.infer<Value>>>,
+            VString<string, "required">,
+            VRequired<ConvexValidatorFromZod<Value, "required">>,
+            IsOptional
+          >;
 
 type IsConvexUnencodableType<Z extends zCore.$ZodType> = Z extends
   | zCore.$ZodDate
@@ -367,24 +399,11 @@ type ConvexValidatorFromZodCommon<
                                                 zCore.$ZodRecordKey,
                                               infer Value extends zCore.$ZodType
                                             >
-                                          ? ConvexValidatorFromZod<
+                                          ? ConvexValidatorFromZodRecord<
+                                              Key,
                                               Value,
-                                              "required"
-                                            > extends GenericValidator
-                                            ? VRecord<
-                                                Record<
-                                                  z.infer<Key>,
-                                                  z.infer<Value>
-                                                >,
-                                                ConvexValidatorForRecordKey<Key>,
-                                                ConvexValidatorFromZod<
-                                                  Value,
-                                                  "required"
-                                                >,
-                                                IsOptional,
-                                                string
-                                              >
-                                            : never
+                                              IsOptional
+                                            >
                                           : // z.readonly()
                                             Z extends zCore.$ZodReadonly<
                                                 infer Inner extends
