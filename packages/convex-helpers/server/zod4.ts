@@ -23,7 +23,6 @@ import type {
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
-import type { DoesZapCodeSpaceFlag } from "v8";
 
 type ConvexUnionValidatorFromZod<T extends readonly zCore.$ZodType[]> = VUnion<
   ConvexValidatorFromZod<T[number], "required">["type"],
