@@ -233,6 +233,26 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
                               >
                             : never;
 
+type UnionToIntersection<U> = (
+  U extends unknown ? (k: U) => void : never
+) extends (k: infer I) => void
+  ? I
+  : never;
+type LastOf<U> =
+  UnionToIntersection<U extends unknown ? (x: U) => U : never> extends (
+    x: infer L,
+  ) => unknown
+    ? L
+    : never;
+type Push<T extends unknown[], V> = [...T, V];
+type UnionToTuple<U, R extends unknown[] = []> = [U] extends [never]
+  ? R
+  : UnionToTuple<Exclude<U, LastOf<U>>, Push<R, LastOf<U>>>;
+type EnumValidator<T extends string> =
+  UnionToTuple<T> extends infer U extends string[]
+    ? { [K in keyof U]: VLiteral<U[K], "required"> }
+    : never;
+
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
   Z extends zCore.$ZodType,
@@ -680,26 +700,6 @@ type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
           ? ZodValidatorFromConvex<F[K]>
           : never;
       }
-    : never;
-
-type UnionToIntersection<U> = (
-  U extends unknown ? (k: U) => void : never
-) extends (k: infer I) => void
-  ? I
-  : never;
-type LastOf<U> =
-  UnionToIntersection<U extends unknown ? (x: U) => U : never> extends (
-    x: infer L,
-  ) => unknown
-    ? L
-    : never;
-type Push<T extends unknown[], V> = [...T, V];
-type UnionToTuple<U, R extends unknown[] = []> = [U] extends [never]
-  ? R
-  : UnionToTuple<Exclude<U, LastOf<U>>, Push<R, LastOf<U>>>;
-type EnumValidator<T extends string> =
-  UnionToTuple<T> extends infer U extends string[]
-    ? { [K in keyof U]: VLiteral<U[K], "required"> }
     : never;
 
 export type ZodFromValidatorBase<V extends GenericValidator> =
