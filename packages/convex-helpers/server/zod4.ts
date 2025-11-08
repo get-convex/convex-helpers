@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import type {
   GenericId,
   GenericValidator,
@@ -398,6 +399,7 @@ type ConvexValidatorFromZodCommon<
                                                 VRequired<
                                                   ConvexValidatorFromZod<
                                                     Inner,
+                                                    Inner,
                                                     IsOptional
                                                   >
                                                 >,
@@ -562,15 +564,222 @@ export type ConvexValidatorFromZodOutput<
       : // All other schemas have the same input/output types
         ConvexValidatorFromZodCommon<Z, IsOptional>;
 
+function vRequired(validator: GenericValidator) {
+  const { kind } = validator;
+  switch (kind) {
+    case "id":
+      return v.id(validator.tableName);
+    case "string":
+      return v.string();
+    case "float64":
+      return v.float64();
+    case "int64":
+      return v.int64();
+    case "boolean":
+      return v.boolean();
+    case "null":
+      return v.null();
+    case "any":
+      return v.any();
+    case "literal":
+      return v.literal(validator.value);
+    case "bytes":
+      return v.bytes();
+    case "object":
+      return v.object(validator.fields);
+    case "array":
+      return v.array(validator.element);
+    case "record":
+      return v.record(validator.key, validator.value);
+    case "union":
+      return v.union(...validator.members);
+    default:
+      kind satisfies never;
+      throw new Error("Unknown Convex validator type: " + kind);
+  }
+}
+
 export function zodToConvex<Z extends zCore.$ZodType>(
-  _validator: Z,
+  validator: Z,
 ): ConvexValidatorFromZod<Z, "required"> {
-  throw new Error("TODO");
+  if (validator instanceof zCore.$ZodDefault) {
+    return v.optional(zodToConvex(validator._zod.def.innerType)) as any;
+  }
+
+  if (validator instanceof zCore.$ZodPipe) {
+    return zodToConvex(validator._zod.input as unknown as any) as any;
+  }
+
+  return zodToConvexCommon(validator, zodToConvex) as any;
 }
 
 export function zodOutputToConvex<Z extends zCore.$ZodType>(
-  _validator: Z,
+  validator: Z,
 ): ConvexValidatorFromZodOutput<Z, "required"> {
+  if (validator instanceof zCore.$ZodDefault) {
+    // Output: always there
+    return zodToConvex(validator._zod.def.innerType) as any;
+  }
+
+  if (validator instanceof zCore.$ZodPipe) {
+    return zodToConvex(validator._zod.output as unknown as any) as any;
+  }
+
+  return zodToConvexCommon(validator, zodOutputToConvex) as any;
+}
+
+function zodToConvexCommon<Z extends zCore.$ZodType>(
+  validator: Z,
+  toConvex: (x: zCore.$ZodType) => GenericValidator,
+): GenericValidator {
+  // TODO ID
+
+  if (validator instanceof zCore.$ZodString) {
+    return v.string();
+  }
+
+  if (
+    validator instanceof zCore.$ZodNumber ||
+    validator instanceof zCore.$ZodNaN
+  ) {
+    return v.number();
+  }
+
+  if (validator instanceof zCore.$ZodBigInt) {
+    return v.int64();
+  }
+
+  if (validator instanceof zCore.$ZodBoolean) {
+    return v.boolean();
+  }
+
+  if (validator instanceof zCore.$ZodNull) {
+    return v.null();
+  }
+
+  if (
+    validator instanceof zCore.$ZodAny ||
+    validator instanceof zCore.$ZodUnknown
+  ) {
+    return v.any();
+  }
+
+  if (validator instanceof zCore.$ZodArray) {
+    const inner = toConvex(validator._zod.def.element);
+    if (inner.isOptional === "optional") {
+      throw new Error("Arrays of optional values are not supported");
+    }
+    return v.array(inner);
+  }
+
+  if (validator instanceof zCore.$ZodObject) {
+    return v.object(
+      Object.fromEntries(
+        Object.entries(validator._zod.def.shape).map(([k, v]) => [
+          k,
+          zodToConvex(v),
+        ]),
+      ),
+    );
+  }
+
+  if (validator instanceof zCore.$ZodUnion) {
+    return v.union(...validator._zod.def.options.map(toConvex));
+  }
+
+  if (validator instanceof zCore.$ZodNever) {
+    return v.union();
+  }
+
+  if (validator instanceof zCore.$ZodTuple) {
+    const { items, rest } = validator._zod.def;
+    return v.array(
+      v.union(
+        ...[
+          ...items,
+          // + rest if set
+          ...(rest !== null ? [rest] : []),
+        ].map(toConvex),
+      ),
+    );
+  }
+
+  if (validator instanceof zCore.$ZodLiteral) {
+    function convexToZodLiteral(literal: zCore.util.Literal): GenericValidator {
+      if (literal === undefined) {
+        throw new Error("undefined is not a valid Convex type");
+      }
+
+      if (literal === null) {
+        return v.null();
+      }
+
+      return v.literal(literal);
+    }
+
+    const { values } = validator._zod.def;
+    if (values.length === 1) {
+      return convexToZodLiteral(values[0]);
+    }
+
+    return v.union(...values.map(convexToZodLiteral));
+  }
+
+  if (validator instanceof zCore.$ZodEnum) {
+    return v.union(
+      ...Object.keys(validator._zod.def.entries).map((x) => v.literal(x)),
+    );
+  }
+
+  if (validator instanceof zCore.$ZodOptional) {
+    return v.optional(toConvex(validator._zod.def.innerType));
+  }
+
+  if (validator instanceof zCore.$ZodNonOptional) {
+    return vRequired(toConvex(validator._zod.def.innerType));
+  }
+
+  if (validator instanceof zCore.$ZodNullable) {
+    const inner = toConvex(validator._zod.def.innerType);
+
+    // Invert z.optional().nullable() → v.optional(v.nullable())
+    if (inner.isOptional) {
+      return v.optional(v.union(inner, v.null()));
+    }
+
+    return v.union(inner, v.null());
+  }
+
+  // TODO Record
+
+  if (validator instanceof zCore.$ZodReadonly) {
+    return toConvex(validator._zod.def.innerType);
+  }
+
+  if (validator instanceof zCore.$ZodLazy) {
+    return toConvex(validator._zod.def.getter());
+  }
+
+  if (validator instanceof zCore.$ZodTemplateLiteral) {
+    return v.string();
+  }
+
+  // TODO Catch
+  // TODO Transform
+
+  if (
+    validator instanceof zCore.$ZodCustom ||
+    validator instanceof zCore.$ZodIntersection
+  ) {
+    return v.any();
+  }
+
+  if (validator instanceof zCore.$ZodCatch) {
+    return toConvex(validator._zod.def.innerType);
+  }
+
+  // TODO Unencodable types
+
   throw new Error("TODO");
 }
 
