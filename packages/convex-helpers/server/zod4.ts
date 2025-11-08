@@ -69,13 +69,22 @@ type ConvexObjectValidatorFromRecord<
   Key extends string,
   Value extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
+  IsPartial extends "partial" | "full",
 > = VObject<
-  MakeUndefinedPropertiesOptional<{
-    [K in Key]: zCore.infer<Value>;
-  }>,
-  {
-    [K in Key]: ConvexValidatorFromZod<Value, "required">;
-  },
+  IsPartial extends "partial"
+    ? {
+        [K in Key]?: zCore.infer<Value>;
+      }
+    : MakeUndefinedPropertiesOptional<{
+        [K in Key]: zCore.infer<Value>;
+      }>,
+  IsPartial extends "partial"
+    ? {
+        [K in Key]: VOptional<ConvexValidatorFromZod<Value, "required">>;
+      }
+    : {
+        [K in Key]: ConvexValidatorFromZod<Value, "required">;
+      },
   IsOptional
 >;
 
@@ -120,7 +129,12 @@ type ConvexValidatorFromZodRecord<
       >
     : // key = v.literal()
       Key extends zCore.$ZodLiteral<infer Literal extends string>
-      ? ConvexObjectValidatorFromRecord<Literal, Value, IsOptional>
+      ? ConvexObjectValidatorFromRecord<
+          Literal,
+          Value,
+          IsOptional,
+          Key extends zCore.$partial ? "partial" : "full"
+        >
       : // key = v.union(v.literal())
         Key extends zCore.$ZodUnion<
             infer Literals extends readonly zCore.$ZodLiteral[]
@@ -130,7 +144,8 @@ type ConvexValidatorFromZodRecord<
               ? zCore.infer<Literals[number]>
               : never,
             Value,
-            IsOptional
+            IsOptional,
+            Key extends zCore.$partial ? "partial" : "full"
           >
         : // key = v.any() / otehr
           VRecord<
