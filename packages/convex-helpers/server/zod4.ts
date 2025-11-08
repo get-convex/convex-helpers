@@ -1,5 +1,3 @@
-// TODO Replace zCore.infer
-
 import type {
   GenericId,
   GenericValidator,
@@ -243,21 +241,21 @@ type ConvexValidatorFromZodCommon<
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends zCore.$ZodString
-      ? VString<z.infer<Z>, IsOptional>
+      ? VString<zCore.infer<Z>, IsOptional>
       : Z extends zCore.$ZodNumber
-        ? VFloat64<z.infer<Z>, IsOptional>
+        ? VFloat64<zCore.infer<Z>, IsOptional>
         : Z extends zCore.$ZodNaN
-          ? VFloat64<z.infer<Z>, IsOptional>
+          ? VFloat64<zCore.infer<Z>, IsOptional>
           : Z extends zCore.$ZodBigInt
-            ? VInt64<z.infer<Z>, IsOptional>
+            ? VInt64<zCore.infer<Z>, IsOptional>
             : Z extends zCore.$ZodBoolean
-              ? VBoolean<z.infer<Z>, IsOptional>
+              ? VBoolean<zCore.infer<Z>, IsOptional>
               : Z extends zCore.$ZodNull
-                ? VNull<z.infer<Z>, IsOptional>
+                ? VNull<zCore.infer<Z>, IsOptional>
                 : Z extends zCore.$ZodUnknown
-                  ? VAny<z.infer<Z>, "required">
+                  ? VAny<zCore.infer<Z>, "required">
                   : Z extends zCore.$ZodAny
-                    ? VAny<z.infer<Z>, "required">
+                    ? VAny<zCore.infer<Z>, "required">
                     : // z.array()
                       Z extends zCore.$ZodArray<
                           infer Inner extends zCore.$ZodType
@@ -277,7 +275,7 @@ type ConvexValidatorFromZodCommon<
                             infer Fields extends Readonly<zCore.$ZodShape>
                           >
                         ? VObject<
-                            z.infer<Z>,
+                            zCore.infer<Z>,
                             ConvexObjectFromZodShape<Fields>,
                             IsOptional
                           >
