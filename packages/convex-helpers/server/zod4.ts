@@ -646,7 +646,7 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
     }
 
     if (validator instanceof zCore.$ZodPipe) {
-      return zodOutputToConvexInner(validator._zod.output); // as any since the type here is `unknown`, but we know it’s a Zod validator
+      return zodOutputToConvexInner(validator._zod.output as any); // as any since the type here is `unknown`, but we know it’s a Zod validator
     }
 
     return zodToConvexCommon(validator, zodOutputToConvexInner);
