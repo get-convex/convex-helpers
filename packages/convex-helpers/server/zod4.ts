@@ -399,7 +399,6 @@ type ConvexValidatorFromZodCommon<
                                                 VRequired<
                                                   ConvexValidatorFromZod<
                                                     Inner,
-                                                    Inner,
                                                     IsOptional
                                                   >
                                                 >,
