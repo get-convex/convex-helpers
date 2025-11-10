@@ -59,8 +59,8 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
     test("multiple values, different types", () => {
       testZodToConvexBothDirections(
-        z.literal([123, "xyz"]),
-        v.union(v.literal(123), v.literal("xyz")),
+        z.literal([123, "xyz", null]),
+        v.union(v.literal(123), v.literal("xyz"), v.null()),
       );
     });
   });
