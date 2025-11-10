@@ -793,8 +793,15 @@ describe("zodToConvex", () => {
     const _asAny: VAny = zodToConvex(someType);
   });
 
-  // TODO as any
-  // TODO as unknown as any
+  test("any type", () => {
+    const someType: any = z.string();
+
+    // @ts-expect-error -- The type system doesn’t know the type
+    const _asString: VString = zodToConvex(someType);
+
+    // @ts-expect-error -- It’s also not v.any(), which is a specific type
+    const _asAny: VAny = zodToConvex(someType);
+  });
 
   describe("lazy", () => {
     test("throwing", () => {
@@ -812,7 +819,7 @@ describe("zodToConvex", () => {
 describe("zodOutputToConvex", () => {
   test("transform", () => {
     testZodOutputToConvex(
-      z.number().pipe.transform((s) => s.toString()),
+      z.number().transform((s) => s.toString()),
       v.any(), // this transform doesn’t hold runtime info about the output type
     );
   });
