@@ -234,10 +234,68 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
                               >
                             : never;
 
+type ConvexLiteralMemberFromZod<
+  L extends zCore.util.Literal,
+  IsOptional extends "required" | "optional",
+> = L extends null
+  ? VNull<null, IsOptional>
+  : L extends undefined
+    ? never
+    : VLiteral<L, IsOptional>;
+type ConvexLiteralUnionMembers<U extends zCore.util.Literal> =
+  UnionToTuple<U> extends readonly [
+    infer Head extends zCore.util.Literal,
+    ...infer Tail extends readonly zCore.util.Literal[],
+  ]
+    ? [
+        VRequired<ConvexLiteralMemberFromZod<Head, "required">>,
+        ...ConvexLiteralUnionMembersMembers<Tail>,
+      ]
+    : UnionToTuple<U> extends readonly []
+      ? []
+      : Validator<any, "required", any>[];
+type ConvexLiteralUnionMembersMembers<T extends readonly zCore.util.Literal[]> =
+  T extends readonly [
+    infer Head extends zCore.util.Literal,
+    ...infer Tail extends readonly zCore.util.Literal[],
+  ]
+    ? [
+        VRequired<ConvexLiteralMemberFromZod<Head, "required">>,
+        ...ConvexLiteralUnionMembersMembers<Tail>,
+      ]
+    : T extends readonly []
+      ? []
+      : Validator<any, "required", any>[];
 type ConvexLiteralFromZod<
   Literal extends zCore.util.Literal,
   IsOptional extends "required" | "optional",
-> = never;
+> = undefined extends Literal // undefined is not a valid Convex valvue
+  ? never
+  : // z.literal(null) → v.null()
+    [Literal] extends [null]
+    ? VNull<null, IsOptional>
+    : // Union types
+      UnionToTuple<Literal> extends infer Members
+      ? Members extends readonly zCore.util.Literal[]
+        ? Members extends readonly [infer _First, ...infer Rest]
+          ? Rest extends readonly []
+            ? ConvexLiteralMemberFromZod<Literal, IsOptional>
+            : VUnion<
+                Literal,
+                ConvexLiteralUnionMembers<Literal>,
+                IsOptional,
+                never
+              >
+          : Members extends readonly []
+            ? ConvexLiteralMemberFromZod<Literal, IsOptional>
+            : VUnion<
+                Literal,
+                ConvexLiteralUnionMembers<Literal>,
+                IsOptional,
+                never
+              >
+        : never
+      : never;
 
 type UnionToIntersection<U> = (
   U extends unknown ? (k: U) => void : never
