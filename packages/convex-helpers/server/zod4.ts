@@ -234,6 +234,11 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
                               >
                             : never;
 
+type ConvexLiteralFromZod<
+  Literal extends zCore.util.Literal,
+  IsOptional extends "required" | "optional",
+> = never;
+
 type UnionToIntersection<U> = (
   U extends unknown ? (k: U) => void : never
 ) extends (k: infer I) => void
@@ -341,8 +346,10 @@ type ConvexValidatorFromZodCommon<
                                   IsOptional
                                 >
                               : // z.literal()
-                                Z extends zCore.$ZodLiteral<infer Literal>
-                                ? VLiteral<Literal, IsOptional>
+                                Z extends zCore.$ZodLiteral<
+                                    infer Literal extends zCore.util.Literal
+                                  >
+                                ? ConvexLiteralFromZod<Literal, IsOptional>
                                 : // z.enum()
                                   Z extends zCore.$ZodEnum<
                                       infer T extends Readonly<
