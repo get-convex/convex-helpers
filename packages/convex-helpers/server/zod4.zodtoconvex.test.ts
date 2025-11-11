@@ -9,6 +9,7 @@ import {
   ValidatorJSON,
   VAny,
   VFloat64,
+  VLiteral,
   VNull,
   VString,
   VUnion,
@@ -52,16 +53,17 @@ describe("zodToConvex + zodOutputToConvex", () => {
     test("null", () => {
       testZodToConvexBothDirections(z.literal(null), v.null()); // !
     });
+
     test("multiple values, same type", () => {
       testZodToConvexBothDirections(
         z.literal([1, 2, 3]),
-        v.union(v.literal(1), v.literal(2), v.literal(3)),
+        ignoreUnionOrder(v.union(v.literal(1), v.literal(2), v.literal(3))),
       );
     });
     test("multiple values, different tyeps", () => {
       testZodToConvexBothDirections(
         z.literal([123, "xyz", null]),
-        v.union(v.literal(123), v.literal("xyz"), v.null()), // the order doesn’t match
+        ignoreUnionOrder(v.union(v.literal(123), v.literal("xyz"), v.null())),
       );
     });
   });
@@ -417,56 +419,39 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("enum", () => {
-    test("array as const", () => {
-      const fish = ["Salmon", "Tuna", "Trout"] as const;
-      testEnum(
-        z.enum(fish),
-        v.union(v.literal("Salmon"), v.literal("Tuna"), v.literal("Trout")),
+    test("const array", () => {
+      testZodToConvexBothDirections(
+        z.enum(["Salmon", "Tuna", "Trout"]),
+        ignoreUnionOrder(
+          v.union(v.literal("Salmon"), v.literal("Tuna"), v.literal("Trout")),
+        ),
       );
     });
 
     test("enum-like object literal", () => {
       const Fish = {
-        Salmon: "Salmon",
-        Tuna: "Tuna",
-        Trout: "Trout",
+        Salmon: 0,
+        Tuna: 1,
       } as const;
-      testEnum(
+      testZodToConvexBothDirections(
         z.enum(Fish),
-        v.union(v.literal("Salmon"), v.literal("Tuna"), v.literal("Trout")),
+        ignoreUnionOrder(v.union(v.literal(0), v.literal(1))),
       );
     });
 
     test("TypeScript string enum", () => {
       enum Fish {
-        Salmon = "Salmon",
-        Tuna = "Tuna",
-        Trout = "Trout",
+        Salmon = 0,
+        Tuna = 1,
       }
-      testEnum(
+
+      testZodToConvexBothDirections(
         z.enum(Fish),
-        v.union(v.literal("Salmon"), v.literal("Tuna"), v.literal("Trout")),
+        // Interestingly, TypeScript enums make Fish.Salmon be its own type,
+        // even if its value is 0 at runtime.
+        ignoreUnionOrder(v.union(v.literal(Fish.Salmon), v.literal(Fish.Tuna))),
       );
     });
-
-    function testEnum<
-      T extends string,
-      V extends Validator<T, "required", any>[],
-    >(
-      zodEnum: zCore.$ZodEnum<{
-        Salmon: "Salmon";
-        Tuna: "Tuna";
-        Trout: "Trout";
-      }>,
-      expectedConvexResult: VUnion<T, V, "required">,
-    ) {
-      testZodToConvexBothDirections(
-        zodEnum,
-        // Not checking the type here because the order of the tuple in VUnion
-        // depends on unspecified behavior of the TypeScript compiler
-        expectedConvexResult as any,
-      );
-    }
   });
 
   // Tuple
@@ -901,6 +886,44 @@ describe("testing infrastructure", () => {
     );
     testZodToConvexBothDirections(z.string(), v.string());
   });
+
+  test("removeUnionOrder", () => {
+    function assert<_T extends true>() {}
+
+    const unionWithOrder = v.union(v.literal(1), v.literal(2), v.literal(3));
+    assert<
+      Equals<
+        typeof unionWithOrder,
+        VUnion<
+          1 | 2 | 3,
+          [
+            VLiteral<1, "required">,
+            VLiteral<2, "required">,
+            VLiteral<3, "required">,
+          ],
+          "required",
+          never
+        >
+      >
+    >();
+
+    const _unionWithoutOrder = ignoreUnionOrder(unionWithOrder);
+    assert<
+      Equals<
+        typeof _unionWithoutOrder,
+        VUnion<
+          1 | 2 | 3,
+          (
+            | VLiteral<1, "required">
+            | VLiteral<2, "required">
+            | VLiteral<3, "required">
+          )[],
+          "required",
+          never
+        >
+      >
+    >();
+  });
 });
 
 function testZodToConvex<
@@ -983,4 +1006,62 @@ function assertUnrepresentableType<
   expect(() => {
     zodOutputToConvex(validator);
   }).toThrowError();
+}
+
+/**
+ * The TypeScript type of Convex union validators has a tuple type argument:
+ *
+ * ```ts
+ * const sampleUnionValidator: VUnion<
+ *   string | number,
+ *   [
+ *     VLiteral<1, "required">,
+ *     VLiteral<2, "required">,
+ *     VLiteral<3, "required">,
+ *   ],
+ *   "required",
+ *   never
+ * > = v.union(v.literal(1), v.literal(2), v.literal(3));
+ * ```
+ *
+ * Some Zod schemas (e.g. `v.enum(…)` and `v.literal([…])`) store their inner
+ * types as a union and not as a tuple type.
+ * Since TypeScript has no guarantees about the order of union members,
+ * the type returned by `zodToConvex` must be imprecise, for instance:
+ *
+ * ```ts
+ * // The inner type 1 | 2 | 3, so any type transformation that we do could
+ * // result in a different order of the union members
+ * const zodLiteralValidator: z.ZodLiteral<1 | 2 | 3> = z.literal([1, 2, 3]);
+ *
+ * const sampleUnionValidator: VUnion<
+ *   string | number,
+ *   (
+ *     | VLiteral<1, "required">
+ *     | VLiteral<2, "required">
+ *     | VLiteral<3, "required">
+ *   )[],
+ *   "required",
+ *   never
+ * > = zodToConvex(zodLiteralValidator);
+ * ```
+ *
+ * This function takes a union validator and returns it with a more imprecise
+ * type where the order of the union members is not guaranteed.
+ */
+function ignoreUnionOrder<
+  Type,
+  Members extends Validator<any, "required", any>[],
+  IsOptional extends OptionalProperty,
+  FieldPaths extends string,
+>(
+  union: VUnion<Type, Members, IsOptional, FieldPaths>,
+): VUnion<
+  Type,
+  // ↓ tuple to array of union
+  Members[number][],
+  IsOptional,
+  FieldPaths
+> {
+  return union;
 }

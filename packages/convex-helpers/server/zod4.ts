@@ -303,10 +303,6 @@ type Push<T extends unknown[], V> = [...T, V];
 type UnionToTuple<U, R extends unknown[] = []> = [U] extends [never]
   ? R
   : UnionToTuple<Exclude<U, LastOf<U>>, Push<R, LastOf<U>>>;
-type EnumValidator<T extends string> =
-  UnionToTuple<T> extends infer U extends string[]
-    ? { [K in keyof U]: VLiteral<U[K], "required"> }
-    : never;
 
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
@@ -401,14 +397,18 @@ type ConvexValidatorFromZodCommon<
                                 ? ConvexLiteralFromZod<Literal, IsOptional>
                                 : // z.enum()
                                   Z extends zCore.$ZodEnum<
-                                      infer T extends Readonly<
-                                        Record<string, string>
-                                      >
+                                      infer EnumContents extends
+                                        zCore.util.EnumLike
                                     >
                                   ? VUnion<
                                       zCore.infer<Z>,
-                                      keyof T extends string
-                                        ? EnumValidator<keyof T>
+                                      keyof EnumContents extends string
+                                        ? {
+                                            [K in keyof EnumContents]: VLiteral<
+                                              EnumContents[K],
+                                              "required"
+                                            >;
+                                          }[keyof EnumContents][]
                                         : never,
                                       IsOptional
                                     >
