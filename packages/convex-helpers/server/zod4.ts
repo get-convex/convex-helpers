@@ -663,7 +663,13 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   validator: Z,
   toConvex: (x: zCore.$ZodType) => GenericValidator,
 ): GenericValidator {
-  // TODO ID
+  // Check for zid (Convex ID) validators
+  if (
+    validator instanceof zCore.$ZodCustom &&
+    (validator._zod.bag as any)?.convexTableName !== undefined
+  ) {
+    return v.id((validator._zod.bag as any).convexTableName);
+  }
 
   if (validator instanceof zCore.$ZodString) {
     return v.string();
@@ -781,7 +787,83 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     return v.union(inner, v.null());
   }
 
-  // TODO Record
+  if (validator instanceof zCore.$ZodRecord) {
+    const { keyType, valueType } = validator._zod.def;
+
+    // Convert value type and strip optional if needed
+    const valueValidator = toConvex(valueType);
+    const valueRequired =
+      valueValidator.isOptional === "optional"
+        ? vRequired(valueValidator)
+        : valueValidator;
+
+    // Convert key type to Convex validator to inspect its structure
+    const keyValidator = toConvex(keyType);
+
+    // Helper to extract string literals from a union validator
+    function extractStringLiterals(
+      validator: GenericValidator,
+    ): string[] | null {
+      if (validator.kind === "literal") {
+        const literalValidator = validator as VLiteral<any>;
+        if (typeof literalValidator.value === "string") {
+          return [literalValidator.value];
+        }
+        return null;
+      }
+      if (validator.kind === "union") {
+        const unionValidator = validator as VUnion<any, any, any, any>;
+        const literals: string[] = [];
+        for (const member of unionValidator.members) {
+          const memberLiterals = extractStringLiterals(member);
+          if (memberLiterals === null) {
+            return null; // Not all members are string literals
+          }
+          literals.push(...memberLiterals);
+        }
+        return literals;
+      }
+      return null; // Not a literal or union of literals
+    }
+
+    // Check if key is a literal or union of string literals
+    const stringLiterals = extractStringLiterals(keyValidator);
+    if (stringLiterals !== null) {
+      // Convert to object with literal keys
+      // For records with literal keys, if it's a partial record OR the value is optional,
+      // make the fields optional. Regular records with literal keys and required values
+      // will have required fields.
+      const fieldValue =
+        valueValidator.isOptional === "optional"
+          ? v.optional(valueRequired)
+          : valueRequired;
+      const fields: Record<string, GenericValidator> = {};
+      for (const literal of stringLiterals) {
+        fields[literal] = fieldValue;
+      }
+      return v.object(fields);
+    }
+
+    // Check if key is string/id/union of ids
+    function isStringOrId(validator: GenericValidator): boolean {
+      if (validator.kind === "string" || validator.kind === "id") {
+        return true;
+      }
+      if (validator.kind === "union") {
+        const unionValidator = validator as VUnion<any, any, any, any>;
+        return unionValidator.members.every(isStringOrId);
+      }
+      return false;
+    }
+
+    if (isStringOrId(keyValidator)) {
+      // Use v.record() with the key validator
+      return v.record(keyValidator, valueRequired);
+    }
+
+    // For any other key type (including z.any()), use v.record(v.string(), ...)
+    return v.record(v.string(), valueRequired);
+  }
 
   if (validator instanceof zCore.$ZodReadonly) {
     return toConvex(validator._zod.def.innerType);
