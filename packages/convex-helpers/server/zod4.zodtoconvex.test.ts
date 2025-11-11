@@ -20,6 +20,7 @@ import {
   ConvexValidatorFromZodOutput,
   zodOutputToConvex,
 } from "./zod4";
+import { Equals } from "..";
 
 describe("zodToConvex + zodOutputToConvex", () => {
   test("id", () => {
@@ -935,12 +936,6 @@ function testZodOutputToConvex<
   const actual = zodOutputToConvex(validator);
   expect(validatorToJson(actual)).to.deep.equal(validatorToJson(expected));
 }
-
-// Type equality helper: checks if two types are exactly equal (bidirectionally assignable)
-type Equals<X, Y> =
-  (<T>() => T extends X ? 1 : 2) extends <T>() => T extends Y ? 1 : 2
-    ? true
-    : false;
 
 // Extract the optionality (IsOptional) from a validator type
 type ExtractOptional<V> =
