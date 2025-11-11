@@ -23,10 +23,7 @@ import type {
 } from "convex/values";
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
-import type {
-  GenericDataModel,
-  TableNamesInDataModel,
-} from "convex/server";
+import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
 import type { Expand } from "../index.js";
 
 type ConvexUnionValidatorFromZod<T extends readonly zCore.$ZodType[]> = VUnion<
@@ -225,38 +222,11 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
                               >
                             : never;
 
-type ConvexLiteralMemberFromZod<
-  L extends zCore.util.Literal,
-  IsOptional extends "required" | "optional",
-> = L extends null
-  ? VNull<null, IsOptional>
-  : L extends undefined
-    ? never
-    : VLiteral<L, IsOptional>;
-type ConvexLiteralUnionMembers<U extends zCore.util.Literal> =
-  UnionToTuple<U> extends readonly [
-    infer Head extends zCore.util.Literal,
-    ...infer Tail extends readonly zCore.util.Literal[],
-  ]
-    ? [
-        VRequired<ConvexLiteralMemberFromZod<Head, "required">>,
-        ...ConvexLiteralUnionMembersMembers<Tail>,
-      ]
-    : UnionToTuple<U> extends readonly []
-      ? []
-      : Validator<any, "required", any>[];
-type ConvexLiteralUnionMembersMembers<T extends readonly zCore.util.Literal[]> =
-  T extends readonly [
-    infer Head extends zCore.util.Literal,
-    ...infer Tail extends readonly zCore.util.Literal[],
-  ]
-    ? [
-        VRequired<ConvexLiteralMemberFromZod<Head, "required">>,
-        ...ConvexLiteralUnionMembersMembers<Tail>,
-      ]
-    : T extends readonly []
-      ? []
-      : Validator<any, "required", any>[];
+type IsUnion<T, U extends T = T> = T extends unknown
+  ? [U] extends [T]
+    ? false
+    : true
+  : false;
 type ConvexLiteralFromZod<
   Literal extends zCore.util.Literal,
   IsOptional extends "required" | "optional",
@@ -265,44 +235,20 @@ type ConvexLiteralFromZod<
   : // z.literal(null) → v.null()
     [Literal] extends [null]
     ? VNull<null, IsOptional>
-    : // Union types
-      UnionToTuple<Literal> extends infer Members
-      ? Members extends readonly zCore.util.Literal[]
-        ? Members extends readonly [infer _First, ...infer Rest]
-          ? Rest extends readonly []
-            ? ConvexLiteralMemberFromZod<Literal, IsOptional>
-            : VUnion<
-                Literal,
-                ConvexLiteralUnionMembers<Literal>,
-                IsOptional,
-                never
-              >
-          : Members extends readonly []
-            ? ConvexLiteralMemberFromZod<Literal, IsOptional>
-            : VUnion<
-                Literal,
-                ConvexLiteralUnionMembers<Literal>,
-                IsOptional,
-                never
-              >
-        : never
-      : never;
-
-type UnionToIntersection<U> = (
-  U extends unknown ? (k: U) => void : never
-) extends (k: infer I) => void
-  ? I
-  : never;
-type LastOf<U> =
-  UnionToIntersection<U extends unknown ? (x: U) => U : never> extends (
-    x: infer L,
-  ) => unknown
-    ? L
-    : never;
-type Push<T extends unknown[], V> = [...T, V];
-type UnionToTuple<U, R extends unknown[] = []> = [U] extends [never]
-  ? R
-  : UnionToTuple<Exclude<U, LastOf<U>>, Push<R, LastOf<U>>>;
+    : // z.literal([…]) (multiple values)
+      IsUnion<Literal> extends true
+      ? VUnion<
+          Literal,
+          Array<
+            // `extends unknown` forces TypeScript to map over each member of the union
+            Literal extends unknown
+              ? ConvexLiteralFromZod<Literal, "required">
+              : never
+          >,
+          IsOptional,
+          never
+        >
+      : VLiteral<Literal, IsOptional>;
 
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
