@@ -790,6 +790,8 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   if (validator instanceof zCore.$ZodRecord) {
     const { keyType, valueType } = validator._zod.def;
 
+    const isPartial = keyType._zod.values === undefined;
+
     // Convert value type and strip optional if needed
     const valueValidator = toConvex(valueType);
     const valueRequired =
@@ -829,12 +831,10 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     // Check if key is a literal or union of string literals
     const stringLiterals = extractStringLiterals(keyValidator);
     if (stringLiterals !== null) {
-      // Convert to object with literal keys
-      // For records with literal keys, if it's a partial record OR the value is optional,
-      // make the fields optional. Regular records with literal keys and required values
-      // will have required fields.
+      // If the keys are all string literals, we use v.object()
+      // since v.record() doesn’t support string literals as keys.
       const fieldValue =
-        valueValidator.isOptional === "optional"
+        isPartial || valueValidator.isOptional === "optional"
           ? v.optional(valueRequired)
           : valueRequired;
       const fields: Record<string, GenericValidator> = {};

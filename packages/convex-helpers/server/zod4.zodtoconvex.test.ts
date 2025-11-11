@@ -66,6 +66,15 @@ describe("zodToConvex + zodOutputToConvex", () => {
         ignoreUnionOrder(v.union(v.literal(123), v.literal("xyz"), v.null())),
       );
     });
+    test("union of literals", () => {
+      testZodToConvexBothDirections(
+        z.union([z.literal([1, 2]), z.literal([3, 4])]),
+        v.union(
+          ignoreUnionOrder(v.union(v.literal(1), v.literal(2))),
+          ignoreUnionOrder(v.union(v.literal(3), v.literal(4))),
+        ),
+      );
+    });
   });
 
   describe("optional", () => {
@@ -211,6 +220,26 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
 
+    test("key = literal with multiple values", () => {
+      testZodToConvexBothDirections(
+        z.record(z.literal(["user", "admin"]), z.number()),
+        v.object({
+          user: v.number(),
+          admin: v.number(),
+        }),
+      );
+    });
+
+    test("key = literal with multiple values, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(z.literal(["user", "admin"]), z.number().optional()),
+        v.object({
+          user: v.optional(v.number()),
+          admin: v.optional(v.number()),
+        }),
+      );
+    });
+
     test("key = union of literals", () => {
       testZodToConvexBothDirections(
         z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
@@ -230,6 +259,36 @@ describe("zodToConvex + zodOutputToConvex", () => {
         v.object({
           user: v.optional(v.number()),
           admin: v.optional(v.number()),
+        }),
+      );
+    });
+
+    test("key = union of literals with multiple values", () => {
+      testZodToConvexBothDirections(
+        z.record(
+          z.union([z.literal(["one", "two"]), z.literal(["three", "four"])]),
+          z.number(),
+        ),
+        v.object({
+          one: v.number(),
+          two: v.number(),
+          three: v.number(),
+          four: v.number(),
+        }),
+      );
+    });
+
+    test("key = union of literals with multiple values, optional", () => {
+      testZodToConvexBothDirections(
+        z.record(
+          z.union([z.literal(["one", "two"]), z.literal(["three", "four"])]),
+          z.number().optional(),
+        ),
+        v.object({
+          one: v.optional(v.number()),
+          two: v.optional(v.number()),
+          three: v.optional(v.number()),
+          four: v.optional(v.number()),
         }),
       );
     });
