@@ -23,7 +23,11 @@ import type {
 } from "convex/values";
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
-import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
+import type {
+  GenericDataModel,
+  TableNamesInDataModel,
+} from "convex/server";
+import type { Expand } from "../index.js";
 
 type ConvexUnionValidatorFromZod<T extends readonly zCore.$ZodType[]> = VUnion<
   ConvexValidatorFromZod<T[number], "required">["type"],
@@ -86,19 +90,6 @@ type ConvexObjectValidatorFromRecord<
       },
   IsOptional
 >;
-
-/*
- * Hack! This type causes TypeScript to simplify how it renders object types.
- *
- * It is functionally the identity for object types, but in practice it can
- * simplify expressions like `A & B`.
- */
-type Expand<ObjectType extends Record<any, any>> =
-  ObjectType extends Record<any, any>
-    ? {
-        [Key in keyof ObjectType]: ObjectType[Key];
-      }
-    : never;
 
 // MakeUndefinedPropertiesOptional<{ a: string | undefined; b: string }> = { a?: string | undefined; b: string }
 //                                                                            ^
