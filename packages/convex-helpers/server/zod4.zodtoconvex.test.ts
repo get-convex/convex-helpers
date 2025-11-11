@@ -7,7 +7,6 @@ import {
   v,
   Validator,
   ValidatorJSON,
-  VAny,
   VFloat64,
   VLiteral,
   VNull,
