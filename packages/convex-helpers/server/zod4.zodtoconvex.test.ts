@@ -34,6 +34,8 @@ describe("zodToConvex + zodOutputToConvex", () => {
     testZodToConvexInputAndOutput(zid("users"), v.id("users"));
   });
   test("string", () => testZodToConvexInputAndOutput(z.string(), v.string()));
+  test("string formatters", () =>
+    testZodToConvexInputAndOutput(z.email(), v.string()));
   test("number", () => testZodToConvexInputAndOutput(z.number(), v.number()));
   test("float64", () => testZodToConvexInputAndOutput(z.float64(), v.number()));
   test("nan", () => testZodToConvexInputAndOutput(z.nan(), v.number()));
