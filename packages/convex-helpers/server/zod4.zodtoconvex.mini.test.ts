@@ -816,15 +816,18 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
 describe("zodToConvex", () => {
   test("transform", () => {
-    testZodToConvex(
-      z.number().transform((s) => s.toString()),
-      v.number(), // input type
+    testZodOutputToConvex(
+      z.transform((s: number) => s.toString()),
+      v.any(), // input type unknown here
     );
   });
 
   test("pipe", () => {
     testZodToConvex(
-      z.number().pipe(z.transform((s) => s.toString())),
+      z.pipe(
+        z.number(),
+        z.transform((s) => s.toString()),
+      ),
       v.number(), // input type
     );
   });
@@ -840,7 +843,7 @@ describe("zodToConvex", () => {
   });
 
   test("default", () => {
-    testZodToConvex(z.string().default("hello"), v.optional(v.string()));
+    testZodToConvex(z._default(z.string(), "hello"), v.optional(v.string()));
   });
 
   describe("problematic inputs", () => {
@@ -888,14 +891,17 @@ describe("zodToConvex", () => {
 describe("zodOutputToConvex", () => {
   test("transform", () => {
     testZodOutputToConvex(
-      z.number().transform((s) => s.toString()),
+      z.transform((s: number) => s.toString()),
       v.any(), // this transform doesn’t hold runtime info about the output type
     );
   });
 
   test("pipe", () => {
     testZodOutputToConvex(
-      z.number().pipe(z.transform((s) => s.toString())),
+      z.pipe(
+        z.number(),
+        z.transform((s) => s.toString()),
+      ),
       v.any(), // this transform doesn’t hold runtime info about the output type
     );
   });
@@ -911,7 +917,7 @@ describe("zodOutputToConvex", () => {
   });
 
   test("default", () => {
-    testZodOutputToConvex(z.string().default("hello"), v.string());
+    testZodOutputToConvex(z._default(z.string(), "hello"), v.string());
   });
 });
 
@@ -919,7 +925,10 @@ test("zodToConvexFields", () => {
   const convexFields = zodToConvexFields({
     name: z.string(),
     age: z.optional(z.number()),
-    transform: z.number().transform((z) => z.toString()),
+    transform: z.pipe(
+      z.number(),
+      z.transform((z) => z.toString()),
+    ),
   });
 
   assert<
@@ -944,8 +953,13 @@ test("zodOutputToConvexFields", () => {
   const convexFields = zodOutputToConvexFields({
     name: z.string(),
     age: z.optional(z.number()),
-    transform: z.number().transform((z) => z.toString()),
+    transform: z.pipe(
+      z.number(),
+      z.transform((z) => z.toString()),
+    ),
   });
+
+  z.transform;
 
   assert<
     Equals<
