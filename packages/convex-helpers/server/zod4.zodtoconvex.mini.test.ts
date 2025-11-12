@@ -3,10 +3,7 @@ import * as z from "zod/v4/mini";
 import { describe, expect, test } from "vitest";
 import {
   GenericValidator,
-  OptionalProperty,
   v,
-  Validator,
-  ValidatorJSON,
   VAny,
   VFloat64,
   VLiteral,
@@ -18,9 +15,6 @@ import {
 import {
   zodToConvex,
   zid,
-  ConvexValidatorFromZod,
-  ConvexValidatorFromZodOutput,
-  zodOutputToConvex,
   zodToConvexFields,
   zodOutputToConvexFields,
   withSystemFields,
@@ -29,7 +23,10 @@ import {
 import { Equals } from "..";
 import { isSameType } from "zod-compare/zod4";
 import {
+  assert,
+  assertUnrepresentableType,
   ignoreUnionOrder,
+  testZodOutputToConvex,
   testZodToConvexInputAndOutput,
 } from "./zod4.zodtoconvex.test";
 

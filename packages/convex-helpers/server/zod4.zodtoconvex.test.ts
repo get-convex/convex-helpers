@@ -1237,4 +1237,4 @@ export function ignoreUnionOrder<
   return union;
 }
 
-function assert<_T extends true>() {}
+export function assert<_T extends true>() {}
