@@ -25,6 +25,40 @@ import * as z from "zod/v4";
 import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
 import type { Expand } from "../index.js";
 
+// #region Convex IDs
+
+/**
+ * Creates a validator for a Convex `Id`.
+ *
+ * - When **used within Zod**, it will only check that the ID is a string.
+ * - When **converted to a Convex validator** (e.g. through {@link zodToConvex}),
+ *   it will check that it's for the right table.
+ *
+ * @param tableName - The table that the `Id` references. i.e. `Id<tableName>`
+ * @returns A Zod schema representing a Convex `Id`
+ */
+export const zid = <
+  DataModel extends GenericDataModel,
+  TableName extends
+    TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
+>(
+  tableName: TableName,
+): Zid<TableName> => {
+  const result = z.custom<GenericId<TableName>>(
+    (val) => typeof val === "string",
+  );
+  _zidRegistry.add(result, { tableName });
+  return result;
+};
+
+/** The type of Convex validators in Zod */
+export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
+  zCore.$ZodRecordKey;
+
+// #endregion
+
+// #region Zod → Convex
+
 /**
  * Turns a Zod validator into a Convex Validator.
  *
@@ -274,61 +308,9 @@ export function zodOutputToConvexFields<
   };
 }
 
-/**
- * Creates a validator for a Convex `Id`.
- *
- * - When **used within Zod**, it will only check that the ID is a string.
- * - When **converted to a Convex validator** (e.g. through {@link zodToConvex}),
- *   it will check that it's for the right table.
- *
- * @param tableName - The table that the `Id` references. i.e. `Id<tableName>`
- * @returns A Zod schema representing a Convex `Id`
- */
-export const zid = <
-  DataModel extends GenericDataModel,
-  TableName extends
-    TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
->(
-  tableName: TableName,
-): Zid<TableName> => {
-  const result = z.custom<GenericId<TableName>>(
-    (val) => typeof val === "string",
-  );
-  _zidRegistry.add(result, { tableName });
-  return result;
-};
+// #endregion
 
-/** The type of Convex validators in Zod */
-export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
-  zCore.$ZodRecordKey;
-
-/**
- * Zod helper for adding Convex system fields to a record to return.
- *
- * ```js
- * withSystemFields("users", {
- *   name: z.string(),
- * })
- * // → {
- * //   name: z.string(),
- * //   _id: zid("users"),
- * //   _creationTime: z.number(),
- * // }
- * ```
- *
- * @param tableName - The table where records are from, i.e. Doc<tableName>
- * @param zObject - Validators for the user-defined fields on the document.
- * @returns Zod shape for use with `z.object(shape)` that includes system fields.
- */
-export const withSystemFields = <
-  Table extends string,
-  T extends { [key: string]: zCore.$ZodType },
->(
-  tableName: Table,
-  zObject: T,
-) => {
-  return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
-};
+// #region Convex → Zod
 
 /**
  * Turns a Convex validator into a Zod validator.
@@ -448,6 +430,40 @@ export function convexToZodFields<C extends PropertyValidators>(
     Object.entries(convexValidators).map(([k, v]) => [k, convexToZod(v)]),
   ) as { [k in keyof C]: ZodValidatorFromConvex<C[k]> };
 }
+
+// #endregion
+
+// #region Utils
+
+/**
+ * Zod helper for adding Convex system fields to a record to return.
+ *
+ * ```js
+ * withSystemFields("users", {
+ *   name: z.string(),
+ * })
+ * // → {
+ * //   name: z.string(),
+ * //   _id: zid("users"),
+ * //   _creationTime: z.number(),
+ * // }
+ * ```
+ *
+ * @param tableName - The table where records are from, i.e. Doc<tableName>
+ * @param zObject - Validators for the user-defined fields on the document.
+ * @returns Zod shape for use with `z.object(shape)` that includes system fields.
+ */
+export const withSystemFields = <
+  Table extends string,
+  T extends { [key: string]: zCore.$ZodType },
+>(
+  tableName: Table,
+  zObject: T,
+) => {
+  return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
+};
+
+// #endregion
 
 // #region Implementation: Zod → Convex
 
