@@ -618,7 +618,7 @@ export function zodToConvex<Z extends zCore.$ZodType>(
     }
 
     if (validator instanceof zCore.$ZodPipe) {
-      return zodToConvexInner(validator._zod.input as any); // as any since the type here is `unknown`, but we know it’s a Zod validator
+      return zodToConvexInner(validator._zod.def.in);
     }
 
     return zodToConvexCommon(validator, zodToConvexInner);
@@ -648,7 +648,7 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
     }
 
     if (validator instanceof zCore.$ZodPipe) {
-      return zodOutputToConvexInner(validator._zod.output as any); // as any since the type here is `unknown`, but we know it’s a Zod validator
+      return zodOutputToConvexInner(validator._zod.def.out);
     }
 
     return zodToConvexCommon(validator, zodOutputToConvexInner);
@@ -797,7 +797,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
 
     // Convert key type
     const keyValidator = toConvex(keyType);
-    console.log({ keyType, keyValidator, isPartial });
 
     // key = string literals?
     // If so, not supported by v.record() → use v.object() instead
