@@ -120,7 +120,6 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("brand", () => {
-    const xxx = z.string().brand("myBrand");
     test("string", () => {
       testZodToConvexBothDirections(
         z.string().brand("myBrand"),
@@ -819,8 +818,6 @@ describe("zodToConvex", () => {
       v.number(), // input type
     );
   });
-
-  // TODO: Tests transform
 
   test("codec", () => {
     testZodToConvex(

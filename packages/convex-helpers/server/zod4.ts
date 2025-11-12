@@ -651,6 +651,10 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
       return zodOutputToConvexInner(validator._zod.def.out);
     }
 
+    if (validator instanceof zCore.$ZodTransform) {
+      return v.any();
+    }
+
     return zodToConvexCommon(validator, zodOutputToConvexInner);
   }
 
