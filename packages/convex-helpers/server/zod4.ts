@@ -664,11 +664,9 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   toConvex: (x: zCore.$ZodType) => GenericValidator,
 ): GenericValidator {
   // Check for zid (Convex ID) validators
-  if (
-    validator instanceof zCore.$ZodCustom &&
-    (validator._zod.bag as any)?.convexTableName !== undefined
-  ) {
-    return v.id((validator._zod.bag as any).convexTableName);
+  const idTableName = _zids.get(validator);
+  if (idTableName !== undefined) {
+    return v.id(idTableName);
   }
 
   if (validator instanceof zCore.$ZodString) {
@@ -952,6 +950,9 @@ export function zodOutputToConvexFields<
   // TODO Test
 }
 
+/** Stores the table names for each `Zid` instance that is created. */
+const _zids: WeakMap<zCore.$ZodType, string> = new WeakMap();
+
 /**
  * Creates a validator for a Convex `Id`.
  *
@@ -967,9 +968,14 @@ export const zid = <
   TableName extends
     TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
 >(
-  _tableName: TableName,
-): Zid<TableName> =>
-  z.custom<GenericId<TableName>>((val) => typeof val === "string");
+  tableName: TableName,
+): Zid<TableName> => {
+  const result = z.custom<GenericId<TableName>>(
+    (val) => typeof val === "string",
+  );
+  _zids.set(result, tableName);
+  return result;
+};
 
 /**
  * Zod helper for adding Convex system fields to a record to return.
