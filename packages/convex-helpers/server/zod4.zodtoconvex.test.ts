@@ -7,9 +7,11 @@ import {
   v,
   Validator,
   ValidatorJSON,
+  VAny,
   VFloat64,
   VLiteral,
   VNull,
+  VOptional,
   VString,
   VUnion,
 } from "convex/values";
@@ -19,6 +21,8 @@ import {
   ConvexValidatorFromZod,
   ConvexValidatorFromZodOutput,
   zodOutputToConvex,
+  zodToConvexFields,
+  zodOutputToConvexFields,
 } from "./zod4";
 import { Equals } from "..";
 
@@ -28,6 +32,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
   test("string", () => testZodToConvexInputAndOutput(z.string(), v.string()));
   test("number", () => testZodToConvexInputAndOutput(z.number(), v.number()));
+  test("float64", () => testZodToConvexInputAndOutput(z.float64(), v.number()));
   test("nan", () => testZodToConvexInputAndOutput(z.nan(), v.number()));
   test("int64", () => testZodToConvexInputAndOutput(z.int64(), v.int64()));
   test("bigint", () => testZodToConvexInputAndOutput(z.bigint(), v.int64()));
@@ -902,6 +907,56 @@ describe("zodOutputToConvex", () => {
 
   test("default", () => {
     testZodOutputToConvex(z.string().default("hello"), v.string());
+  });
+});
+
+test("zodToConvexFields", () => {
+  const convexFields = zodToConvexFields({
+    name: z.string(),
+    age: z.number().optional(),
+    transform: z.number().transform((z) => z.toString()),
+  });
+
+  assert<
+    Equals<
+      typeof convexFields,
+      {
+        name: VString;
+        age: VOptional<VFloat64>;
+        transform: VFloat64;
+      }
+    >
+  >();
+
+  expect(convexFields).toEqual({
+    name: v.string(),
+    age: v.optional(v.number()),
+    transform: v.number(),
+  });
+});
+
+test("zodOutputToConvexFields", () => {
+  const convexFields = zodOutputToConvexFields({
+    name: z.string(),
+    age: z.number().optional(),
+    transform: z.number().transform((z) => z.toString()),
+  });
+
+  assert<
+    Equals<
+      typeof convexFields,
+      {
+        name: VString;
+        age: VOptional<VFloat64>;
+        transform: VAny;
+      }
+    >
+  >();
+
+  expect(convexFields).toEqual({
+    name: v.string(),
+    age: v.optional(v.number()),
+    transform: v.any(),
   });
 });
 

@@ -944,8 +944,6 @@ export function zodToConvexFields<
       ? ConvexValidatorFromZod<Fields[k], "required">
       : never;
   };
-
-  // TODO Test
 }
 
 /**
@@ -974,8 +972,6 @@ export function zodOutputToConvexFields<
   ) as {
     [k in keyof Fields]: ConvexValidatorFromZodOutput<Fields[k], "required">;
   };
-
-  // TODO Test
 }
 
 /** Stores the table names for each `Zid` instance that is created. */
