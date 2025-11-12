@@ -833,38 +833,46 @@ describe("zodToConvex", () => {
     testZodToConvex(z.string().default("hello"), v.optional(v.string()));
   });
 
-  // TODO Fix these cases
-  //   test("unknown type", () => {
-  //     const someType: zCore.$ZodType<unknown> = z.string();
+  describe("problematic inputs", () => {
+    test("unknown", () => {
+      const someType: unknown = z.string();
+      const asConvex = zodToConvex(
+        // @ts-expect-error Can’t use unknown
+        someType,
+      );
+      assert<Equals<typeof asConvex, GenericValidator>>();
+    });
 
-  //     // @ts-expect-error -- The type system doesn’t know the type
-  //     const _asString: VString = zodToConvex(someType);
+    test("ZodType<unknown>", () => {
+      const someType: zCore.$ZodType<unknown> = z.string();
+      const asConvex = zodToConvex(someType);
+      assert<Equals<typeof asConvex, GenericValidator>>();
+    });
 
-  //     // @ts-expect-error -- It’s also not v.any(), which is a specific type
-  //     const _asAny: VAny = zodToConvex(someType);
-  //   });
+    test("ZodType<some>", () => {
+      const someType: zCore.$ZodType<string> = z.string();
+      const asConvex = zodToConvex(someType);
+      assert<Equals<typeof asConvex, GenericValidator>>();
+    });
 
-  //   test("any type", () => {
-  //     const someType: any = z.string();
+    test("any type", () => {
+      const someType: any = z.string();
+      const asConvex = zodToConvex(someType);
+      assert<Equals<typeof asConvex, GenericValidator>>();
+    });
+  });
 
-  //     // @ts-expect-error -- The type system doesn’t know the type
-  //     const _asString: VString = zodToConvex(someType);
-
-  //     // @ts-expect-error -- It’s also not v.any(), which is a specific type
-  //     const _asAny: VAny = zodToConvex(someType);
-  //   });
-
-  //   describe("lazy", () => {
-  //     test("throwing", () => {
-  //       expect(() =>
-  //         zodToConvex(
-  //           z.lazy(() => {
-  //             throw new Error("This shouldn’t throw but it did");
-  //           }),
-  //         ),
-  //       ).toThrowError("This shouldn’t throw but it did");
-  //     });
-  //   });
+  describe("lazy", () => {
+    test("throwing", () => {
+      expect(() =>
+        zodToConvex(
+          z.lazy(() => {
+            throw new Error("This shouldn’t throw but it did");
+          }),
+        ),
+      ).toThrowError("This shouldn’t throw but it did");
+    });
+  });
 });
 
 describe("zodOutputToConvex", () => {
@@ -952,8 +960,6 @@ describe("testing infrastructure", () => {
   });
 
   test("removeUnionOrder", () => {
-    function assert<_T extends true>() {}
-
     const unionWithOrder = v.union(v.literal(1), v.literal(2), v.literal(3));
     assert<
       Equals<
@@ -1053,15 +1059,9 @@ function validatorToJson(validator: GenericValidator): ValidatorJSON {
 }
 
 function assertUnrepresentableType<
-  Z extends zCore.$ZodType &
-    ([ConvexValidatorFromZod<Z, OptionalProperty>] extends [never]
-      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-        {}
-      : "expecting return type of zodToConvex/zodOutputToConvex to be never") &
-    ([ConvexValidatorFromZodOutput<Z, OptionalProperty>] extends [never]
-      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-        {}
-      : "expecting return type of zodToConvex/zodOutputToConvex to be never"),
+  Z extends zCore.ZodTypeAny,
+  _Check1 extends never = ConvexValidatorFromZod<Z, OptionalProperty>,
+  _Check2 extends never = ConvexValidatorFromZodOutput<Z, OptionalProperty>,
 >(validator: Z) {
   expect(() => {
     zodToConvex(validator);
@@ -1128,3 +1128,5 @@ function ignoreUnionOrder<
 > {
   return union;
 }
+
+function assert<_T extends true>() {}

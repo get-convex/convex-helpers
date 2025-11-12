@@ -250,6 +250,17 @@ type ConvexLiteralFromZod<
         >
       : VLiteral<Literal, IsOptional>;
 
+type IsUnknownOrAny<T> =
+  // any?
+  0 extends 1 & T
+    ? true
+    : // unknown?
+      unknown extends T
+      ? [T] extends [unknown]
+        ? true
+        : false
+      : false;
+
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
   Z extends zCore.$ZodType,
@@ -528,42 +539,50 @@ type ConvexValidatorFromZodCommon<
                                                           : // unencodable types
                                                             IsConvexUnencodableType<Z> extends true
                                                             ? never
-                                                            : VAny<
-                                                                any,
-                                                                "required"
-                                                              >;
+                                                            : // Other validators: we don’t return VAny
+                                                              // because it might be a type that is
+                                                              // recognized at runtime but is not
+                                                              // recognized at typecheck time
+                                                              // (e.g. zCore.$ZodType<string>)
+                                                              GenericValidator;
 
 export type ConvexValidatorFromZod<
   Z extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
 > =
-  // z.default()
-  Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // input: Treat like optional
-    ? VOptional<ConvexValidatorFromZod<Inner, "optional">>
-    : // z.pipe()
-      Z extends zCore.$ZodPipe<
-          infer Input extends zCore.$ZodType,
-          infer _Output extends zCore.$ZodType
-        >
-      ? ConvexValidatorFromZod<Input, IsOptional>
-      : // All other schemas have the same input/output types
-        ConvexValidatorFromZodCommon<Z, IsOptional>;
+  // `unknown` / `any`: we can’t infer a precise return type at compile time
+  IsUnknownOrAny<Z> extends true
+    ? GenericValidator
+    : // z.default()
+      Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // input: Treat like optional
+      ? VOptional<ConvexValidatorFromZod<Inner, "optional">>
+      : // z.pipe()
+        Z extends zCore.$ZodPipe<
+            infer Input extends zCore.$ZodType,
+            infer _Output extends zCore.$ZodType
+          >
+        ? ConvexValidatorFromZod<Input, IsOptional>
+        : // All other schemas have the same input/output types
+          ConvexValidatorFromZodCommon<Z, IsOptional>;
 
 export type ConvexValidatorFromZodOutput<
   Z extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
 > =
-  // z.default()
-  Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // output: always there
-    ? VRequired<ConvexValidatorFromZod<Inner, "required">>
-    : // z.pipe()
-      Z extends zCore.$ZodPipe<
-          infer _Input extends zCore.$ZodType,
-          infer Output extends zCore.$ZodType
-        >
-      ? ConvexValidatorFromZod<Output, IsOptional>
-      : // All other schemas have the same input/output types
-        ConvexValidatorFromZodCommon<Z, IsOptional>;
+  // `unknown` / `any`: we can’t infer a precise return type at compile time
+  IsUnknownOrAny<Z> extends true
+    ? GenericValidator
+    : // z.default()
+      Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // output: always there
+      ? VRequired<ConvexValidatorFromZod<Inner, "required">>
+      : // z.pipe()
+        Z extends zCore.$ZodPipe<
+            infer _Input extends zCore.$ZodType,
+            infer Output extends zCore.$ZodType
+          >
+        ? ConvexValidatorFromZod<Output, IsOptional>
+        : // All other schemas have the same input/output types
+          ConvexValidatorFromZodCommon<Z, IsOptional>;
 
 function vRequired(validator: GenericValidator) {
   const { kind } = validator;
@@ -870,8 +889,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   if (validator instanceof zCore.$ZodTemplateLiteral) {
     return v.string();
   }
-
-  // TODO Transform
 
   if (
     validator instanceof zCore.$ZodCustom ||
