@@ -1585,7 +1585,7 @@ type ZodFromValidatorBase<V extends GenericValidator> =
  * Better type conversion from a Convex validator to a Zod validator
  * where the output is not a generic ZodType but it's more specific.
  *
- * This allows you to use methods specific to the Zod type (e.g. `.email()` for `z.ZodString).
+ * This allows you to use methods specific to the Zod type (e.g. `.email()` for `z.ZodString`).
  *
  * ```ts
  * ZodValidatorFromConvex<typeof v.string()> // → z.ZodString

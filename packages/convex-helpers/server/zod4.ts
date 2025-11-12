@@ -1,10 +1,12 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type {
   GenericId,
   GenericValidator,
+  ObjectType,
   OptionalProperty,
   PropertyValidators,
   Validator,
+  Value,
   VAny,
   VArray,
   VBoolean,
@@ -22,8 +24,273 @@ import type {
 } from "convex/values";
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
-import type { GenericDataModel, TableNamesInDataModel } from "convex/server";
-import type { Expand } from "../index.js";
+import type {
+  ActionBuilder,
+  ArgsArrayToObject,
+  DefaultFunctionArgs,
+  FunctionVisibility,
+  GenericActionCtx,
+  GenericDataModel,
+  GenericMutationCtx,
+  GenericQueryCtx,
+  MutationBuilder,
+  QueryBuilder,
+  TableNamesInDataModel,
+} from "convex/server";
+import { pick, type Expand } from "../index.js";
+import type { Customization, Registration } from "./customFunctions.js";
+import { NoOp } from "./customFunctions.js";
+import { addFieldsToValidator } from "../validators.js";
+
+// #region Convex function definition with Zod
+
+/**
+ * zCustomQuery is like customQuery, but allows validation via zod.
+ * You can define custom behavior on top of `query` or `internalQuery`
+ * by passing a function that modifies the ctx and args. Or NoOp to do nothing.
+ *
+ * Example usage:
+ * ```ts
+ * const myQueryBuilder = zCustomQuery(query, {
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * });
+ *
+ * // Using the custom builder
+ * export const getSomeData = myQueryBuilder({
+ *   args: { someArg: z.string() },
+ *   handler: async (ctx, args) => {
+ *     const { db, user, session, scheduler } = ctx;
+ *     const { someArg } = args;
+ *     // ...
+ *   }
+ * });
+ * ```
+ *
+ * Simple usage only modifying ctx:
+ * ```ts
+ * const myInternalQuery = zCustomQuery(
+ *   internalQuery,
+ *   customCtx(async (ctx) => {
+ *     return {
+ *       // Throws an exception if the user isn't logged in
+ *       user: await getUserByTokenIdentifier(ctx),
+ *     };
+ *   })
+ * );
+ *
+ * // Using it
+ * export const getUser = myInternalQuery({
+ *   args: { email: z.string().email() },
+ *   handler: async (ctx, args) => {
+ *     console.log(args.email);
+ *     return ctx.user;
+ *   },
+ * });
+ *
+ * @param query The query to be modified. Usually `query` or `internalQuery`
+ *   from `_generated/server`.
+ * @param customization The customization to be applied to the query, changing ctx and args.
+ * @returns A new query builder using zod validation to define queries.
+ */
+export function zCustomQuery<
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = object,
+>(
+  query: QueryBuilder<DataModel, Visibility>,
+  customization: Customization<
+    GenericQueryCtx<DataModel>,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
+    ExtraArgs
+  >,
+) {
+  return customFnBuilder(query, customization) as CustomBuilder<
+    "query",
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
+    GenericQueryCtx<DataModel>,
+    Visibility,
+    ExtraArgs
+  >;
+}
+
+/**
+ * zCustomMutation is like customMutation, but allows validation via zod.
+ * You can define custom behavior on top of `mutation` or `internalMutation`
+ * by passing a function that modifies the ctx and args. Or NoOp to do nothing.
+ *
+ * Example usage:
+ * ```ts
+ * const myMutationBuilder = zCustomMutation(mutation, {
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * });
+ *
+ * // Using the custom builder
+ * export const getSomeData = myMutationBuilder({
+ *   args: { someArg: z.string() },
+ *   handler: async (ctx, args) => {
+ *     const { db, user, session, scheduler } = ctx;
+ *     const { someArg } = args;
+ *     // ...
+ *   }
+ * });
+ * ```
+ *
+ * Simple usage only modifying ctx:
+ * ```ts
+ * const myInternalMutation = zCustomMutation(
+ *   internalMutation,
+ *   customCtx(async (ctx) => {
+ *     return {
+ *       // Throws an exception if the user isn't logged in
+ *       user: await getUserByTokenIdentifier(ctx),
+ *     };
+ *   })
+ * );
+ *
+ * // Using it
+ * export const getUser = myInternalMutation({
+ *   args: { email: z.string().email() },
+ *   handler: async (ctx, args) => {
+ *     console.log(args.email);
+ *     return ctx.user;
+ *   },
+ * });
+ *
+ * @param mutation The mutation to be modified. Usually `mutation` or `internalMutation`
+ *   from `_generated/server`.
+ * @param customization The customization to be applied to the mutation, changing ctx and args.
+ * @returns A new mutation builder using zod validation to define queries.
+ */
+export function zCustomMutation<
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = object,
+>(
+  mutation: MutationBuilder<DataModel, Visibility>,
+  customization: Customization<
+    GenericMutationCtx<DataModel>,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
+    ExtraArgs
+  >,
+) {
+  return customFnBuilder(mutation, customization) as CustomBuilder<
+    "mutation",
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
+    GenericMutationCtx<DataModel>,
+    Visibility,
+    ExtraArgs
+  >;
+}
+
+/**
+ * zCustomAction is like customAction, but allows validation via zod.
+ * You can define custom behavior on top of `action` or `internalAction`
+ * by passing a function that modifies the ctx and args. Or NoOp to do nothing.
+ *
+ * Example usage:
+ * ```ts
+ * const myActionBuilder = zCustomAction(action, {
+ *   args: { sessionId: v.id("sessions") },
+ *   input: async (ctx, args) => {
+ *     const user = await getUserOrNull(ctx);
+ *     const session = await db.get(sessionId);
+ *     const db = wrapDatabaseReader({ user }, ctx.db, rlsRules);
+ *     return { ctx: { db, user, session }, args: {} };
+ *   },
+ * });
+ *
+ * // Using the custom builder
+ * export const getSomeData = myActionBuilder({
+ *   args: { someArg: z.string() },
+ *   handler: async (ctx, args) => {
+ *     const { db, user, session, scheduler } = ctx;
+ *     const { someArg } = args;
+ *     // ...
+ *   }
+ * });
+ * ```
+ *
+ * Simple usage only modifying ctx:
+ * ```ts
+ * const myInternalAction = zCustomAction(
+ *   internalAction,
+ *   customCtx(async (ctx) => {
+ *     return {
+ *       // Throws an exception if the user isn't logged in
+ *       user: await getUserByTokenIdentifier(ctx),
+ *     };
+ *   })
+ * );
+ *
+ * // Using it
+ * export const getUser = myInternalAction({
+ *   args: { email: z.string().email() },
+ *   handler: async (ctx, args) => {
+ *     console.log(args.email);
+ *     return ctx.user;
+ *   },
+ * });
+ *
+ * @param action The action to be modified. Usually `action` or `internalAction`
+ *   from `_generated/server`.
+ * @param customization The customization to be applied to the action, changing ctx and args.
+ * @returns A new action builder using zod validation to define queries.
+ */
+export function zCustomAction<
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
+  Visibility extends FunctionVisibility,
+  DataModel extends GenericDataModel,
+  ExtraArgs extends Record<string, any> = object,
+>(
+  action: ActionBuilder<DataModel, Visibility>,
+  customization: Customization<
+    GenericActionCtx<DataModel>,
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
+    ExtraArgs
+  >,
+) {
+  return customFnBuilder(action, customization) as CustomBuilder<
+    "action",
+    CustomArgsValidator,
+    CustomCtx,
+    CustomMadeArgs,
+    GenericActionCtx<DataModel>,
+    Visibility,
+    ExtraArgs
+  >;
+}
+
+// #endregion
 
 // #region Convex IDs
 
@@ -65,14 +332,14 @@ export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
  * The Convex validator will be as close to possible to the Zod validator,
  * but might be broader than the Zod validator:
  *
- * ```js
+ * ```ts
  * zodToConvex(z.string().email()) // → v.string()
  * ```
  *
  * This function is useful when running the Zod validator _after_ running the Convex validator
  * (i.e. the Convex validator validates the input of the Zod validator). Hence, the Convex types
  * will match the _input type_ of Zod transformations:
- * ```js
+ * ```ts
  * zodToConvex(z.object({
  *   name: z.string().default("Nicolas"),
  * })) // → v.object({ name: v.optional(v.string()) })
@@ -170,7 +437,7 @@ export function zodToConvex<Z extends zCore.$ZodType>(
  * This is similar to {@link zodToConvex}, but is meant for cases where the Convex
  * validator runs _after_ the Zod validator. Thus, the Convex type refers to the
  * _output_ type of the Zod transformations:
- * ```js
+ * ```ts
  * zodOutputToConvex(z.object({
  *   name: z.string().default("Nicolas"),
  * })) // → v.object({ name: v.string() })
@@ -255,11 +522,13 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
   return zodOutputToConvexInner(validator) as any;
 }
 
+type ZodFields = Record<string, zCore.$ZodType>;
+
 /**
  * Like {@link zodToConvex}, but it takes in a bare object, as expected by Convex
  * function arguments, or the argument to {@link defineTable}.
  *
- * ```js
+ * ```ts
  * zodToConvexFields({
  *   name: z.string().default("Nicolas"),
  * }) // → { name: v.optional(v.string()) }
@@ -268,9 +537,7 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
  * @param fields Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
  */
-export function zodToConvexFields<
-  Fields extends Record<string, zCore.$ZodType>,
->(fields: Fields) {
+export function zodToConvexFields<Fields extends ZodFields>(fields: Fields) {
   return Object.fromEntries(
     Object.entries(fields).map(([k, v]) => [k, zodToConvex(v)]),
   ) as {
@@ -284,7 +551,7 @@ export function zodToConvexFields<
  * Like {@link zodOutputToConvex}, but it takes in a bare object, as expected by
  * Convex function arguments, or the argument to {@link defineTable}.
  *
- * ```js
+ * ```ts
  * zodOutputToConvexFields({
  *   name: z.string().default("Nicolas"),
  * }) // → { name: v.string() }
@@ -298,9 +565,9 @@ export function zodToConvexFields<
  * @param zod Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
  */
-export function zodOutputToConvexFields<
-  Fields extends Record<string, zCore.$ZodType>,
->(fields: Fields) {
+export function zodOutputToConvexFields<Fields extends ZodFields>(
+  fields: Fields,
+) {
   return Object.fromEntries(
     Object.entries(fields).map(([k, v]) => [k, zodOutputToConvex(v)]),
   ) as {
@@ -318,7 +585,7 @@ export function zodOutputToConvexFields<
  * This is useful when you want to use types you defined using Convex validators
  * with external libraries that expect to receive a Zod validator.
  *
- * ```js
+ * ```ts
  * convexToZod(v.string()) // → z.string()
  * ```
  *
@@ -414,7 +681,7 @@ export function convexToZod<V extends GenericValidator>(
  * Like {@link convexToZod}, but it takes in a bare object, as expected by Convex
  * function arguments, or the argument to {@link defineTable}.
  *
- * ```js
+ * ```ts
  * convexToZodFields({
  *   name: v.string(),
  * }) // → { name: z.string() }
@@ -438,7 +705,7 @@ export function convexToZodFields<C extends PropertyValidators>(
 /**
  * Zod helper for adding Convex system fields to a record to return.
  *
- * ```js
+ * ```ts
  * withSystemFields("users", {
  *   name: z.string(),
  * })
@@ -462,6 +729,234 @@ export const withSystemFields = <
 ) => {
   return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
 };
+
+// #endregion
+
+// #region Implementation: Convex function definition with Zod
+
+/**
+ * A builder that customizes a Convex function, whether or not it validates
+ * arguments. If the customization requires arguments, however, the resulting
+ * builder will require argument validation too.
+ */
+export type CustomBuilder<
+  FuncType extends "query" | "mutation" | "action",
+  CustomArgsValidator extends PropertyValidators,
+  CustomCtx extends Record<string, any>,
+  CustomMadeArgs extends Record<string, any>,
+  InputCtx,
+  Visibility extends FunctionVisibility,
+  ExtraArgs extends Record<string, any>,
+> = {
+  <
+    ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void,
+    ReturnsZodValidator extends zCore.$ZodType | ZodFields | void = void,
+    ReturnValue extends ReturnValueInput<ReturnsZodValidator> = any,
+    // Note: this differs from customFunctions.ts b/c we don't need to track
+    // the exact args to match the standard builder types. For Zod we don't
+    // try to ever pass a custom function as a builder to another custom
+    // function, so we can be looser here.
+  >(
+    func:
+      | ({
+          /**
+           * Specify the arguments to the function as a Zod validator.
+           */
+          args?: ArgsValidator;
+          handler: (
+            ctx: Overwrite<InputCtx, CustomCtx>,
+            ...args: ArgsForHandlerType<
+              ArgsOutput<ArgsValidator>,
+              CustomMadeArgs
+            >
+          ) => ReturnValue;
+          /**
+           * Validates the value returned by the function.
+           * Note: you can't pass an object directly without wrapping it
+           * in `z.object()`.
+           */
+          returns?: ReturnsZodValidator;
+          /**
+           * If true, the function will not be validated by Convex,
+           * in case you're seeing performance issues with validating twice.
+           */
+          skipConvexValidation?: boolean;
+        } & {
+          [key in keyof ExtraArgs as key extends
+            | "args"
+            | "handler"
+            | "skipConvexValidation"
+            | "returns"
+            ? never
+            : key]: ExtraArgs[key];
+        })
+      | {
+          (
+            ctx: Overwrite<InputCtx, CustomCtx>,
+            ...args: ArgsForHandlerType<
+              ArgsOutput<ArgsValidator>,
+              CustomMadeArgs
+            >
+          ): ReturnValue;
+        },
+  ): Registration<
+    FuncType,
+    Visibility,
+    ArgsArrayToObject<
+      CustomArgsValidator extends Record<string, never>
+        ? ArgsInput<ArgsValidator>
+        : ArgsInput<ArgsValidator> extends [infer A]
+          ? [Expand<A & ObjectType<CustomArgsValidator>>]
+          : [ObjectType<CustomArgsValidator>]
+    >,
+    ReturnsZodValidator extends void
+      ? ReturnValue
+      : ReturnValueOutput<ReturnsZodValidator>
+  >;
+};
+
+function customFnBuilder(
+  builder: (args: any) => any,
+  customization: Customization<any, any, any, any, any>,
+) {
+  // Looking forward to when input / args / ... are optional
+  const customInput = customization.input ?? NoOp.input;
+  const inputArgs = customization.args ?? NoOp.args;
+  return function customBuilder(fn: any): any {
+    const { args, handler = fn, returns: maybeObject, ...extra } = fn;
+
+    const returns =
+      maybeObject && !(maybeObject instanceof zCore.$ZodType)
+        ? z.object(maybeObject)
+        : maybeObject;
+
+    const returnValidator =
+      returns && !fn.skipConvexValidation
+        ? { returns: zodOutputToConvex(returns) }
+        : null;
+
+    if (args && !fn.skipConvexValidation) {
+      let argsValidator = args;
+      if (argsValidator instanceof zCore.$ZodType) {
+        if (argsValidator instanceof zCore.$ZodObject) {
+          argsValidator = argsValidator._zod.def.shape;
+        } else {
+          throw new Error(
+            "Unsupported zod type as args validator: " +
+              argsValidator.constructor.name,
+          );
+        }
+      }
+      const convexValidator = zodToConvexFields(argsValidator);
+      return builder({
+        args: addFieldsToValidator(convexValidator, inputArgs),
+        ...returnValidator,
+        handler: async (ctx: any, allArgs: any) => {
+          const added = await customInput(
+            ctx,
+            pick(allArgs, Object.keys(inputArgs)) as any,
+            extra,
+          );
+          const rawArgs = pick(allArgs, Object.keys(argsValidator));
+          const parsed = z.object(argsValidator).safeParse(rawArgs);
+          if (!parsed.success) {
+            throw new ConvexError({
+              ZodError: JSON.parse(
+                JSON.stringify(parsed.error.issues, null, 2),
+              ) as Value[],
+            });
+          }
+          const args = parsed.data;
+          const finalCtx = { ...ctx, ...added.ctx };
+          const finalArgs = { ...args, ...added.args };
+          const ret = await handler(finalCtx, finalArgs);
+          // We don't catch the error here. It's a developer error and we
+          // don't want to risk exposing the unexpected value to the client.
+          const result = returns ? returns.parse(ret) : ret;
+          if (added.onSuccess) {
+            await added.onSuccess({ ctx, args, result });
+          }
+          return result;
+        },
+      });
+    }
+    if (Object.keys(inputArgs).length > 0 && !fn.skipConvexValidation) {
+      throw new Error(
+        "If you're using a custom function with arguments for the input " +
+          "customization, you must declare the arguments for the function too.",
+      );
+    }
+    return builder({
+      ...returnValidator,
+      handler: async (ctx: any, args: any) => {
+        const added = await customInput(ctx, args, extra);
+        const finalCtx = { ...ctx, ...added.ctx };
+        const finalArgs = { ...args, ...added.args };
+        const ret = await handler(finalCtx, finalArgs);
+        // We don't catch the error here. It's a developer error and we
+        // don't want to risk exposing the unexpected value to the client.
+        const result = returns ? returns.parse(ret) : ret;
+        if (added.onSuccess) {
+          await added.onSuccess({ ctx, args, result });
+        }
+        return result;
+      },
+    });
+  };
+}
+
+type ArgsForHandlerType<
+  OneOrZeroArgs extends [] | [Record<string, any>],
+  CustomMadeArgs extends Record<string, any>,
+> =
+  CustomMadeArgs extends Record<string, never>
+    ? OneOrZeroArgs
+    : OneOrZeroArgs extends [infer A]
+      ? [Expand<A & CustomMadeArgs>]
+      : [CustomMadeArgs];
+
+// Copied from convex/src/server/api.ts since they aren't exported
+type NullToUndefinedOrNull<T> = T extends null ? T | undefined | void : T;
+type Returns<T> = Promise<NullToUndefinedOrNull<T>> | NullToUndefinedOrNull<T>;
+
+// The return value before it's been validated: returned by the handler
+type ReturnValueInput<
+  ReturnsValidator extends zCore.$ZodType | ZodFields | void,
+> = [ReturnsValidator] extends [zCore.$ZodType]
+  ? Returns<z.input<ReturnsValidator>>
+  : [ReturnsValidator] extends [ZodFields]
+    ? Returns<z.input<zCore.$ZodObject<ReturnsValidator>>>
+    : any;
+
+// The return value after it's been validated: returned to the client
+type ReturnValueOutput<
+  ReturnsValidator extends zCore.$ZodType | ZodFields | void,
+> = [ReturnsValidator] extends [zCore.$ZodType]
+  ? Returns<z.output<ReturnsValidator>>
+  : [ReturnsValidator] extends [ZodFields]
+    ? Returns<z.output<zCore.$ZodObject<ReturnsValidator>>>
+    : any;
+
+// The args before they've been validated: passed from the client
+type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
+  [ArgsValidator] extends [zCore.$ZodObject<any>]
+    ? [z.input<ArgsValidator>]
+    : [ArgsValidator] extends [ZodFields]
+      ? [z.input<zCore.$ZodObject<ArgsValidator>>]
+      : OneArgArray;
+
+// The args after they've been validated: passed to the handler
+type ArgsOutput<
+  ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void,
+> = [ArgsValidator] extends [zCore.$ZodObject<any>]
+  ? [z.output<ArgsValidator>]
+  : [ArgsValidator] extends [ZodFields]
+    ? [z.output<zCore.$ZodObject<ArgsValidator>>]
+    : OneArgArray;
+
+type Overwrite<T, U> = Omit<T, keyof U> & U;
+type OneArgArray<ArgsObject extends DefaultFunctionArgs = DefaultFunctionArgs> =
+  [ArgsObject];
 
 // #endregion
 
@@ -1212,7 +1707,7 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
  * Better type conversion from a Convex validator to a Zod validator
  * where the output is not a generic ZodType but it's more specific.
  *
- * This allows you to use methods specific to the Zod type (e.g. `.email()` for `z.ZodString).
+ * This allows you to use methods specific to the Zod type (e.g. `.email()` for `z.ZodString`).
  *
  * ```ts
  * ZodValidatorFromConvex<typeof v.string()> // → z.ZodString
