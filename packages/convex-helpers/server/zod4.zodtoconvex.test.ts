@@ -24,49 +24,49 @@ import { Equals } from "..";
 
 describe("zodToConvex + zodOutputToConvex", () => {
   test("id", () => {
-    testZodToConvexBothDirections(zid("users"), v.id("users"));
+    testZodToConvexInputAndOutput(zid("users"), v.id("users"));
   });
-  test("string", () => testZodToConvexBothDirections(z.string(), v.string()));
-  test("number", () => testZodToConvexBothDirections(z.number(), v.number()));
-  test("nan", () => testZodToConvexBothDirections(z.nan(), v.number()));
-  test("int64", () => testZodToConvexBothDirections(z.int64(), v.int64()));
-  test("bigint", () => testZodToConvexBothDirections(z.bigint(), v.int64()));
+  test("string", () => testZodToConvexInputAndOutput(z.string(), v.string()));
+  test("number", () => testZodToConvexInputAndOutput(z.number(), v.number()));
+  test("nan", () => testZodToConvexInputAndOutput(z.nan(), v.number()));
+  test("int64", () => testZodToConvexInputAndOutput(z.int64(), v.int64()));
+  test("bigint", () => testZodToConvexInputAndOutput(z.bigint(), v.int64()));
   test("boolean", () =>
-    testZodToConvexBothDirections(z.boolean(), v.boolean()));
-  test("null", () => testZodToConvexBothDirections(z.null(), v.null()));
-  test("any", () => testZodToConvexBothDirections(z.any(), v.any()));
+    testZodToConvexInputAndOutput(z.boolean(), v.boolean()));
+  test("null", () => testZodToConvexInputAndOutput(z.null(), v.null()));
+  test("any", () => testZodToConvexInputAndOutput(z.any(), v.any()));
 
   describe("literal", () => {
     test("string", () => {
-      testZodToConvexBothDirections(z.literal("hey"), v.literal("hey"));
+      testZodToConvexInputAndOutput(z.literal("hey"), v.literal("hey"));
     });
     test("number", () => {
-      testZodToConvexBothDirections(z.literal(42), v.literal(42));
+      testZodToConvexInputAndOutput(z.literal(42), v.literal(42));
     });
     test("int64", () => {
-      testZodToConvexBothDirections(z.literal(42n), v.literal(42n));
+      testZodToConvexInputAndOutput(z.literal(42n), v.literal(42n));
     });
     test("boolean", () => {
-      testZodToConvexBothDirections(z.literal(true), v.literal(true));
+      testZodToConvexInputAndOutput(z.literal(true), v.literal(true));
     });
     test("null", () => {
-      testZodToConvexBothDirections(z.literal(null), v.null()); // !
+      testZodToConvexInputAndOutput(z.literal(null), v.null()); // !
     });
 
     test("multiple values, same type", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.literal([1, 2, 3]),
         ignoreUnionOrder(v.union(v.literal(1), v.literal(2), v.literal(3))),
       );
     });
     test("multiple values, different tyeps", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.literal([123, "xyz", null]),
         ignoreUnionOrder(v.union(v.literal(123), v.literal("xyz"), v.null())),
       );
     });
     test("union of literals", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.union([z.literal([1, 2]), z.literal([3, 4])]),
         v.union(
           ignoreUnionOrder(v.union(v.literal(1), v.literal(2))),
@@ -78,19 +78,19 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("optional", () => {
     test("z.optional()", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.optional(z.string()),
         v.optional(v.string()),
       );
     });
     test("z.XYZ.optional()", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().optional(),
         v.optional(v.string()),
       );
     });
     test("optional doesn’t propagate to array elements", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.array(z.number()).optional(),
         v.optional(v.array(v.number())), // and not v.optional(v.array(v.optional(v.number())))
       );
@@ -98,21 +98,21 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("array", () => {
-    testZodToConvexBothDirections(z.array(z.string()), v.array(v.string()));
+    testZodToConvexInputAndOutput(z.array(z.string()), v.array(v.string()));
   });
 
   describe("union", () => {
     test("never", () => {
-      testZodToConvexBothDirections(z.never(), v.union());
+      testZodToConvexInputAndOutput(z.never(), v.union());
     });
     test("one element (number)", () => {
-      testZodToConvexBothDirections(z.union([z.number()]), v.union(v.number()));
+      testZodToConvexInputAndOutput(z.union([z.number()]), v.union(v.number()));
     });
     test("one element (string)", () => {
-      testZodToConvexBothDirections(z.union([z.string()]), v.union(v.string()));
+      testZodToConvexInputAndOutput(z.union([z.string()]), v.union(v.string()));
     });
     test("multiple elements", () => [
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.union([z.string(), z.number()]),
         v.union(v.string(), v.number()),
       ),
@@ -121,13 +121,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("brand", () => {
     test("string", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().brand("myBrand"),
         v.string() as VString<string & zCore.$brand<"myBrand">>,
       );
     });
     test("number", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.number().brand("myBrand"),
         v.number() as VFloat64<number & zCore.$brand<"myBrand">>,
       );
@@ -135,7 +135,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("object", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.object({
         name: z.string(),
         age: z.number(),
@@ -153,7 +153,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("strict object", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.strictObject({
         name: z.string(),
         age: z.number(),
@@ -169,21 +169,21 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("record", () => {
     test("key = string", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.string(), z.number()),
         v.record(v.string(), v.number()),
       );
     });
 
     test("key = string, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.string(), z.number().optional()),
         v.record(v.string(), v.number()),
       );
     });
 
     test("key = any", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.any(), z.number()),
         // v.record(v.any(), …) is not allowed in Convex validators
         v.record(v.string(), v.number()),
@@ -191,7 +191,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = any, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.any(), z.number().optional()),
         // v.record(v.any(), …) is not allowed in Convex validators
         v.record(v.string(), v.number()),
@@ -199,7 +199,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = literal", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.literal("user"), z.number()),
         // Convex records can’t have string literals as keys
         v.object({
@@ -209,7 +209,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = literal, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.literal("user"), z.number().optional()),
         // Convex records can’t have string literals as keys
         v.object({
@@ -219,7 +219,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = literal with multiple values", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.literal(["user", "admin"]), z.number()),
         v.object({
           user: v.number(),
@@ -229,7 +229,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = literal with multiple values, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.literal(["user", "admin"]), z.number().optional()),
         v.object({
           user: v.optional(v.number()),
@@ -239,7 +239,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of literals", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.union([z.literal("user"), z.literal("admin")]), z.number()),
         v.object({
           user: v.number(),
@@ -249,7 +249,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of literals, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(
           z.union([z.literal("user"), z.literal("admin")]),
           z.number().optional(),
@@ -262,7 +262,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of literals with multiple values", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(
           z.union([z.literal(["one", "two"]), z.literal(["three", "four"])]),
           z.number(),
@@ -277,7 +277,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of literals with multiple values, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(
           z.union([z.literal(["one", "two"]), z.literal(["three", "four"])]),
           z.number().optional(),
@@ -293,7 +293,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     test("key = v.id()", () => {
       {
-        testZodToConvexBothDirections(
+        testZodToConvexInputAndOutput(
           z.record(zid("documents"), z.number()),
           v.record(v.id("documents"), v.number()),
         );
@@ -302,7 +302,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     test("key = v.id(), optional", () => {
       {
-        testZodToConvexBothDirections(
+        testZodToConvexInputAndOutput(
           z.record(zid("documents"), z.number().optional()),
           v.record(v.id("documents"), v.number()),
         );
@@ -310,14 +310,14 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of ids", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.union([zid("users"), zid("documents")]), z.number()),
         v.record(v.union(v.id("users"), v.id("documents")), v.number()),
       );
     });
 
     test("key = union of ids, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(
           z.union([zid("users"), zid("documents")]),
           z.number().optional(),
@@ -327,7 +327,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = other", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.union([zid("users"), z.literal("none")]), z.number()),
         v.record(v.string(), v.number()),
       );
@@ -336,7 +336,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("partial record", () => {
     test("key = any", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.any(), z.number()),
         // v.record(v.any(), …) is not allowed in Convex validators
         v.record(v.string(), v.number()),
@@ -344,7 +344,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = any, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.any(), z.number().optional()),
         // v.record(v.any(), …) is not allowed in Convex validators
         v.record(v.string(), v.number()),
@@ -352,21 +352,21 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = string", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.string(), z.number()),
         v.record(v.string(), v.number()),
       );
     });
 
     test("key = string, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.string(), z.number().optional()),
         v.record(v.string(), v.number()),
       );
     });
 
     test("key = literal", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.literal("user"), z.number()),
         // Convex records can’t have string literals as keys
         v.object({
@@ -376,7 +376,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = literal, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.literal("user"), z.number().optional()),
         // Convex records can’t have string literals as keys
         v.object({
@@ -386,7 +386,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of literals", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(
           z.union([z.literal("user"), z.literal("admin")]),
           z.number(),
@@ -399,7 +399,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of literals, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(
           z.union([z.literal("user"), z.literal("admin")]),
           z.number().optional(),
@@ -413,7 +413,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     test("key = v.id()", () => {
       {
-        testZodToConvexBothDirections(
+        testZodToConvexInputAndOutput(
           z.partialRecord(zid("documents"), z.number()),
           v.record(v.id("documents"), v.number()),
         );
@@ -422,7 +422,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     test("key = v.id(), optional", () => {
       {
-        testZodToConvexBothDirections(
+        testZodToConvexInputAndOutput(
           z.partialRecord(zid("documents"), z.number().optional()),
           v.record(v.id("documents"), v.number()),
         );
@@ -430,14 +430,14 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = union of ids", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(z.union([zid("users"), zid("documents")]), z.number()),
         v.record(v.union(v.id("users"), v.id("documents")), v.number()),
       );
     });
 
     test("key = union of ids, optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.partialRecord(
           z.union([zid("users"), zid("documents")]),
           z.number().optional(),
@@ -447,7 +447,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("key = other", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.union([zid("users"), z.literal("none")]), z.number()),
         v.record(v.string(), v.number()),
       );
@@ -455,7 +455,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("readonly", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.array(z.string()).readonly(),
       v.array(v.string()),
     );
@@ -463,7 +463,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   // Discriminated union
   test("discriminated union", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.discriminatedUnion("status", [
         z.object({ status: z.literal("success"), data: z.string() }),
         z.object({ status: z.literal("failed"), error: z.string() }),
@@ -477,7 +477,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("enum", () => {
     test("const array", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.enum(["Salmon", "Tuna", "Trout"]),
         ignoreUnionOrder(
           v.union(v.literal("Salmon"), v.literal("Tuna"), v.literal("Trout")),
@@ -486,7 +486,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
 
     test("const array with a number", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.enum(["2", "Salmon", "Tuna"]),
         ignoreUnionOrder(
           v.union(v.literal("2"), v.literal("Salmon"), v.literal("Tuna")),
@@ -499,7 +499,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
         Salmon: 0,
         Tuna: 1,
       } as const;
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.enum(Fish),
         ignoreUnionOrder(v.union(v.literal(0), v.literal(1))),
       );
@@ -511,7 +511,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
         Tuna = 1,
       }
 
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.enum(Fish),
         // Interestingly, TypeScript enums make Fish.Salmon be its own type,
         // even if its value is 0 at runtime.
@@ -523,31 +523,31 @@ describe("zodToConvex + zodOutputToConvex", () => {
   // Tuple
   describe("tuple", () => {
     test("one-element tuple", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.tuple([z.string()]),
         v.array(v.union(v.string())), // suboptimal, we could remove the union
       );
     });
     test("fixed elements, same type", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.tuple([z.string(), z.string()]),
         v.array(v.union(v.string(), v.string())), // suboptimal, we could remove duplicates
       );
     });
     test("fixed elements", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.tuple([z.string(), z.number()]),
         v.array(v.union(v.string(), v.number())),
       );
     });
     test("variadic element, same type", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.tuple([z.string()], z.string()),
         v.array(v.union(v.string(), v.string())), // suboptimal, we could remove duplicates
       );
     });
     test("variadic element", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.tuple([z.string()], z.number()),
         v.array(v.union(v.string(), v.number())),
       );
@@ -556,19 +556,19 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("nullable", () => {
     test("nullable(string)", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().nullable(),
         v.union(v.string(), v.null()),
       );
     });
     test("nullable(number)", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.number().nullable(),
         v.union(v.number(), v.null()),
       );
     });
     test("optional(nullable(string))", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().optional().nullable(),
         v.optional(v.union(v.string(), v.null())),
       );
@@ -580,7 +580,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
       >;
     });
     test("nullable(optional(string)) → swap nullable and optional", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
       );
@@ -594,7 +594,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("optional", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.string().optional(),
       v.optional(v.string()),
     );
@@ -602,52 +602,52 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
   describe("non-optional", () => {
     test("id", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         zid("documents").optional().nonoptional(),
         v.id("documents"),
       );
     });
     test("string", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().optional().nonoptional(),
         v.string(),
       );
     });
     test("float64", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.float64().optional().nonoptional(),
         v.float64(),
       );
     });
     test("int64", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.int64().optional().nonoptional(),
         v.int64(),
       );
     });
     test("boolean", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.boolean().optional().nonoptional(),
         v.boolean(),
       );
     });
     test("null", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.null().optional().nonoptional(),
         v.null(),
       );
     });
     test("any", () => {
-      testZodToConvexBothDirections(z.any().optional().nonoptional(), v.any());
+      testZodToConvexInputAndOutput(z.any().optional().nonoptional(), v.any());
     });
     test("literal", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.literal(42n).optional().nonoptional(),
         v.literal(42n),
       );
     });
     test("object", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z
           .object({
             required: z.string(),
@@ -659,26 +659,26 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
     test("array", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.array(z.int64()).optional().nonoptional(),
         v.array(v.int64()),
       );
     });
     test("record", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.record(z.string(), z.number()).optional().nonoptional(),
         v.record(v.string(), v.number()),
       );
     });
     test("union", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.union([z.number(), z.string()]).optional().nonoptional(),
         v.union(v.number(), v.string()),
       );
     });
 
     test("nonoptional on non-optional type", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().optional().nonoptional(),
         v.string(),
       );
@@ -686,14 +686,14 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("lazy", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.lazy(() => z.string()),
       v.string(),
     );
   });
 
   test("custom", () => {
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.custom<string & { __myBrand: true }>(() => true),
       v.any(),
     );
@@ -707,7 +707,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
       },
     });
 
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       category,
       // @ts-expect-error -- TypeScript can’t compute the full type and uses `unknown`
       v.object({
@@ -718,36 +718,36 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("catch", () => {
-    testZodToConvexBothDirections(z.string().catch("hello"), v.string());
+    testZodToConvexInputAndOutput(z.string().catch("hello"), v.string());
   });
 
   describe("template literals", () => {
     test("constant string", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.templateLiteral(["hi there"]),
         v.string() as VString<"hi there", "required">,
       );
     });
     test("string interpolation", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.templateLiteral(["email: ", z.string()]),
         v.string() as VString<`email: ${string}`, "required">,
       );
     });
     test("literal interpolation", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.templateLiteral(["high", z.literal(5)]),
         v.string() as VString<"high5", "required">,
       );
     });
     test("nullable interpolation", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.templateLiteral([z.nullable(z.literal("grassy"))]),
         v.string() as VString<"grassy" | "null", "required">,
       );
     });
     test("enum interpolation", () => {
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.templateLiteral([z.number(), z.enum(["px", "em", "rem"])]),
         v.string() as VString<`${number}${"px" | "em" | "rem"}`, "required">,
       );
@@ -758,7 +758,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     // We could do some more advanced logic here where we compute
     // the Convex validator that results from the intersection.
     // For now, we simply use v.any()
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.intersection(
         z.object({ key1: z.string() }),
         z.object({ key2: z.string() }),
@@ -924,12 +924,12 @@ describe("testing infrastructure", () => {
         v.string(),
       );
 
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string(),
         // @ts-expect-error -- This error should be caught by TypeScript
         v.optional(v.string()),
       );
-      testZodToConvexBothDirections(
+      testZodToConvexInputAndOutput(
         z.string().optional(),
         // @ts-expect-error -- This error should be caught by TypeScript
         v.string(),
@@ -944,11 +944,11 @@ describe("testing infrastructure", () => {
     testZodOutputToConvex(z.string().optional(), v.optional(v.string()));
     testZodOutputToConvex(z.string(), v.string());
 
-    testZodToConvexBothDirections(
+    testZodToConvexInputAndOutput(
       z.string().optional(),
       v.optional(v.string()),
     );
-    testZodToConvexBothDirections(z.string(), v.string());
+    testZodToConvexInputAndOutput(z.string(), v.string());
   });
 
   test("removeUnionOrder", () => {
@@ -1028,8 +1028,7 @@ function testZodOutputToConvex<
 type ExtractOptional<V> =
   V extends Validator<any, infer IsOptional, any> ? IsOptional : never;
 
-// TODO Rename to inputAndOutput
-function testZodToConvexBothDirections<
+function testZodToConvexInputAndOutput<
   Z extends zCore.$ZodType,
   Expected extends GenericValidator,
 >(
