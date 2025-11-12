@@ -23,8 +23,11 @@ import {
   zodOutputToConvex,
   zodToConvexFields,
   zodOutputToConvexFields,
+  withSystemFields,
+  Zid,
 } from "./zod4";
 import { Equals } from "..";
+import { isSameType } from "zod-compare/zod4";
 
 describe("zodToConvex + zodOutputToConvex", () => {
   test("id", () => {
@@ -958,6 +961,42 @@ test("zodOutputToConvexFields", () => {
     age: v.optional(v.number()),
     transform: v.any(),
   });
+});
+
+test("withSystemFields", () => {
+  const sysFieldsShape = withSystemFields("users", {
+    name: z.string(),
+    age: z.number().optional(),
+  });
+
+  // Type assertion - sysFieldsShape should have _id and _creationTime
+  assert<
+    Equals<
+      typeof sysFieldsShape,
+      {
+        name: z.ZodString;
+        age: z.ZodOptional<z.ZodNumber>;
+      } & { _id: Zid<"users">; _creationTime: z.ZodNumber }
+    >
+  >();
+
+  expect(Object.keys(sysFieldsShape)).to.deep.equal([
+    "name",
+    "age",
+    "_id",
+    "_creationTime",
+  ]);
+
+  for (const [key, value] of Object.entries(sysFieldsShape)) {
+    if (key === "_id") {
+      expect(zodToConvex(value)).to.deep.equal(v.id("users"));
+      continue;
+    }
+
+    expect(
+      isSameType(value, sysFieldsShape[key as keyof typeof sysFieldsShape]),
+    ).to.be.true;
+  }
 });
 
 describe("testing infrastructure", () => {
