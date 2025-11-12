@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import type {
   GenericId,
   GenericValidator,
-  Infer,
   OptionalProperty,
   PropertyValidators,
   Validator,
