@@ -1029,17 +1029,6 @@ export const withSystemFields = <
   return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
 };
 
-/**
- * Simple type conversion from a Convex validator to a Zod validator.
- *
- * ```ts
- * ConvexToZod<typeof v.string()> // → z.ZodType<string>
- * ```
- *
- * TODO Should we keep this?
- */
-export type ConvexToZod<V extends GenericValidator> = zCore.$ZodType<Infer<V>>;
-
 export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
   zCore.$ZodRecordKey;
 
