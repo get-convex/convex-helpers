@@ -866,7 +866,7 @@ describe("zodToConvex", () => {
     test("throwing", () => {
       expect(() =>
         zodToConvex(
-          z.lazy(() => {
+          z.lazy((): zCore.$ZodString => {
             throw new Error("This shouldn’t throw but it did");
           }),
         ),
