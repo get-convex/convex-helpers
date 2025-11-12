@@ -664,9 +664,9 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   toConvex: (x: zCore.$ZodType) => GenericValidator,
 ): GenericValidator {
   // Check for zid (Convex ID) validators
-  const idTableName = _zids.get(validator);
+  const idTableName = _zidRegistry.get(validator);
   if (idTableName !== undefined) {
-    return v.id(idTableName);
+    return v.id(idTableName.tableName);
   }
 
   if (validator instanceof zCore.$ZodString) {
@@ -944,7 +944,7 @@ export function zodOutputToConvexFields<
 }
 
 /** Stores the table names for each `Zid` instance that is created. */
-const _zids: WeakMap<zCore.$ZodType, string> = new WeakMap();
+const _zidRegistry = zCore.registry<{ tableName: string }>();
 
 /**
  * Creates a validator for a Convex `Id`.
@@ -966,7 +966,7 @@ export const zid = <
   const result = z.custom<GenericId<TableName>>(
     (val) => typeof val === "string",
   );
-  _zids.set(result, tableName);
+  _zidRegistry.add(result, { tableName });
   return result;
 };
 
