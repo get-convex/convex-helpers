@@ -687,11 +687,8 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
 
-    test("nonoptional on optional type", () => {
-      testZodToConvexInputAndOutput(
-        z.string().optional().nonoptional(),
-        v.string(),
-      );
+    test("nonoptional on non-optional type", () => {
+      testZodToConvexInputAndOutput(z.string().nonoptional(), v.string());
     });
   });
 
