@@ -438,7 +438,12 @@ If you are using Zod v4 (peer dependency zod >= 4.1.12), use the v4-native helpe
 
 ```ts
 import { z } from "zod";
-import { zCustomQuery, zid, zodToConvex, zodOutputToConvex } from "convex-helpers/server/zod4";
+import {
+  zCustomQuery,
+  zid,
+  zodToConvex,
+  zodOutputToConvex,
+} from "convex-helpers/server/zod4";
 
 // Define this once - and customize like you would customQuery
 const zodQuery = zCustomQuery(query, NoOp);
@@ -485,7 +490,11 @@ Define reusable builders using `zCustomQuery`, `zCustomMutation`, `zCustomAction
 ```ts
 // convex/util.ts
 import { query, mutation, action } from "./_generated/server";
-import { zCustomQuery, zCustomMutation, zCustomAction } from "convex-helpers/server/zod4";
+import {
+  zCustomQuery,
+  zCustomMutation,
+  zCustomAction,
+} from "convex-helpers/server/zod4";
 import { NoOp } from "convex-helpers/server/customFunctions";
 
 export const zq = zCustomQuery(query, NoOp);
@@ -544,8 +553,7 @@ import { zodToConvexFields } from "convex-helpers/server/zod4";
 import { userShape } from "./tables/users";
 
 export default defineSchema({
-  users: defineTable(zodToConvexFields(userShape))
-    .index("by_email", ["email"]) // you can add indexes as usual
+  users: defineTable(zodToConvexFields(userShape)).index("by_email", ["email"]), // you can add indexes as usual
 });
 ```
 
@@ -625,10 +633,16 @@ Codecs:
 import { convexCodec } from "convex-helpers/server/zod4";
 import { z } from "zod";
 
-const UserSchema = z.object({ name: z.string(), birthday: z.date().optional() });
+const UserSchema = z.object({
+  name: z.string(),
+  birthday: z.date().optional(),
+});
 const codec = convexCodec(UserSchema);
 
-const encoded = codec.encode({ name: "Alice", birthday: new Date("1990-01-01") });
+const encoded = codec.encode({
+  name: "Alice",
+  birthday: new Date("1990-01-01"),
+});
 // → { name: 'Alice', birthday: 631152000000 }
 
 const decoded = codec.decode(encoded);
@@ -637,23 +651,23 @@ const decoded = codec.decode(encoded);
 
 Supported types (Zod → Convex):
 
-| Zod Type          | Convex Validator                 |
-| ----------------- | -------------------------------- |
-| `z.string()`      | `v.string()`                     |
-| `z.number()`      | `v.float64()`                    |
-| `z.bigint()`      | `v.int64()`                      |
-| `z.boolean()`     | `v.boolean()`                    |
-| `z.date()`        | `v.float64()` (timestamp)        |
-| `z.null()`        | `v.null()`                       |
-| `z.array(T)`      | `v.array(T)`                     |
-| `z.object({...})` | `v.object({...})`                |
-| `z.record(T)`     | `v.record(v.string(), T)`        |
-| `z.union([...])`  | `v.union(...)`                   |
-| `z.literal(x)`    | `v.literal(x)`                   |
-| `z.enum([...])`   | `v.union(literals...)`           |
-| `z.optional(T)`   | `v.optional(T)`                  |
-| `z.nullable(T)`   | `v.union(T, v.null())`           |
-| `zid('table')`    | `v.id('table')` (via `zid`)      |
+| Zod Type          | Convex Validator            |
+| ----------------- | --------------------------- |
+| `z.string()`      | `v.string()`                |
+| `z.number()`      | `v.float64()`               |
+| `z.bigint()`      | `v.int64()`                 |
+| `z.boolean()`     | `v.boolean()`               |
+| `z.date()`        | `v.float64()` (timestamp)   |
+| `z.null()`        | `v.null()`                  |
+| `z.array(T)`      | `v.array(T)`                |
+| `z.object({...})` | `v.object({...})`           |
+| `z.record(T)`     | `v.record(v.string(), T)`   |
+| `z.union([...])`  | `v.union(...)`              |
+| `z.literal(x)`    | `v.literal(x)`              |
+| `z.enum([...])`   | `v.union(literals...)`      |
+| `z.optional(T)`   | `v.optional(T)`             |
+| `z.nullable(T)`   | `v.union(T, v.null())`      |
+| `zid('table')`    | `v.id('table')` (via `zid`) |
 
 ##### Advanced Usage: Custom Context Builders
 
@@ -664,10 +678,13 @@ import { customCtx } from "convex-helpers/server/customFunctions";
 import { zCustomQuery, zCustomMutation } from "convex-helpers/server/zod4";
 import { query, mutation } from "./_generated/server";
 
-const authQuery = zCustomQuery(query, customCtx(async (ctx) => {
-  const user = await getUserOrThrow(ctx);
-  return { ctx: { user }, args: {} };
-}));
+const authQuery = zCustomQuery(
+  query,
+  customCtx(async (ctx) => {
+    const user = await getUserOrThrow(ctx);
+    return { ctx: { user }, args: {} };
+  }),
+);
 
 export const updateProfile = authQuery({
   args: { name: z.string() },
@@ -682,7 +699,6 @@ export const updateProfile = authQuery({
 ##### Date Handling
 
 Dates are automatically encoded/decoded by codecs. When mapping, `z.date()` becomes a `v.float64()` timestamp. Builders allow you to validate returns with `z.date()` and roundtrip via `toConvexJS`/`fromConvexJS` where needed.
-
 
 ## Hono for advanced HTTP endpoint definitions
 

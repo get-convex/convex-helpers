@@ -9,15 +9,14 @@ import type {
   QueryBuilder,
 } from "convex/server";
 import type { Value } from "convex/values";
-import type { Registration } from '../customFunctions.js'
-import type { ArgsArrayToObject} from 'convex/server';
+import type { Registration } from "../customFunctions.js";
+import type { ArgsArrayToObject } from "convex/server";
 
 import { pick } from "convex-helpers";
 import { NoOp } from "convex-helpers/server/customFunctions";
 import { addFieldsToValidator } from "convex-helpers/validators";
 import { ConvexError, type ObjectType } from "convex/values";
 
-import { fromConvexJS, toConvexJS } from "./codec.js";
 import { zodOutputToConvex, zodToConvexFields } from "./zodToConvex.js";
 
 import type { FunctionVisibility } from "convex/server";
@@ -25,7 +24,7 @@ import type { PropertyValidators } from "convex/values";
 import type { Expand, OneArgArray, Overwrite, ZodValidator } from "./types.js";
 
 import * as z from "zod/v4/core";
-import { ZodObject, ZodType, z as zValidate } from "zod";
+import { z as zValidate } from "zod";
 
 type NullToUndefinedOrNull<T> = T extends null ? T | undefined | void : T;
 type Returns<T> = Promise<NullToUndefinedOrNull<T>> | NullToUndefinedOrNull<T>;
@@ -49,13 +48,12 @@ type ReturnValueOutput<
     : any;
 
 // The args before they've been validated: passed from the client
-type ArgsInput<ArgsValidator extends ZodValidator | z.$ZodObject<any> | void> = [
-  ArgsValidator,
-] extends [z.$ZodObject<any>]
-  ? [z.input<ArgsValidator>]
-  : [ArgsValidator] extends [ZodValidator]
-    ? [z.input<z.$ZodObject<ArgsValidator>>]
-    : OneArgArray;
+type ArgsInput<ArgsValidator extends ZodValidator | z.$ZodObject<any> | void> =
+  [ArgsValidator] extends [z.$ZodObject<any>]
+    ? [z.input<ArgsValidator>]
+    : [ArgsValidator] extends [ZodValidator]
+      ? [z.input<z.$ZodObject<ArgsValidator>>]
+      : OneArgArray;
 
 // The args after they've been validated: passed to the handler
 type ArgsOutput<ArgsValidator extends ZodValidator | z.$ZodObject<any> | void> =
@@ -74,7 +72,6 @@ type ArgsForHandlerType<
     : OneOrZeroArgs extends [infer A]
       ? [Expand<A & CustomMadeArgs>]
       : [CustomMadeArgs];
-
 
 /**
  * Useful to get the input context type for a custom function using zod.
@@ -173,19 +170,19 @@ export type CustomBuilder<
   >;
 };
 
-function handleZodValidationError(
-  e: unknown,
-  context: "args" | "returns",
-): never {
-  if (e instanceof z.$ZodError) {
-    const issues = JSON.parse(JSON.stringify(e.issues, null, 2)) as Value[];
-    throw new ConvexError({
-      ZodError: issues,
-      context,
-    } as unknown as Record<string, Value>);
-  }
-  throw e;
-}
+// function handleZodValidationError(
+//   e: unknown,
+//   context: "args" | "returns",
+// ): never {
+//   if (e instanceof z.$ZodError) {
+//     const issues = JSON.parse(JSON.stringify(e.issues, null, 2)) as Value[];
+//     throw new ConvexError({
+//       ZodError: issues,
+//       context,
+//     } as unknown as Record<string, Value>);
+//   }
+//   throw e;
+// }
 
 export function customFnBuilder(
   builder: (args: any) => any,

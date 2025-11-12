@@ -6,13 +6,7 @@ import type {
 import type { ZodValidator } from "./types.js";
 
 import { v } from "convex/values";
-import {
-  ZodDefault,
-  ZodNullable,
-  ZodObject,
-  ZodOptional,
-  type ZodRawShape,
-} from "zod";
+import { ZodDefault, ZodNullable, ZodObject, ZodOptional } from "zod";
 import * as z from "zod/v4/core";
 
 import { isZid, registryHelpers } from "./id.js";
@@ -881,7 +875,9 @@ export function zodToConvexFields<Z extends z.$ZodShape>(
  * @param zod Object with string keys and Zod validators as values
  * @returns Object with the same keys, but with Convex validators as values
  */
-export function zodOutputToConvex<Z extends z.$ZodType | ZodValidator>(zodSchema: Z) {
+export function zodOutputToConvex<Z extends z.$ZodType | ZodValidator>(
+  zodSchema: Z,
+) {
   if (zodSchema instanceof z.$ZodType) {
     return zodOutputToConvexInternal(zodSchema);
   }

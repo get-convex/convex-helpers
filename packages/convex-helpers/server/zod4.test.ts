@@ -1,8 +1,7 @@
-import { expect, expectTypeOf, test } from "vitest";
+import { expect, test } from "vitest";
 import { z } from "zod";
 import { v } from "convex/values";
 import { zodToConvexFields, convexToZod, zid, zodToConvex } from "./zod4.js";
-import { toStandardSchema } from "../standardSchema.js";
 
 const exampleId = v.id("user");
 const exampleConvexNestedObj = v.object({
@@ -68,7 +67,7 @@ test("convert convex validation to zod", () => {
   expect(obj.shape.optionalString.def.innerType.type).toBe("string");
   expect(obj.shape.optionalString.def.type).toBe("optional");
   expect(obj.shape.optionalId.def.innerType.type).toBe("pipe");
-  // @ts-expect-error
+  // @ts-expect-error - this is a type error, but we want to test the behavior
   expect(obj.shape.optionalId.def.innerType["_tableName"]).toBe("user");
   expect(obj.shape.optionalId.def.type).toBe("optional");
   expect(obj.shape.nullableNumber.def.options.map((o) => o.type)).toEqual([
@@ -80,7 +79,7 @@ test("convert convex validation to zod", () => {
     "null",
   ]);
   expect(
-    // @ts-expect-error
+    // @ts-expect-error - this is a type error, but we want to test the behavior
     obj.shape.nullableId.def.options.find((o) => o["_tableName"])._tableName,
   ).toBe("user");
   expect(obj.shape.optionalNested.def.innerType.type).toBe("object");

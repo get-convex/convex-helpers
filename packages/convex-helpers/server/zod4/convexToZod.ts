@@ -6,7 +6,6 @@ import type {
   VObject,
   VUnion,
 } from "convex/values";
-import type { GenericDataModel } from "convex/server";
 import type {
   GenericId,
   Validator,
@@ -47,7 +46,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                   >
                 ? z.ZodLiteral<T>
                 : V extends VObject<any, infer Fields, any, any>
-                  ? // @ts-ignore TS2589
+                  ? // @ts-expect-error TS2589
                     z.ZodObject<
                       {
                         [K in keyof Fields]: ZodValidatorFromConvex<Fields[K]>;
@@ -130,7 +129,7 @@ export function convexToZod<V extends GenericValidator>(
       break;
     case "array": {
       //
-      // @ts-ignore TS2589
+      // @ts-expect-error TS2589
       zodValidator = z.array(convexToZod((convexValidator as any).element));
       break;
     }
