@@ -762,7 +762,9 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
 
   if (validator instanceof zCore.$ZodEnum) {
     return v.union(
-      ...Object.values(validator._zod.def.entries).map((x) => v.literal(x)),
+      ...Object.entries(validator._zod.def.entries)
+        .filter(([key, value]) => key === value || isNaN(Number(key)))
+        .map(([_key, value]) => v.literal(value)),
     );
   }
 

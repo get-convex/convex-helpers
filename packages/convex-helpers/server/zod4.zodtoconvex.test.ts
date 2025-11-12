@@ -486,6 +486,15 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
 
+    test("const array with a number", () => {
+      testZodToConvexBothDirections(
+        z.enum(["2", "Salmon", "Tuna"]),
+        ignoreUnionOrder(
+          v.union(v.literal("2"), v.literal("Salmon"), v.literal("Tuna")),
+        ),
+      );
+    });
+
     test("enum-like object literal", () => {
       const Fish = {
         Salmon: 0,
