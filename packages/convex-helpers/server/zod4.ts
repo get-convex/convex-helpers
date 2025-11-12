@@ -765,7 +765,7 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   if (validator instanceof zCore.$ZodLiteral) {
     function convexToZodLiteral(literal: zCore.util.Literal): GenericValidator {
       if (literal === undefined) {
-        throw new Error("undefined is not a valid Convex type");
+        throw new Error("undefined is not a valid Convex value");
       }
 
       if (literal === null) {
@@ -901,9 +901,24 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     return toConvex(validator._zod.def.innerType);
   }
 
-  // TODO Unencodable types
+  if (
+    validator instanceof zCore.$ZodDate ||
+    validator instanceof zCore.$ZodSymbol ||
+    validator instanceof zCore.$ZodMap ||
+    validator instanceof zCore.$ZodSet ||
+    validator instanceof zCore.$ZodPromise ||
+    validator instanceof zCore.$ZodFile ||
+    validator instanceof zCore.$ZodFunction ||
+    validator instanceof zCore.$ZodVoid ||
+    validator instanceof zCore.$ZodUndefined
+  ) {
+    throw new Error(
+      `Validator ${validator.constructor.name} is not supported in Convex`,
+    );
+  }
 
-  throw new Error("TODO");
+  // Unsupported type
+  return v.any();
 }
 
 /**

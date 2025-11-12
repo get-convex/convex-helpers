@@ -994,6 +994,12 @@ describe("testing infrastructure", () => {
       >
     >();
   });
+
+  test("assertUnrepresentableType", () => {
+    expect(() => {
+      assertUnrepresentableType(z.string());
+    }).toThrowError();
+  });
 });
 
 function testZodToConvex<
@@ -1058,17 +1064,23 @@ function validatorToJson(validator: GenericValidator): ValidatorJSON {
   return validator.json;
 }
 
+type MustBeUnrepresentable<Z extends zCore.$ZodType> = [
+  ConvexValidatorFromZod<Z, OptionalProperty>,
+] extends [never]
+  ? never
+  : [ConvexValidatorFromZodOutput<Z, OptionalProperty>] extends [never]
+    ? never
+    : Z;
+
 function assertUnrepresentableType<
-  Z extends zCore.ZodTypeAny,
-  _Check1 extends never = ConvexValidatorFromZod<Z, OptionalProperty>,
-  _Check2 extends never = ConvexValidatorFromZodOutput<Z, OptionalProperty>,
+  Z extends MustBeUnrepresentable<zCore.$ZodType>,
 >(validator: Z) {
   expect(() => {
     zodToConvex(validator);
   }).toThrowError();
   expect(() => {
     zodOutputToConvex(validator);
-  }).toThrowError();
+  }).toThrowError(/(is not supported in Convex|is not a valid Convex value)/);
 }
 
 /**
