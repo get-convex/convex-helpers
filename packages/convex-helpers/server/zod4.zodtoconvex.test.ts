@@ -836,29 +836,29 @@ describe("zodToConvex", () => {
   describe("problematic inputs", () => {
     test("unknown", () => {
       const someType: unknown = z.string();
-      const asConvex = zodToConvex(
+      const _asConvex = zodToConvex(
         // @ts-expect-error Can’t use unknown
         someType,
       );
-      assert<Equals<typeof asConvex, GenericValidator>>();
+      assert<Equals<typeof _asConvex, GenericValidator>>();
     });
 
     test("ZodType<unknown>", () => {
       const someType: zCore.$ZodType<unknown> = z.string();
-      const asConvex = zodToConvex(someType);
-      assert<Equals<typeof asConvex, GenericValidator>>();
+      const _asConvex = zodToConvex(someType);
+      assert<Equals<typeof _asConvex, GenericValidator>>();
     });
 
     test("ZodType<some>", () => {
       const someType: zCore.$ZodType<string> = z.string();
-      const asConvex = zodToConvex(someType);
-      assert<Equals<typeof asConvex, GenericValidator>>();
+      const _asConvex = zodToConvex(someType);
+      assert<Equals<typeof _asConvex, GenericValidator>>();
     });
 
     test("any type", () => {
       const someType: any = z.string();
-      const asConvex = zodToConvex(someType);
-      assert<Equals<typeof asConvex, GenericValidator>>();
+      const _asConvex = zodToConvex(someType);
+      assert<Equals<typeof _asConvex, GenericValidator>>();
     });
   });
 
