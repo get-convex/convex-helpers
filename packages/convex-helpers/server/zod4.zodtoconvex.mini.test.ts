@@ -17,10 +17,8 @@ import {
   zid,
   zodToConvexFields,
   zodOutputToConvexFields,
-  Zid,
 } from "./zod4";
 import { Equals } from "..";
-import { isSameType } from "zod-compare/zod4";
 import {
   assert,
   assertUnrepresentableType,
