@@ -1731,21 +1731,21 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
  */
 export type ZodValidatorFromConvex<V extends GenericValidator> =
   V extends Validator<any, "optional", any>
-    ? z.ZodOptional<ZodFromValidatorBase<V>>
+    ? z.ZodOptional<ZodFromValidatorBase<VRequired<V>>>
     : ZodFromValidatorBase<V>;
 
 export type ZodFromValidatorBase<V extends GenericValidator> =
-  V extends VId<infer Type, OptionalProperty>
+  V extends VId<infer Type>
     ? Zid<TableNameFromType<NotUndefined<Type>>>
-    : V extends VString<infer T, OptionalProperty>
+    : V extends VString<infer T>
       ? BrandIfBranded<T, z.ZodString>
-      : V extends VFloat64<infer T, OptionalProperty>
+      : V extends VFloat64<infer T>
         ? BrandIfBranded<T, z.ZodNumber>
-        : V extends VInt64<any, OptionalProperty>
+        : V extends VInt64<any>
           ? z.ZodBigInt
-          : V extends VBoolean<any, OptionalProperty>
+          : V extends VBoolean<any>
             ? z.ZodBoolean
-            : V extends VNull<any, OptionalProperty>
+            : V extends VNull<any>
               ? z.ZodNull
               : V extends VArray<any, infer Element>
                 ? Element extends VArray<any, any> // This check is used to avoid TypeScript complaining about infinite type instantiation
