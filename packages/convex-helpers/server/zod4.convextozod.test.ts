@@ -138,6 +138,70 @@ describe("convexToZod", () => {
       assertType<Infer<typeof convexValidator>>(sampleValue);
       assertType<zCore.output<typeof _zodSchema>>(sampleValue);
     });
+
+    describe("optional", () => {
+      test("id", () => {
+        testConvexToZod(
+          v.optional(v.id("documents")),
+          zid("documents").optional(),
+        );
+      });
+      test("string", () => {
+        testConvexToZod(v.optional(v.string()), z.string().optional());
+      });
+      test("float64", () => {
+        testConvexToZod(v.optional(v.float64()), z.number().optional());
+      });
+      test("int64", () => {
+        testConvexToZod(v.optional(v.int64()), z.bigint().optional());
+      });
+      test("boolean", () => {
+        testConvexToZod(v.optional(v.boolean()), z.boolean().optional());
+      });
+      test("null", () => {
+        testConvexToZod(v.optional(v.null()), z.null().optional());
+      });
+      test("any", () => {
+        testConvexToZod(v.optional(v.any()), z.any().optional());
+      });
+      test("literal", () => {
+        testConvexToZod(v.optional(v.literal(42n)), z.literal(42n).optional());
+      });
+      test("object", () => {
+        testConvexToZod(
+          v.optional(
+            v.object({
+              required: v.string(),
+              optional: v.optional(v.number()),
+            }),
+          ),
+          z
+            .object({
+              required: z.string(),
+              optional: z.number().optional(),
+            })
+            .optional(),
+        );
+      });
+      test("array", () => {
+        testConvexToZod(
+          v.optional(v.array(v.int64())),
+          z.array(z.bigint()).optional(),
+        );
+      });
+      test("record", () => {
+        testConvexToZod(
+          v.optional(v.record(v.string(), v.number())),
+          z.record(z.string(), z.number()).optional(),
+        );
+      });
+      test("union", () => {
+        testConvexToZod(
+          v.optional(v.union(v.number(), v.string())),
+          z.union([z.number(), z.string()]).optional(),
+        );
+      });
+    });
   });
 });
 
