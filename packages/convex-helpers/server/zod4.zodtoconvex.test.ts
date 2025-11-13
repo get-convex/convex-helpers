@@ -1098,7 +1098,7 @@ export function testZodToConvex<
       : "Could not extract IsOptional from Expected"),
 ) {
   const actual = zodToConvex(validator);
-  expect(validatorToJson(actual)).to.deep.equal(validatorToJson(expected));
+  expect(actual).to.deep.equal(expected);
 }
 
 export function testZodOutputToConvex<
@@ -1115,7 +1115,7 @@ export function testZodOutputToConvex<
       : "Could not extract IsOptional from Expected"),
 ) {
   const actual = zodOutputToConvex(validator);
-  expect(validatorToJson(actual)).to.deep.equal(validatorToJson(expected));
+  expect(actual).to.deep.equal(expected);
 }
 
 // Extract the optionality (IsOptional) from a validator type
@@ -1139,11 +1139,6 @@ export function testZodToConvexInputAndOutput<
 ) {
   testZodToConvex(validator, expected as any);
   testZodOutputToConvex(validator, expected as any);
-}
-
-function validatorToJson(validator: GenericValidator): ValidatorJSON {
-  // @ts-expect-error Internal type
-  return validator.json;
 }
 
 type MustBeUnrepresentable<Z extends zCore.$ZodType> = [
