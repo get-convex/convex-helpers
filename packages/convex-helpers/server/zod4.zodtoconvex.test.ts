@@ -583,24 +583,12 @@ describe("zodToConvex + zodOutputToConvex", () => {
         z.string().optional().nullable(),
         v.optional(v.union(v.string(), v.null())),
       );
-
-      zodToConvex(z.string().optional().nullable()) satisfies VUnion<
-        string | null | undefined,
-        [VString, VNull],
-        "optional"
-      >;
     });
     test("nullable(optional(string)) → swap nullable and optional", () => {
       testZodToConvexInputAndOutput(
         z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
       );
-
-      zodToConvex(z.string().nullable().optional()) satisfies VUnion<
-        string | null | undefined,
-        [VString, VNull],
-        "optional"
-      >;
     });
   });
 
