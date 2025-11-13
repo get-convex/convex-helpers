@@ -939,35 +939,35 @@ type Returns<T> = Promise<NullToUndefinedOrNull<T>> | NullToUndefinedOrNull<T>;
 type ReturnValueInput<
   ReturnsValidator extends zCore.$ZodType | ZodFields | void,
 > = [ReturnsValidator] extends [zCore.$ZodType]
-  ? Returns<z.input<ReturnsValidator>>
+  ? Returns<zCore.input<ReturnsValidator>>
   : [ReturnsValidator] extends [ZodFields]
-    ? Returns<z.input<zCore.$ZodObject<ReturnsValidator>>>
+    ? Returns<zCore.input<zCore.$ZodObject<ReturnsValidator>>>
     : any;
 
 // The return value after it's been validated: returned to the client
 type ReturnValueOutput<
   ReturnsValidator extends zCore.$ZodType | ZodFields | void,
 > = [ReturnsValidator] extends [zCore.$ZodType]
-  ? Returns<z.output<ReturnsValidator>>
+  ? Returns<zCore.output<ReturnsValidator>>
   : [ReturnsValidator] extends [ZodFields]
-    ? Returns<z.output<zCore.$ZodObject<ReturnsValidator>>>
+    ? Returns<zCore.output<zCore.$ZodObject<ReturnsValidator>>>
     : any;
 
 // The args before they've been validated: passed from the client
 type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
   [ArgsValidator] extends [zCore.$ZodObject<any>]
-    ? [z.input<ArgsValidator>]
+    ? [zCore.input<ArgsValidator>]
     : [ArgsValidator] extends [ZodFields]
-      ? [z.input<zCore.$ZodObject<ArgsValidator>>]
+      ? [zCore.input<zCore.$ZodObject<ArgsValidator>>]
       : OneArgArray;
 
 // The args after they've been validated: passed to the handler
 type ArgsOutput<
   ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void,
 > = [ArgsValidator] extends [zCore.$ZodObject<any>]
-  ? [z.output<ArgsValidator>]
+  ? [zCore.output<ArgsValidator>]
   : [ArgsValidator] extends [ZodFields]
-    ? [z.output<zCore.$ZodObject<ArgsValidator>>]
+    ? [zCore.output<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
     : OneArgArray;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
