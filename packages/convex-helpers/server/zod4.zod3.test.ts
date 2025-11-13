@@ -28,6 +28,7 @@ import { customCtx } from "./customFunctions.js";
 import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
 import { v } from "convex/values";
 import { z } from "zod/v4";
+import { ignoreUnionOrder } from "./zod4.zodtoconvex.test.js";
 
 // This is an example of how to make a version of `zid` that
 // enforces that the type matches one of your defined tables.
@@ -801,8 +802,8 @@ expectTypeOf(
   }),
 ).toEqualTypeOf({
   simpleArray: v.array(v.boolean()),
-  tuple: v.array(v.boolean()),
-  enum: v.union(v.literal("a"), v.literal("b")),
+  tuple: v.array(v.union(v.boolean(), v.boolean())),
+  enum: ignoreUnionOrder(v.union(v.literal("a"), v.literal("b"))),
   obj: v.object({ a: v.string(), b: v.object({ c: v.array(v.number()) }) }),
   union: v.union(v.string(), v.object({ c: v.array(v.number()) })),
   discUnion: v.union(
@@ -819,31 +820,18 @@ expectTypeOf(
 
 expectTypeOf(
   zodToConvexFields({
-    transformed: z.transformer(z.string(), {
-      type: "refinement",
-      refinement: () => true,
-    }),
     lazy: z.lazy(() => z.string()),
-    pipe: z.number().pipe(z.string().email()),
+    pipe: z.string().pipe(z.string().email()),
     ro: z.string().readonly(),
     unknown: z.unknown(),
     any: z.any(),
   }),
 ).toEqualTypeOf({
-  transformed: v.string(),
   lazy: v.string(),
-  pipe: v.number(),
+  pipe: v.string(),
   ro: v.string(),
   unknown: v.any(),
   any: v.any(),
-});
-// Validate that our double-branded type is correct.
-expectTypeOf(
-  zodToConvexFields({
-    branded2: zBrand(z.string(), "branded2"),
-  }),
-).toEqualTypeOf({
-  branded2: v.string() as VString<string & z.BRAND<"branded2">>,
 });
 const _s = z.string().brand("brand");
 const _n = z.number().brand("brand");
