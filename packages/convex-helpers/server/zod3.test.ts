@@ -393,7 +393,7 @@ const testApi: ApiFromModules<{
     redefine: typeof redefine;
     refined: typeof refined;
   };
-}>["fns"] = anyApi["zod.test"] as any;
+}>["fns"] = anyApi["zod3.test"] as any;
 
 test("zod kitchen sink", async () => {
   const t = convexTest(schema, modules);

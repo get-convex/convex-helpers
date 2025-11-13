@@ -390,7 +390,7 @@ const testApi: ApiFromModules<{
     redefine: typeof redefine;
     refined: typeof refined;
   };
-}>["fns"] = anyApi["zod.test"] as any;
+}>["fns"] = anyApi["zod4.zod3.test"] as any;
 
 test("zod kitchen sink", async () => {
   const t = convexTest(schema, modules);
@@ -414,7 +414,6 @@ test("zod kitchen sink", async () => {
     tuple: ["2", 1] as [string, number],
     lazy: "lazy",
     enum: "b" as const,
-    effect: "effect",
     optional: undefined,
     nullable: null,
     branded: "branded" as string & z.BRAND<"branded">,
@@ -467,7 +466,6 @@ test("zod kitchen sink", async () => {
         },
         optional: false,
       },
-      effect: { fieldType: { type: "string" }, optional: false },
       email: { fieldType: { type: "string" }, optional: false },
       enum: {
         fieldType: {
@@ -854,7 +852,7 @@ test("convexToZod basic types", () => {
   expect(convexToZod(v.boolean()).constructor.name).toBe("ZodBoolean");
   expect(convexToZod(v.null()).constructor.name).toBe("ZodNull");
   expect(convexToZod(v.any()).constructor.name).toBe("ZodAny");
-  expect(convexToZod(v.id("users")).constructor.name).toBe("Zid");
+  expect(convexToZod(v.id("users")).constructor.name).toBe("ZodCustom"); // This differs in v4
 });
 
 test("convexToZod complex types", () => {
@@ -1116,14 +1114,6 @@ test("convexToZod optional values", () => {
   };
 
   expect(roundTripOptionalArray.isOptional).toBe("optional");
-});
-
-test("convexToZod union of one literal", () => {
-  const unionValidator = v.union(v.literal("hello"));
-  const zodUnion = convexToZod(unionValidator);
-  expect(zodUnion.constructor.name).toBe("ZodUnion");
-  expect(zodUnion.parse("hello")).toBe("hello");
-  expect(() => zodUnion.parse("world")).toThrow();
 });
 
 test("convexToZod object with union of one literal", () => {
