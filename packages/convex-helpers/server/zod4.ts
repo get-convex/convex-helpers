@@ -1735,17 +1735,17 @@ export type ZodValidatorFromConvex<V extends GenericValidator> =
     : ZodFromValidatorBase<V>;
 
 export type ZodFromValidatorBase<V extends GenericValidator> =
-  V extends VId<GenericId<infer TableName extends string>>
-    ? Zid<TableName>
-    : V extends VString<infer T, any>
+  V extends VId<infer Type, OptionalProperty>
+    ? Zid<TableNameFromType<NotUndefined<Type>>>
+    : V extends VString<infer T, OptionalProperty>
       ? BrandIfBranded<T, z.ZodString>
-      : V extends VFloat64<infer T, any>
+      : V extends VFloat64<infer T, OptionalProperty>
         ? BrandIfBranded<T, z.ZodNumber>
-        : V extends VInt64<any, any>
+        : V extends VInt64<any, OptionalProperty>
           ? z.ZodBigInt
-          : V extends VBoolean<any, any>
+          : V extends VBoolean<any, OptionalProperty>
             ? z.ZodBoolean
-            : V extends VNull<any, any>
+            : V extends VNull<any, OptionalProperty>
               ? z.ZodNull
               : V extends VArray<any, infer Element>
                 ? Element extends VArray<any, any> // This check is used to avoid TypeScript complaining about infinite type instantiation
@@ -1966,5 +1966,8 @@ function vRequired(validator: GenericValidator) {
       throw new Error("Unknown Convex validator type: " + kind);
   }
 }
+
+type TableNameFromType<T> =
+  T extends GenericId<infer TableName> ? TableName : string;
 
 // #endregion
