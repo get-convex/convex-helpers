@@ -1762,7 +1762,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                           infer T extends zCore.util.Literal,
                           any
                         >
-                      ? z.ZodLiteral<T>
+                      ? z.ZodLiteral<NotUndefined<T>>
                       : V extends VRecord<any, infer Key, infer Value, any, any>
                         ? z.ZodRecord<
                             ZodFromStringValidator<Key>,
