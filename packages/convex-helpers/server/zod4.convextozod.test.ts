@@ -76,7 +76,6 @@ describe("convexToZod", () => {
     );
   });
 
-  // Fix
   test("object", () => {
     testConvexToZod(
       v.object({

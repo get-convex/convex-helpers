@@ -1763,7 +1763,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                           ? z.ZodNever
                           : V extends VUnion<
                                 any,
-                                [infer I extends StringValidator],
+                                [infer I extends GenericValidator],
                                 any,
                                 any
                               >
@@ -1771,8 +1771,8 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                             : V extends VUnion<
                                   any,
                                   [
-                                    infer A extends StringValidator,
-                                    ...infer Rest extends StringValidator[],
+                                    infer A extends GenericValidator,
+                                    ...infer Rest extends GenericValidator[],
                                   ],
                                   any,
                                   any
