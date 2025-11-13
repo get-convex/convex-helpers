@@ -35,7 +35,6 @@ describe("convexToZod", () => {
     testConvexToZod(v.optional(v.string()), z.string().optional());
   });
 
-  // TODO Fix
   test("array", () => {
     testConvexToZod(v.array(v.string()), z.array(z.string()));
   });

@@ -1731,8 +1731,10 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
             ? z.ZodBoolean
             : V extends VNull<any, any>
               ? z.ZodNull
-              : V extends VArray<any, any>
-                ? z.ZodArray<zCore.SomeType> // FIXME
+              : V extends VArray<any, infer Element>
+                ? Element extends VArray<any, any> // This check is used to avoid TypeScript complaining about infinite type instantiation
+                  ? z.ZodArray<zCore.SomeType>
+                  : z.ZodArray<ZodFromValidatorBase<Element>>
                 : V extends VObject<
                       any,
                       infer Fields extends Record<string, GenericValidator>
