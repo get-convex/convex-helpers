@@ -36,21 +36,27 @@ describe("convexToZod", () => {
   });
 
   // TODO Fix
-  // test("array", () =>
-  // testConvexToZod(v.array(v.string()), z.array(z.string())));
+  test("array", () => {
+    testConvexToZod(v.array(v.string()), z.array(z.string()));
+  });
 
   // TODO Fix
   // describe("union", () => {
-  //   test("never", () => testConvexToZod(v.union(), z.never()));
-  //   test("one element (number)", () =>
-  //     testConvexToZod(v.union(v.number()), z.number()));
-  //   test("one element (string)", () =>
-  //     testConvexToZod(v.union(v.string()), z.string()));
-  //   test("multiple elements", () =>
+  //   test("never", () => {
+  //     testConvexToZod(v.union(), z.never());
+  //   });
+  //   test("one element (number)", () => {
+  //     testConvexToZod(v.union(v.number()), z.number());
+  //   });
+  //   test("one element (string)", () => {
+  //     testConvexToZod(v.union(v.string()), z.string());
+  //   });
+  //   test("multiple elements", () => {
   //     testConvexToZod(
   //       v.union(v.string(), v.number()),
   //       z.union([z.string(), z.number()]),
-  //     ));
+  //     );
+  //   });
   // });
 
   test("branded string", () => {
