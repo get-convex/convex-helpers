@@ -37,7 +37,7 @@ export default [
 
       parserOptions: {
         project: ["./tsconfig.json", "./packages/convex-helpers/tsconfig.json"],
-        tsconfigRootDir: ".",
+        tsconfigRootDir: import.meta.dirname,
       },
     },
   },
