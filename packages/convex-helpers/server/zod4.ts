@@ -1760,10 +1760,16 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                     ? never
                     : V extends VLiteral<
                           infer T extends zCore.util.Literal,
-                          any
+                          OptionalProperty
                         >
                       ? z.ZodLiteral<NotUndefined<T>>
-                      : V extends VRecord<any, infer Key, infer Value, any, any>
+                      : V extends VRecord<
+                            any,
+                            infer Key,
+                            infer Value,
+                            OptionalProperty,
+                            any
+                          >
                         ? z.ZodRecord<
                             ZodFromStringValidator<Key>,
                             ZodFromValidatorBase<Value>
@@ -1775,12 +1781,12 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                           //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
                           //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                           // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], any, any>
+                          V extends VUnion<any, [], OptionalProperty, any>
                           ? z.ZodNever
                           : V extends VUnion<
                                 any,
                                 [infer I extends GenericValidator],
-                                any,
+                                OptionalProperty,
                                 any
                               >
                             ? ZodValidatorFromConvex<I>
@@ -1790,7 +1796,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     infer A extends GenericValidator,
                                     ...infer Rest extends GenericValidator[],
                                   ],
-                                  any,
+                                  OptionalProperty,
                                   any
                                 >
                               ? z.ZodUnion<
@@ -1803,7 +1809,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : V extends VAny<any, any, any>
+                              : V extends VAny<any, OptionalProperty, any>
                                 ? z.ZodAny
                                 : never;
 
