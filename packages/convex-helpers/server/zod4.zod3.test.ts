@@ -756,7 +756,7 @@ describe("zod functions", () => {
 
 expectTypeOf(
   zodToConvexFields({
-    s: z.string().email().max(5),
+    s: z.email().max(5),
     n: z.number(),
     nan: z.nan(),
     optional: z.number().optional(),
@@ -819,7 +819,7 @@ expectTypeOf(
 expectTypeOf(
   zodToConvexFields({
     lazy: z.lazy(() => z.string()),
-    pipe: z.string().pipe(z.string().email()),
+    pipe: z.string().pipe(z.email()),
     ro: z.string().readonly(),
     unknown: z.unknown(),
     any: z.any(),
