@@ -200,7 +200,7 @@ export const NoOp = {
   input() {
     return { args: {}, ctx: {} };
   },
-};
+} satisfies Customization<any, any, any, any, any>;
 
 /**
  * customQuery helps define custom behavior on top of `query` or `internalQuery`
