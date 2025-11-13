@@ -45,6 +45,7 @@ describe("zodToConvex + zodOutputToConvex", () => {
     testZodToConvexInputAndOutput(z.boolean(), v.boolean()));
   test("null", () => testZodToConvexInputAndOutput(z.null(), v.null()));
   test("any", () => testZodToConvexInputAndOutput(z.any(), v.any()));
+  test("unknown", () => testZodToConvexInputAndOutput(z.unknown(), v.any()));
 
   describe("literal", () => {
     test("string", () => {

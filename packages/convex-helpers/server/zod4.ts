@@ -1026,7 +1026,7 @@ type ConvexValidatorFromZodCommon<
               : Z extends zCore.$ZodNull
                 ? VNull<zCore.infer<Z>, IsOptional>
                 : Z extends zCore.$ZodUnknown
-                  ? VAny<zCore.infer<Z>, "required">
+                  ? VAny<any, "required">
                   : Z extends zCore.$ZodAny
                     ? VAny<zCore.infer<Z>, "required">
                     : // z.array()
