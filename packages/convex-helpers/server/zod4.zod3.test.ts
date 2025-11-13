@@ -14,7 +14,7 @@ import { omit } from "../index.js";
 import { convexTest } from "convex-test";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
-import type { ZCustomCtx } from "./zod3.js";
+import type { ZCustomCtx } from "./zod4.js";
 import {
   zCustomQuery,
   zid,

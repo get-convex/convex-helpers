@@ -322,6 +322,22 @@ export const zid = <
 export type Zid<TableName extends string> = z.ZodCustom<GenericId<TableName>> &
   zCore.$ZodRecordKey;
 
+/**
+ * Useful to get the input context type for a custom function using Zod.
+ */
+export type ZCustomCtx<Builder> =
+  Builder extends CustomBuilder<
+    any,
+    any,
+    infer CustomCtx,
+    any,
+    infer InputCtx,
+    any,
+    any
+  >
+    ? Overwrite<InputCtx, CustomCtx>
+    : never;
+
 // #endregion
 
 // #region Zod → Convex
