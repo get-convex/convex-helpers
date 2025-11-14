@@ -580,13 +580,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
     });
     test("optional(nullable(string))", () => {
       testZodToConvexInputAndOutput(
-        z.string().optional().nullable(),
+        z.string().nullable().optional(),
         v.optional(v.union(v.string(), v.null())),
       );
     });
     test("nullable(optional(string)) → swap nullable and optional", () => {
       testZodToConvexInputAndOutput(
-        z.string().nullable().optional(),
+        z.string().optional().nullable(),
         v.optional(v.union(v.string(), v.null())),
       );
     });
@@ -904,7 +904,8 @@ describe("zodOutputToConvex", () => {
 test("zodToConvexFields", () => {
   const convexFields = zodToConvexFields({
     name: z.string(),
-    age: z.number().optional(),
+    optional: z.number().optional(),
+    nullable: z.string().nullable(),
     transform: z.number().transform((z) => z.toString()),
   });
 
@@ -913,7 +914,8 @@ test("zodToConvexFields", () => {
       typeof convexFields,
       {
         name: VString;
-        age: VOptional<VFloat64>;
+        optional: VOptional<VFloat64>;
+        nullable: VUnion<string | null, [VString, VNull], "required", never>;
         transform: VFloat64;
       }
     >
@@ -921,7 +923,8 @@ test("zodToConvexFields", () => {
 
   expect(convexFields).toEqual({
     name: v.string(),
-    age: v.optional(v.number()),
+    optional: v.optional(v.number()),
+    nullable: v.union(v.string(), v.null()),
     transform: v.number(),
   });
 });
@@ -929,7 +932,8 @@ test("zodToConvexFields", () => {
 test("zodOutputToConvexFields", () => {
   const convexFields = zodOutputToConvexFields({
     name: z.string(),
-    age: z.number().optional(),
+    optional: z.number().optional(),
+    nullable: z.string().nullable(),
     transform: z.number().transform((z) => z.toString()),
   });
 
@@ -938,7 +942,8 @@ test("zodOutputToConvexFields", () => {
       typeof convexFields,
       {
         name: VString;
-        age: VOptional<VFloat64>;
+        optional: VOptional<VFloat64>;
+        nullable: VUnion<string | null, [VString, VNull], "required", never>;
         transform: VAny;
       }
     >
@@ -946,7 +951,8 @@ test("zodOutputToConvexFields", () => {
 
   expect(convexFields).toEqual({
     name: v.string(),
-    age: v.optional(v.number()),
+    optional: v.optional(v.number()),
+    nullable: v.union(v.string(), v.null()),
     transform: v.any(),
   });
 });

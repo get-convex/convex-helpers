@@ -1597,8 +1597,8 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     const inner = toConvex(validator._zod.def.innerType);
 
     // Invert z.optional().nullable() → v.optional(v.nullable())
-    if (inner.isOptional) {
-      return v.optional(v.union(inner, v.null()));
+    if (inner.isOptional === "optional") {
+      return v.optional(v.union(vRequired(inner), v.null()));
     }
 
     return v.union(inner, v.null());
