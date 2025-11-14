@@ -603,7 +603,7 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
  * ConvexValidatorFromZod<z.ZodString> // → VString
  * ```
  */
-type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
+export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
   // Keep this in sync with zodToConvex implementation
   // and the ConvexValidatorFromZodOutput type
   Z extends Zid<infer TableName>
