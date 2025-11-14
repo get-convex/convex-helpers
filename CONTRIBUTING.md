@@ -19,7 +19,6 @@ npm install
 Adding helpers usually involves:
 
 1. Adding code (and corresponding .test.ts file) to:
-
    - ./server/ if it helps write server-side code (imported in convex/)
    - ./react/ for client-side code. In the future beyond react/ there can be other framework-specific client-side helpers.
    - ./ if it's truly generic - can be imported client or server-side
@@ -27,7 +26,6 @@ Adding helpers usually involves:
 2. Adding the file to [the root package.json](./package.json)
    or
    in the following places:
-
    1. exports in [the npm library package.json](./packages/convex-helpers/package.json)
       using `node generate-exports.mjs`.
    2. scripts: Update the `dev:helpers` script if it isn't being included by the existing
@@ -36,7 +34,6 @@ Adding helpers usually involves:
 3. [package README.md](./packages/convex-helpers/README.md) blurb on how to use it, and a link in the TOC.
 4. [root README.md](./README.md) link in the TOC.
 5. Adding an example of usage in the root of this repo.
-
    1. convex/fooExample.ts for server-side code
    1. src/components/FooExample.tsx for client-side code, added in App.tsx
 
