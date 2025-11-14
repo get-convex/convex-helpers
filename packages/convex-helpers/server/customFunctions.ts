@@ -200,7 +200,7 @@ export const NoOp = {
   input() {
     return { args: {}, ctx: {} };
   },
-} satisfies Customization<any, any, any, any, any>;
+};
 
 /**
  * customQuery helps define custom behavior on top of `query` or `internalQuery`
@@ -483,7 +483,8 @@ function customFnBuilder(
   customization: Customization<any, any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
-  const customInput = customization.input ?? NoOp.input;
+  const customInput: Customization<any, any, any, any, any>["input"] =
+    customization.input ?? NoOp.input;
   const inputArgs = customization.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
     // N.B.: This is fine if it's a function
