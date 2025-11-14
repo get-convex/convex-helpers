@@ -738,15 +738,12 @@ export function convexToZodFields<C extends PropertyValidators>(
  * @param zObject - Validators for the user-defined fields on the document.
  * @returns Zod shape for use with `z.object(shape)` that includes system fields.
  */
-export const withSystemFields = <
+export function withSystemFields<
   Table extends string,
   T extends { [key: string]: zCore.$ZodType },
->(
-  tableName: Table,
-  zObject: T,
-) => {
+>(tableName: Table, zObject: T) {
   return { ...zObject, _id: zid(tableName), _creationTime: z.number() };
-};
+}
 
 // #endregion
 
