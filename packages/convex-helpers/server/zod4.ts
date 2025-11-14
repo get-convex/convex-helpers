@@ -420,7 +420,7 @@ export type ZCustomCtx<Builder> =
 export function zodToConvex<Z extends zCore.$ZodType>(
   validator: Z,
 ): ConvexValidatorFromZod<Z, "required"> {
-  const visited = new Set<zCore.$ZodType>();
+  const visited = new WeakSet<zCore.$ZodType>();
 
   function zodToConvexInner(validator: zCore.$ZodType): GenericValidator {
     // Circular validator definitions are not supported by Convex validators,
@@ -507,7 +507,7 @@ export function zodToConvex<Z extends zCore.$ZodType>(
 export function zodOutputToConvex<Z extends zCore.$ZodType>(
   validator: Z,
 ): ConvexValidatorFromZodOutput<Z, "required"> {
-  const visited = new Set<zCore.$ZodType>();
+  const visited = new WeakSet<zCore.$ZodType>();
 
   function zodOutputToConvexInner(validator: zCore.$ZodType): GenericValidator {
     // Circular validator definitions are not supported by Convex validators,
