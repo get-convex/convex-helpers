@@ -343,7 +343,7 @@ export type ZCustomCtx<Builder> =
 // #region Zod → Convex
 
 /**
- * Turns a Zod validator into a Convex Validator.
+ * Turns a Zod or Zod Mini validator into a Convex validator.
  *
  * The Convex validator will be as close to possible to the Zod validator,
  * but might be broader than the Zod validator:
@@ -604,6 +604,8 @@ export function zodOutputToConvexFields<Fields extends ZodFields>(
  * ```ts
  * convexToZod(v.string()) // → z.string()
  * ```
+ *
+ * This function returns Zod validators, not Zod Mini validators.
  *
  * @param convexValidator Convex validator can be any validator from "convex/values" e.g. `v.string()`
  * @returns Zod validator (e.g. `z.string()`) with inferred type matching the Convex validator
