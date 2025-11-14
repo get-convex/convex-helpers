@@ -1269,7 +1269,7 @@ type ConvexValidatorFromZodCommon<
                                                       Template,
                                                       IsOptional
                                                     >
-                                                  : // z.catch
+                                                  : // z.catch()
                                                     Z extends zCore.$ZodCatch<
                                                         infer T extends
                                                           zCore.$ZodType
@@ -1278,16 +1278,16 @@ type ConvexValidatorFromZodCommon<
                                                         T,
                                                         IsOptional
                                                       >
-                                                    : // z.transform
+                                                    : // z.transform()
                                                       Z extends zCore.$ZodTransform<
                                                           any,
                                                           any
                                                         >
                                                       ? VAny<any, "required"> // No runtime info about types so we use v.any()
-                                                      : // z.custom
+                                                      : // z.custom()
                                                         Z extends zCore.$ZodCustom<any>
                                                         ? VAny<any, "required">
-                                                        : // z.intersection
+                                                        : // z.intersection()
                                                           // We could do some more advanced logic here where we compute
                                                           // the Convex validator that results from the intersection.
                                                           // For now, we simply use v.any()
