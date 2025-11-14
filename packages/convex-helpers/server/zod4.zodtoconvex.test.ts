@@ -6,7 +6,6 @@ import {
   OptionalProperty,
   v,
   Validator,
-  ValidatorJSON,
   VAny,
   VFloat64,
   VLiteral,
@@ -989,7 +988,7 @@ test("withSystemFields", () => {
 
     expect(
       isSameType(value, sysFieldsShape[key as keyof typeof sysFieldsShape]),
-    ).to.be.true;
+    ).toBe(true);
   }
 });
 

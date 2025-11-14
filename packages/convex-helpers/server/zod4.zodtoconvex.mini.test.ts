@@ -959,8 +959,6 @@ test("zodOutputToConvexFields", () => {
     ),
   });
 
-  z.transform;
-
   assert<
     Equals<
       typeof convexFields,

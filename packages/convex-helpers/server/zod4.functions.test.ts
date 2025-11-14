@@ -14,7 +14,6 @@ import {
   actionGeneric,
   anyApi,
 } from "convex/server";
-import { ConvexError } from "convex/values";
 import { convexTest } from "convex-test";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
