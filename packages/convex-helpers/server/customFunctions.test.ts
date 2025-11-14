@@ -4,6 +4,7 @@ import {
   customCtx,
   customMutation,
   customQuery,
+  NoOp,
 } from "./customFunctions.js";
 import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
 import type { SessionId } from "./sessions.js";
@@ -35,6 +36,7 @@ import {
   beforeEach,
   describe,
   expect,
+  expectTypeOf,
   test,
   vi,
 } from "vitest";
@@ -519,6 +521,54 @@ describe("custom functions with api auth", () => {
 });
 
 describe("custom functions", () => {
+  test("noop", async () => {
+    const noopQuery = customQuery(query, NoOp);
+    const noopQueryFn = noopQuery({
+      args: { foo: v.string() },
+      handler: async (ctx, args) => {
+        return { bar: args.foo };
+      },
+    });
+    queryMatches(noopQueryFn, { foo: "" }, { bar: "" });
+    const sameQuery = query({
+      args: { foo: v.string() },
+      handler: async (ctx, args) => {
+        return { bar: args.foo };
+      },
+    });
+    expectTypeOf(noopQueryFn).toEqualTypeOf(sameQuery);
+
+    const noopMutation = customMutation(mutation, NoOp);
+    const noopMutationFn = noopMutation({
+      args: { foo: v.string() },
+      handler: async (ctx, args) => {
+        return { bar: args.foo };
+      },
+    });
+    const sameMutation = mutation({
+      args: { foo: v.string() },
+      handler: async (ctx, args) => {
+        return { bar: args.foo };
+      },
+    });
+    expectTypeOf(noopMutationFn).toEqualTypeOf(sameMutation);
+
+    const noopAction = customAction(action, NoOp);
+    const noopActionFn = noopAction({
+      args: { foo: v.string() },
+      handler: async (ctx, args) => {
+        return { bar: args.foo };
+      },
+    });
+    const sameAction = action({
+      args: { foo: v.string() },
+      handler: async (ctx, args) => {
+        return { bar: args.foo };
+      },
+    });
+    expectTypeOf(noopActionFn).toEqualTypeOf(sameAction);
+  });
+
   test("add args", async () => {
     const t = convexTest(schema, modules);
     expect(await t.query(testApi.add, {})).toMatchObject({

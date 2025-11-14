@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.105 alpha
+
+- Add more type safety to onSuccess
+
 ## 0.1.104
 
 - Allows RLS to deny access by default
