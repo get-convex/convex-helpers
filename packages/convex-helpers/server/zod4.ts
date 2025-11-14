@@ -447,7 +447,7 @@ export function zodToConvex<Z extends zCore.$ZodType>(
 }
 
 /**
- * Converts a Zod validator to a Convex validator that checks the value _after_
+ * Converts a Zod or Zod Mini validator to a Convex validator that checks the value _after_
  * it has been validated (and possibly transformed) by the Zod validator.
  *
  * This is similar to {@link zodToConvex}, but is meant for cases where the Convex
