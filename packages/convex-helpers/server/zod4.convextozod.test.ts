@@ -92,11 +92,12 @@ describe("convexToZod", () => {
   });
 
   describe("record", () => {
-    test("key = string", () =>
+    test("key = string", () => {
       testConvexToZod(
         v.record(v.string(), v.number()),
         z.record(z.string(), z.number()),
-      ));
+      );
+    });
 
     test("key = literal", () => {
       testConvexToZod(
@@ -141,10 +142,11 @@ describe("convexToZod", () => {
 
     describe("optional", () => {
       test("id", () => {
-        testConvexToZod(
-          v.optional(v.id("documents")),
-          zid("documents").optional(),
-        );
+        // Testing manually the result since it’s a custom type
+        const actual = convexToZod(v.optional(v.id("documents")));
+        expect(actual.safeParse(undefined).success).toBe(true);
+        expect(actual.safeParse("abc").success).toBe(true);
+        expect(actual.safeParse(42).success).toBe(false);
       });
       test("string", () => {
         testConvexToZod(v.optional(v.string()), z.string().optional());
