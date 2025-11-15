@@ -44,7 +44,7 @@ export const literals = <T extends Array<string | number | boolean | bigint>>(
 ) => {
   return v.union(...args.map(v.literal)) as VUnion<
     T[number],
-    { [K in keyof T]: VLiteral<T[K]> }
+    NoInfer<{ [K in keyof T]: VLiteral<T[K]> }>
   >;
 };
 
