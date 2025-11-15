@@ -3,7 +3,9 @@
 ## 0.1.105 alpha
 
 - Adds zod4 support! Use the new /server/zod4 entrypoint
-- Add more type safety to onSuccess
+- Add more type safety to onSuccess in custom functions
+- If the only argument to a session function is the sessionId,
+  allow omitting args in React.
 
 ## 0.1.104
 

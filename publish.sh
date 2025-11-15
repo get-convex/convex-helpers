@@ -49,9 +49,9 @@ cp package.json dist/
 
 cd dist
 if (echo "$version" | grep alpha >/dev/null); then
-  npm publish --tag alpha
+  npm publish --tag alpha --dry-run
 else
-  npm publish
+  npm publish --dry-run
 fi
 popd >/dev/null
 echo "^^^ DRY RUN ^^^"
