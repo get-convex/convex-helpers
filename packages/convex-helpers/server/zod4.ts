@@ -1940,7 +1940,11 @@ type VRequired<T extends Validator<any, OptionalProperty, any>> =
                             : never;
 
 function vRequired(validator: GenericValidator) {
-  const { kind } = validator;
+  const { kind, isOptional } = validator;
+  if (isOptional === "required") {
+    return validator;
+  }
+
   switch (kind) {
     case "id":
       return v.id(validator.tableName);
