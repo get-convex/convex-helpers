@@ -337,6 +337,9 @@ function customFnBuilder(
   builder: (args: any) => any,
   customization: Customization<any, any, any, any, any>,
 ) {
+  // Most of the code in here is identical to customFnBuilder in zod4.ts.
+  // If making changes, please keep zod3.ts in sync.
+
   // Looking forward to when input / args / ... are optional
   const customInput: Customization<any, any, any, any, any>["input"] =
     customization.input ?? NoOp.input;
