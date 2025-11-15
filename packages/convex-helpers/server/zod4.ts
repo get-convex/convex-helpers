@@ -1560,18 +1560,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   }
 
   if (validator instanceof zCore.$ZodLiteral) {
-    function convexToZodLiteral(literal: zCore.util.Literal): GenericValidator {
-      if (literal === undefined) {
-        throw new Error("undefined is not a valid Convex value");
-      }
-
-      if (literal === null) {
-        return v.null();
-      }
-
-      return v.literal(literal);
-    }
-
     const { values } = validator._zod.def;
     if (values.length === 1) {
       return convexToZodLiteral(values[0]);
@@ -1637,42 +1625,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
       isValidRecordKey(keyValidator) ? keyValidator : v.string(),
       vRequired(valueValidator),
     );
-
-    function extractStringLiterals(
-      validator: GenericValidator,
-    ): string[] | null {
-      if (validator.kind === "literal") {
-        const literalValidator = validator as VLiteral<any>;
-        if (typeof literalValidator.value === "string") {
-          return [literalValidator.value];
-        }
-        return null;
-      }
-      if (validator.kind === "union") {
-        const unionValidator = validator as VUnion<any, any, any, any>;
-        const literals: string[] = [];
-        for (const member of unionValidator.members) {
-          const memberLiterals = extractStringLiterals(member);
-          if (memberLiterals === null) {
-            return null; // Not all members are string literals
-          }
-          literals.push(...memberLiterals);
-        }
-        return literals;
-      }
-      return null; // Not a literal or union of literals
-    }
-
-    function isValidRecordKey(validator: GenericValidator): boolean {
-      if (validator.kind === "string" || validator.kind === "id") {
-        return true;
-      }
-      if (validator.kind === "union") {
-        const unionValidator = validator as VUnion<any, any, any, any>;
-        return unionValidator.members.every(isValidRecordKey);
-      }
-      return false;
-    }
   }
 
   if (validator instanceof zCore.$ZodReadonly) {
@@ -1716,6 +1668,52 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
 
   // Unsupported type
   return v.any();
+}
+
+function convexToZodLiteral(literal: zCore.util.Literal): GenericValidator {
+  if (literal === undefined) {
+    throw new Error("undefined is not a valid Convex value");
+  }
+
+  if (literal === null) {
+    return v.null();
+  }
+
+  return v.literal(literal);
+}
+
+function extractStringLiterals(validator: GenericValidator): string[] | null {
+  if (validator.kind === "literal") {
+    const literalValidator = validator as VLiteral<any>;
+    if (typeof literalValidator.value === "string") {
+      return [literalValidator.value];
+    }
+    return null;
+  }
+  if (validator.kind === "union") {
+    const unionValidator = validator as VUnion<any, any, any, any>;
+    const literals: string[] = [];
+    for (const member of unionValidator.members) {
+      const memberLiterals = extractStringLiterals(member);
+      if (memberLiterals === null) {
+        return null; // Not all members are string literals
+      }
+      literals.push(...memberLiterals);
+    }
+    return literals;
+  }
+  return null; // Not a literal or union of literals
+}
+
+function isValidRecordKey(validator: GenericValidator): boolean {
+  if (validator.kind === "string" || validator.kind === "id") {
+    return true;
+  }
+  if (validator.kind === "union") {
+    const unionValidator = validator as VUnion<any, any, any, any>;
+    return unionValidator.members.every(isValidRecordKey);
+  }
+  return false;
 }
 
 // #endregion
