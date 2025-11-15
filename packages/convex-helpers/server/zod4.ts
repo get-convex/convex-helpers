@@ -1474,9 +1474,7 @@ type IsUnknownOrAny<T> =
     ? true
     : // unknown?
       unknown extends T
-      ? [T] extends [unknown]
-        ? true
-        : false
+      ? true
       : false;
 
 function zodToConvexCommon<Z extends zCore.$ZodType>(
