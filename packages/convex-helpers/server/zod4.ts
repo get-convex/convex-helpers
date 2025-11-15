@@ -835,7 +835,8 @@ function customFnBuilder(
   customization: Customization<any, any, any, any, any>,
 ) {
   // Looking forward to when input / args / ... are optional
-  const customInput = customization.input ?? NoOp.input;
+  const customInput: Customization<any, any, any, any, any>["input"] =
+    customization.input ?? NoOp.input;
   const inputArgs = customization.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
     const { args, handler = fn, returns: maybeObject, ...extra } = fn;
