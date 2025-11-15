@@ -372,3 +372,89 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
     });
   });
 });
+
+const zQueryCustom = zCustomQuery(query, {
+  args: {
+    requiredArg: v.string(),
+    optionalArg: v.optional(v.number()),
+    consumedArg: v.string(),
+    overridenArg: v.null(),
+  },
+  input: async (ctx, args) => ({
+    ctx: {
+      ...ctx,
+      storage: undefined,
+      auth: undefined,
+      db: "custom db!" as const,
+      runQuery: undefined,
+      ...args,
+    },
+    args: {
+      extraArg: "extraArg" as const,
+      requiredArg: args.requiredArg,
+      optionalArg: args.optionalArg,
+      overridenArg: true,
+    },
+  }),
+});
+
+export const testQueryCustom = zQueryCustom({
+  args: {
+    specificArg: z.string(),
+    // Promote optionalArg to required
+    optionalArg: z.number(),
+    // Try to demote requiredArg to optional (internally it will stay required)
+    requiredArg: z.optional(z.string()),
+  },
+  handler: async (ctx, args) => {
+    assertType<{
+      specificArg: string;
+      optionalArg: number;
+      requiredArg: string;
+      extraArg: "extraArg";
+      overridenArg: boolean;
+    }>(args);
+    assertType<{
+      requiredArg: string;
+      optionalArg?: number;
+      consumedArg: string;
+      overridenArg: null;
+      db: "custom db!";
+    }>(ctx);
+    return { ctx, args };
+  },
+});
+const testApiCustom: ApiFromModules<{
+  fns: {
+    testQueryCustom: typeof testQueryCustom;
+  };
+}>["fns"] = anyApi["zod4.functions.test"] as any;
+
+describe("zCustomQuery customizations", () => {
+  test("it can override args and ctx", async () => {
+    const t = convexTest(schema, modules);
+    const args = {
+      overridenArg: null,
+      requiredArg: "requiredArg",
+      optionalArg: 1,
+      consumedArg: "consumedArg",
+    };
+    const response = await t.query(testApiCustom.testQueryCustom, {
+      ...args,
+      specificArg: "specificArg",
+    });
+    expect(response).toMatchObject({
+      ctx: {
+        db: "custom db!",
+        ...args,
+      },
+      args: {
+        specificArg: "specificArg",
+        optionalArg: 1,
+        requiredArg: "requiredArg",
+        extraArg: "extraArg",
+        overridenArg: true,
+      },
+    });
+  });
+});
