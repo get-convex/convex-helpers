@@ -4,7 +4,7 @@
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
-    "convex-helpers": "./bin.cjs"
+    "convex-helpers": "bin.cjs"
   },
   "exports": {
     ".": {

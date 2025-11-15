@@ -48,7 +48,11 @@ fi
 cp package.json dist/
 
 cd dist
-npm publish --dry-run
+if (echo "$version" | grep alpha >/dev/null); then
+  npm publish --tag alpha
+else
+  npm publish
+fi
 popd >/dev/null
 echo "^^^ DRY RUN ^^^"
 read -r -p "Publish $version to npm? (y/n): " publish
