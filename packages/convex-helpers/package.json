@@ -115,6 +115,14 @@
       "types": "./server/zod.d.ts",
       "default": "./server/zod.js"
     },
+    "./server/zod3": {
+      "types": "./server/zod3.d.ts",
+      "default": "./server/zod3.js"
+    },
+    "./server/zod4": {
+      "types": "./server/zod4.d.ts",
+      "default": "./server/zod4.js"
+    },
     "./react/*": {
       "types": "./react/*.d.ts",
       "default": "./react/*.js"
@@ -160,7 +168,7 @@
     "hono": "^4.0.5",
     "react": "^17.0.2 || ^18.0.0 || ^19.0.0",
     "typescript": "^5.5",
-    "zod": "^3.22.4 || ^4.0.15"
+    "zod": "^3.25.0 || ^4.0.0"
   },
   "peerDependenciesMeta": {
     "@standard-schema/spec": {
