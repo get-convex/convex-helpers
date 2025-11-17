@@ -599,6 +599,30 @@ type ConvexObjectValidatorFromZod<T extends ZodValidator> = VObject<
   }
 >;
 
+type ConvexObjectValidatorFromZodOutput<T extends ZodValidator> = VObject<
+  ObjectType<{
+    [key in keyof T]: T[key] extends z.ZodTypeAny
+      ? ConvexValidatorFromZodOutput<T[key]>
+      : never;
+  }>,
+  {
+    [key in keyof T]: ConvexValidatorFromZodOutput<T[key]>;
+  }
+>;
+
+type ConvexUnionValidatorFromZodOutput<T> = T extends z.ZodTypeAny[]
+  ? VUnion<
+      ConvexValidatorFromZodOutput<T[number]>["type"],
+      {
+        [Index in keyof T]: T[Index] extends z.ZodTypeAny
+          ? ConvexValidatorFromZodOutput<T[Index]>
+          : never;
+      },
+      "required",
+      ConvexValidatorFromZodOutput<T[number]>["fieldPaths"]
+    >
+  : never;
+
 /**
  * Converts a Zod validator type
  * to the corresponding Convex validator type from `convex/values`.
@@ -1040,9 +1064,9 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
                           ConvexValidatorFromZodOutput<Inner>
                         >
                       : Z extends z.ZodObject<infer ZodShape>
-                        ? ConvexObjectValidatorFromZod<ZodShape>
+                        ? ConvexObjectValidatorFromZodOutput<ZodShape>
                         : Z extends z.ZodUnion<infer T>
-                          ? ConvexUnionValidatorFromZod<T>
+                          ? ConvexUnionValidatorFromZodOutput<T>
                           : Z extends z.ZodDiscriminatedUnion<any, infer T>
                             ? VUnion<
                                 ConvexValidatorFromZodOutput<T[number]>["type"],

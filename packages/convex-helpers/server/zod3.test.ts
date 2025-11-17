@@ -618,6 +618,60 @@ test("output validators work for arrays objects and unions", async () => {
   expect(union.members[1].isOptional).toBe("required");
 });
 
+test("zodOutputToConvex infers required types for fields with defaults", () => {
+  const ZSimpleObject = z.object({
+    age: z.number().default(25),
+    name: z.string(),
+    status: z.union([z.literal("active"), z.literal("inactive")]).default("active"),
+  });
+  const _VSimpleObject = zodOutputToConvex(ZSimpleObject);
+  type TZodSimpleObject = z.infer<typeof ZSimpleObject>;
+  type TConvexSimpleObject = Infer<typeof _VSimpleObject>;
+
+  // Fields with defaults should be required (not optional) in the output type
+  expectTypeOf<TConvexSimpleObject["age"]>().toEqualTypeOf<TZodSimpleObject["age"]>();
+  expectTypeOf<TConvexSimpleObject["status"]>().toEqualTypeOf<
+    TZodSimpleObject["status"]
+  >();
+  expectTypeOf<TConvexSimpleObject>().toEqualTypeOf<TZodSimpleObject>();
+
+  // Validator objects should have isOptional: "required" for fields with defaults
+  expect(_VSimpleObject.fields.age.isOptional).toBe("required");
+  expect(_VSimpleObject.fields.status.isOptional).toBe("required");
+  expect(_VSimpleObject.fields.name.isOptional).toBe("required");
+
+  // Test nested objects with defaults
+  const ZNestedObject = z.object({
+    id: z.string(),
+    profile: z.object({
+      displayName: z.string().default("Anonymous"),
+      isPublic: z.boolean().default(false),
+    }),
+    tags: z.array(z.string()).default([]),
+  });
+  const _VNestedObject = zodOutputToConvex(ZNestedObject);
+  type TZodNestedObject = z.infer<typeof ZNestedObject>;
+  type TConvexNestedObject = Infer<typeof _VNestedObject>;
+
+  // Nested object fields with defaults should be required
+  expectTypeOf<TConvexNestedObject["tags"]>().toEqualTypeOf<
+    TZodNestedObject["tags"]
+  >();
+  expectTypeOf<TConvexNestedObject["profile"]["displayName"]>().toEqualTypeOf<
+    TZodNestedObject["profile"]["displayName"]
+  >();
+  expectTypeOf<TConvexNestedObject["profile"]["isPublic"]>().toEqualTypeOf<
+    TZodNestedObject["profile"]["isPublic"]
+  >();
+  expectTypeOf<TConvexNestedObject>().toEqualTypeOf<TZodNestedObject>();
+
+  // Nested validator objects should have isOptional: "required" for fields with defaults
+  expect(_VNestedObject.fields.tags.isOptional).toBe("required");
+  expect(_VNestedObject.fields.profile.fields.displayName.isOptional).toBe("required");
+  expect(_VNestedObject.fields.profile.fields.isPublic.isOptional).toBe("required");
+  expect(_VNestedObject.fields.id.isOptional).toBe("required");
+});
+
 test("zod output compliance", async () => {
   const t = convexTest(schema, modules);
   const response = await t.query(testApi.zodOutputCompliance, {});
