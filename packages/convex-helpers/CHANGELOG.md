@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.1.105
+
 - **convex-helpers now supports Zod 4!** (#840)
   - The new methods that support Zod 4 can be found in `convex-helpers/server/zod4`
   - Existing types and methods for Zod 3 support have been moved
