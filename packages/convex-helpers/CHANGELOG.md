@@ -1,8 +1,17 @@
 # Changelog
 
-## 0.1.105 alpha
+## 0.1.105
 
-- Add more type safety to onSuccess
+- **convex-helpers now supports Zod 4!** (#840)
+  - The new methods that support Zod 4 can be found in `convex-helpers/server/zod4`
+  - Existing types and methods for Zod 3 support have been moved
+    (`convex-helpers/server/zod` → `convex-helpers/server/zod3`)
+  - Thanks to @ksinghal and @natedunn for their contributions to this improvement.
+- Zod 3 support: fix the return types of `zodOutputToConvex` for objects and unions
+  (credit: gari-ix)
+- Zod 3 support: improve the type safety of `onSuccess` in custom function builders
+- Sessions: If the only argument to a session function is the sessionId,
+  allow omitting args in React.
 
 ## 0.1.104
 
