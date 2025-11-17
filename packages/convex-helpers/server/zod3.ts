@@ -1455,7 +1455,6 @@ export function zodOutputToConvexFields<Z extends ZodValidator>(zod: Z) {
   ) as { [k in keyof Z]: ConvexValidatorFromZodOutput<Z[k]> };
 }
 
-
 interface ZidDef<TableName extends string> extends ZodTypeDef {
   typeName: "ConvexId";
   tableName: TableName;
