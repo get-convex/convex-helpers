@@ -17,9 +17,10 @@ import {
 import { convexTest } from "convex-test";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import { modules } from "./setup.test.js";
-import { zCustomQuery, zCustomMutation, zCustomAction } from "./zod4.js";
+import { zCustomQuery, zCustomMutation, zCustomAction, zid } from "./zod4.js";
 import { z } from "zod/v4";
 import { v } from "convex/values";
+import { NoOp } from "./customFunctions.js";
 
 const schema = defineSchema({
   users: defineTable({
@@ -186,6 +187,43 @@ export const codec = zQuery({
   }),
 });
 
+// The example from README.md
+const zodQuery = zCustomQuery(query, NoOp);
+export const myComplexQuery = zodQuery({
+  args: {
+    userId: zid("users"),
+    email: z.email(),
+    num: z.number().min(0),
+    nullableBigint: z.nullable(z.bigint()),
+    boolWithDefault: z.boolean().default(true),
+    null: z.null(),
+    array: z.array(z.string()),
+    optionalObject: z.object({ a: z.string(), b: z.number() }).optional(),
+    union: z.union([z.string(), z.number()]),
+    discriminatedUnion: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("a"), a: z.string() }),
+      z.object({ kind: z.literal("b"), b: z.number() }),
+    ]),
+    literal: z.literal("hi"),
+    enum: z.enum(["a", "b"]),
+    readonly: z.object({ a: z.string(), b: z.number() }).readonly(),
+    pipeline: z.number().pipe(z.coerce.string()),
+  },
+  handler: async (_ctx, args) => {
+    //... args at this point has been validated and has the types of what
+    // zod parses the values into.
+    // e.g. boolWithDefault is `bool` but has an input type `bool | undefined`.
+
+    return args;
+  },
+});
+export const generateUserId = mutation({
+  args: {},
+  handler: async ({ db }) => {
+    return db.insert("users", { name: "Nicolas" });
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     testQuery: typeof testQuery;
@@ -193,6 +231,8 @@ const testApi: ApiFromModules<{
     testAction: typeof testAction;
     transform: typeof transform;
     codec: typeof codec;
+    myComplexQuery: typeof myComplexQuery;
+    generateUserId: typeof generateUserId;
   };
 }>["fns"] = anyApi["zod4.functions.test"] as any;
 
@@ -258,6 +298,42 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
           { result: string; length: number }
         >
       >();
+    });
+
+    test("README example", async () => {
+      const t = convexTest(schema, modules);
+      const userId = await t.mutation(testApi.generateUserId);
+      const response = await t.query(testApi.myComplexQuery, {
+        userId,
+        email: "test@example.com",
+        num: 42,
+        nullableBigint: 123n,
+        null: null,
+        array: ["foo", "bar"],
+        optionalObject: { a: "test", b: 1 },
+        union: "hello",
+        discriminatedUnion: { kind: "a", a: "value" },
+        literal: "hi",
+        enum: "a",
+        readonly: { a: "readonly", b: 2 },
+        pipeline: 100,
+      });
+      expect(response).toMatchObject({
+        userId,
+        email: "test@example.com",
+        num: 42,
+        nullableBigint: 123n,
+        boolWithDefault: true,
+        null: null,
+        array: ["foo", "bar"],
+        optionalObject: { a: "test", b: 1 },
+        union: "hello",
+        discriminatedUnion: { kind: "a", a: "value" },
+        literal: "hi",
+        enum: "a",
+        readonly: { a: "readonly", b: 2 },
+        pipeline: "100",
+      });
     });
   });
 
