@@ -10,6 +10,8 @@
 - Zod 3 support: fix the return types of `zodOutputToConvex` for objects and unions
   (credit: gari-ix)
 - Zod 3 support: improve the type safety of `onSuccess` in custom function builders
+- Sessions: If the only argument to a session function is the sessionId,
+  allow omitting args in React.
 
 ## 0.1.104
 
