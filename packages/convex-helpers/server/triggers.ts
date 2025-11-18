@@ -159,6 +159,7 @@ export class DatabaseWriterWithTriggers<
 > implements GenericDatabaseWriter<DataModel>
 {
   writer: GenericDatabaseWriter<DataModel>;
+
   constructor(
     ctx: Ctx,
     innerDb: GenericDatabaseWriter<DataModel>,
@@ -168,43 +169,43 @@ export class DatabaseWriterWithTriggers<
     this.system = innerDb.system;
     this.writer = writerWithTriggers(ctx, innerDb, triggers, isWithinTrigger);
   }
-  delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
-    return this.writer.delete(id);
+
+  delete(arg0: any, arg1?: any): Promise<void> {
+    return this.writer.delete(arg0, arg1);
   }
-  get<TableName extends TableNamesInDataModel<DataModel>>(
-    id: GenericId<TableName>,
-  ): Promise<DocumentByName<DataModel, TableName> | null> {
-    return this.writer.get(id);
+
+  get(arg0: any, arg1?: any) {
+    return this.writer.get(arg0, arg1);
   }
+
   insert<TableName extends TableNamesInDataModel<DataModel>>(
     table: TableName,
     value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<GenericId<TableName>> {
     return this.writer.insert(table, value);
   }
-  patch<TableName extends TableNamesInDataModel<DataModel>>(
-    id: GenericId<TableName>,
-    value: Partial<DocumentByName<DataModel, TableName>>,
-  ): Promise<void> {
-    return this.writer.patch(id, value);
+
+  patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
+    return this.writer.patch(arg0, arg1, arg2);
   }
+
   query<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
     return this.writer.query(tableName);
   }
+
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     id: string,
   ): GenericId<TableName> | null {
     return this.writer.normalizeId(tableName, id);
   }
-  replace<TableName extends TableNamesInDataModel<DataModel>>(
-    id: GenericId<TableName>,
-    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
-  ): Promise<void> {
-    return this.writer.replace(id, value);
+
+  replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
+    return this.writer.replace(arg0, arg1, arg2);
   }
+
   system: GenericDatabaseWriter<DataModel>["system"];
 }
 
