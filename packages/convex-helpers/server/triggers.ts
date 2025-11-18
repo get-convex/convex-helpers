@@ -220,6 +220,73 @@ export function writerWithTriggers<
   triggers: Triggers<DataModel, Ctx>,
   isWithinTrigger: boolean = false,
 ): GenericDatabaseWriter<DataModel> {
+  async function _patch<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName | null,
+    id: GenericId<TableName>,
+    value: Partial<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
+    if (!tableName) {
+      return await innerDb.patch(id, value);
+    }
+    return await _execThenTrigger(
+      ctx,
+      innerDb,
+      triggers,
+      tableName,
+      isWithinTrigger,
+      async () => {
+        const oldDoc = (await innerDb.get(id))!;
+        await innerDb.patch(id, value);
+        const newDoc = (await innerDb.get(id))!;
+        return [undefined, { operation: "update", id, oldDoc, newDoc }];
+      },
+    );
+  }
+
+  async function _replace<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName | null,
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
+    if (!tableName) {
+      return await innerDb.replace(id, value);
+    }
+    return await _execThenTrigger(
+      ctx,
+      innerDb,
+      triggers,
+      tableName,
+      isWithinTrigger,
+      async () => {
+        const oldDoc = (await innerDb.get(id))!;
+        await innerDb.replace(id, value);
+        const newDoc = (await innerDb.get(id))!;
+        return [undefined, { operation: "update", id, oldDoc, newDoc }];
+      },
+    );
+  }
+
+  async function _delete<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName | null,
+    id: GenericId<TableNamesInDataModel<DataModel>>,
+  ): Promise<void> {
+    if (!tableName) {
+      return await innerDb.delete(id);
+    }
+    return await _execThenTrigger(
+      ctx,
+      innerDb,
+      triggers,
+      tableName,
+      isWithinTrigger,
+      async () => {
+        const oldDoc = (await innerDb.get(id))!;
+        await innerDb.delete(id);
+        return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
+      },
+    );
+  }
+
   return {
     insert: async <TableName extends TableNamesInDataModel<DataModel>>(
       table: TableName,
@@ -241,71 +308,27 @@ export function writerWithTriggers<
         },
       );
     },
-    patch: async <TableName extends TableNamesInDataModel<DataModel>>(
-      id: GenericId<TableName>,
-      value: Partial<DocumentByName<DataModel, TableName>>,
-    ): Promise<void> => {
-      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
-      if (!tableName) {
-        return await innerDb.patch(id, value);
-      }
-      return await _execThenTrigger(
-        ctx,
-        innerDb,
-        triggers,
-        tableName,
-        isWithinTrigger,
-        async () => {
-          const oldDoc = (await innerDb.get(id))!;
-          await innerDb.patch(id, value);
-          const newDoc = (await innerDb.get(id))!;
-          return [undefined, { operation: "update", id, oldDoc, newDoc }];
-        },
-      );
+    patch: async (arg0: any, arg1: any, arg2?: any) => {
+      const [tableName, id, value] =
+        arg2 !== undefined
+          ? [arg0, arg1, arg2]
+          : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
+      return await _patch(tableName, id, value);
     },
-    replace: async <TableName extends TableNamesInDataModel<DataModel>>(
-      id: GenericId<TableName>,
-      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
-    ): Promise<void> => {
-      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
-      if (!tableName) {
-        return await innerDb.replace(id, value);
-      }
-      return await _execThenTrigger(
-        ctx,
-        innerDb,
-        triggers,
-        tableName,
-        isWithinTrigger,
-        async () => {
-          const oldDoc = (await innerDb.get(id))!;
-          await innerDb.replace(id, value);
-          const newDoc = (await innerDb.get(id))!;
-          return [undefined, { operation: "update", id, oldDoc, newDoc }];
-        },
-      );
+    replace: async (arg0: any, arg1: any, arg2?: any) => {
+      const [tableName, id, value] =
+        arg2 !== undefined
+          ? [arg0, arg1, arg2]
+          : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
+      return await _replace(tableName, id, value);
     },
-    delete: async (
-      id: GenericId<TableNamesInDataModel<DataModel>>,
-    ): Promise<void> => {
-      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
-      if (!tableName) {
-        return await innerDb.delete(id);
-      }
-      return await _execThenTrigger(
-        ctx,
-        innerDb,
-        triggers,
-        tableName,
-        isWithinTrigger,
-        async () => {
-          const oldDoc = (await innerDb.get(id))!;
-          await innerDb.delete(id);
-          return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
-        },
-      );
+    delete: async (arg0: any, arg1?: any) => {
+      const [tableName, id] =
+        arg1 !== undefined
+          ? [arg0, arg1]
+          : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0];
+      return await _delete(tableName, id);
     },
-
     system: innerDb.system,
     get: innerDb.get,
     query: innerDb.query,
