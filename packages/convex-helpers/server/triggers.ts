@@ -171,11 +171,19 @@ export class DatabaseWriterWithTriggers<
   }
 
   delete(arg0: any, arg1?: any): Promise<void> {
-    return this.writer.delete(arg0, arg1);
+    return this.writer.delete(
+      arg0,
+      // @ts-expect-error -- delete supports a table name argument since convex@1.25.4, but the type is internal on older versions
+      arg1,
+    );
   }
 
   get(arg0: any, arg1?: any) {
-    return this.writer.get(arg0, arg1);
+    return this.writer.get(
+      arg0,
+      // @ts-expect-error -- get supports a table name argument since convex@1.25.4, but the type is internal on older versions
+      arg1,
+    );
   }
 
   insert<TableName extends TableNamesInDataModel<DataModel>>(
@@ -186,7 +194,12 @@ export class DatabaseWriterWithTriggers<
   }
 
   patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
-    return this.writer.patch(arg0, arg1, arg2);
+    return this.writer.patch(
+      arg0,
+      arg1,
+      // @ts-expect-error -- patch supports a table name argument since convex@1.25.4, but the type is internal on older versions
+      arg2,
+    );
   }
 
   query<TableName extends TableNamesInDataModel<DataModel>>(
@@ -203,7 +216,12 @@ export class DatabaseWriterWithTriggers<
   }
 
   replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
-    return this.writer.replace(arg0, arg1, arg2);
+    return this.writer.replace(
+      arg0,
+      arg1,
+      // @ts-expect-error -- replace supports a table name argument since convex@1.25.4, but the type is internal on older versions
+      arg2,
+    );
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
