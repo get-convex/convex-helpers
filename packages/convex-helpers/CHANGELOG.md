@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.106 alpha
+
+- Update typedV to match the type of the installed convex validators for v.nullable
+
 ## 0.1.105
 
 - **convex-helpers now supports Zod 4!** (#840)
