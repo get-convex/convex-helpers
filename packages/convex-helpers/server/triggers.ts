@@ -170,20 +170,28 @@ export class DatabaseWriterWithTriggers<
     this.writer = writerWithTriggers(ctx, innerDb, triggers, isWithinTrigger);
   }
 
+  delete<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+  ): Promise<void>;
+  delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
   delete(arg0: any, arg1?: any): Promise<void> {
-    return this.writer.delete(
-      arg0,
-      // @ts-expect-error -- delete supports a table name argument since convex@1.25.4, but the type is internal on older versions
-      arg1,
-    );
+    return arg1 !== undefined
+      ? this.writer.delete(arg0, arg1)
+      : this.writer.delete(arg0);
   }
 
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
   get(arg0: any, arg1?: any) {
-    return this.writer.get(
-      arg0,
-      // @ts-expect-error -- get supports a table name argument since convex@1.25.4, but the type is internal on older versions
-      arg1,
-    );
+    return arg1 !== undefined
+      ? this.writer.get(arg0, arg1)
+      : this.writer.get(arg0);
   }
 
   insert<TableName extends TableNamesInDataModel<DataModel>>(
@@ -193,13 +201,19 @@ export class DatabaseWriterWithTriggers<
     return this.writer.insert(table, value);
   }
 
+  patch<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+    value: PatchValue<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  patch<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: PatchValue<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
   patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
-    return this.writer.patch(
-      arg0,
-      arg1,
-      // @ts-expect-error -- patch supports a table name argument since convex@1.25.4, but the type is internal on older versions
-      arg2,
-    );
+    return arg2 !== undefined
+      ? this.writer.patch(arg0, arg1, arg2)
+      : this.writer.patch(arg0, arg1);
   }
 
   query<TableName extends TableNamesInDataModel<DataModel>>(
@@ -215,13 +229,19 @@ export class DatabaseWriterWithTriggers<
     return this.writer.normalizeId(tableName, id);
   }
 
+  replace<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  replace<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
   replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
-    return this.writer.replace(
-      arg0,
-      arg1,
-      // @ts-expect-error -- replace supports a table name argument since convex@1.25.4, but the type is internal on older versions
-      arg2,
-    );
+    return arg2 !== undefined
+      ? this.writer.replace(arg0, arg1, arg2)
+      : this.writer.replace(arg0, arg1);
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
@@ -443,3 +463,19 @@ async function _execThenTrigger<
     return result;
   });
 }
+
+/**
+ * This prevents TypeScript from inferring that the generic `TableName` type is
+ * a union type when `table` and `id` disagree.
+ */
+type NonUnion<T> = T extends never // `never` is the bottom type for TypeScript unions
+  ? never
+  : T;
+
+/**
+ * This is like Partial, but it also allows undefined to be passed to optional
+ * fields when `exactOptionalPropertyTypes` is enabled in the tsconfig.
+ */
+type PatchValue<T> = {
+  [P in keyof T]?: undefined extends T[P] ? T[P] | undefined : T[P];
+};
