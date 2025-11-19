@@ -142,5 +142,7 @@ test("trigger with wrong usage of explicit IDs fails", async () => {
       firstName: "John",
       lastName: "Doe",
     }),
-  ).rejects.toThrow();
+  ).rejects.toThrow(
+    "Invalid argument `id`, expected ID in table 'users' but got ID in table 'usersExplicitIncorrectTable'",
+  );
 });

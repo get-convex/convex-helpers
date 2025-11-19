@@ -254,7 +254,7 @@ export function writerWithTriggers<
       isWithinTrigger,
       async () => {
         const oldDoc = (await innerDb.get(id))!;
-        await innerDb.patch(id, value);
+        await innerDb.patch(tableName, id, value);
         const newDoc = (await innerDb.get(id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
@@ -277,7 +277,7 @@ export function writerWithTriggers<
       isWithinTrigger,
       async () => {
         const oldDoc = (await innerDb.get(id))!;
-        await innerDb.replace(id, value);
+        await innerDb.replace(tableName, id, value);
         const newDoc = (await innerDb.get(id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
@@ -299,7 +299,7 @@ export function writerWithTriggers<
       isWithinTrigger,
       async () => {
         const oldDoc = (await innerDb.get(id))!;
-        await innerDb.delete(id);
+        await innerDb.delete(tableName, id);
         return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
       },
     );
