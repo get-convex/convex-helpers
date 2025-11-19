@@ -6,12 +6,14 @@ import type {
   TableNamesInDataModel,
 } from "convex/server";
 import type {
+  GenericId,
   GenericValidator,
   Infer,
   ObjectType,
   OptionalProperty,
   PropertyValidators,
   Validator,
+  VId,
   VLiteral,
   VObject,
   VOptional,
@@ -463,7 +465,25 @@ export const doc = <
  */
 export function typedV<Schema extends SchemaDefinition<any, boolean>>(
   schema: Schema,
-) {
+): Omit<typeof v, "id"> & {
+  id: <
+    TableName extends TableNamesInDataModel<
+      DataModelFromSchemaDefinition<Schema>
+    >,
+  >(
+    tableName: TableName,
+  ) => VId<GenericId<TableName>, "required">;
+  doc: <
+    TableName extends TableNamesInDataModel<
+      DataModelFromSchemaDefinition<Schema>
+    >,
+  >(
+    tableName: TableName,
+  ) => AddFieldsToValidator<
+    Schema["tables"][TableName]["validator"],
+    SystemFields<TableName>
+  >;
+} {
   return {
     ...v,
     /**
@@ -471,13 +491,7 @@ export function typedV<Schema extends SchemaDefinition<any, boolean>>(
      * @param tableName A table named in your schema.
      * @returns A validator for an ID to the named table.
      */
-    id: <
-      TableName extends TableNamesInDataModel<
-        DataModelFromSchemaDefinition<Schema>
-      >,
-    >(
-      tableName: TableName,
-    ) => v.id(tableName),
+    id: (tableName) => v.id(tableName),
     /**
      * Generates a validator for a document, including system fields.
      * To be used in validators when passing a full document in or out of a
@@ -487,16 +501,7 @@ export function typedV<Schema extends SchemaDefinition<any, boolean>>(
      * _creationTime. If the validator was a union, it will update all documents
      * recursively, but will currently lose the VUnion-specific type.
      */
-    doc: <
-      TableName extends TableNamesInDataModel<
-        DataModelFromSchemaDefinition<Schema>
-      >,
-    >(
-      tableName: TableName,
-    ): AddFieldsToValidator<
-      Schema["tables"][TableName]["validator"],
-      SystemFields<TableName>
-    > => doc(schema, tableName),
+    doc: (tableName) => doc(schema, tableName),
   };
 }
 
