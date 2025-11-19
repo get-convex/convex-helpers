@@ -3,6 +3,7 @@
 ## 0.1.106 alpha
 
 - Update typedV to match the type of the installed convex validators for v.nullable
+- Improves handling of literals() helper to keep the ordering of its members
 
 ## 0.1.105
 
