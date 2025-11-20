@@ -176,13 +176,11 @@ export class DatabaseWriterWithTriggers<
   ): Promise<void>;
   delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
   delete(arg0: any, arg1?: any): Promise<void> {
-    return arg1 !== undefined
-      ? this.writer.delete(
-          arg0,
-          // @ts-expect-error -- delete supports 2 args since convex@1.25.4, but the type is marked as internal
-          arg1,
-        )
-      : this.writer.delete(arg0);
+    return this.writer.delete(
+      arg0,
+      // @ts-expect-error -- delete supports 2 args since convex@1.25.4, but the type is marked as internal
+      arg1,
+    );
   }
 
   get<TableName extends TableNamesInDataModel<DataModel>>(
@@ -193,13 +191,11 @@ export class DatabaseWriterWithTriggers<
     id: GenericId<TableName>,
   ): Promise<DocumentByName<DataModel, TableName> | null>;
   get(arg0: any, arg1?: any) {
-    return arg1 !== undefined
-      ? this.writer.get(
-          arg0,
-          // @ts-expect-error -- get supports 2 args since convex@1.25.4, but the type is marked as internal
-          arg1,
-        )
-      : this.writer.get(arg0);
+    return this.writer.get(
+      arg0,
+      // @ts-expect-error -- get supports 2 args since convex@1.25.4, but the type is marked as internal
+      arg1,
+    );
   }
 
   insert<TableName extends TableNamesInDataModel<DataModel>>(
@@ -219,14 +215,12 @@ export class DatabaseWriterWithTriggers<
     value: PatchValue<DocumentByName<DataModel, TableName>>,
   ): Promise<void>;
   patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
-    return arg2 !== undefined
-      ? this.writer.patch(
-          arg0,
-          arg1,
-          // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
-          arg2,
-        )
-      : this.writer.patch(arg0, arg1);
+    return this.writer.patch(
+      arg0,
+      arg1,
+      // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+      arg2,
+    );
   }
 
   query<TableName extends TableNamesInDataModel<DataModel>>(
@@ -252,14 +246,12 @@ export class DatabaseWriterWithTriggers<
     value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<void>;
   replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
-    return arg2 !== undefined
-      ? this.writer.replace(
-          arg0,
-          arg1,
-          // @ts-expect-error -- replace supports 3 args since convex@1.25.4, but the type is marked as internal
-          arg2,
-        )
-      : this.writer.replace(arg0, arg1);
+    return this.writer.replace(
+      arg0,
+      arg1,
+      // @ts-expect-error -- replace supports 3 args since convex@1.25.4, but the type is marked as internal
+      arg2,
+    );
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
