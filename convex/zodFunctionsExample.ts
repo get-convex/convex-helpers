@@ -7,7 +7,7 @@ export const zQuery = zCustomQuery(query, NoOp);
 
 export const noArgs = zQuery({
   args: {},
-  handler: async (ctx) => {
+  handler: async (_ctx) => {
     return "Hello world!";
   },
 });
