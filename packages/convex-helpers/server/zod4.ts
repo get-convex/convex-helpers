@@ -961,7 +961,9 @@ type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
   [ArgsValidator] extends [zCore.$ZodObject<any>]
     ? [zCore.input<ArgsValidator>]
     : [ArgsValidator] extends [ZodFields]
-      ? [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
+      ? keyof ArgsValidator extends never
+        ? [{}]
+        : [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
       : OneArgArray;
 
 // The args after they've been validated: passed to the handler
@@ -970,7 +972,9 @@ type ArgsOutput<
 > = [ArgsValidator] extends [zCore.$ZodObject<any>]
   ? [zCore.output<ArgsValidator>]
   : [ArgsValidator] extends [ZodFields]
-    ? [zCore.output<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
+    ? keyof ArgsValidator extends never
+      ? [{}]
+      : [zCore.output<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
     : OneArgArray;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
