@@ -268,6 +268,24 @@ export function writerWithTriggers<
   triggers: Triggers<DataModel, Ctx>,
   isWithinTrigger: boolean = false,
 ): GenericDatabaseWriter<DataModel> {
+  const patch: {
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      table: NonUnion<TableName>,
+      id: GenericId<TableName>,
+      value: PatchValue<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      id: GenericId<TableName>,
+      value: PatchValue<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+  } = async (arg0: any, arg1: any, arg2?: any) => {
+    const [tableName, id, value] =
+      arg2 !== undefined
+        ? [arg0, arg1, arg2]
+        : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
+    return await _patch(tableName, id, value);
+  };
+
   async function _patch<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName | null,
     id: GenericId<TableName>,
@@ -296,6 +314,24 @@ export function writerWithTriggers<
     );
   }
 
+  const replace: {
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      table: NonUnion<TableName>,
+      id: GenericId<TableName>,
+      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      id: GenericId<TableName>,
+      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+  } = async (arg0: any, arg1: any, arg2?: any) => {
+    const [tableName, id, value] =
+      arg2 !== undefined
+        ? [arg0, arg1, arg2]
+        : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
+    return await _replace(tableName, id, value);
+  };
+
   async function _replace<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName | null,
     id: GenericId<TableName>,
@@ -323,6 +359,20 @@ export function writerWithTriggers<
       },
     );
   }
+
+  const delete_: {
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      table: NonUnion<TableName>,
+      id: GenericId<TableName>,
+    ): Promise<void>;
+    (id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
+  } = async (arg0: any, arg1?: any) => {
+    const [tableName, id] =
+      arg1 !== undefined
+        ? [arg0, arg1]
+        : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0];
+    return await _delete(tableName, id);
+  };
 
   async function _delete<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName | null,
@@ -370,27 +420,9 @@ export function writerWithTriggers<
         },
       );
     },
-    patch: async (arg0: any, arg1: any, arg2?: any) => {
-      const [tableName, id, value] =
-        arg2 !== undefined
-          ? [arg0, arg1, arg2]
-          : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
-      return await _patch(tableName, id, value);
-    },
-    replace: async (arg0: any, arg1: any, arg2?: any) => {
-      const [tableName, id, value] =
-        arg2 !== undefined
-          ? [arg0, arg1, arg2]
-          : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
-      return await _replace(tableName, id, value);
-    },
-    delete: async (arg0: any, arg1?: any) => {
-      const [tableName, id] =
-        arg1 !== undefined
-          ? [arg0, arg1]
-          : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0];
-      return await _delete(tableName, id);
-    },
+    patch,
+    replace,
+    delete: delete_,
     system: innerDb.system,
     get: innerDb.get,
     query: innerDb.query,
