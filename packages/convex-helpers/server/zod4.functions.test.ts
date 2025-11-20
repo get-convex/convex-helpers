@@ -71,9 +71,8 @@ export const testQuery = zQuery({
 export const testQueryNoArgs = zQuery({
   args: {},
   handler: async (_ctx, args) => {
-    assertType<{}>(args);
+    assertType<Record<string, never>>(args);
   },
-  returns: z.null(),
 });
 
 /**
@@ -267,10 +266,20 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
       >();
     });
 
-    test("zCustomQuery with no args", async () => {
-      const t = convexTest(schema, modules);
-      const response = await t.query(testApi.testQueryNoArgs);
-      expect(response).toBeNull();
+    describe("zCustomQuery with no args", () => {
+      test("through t.query", async () => {
+        const t = convexTest(schema, modules);
+        const response = await t.query(testApi.testQueryNoArgs);
+        expect(response).toBeNull();
+      });
+
+      test("through t.run", async () => {
+        const t = convexTest(schema, modules);
+        const response = await t.run((ctx) =>
+          ctx.runQuery(testApi.testQueryNoArgs),
+        );
+        expect(response).toBeNull();
+      });
     });
 
     test("zCustomMutation", async () => {
