@@ -177,7 +177,11 @@ export class DatabaseWriterWithTriggers<
   delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
   delete(arg0: any, arg1?: any): Promise<void> {
     return arg1 !== undefined
-      ? this.writer.delete(arg0, arg1)
+      ? this.writer.delete(
+          arg0,
+          // @ts-expect-error -- delete supports 2 args since convex@1.25.4, but the type is marked as internal
+          arg1,
+        )
       : this.writer.delete(arg0);
   }
 
@@ -190,7 +194,11 @@ export class DatabaseWriterWithTriggers<
   ): Promise<DocumentByName<DataModel, TableName> | null>;
   get(arg0: any, arg1?: any) {
     return arg1 !== undefined
-      ? this.writer.get(arg0, arg1)
+      ? this.writer.get(
+          arg0,
+          // @ts-expect-error -- get supports 2 args since convex@1.25.4, but the type is marked as internal
+          arg1,
+        )
       : this.writer.get(arg0);
   }
 
@@ -212,7 +220,12 @@ export class DatabaseWriterWithTriggers<
   ): Promise<void>;
   patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
     return arg2 !== undefined
-      ? this.writer.patch(arg0, arg1, arg2)
+      ? this.writer.patch(
+          arg0,
+          arg1,
+          // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+          arg2,
+        )
       : this.writer.patch(arg0, arg1);
   }
 
@@ -240,7 +253,12 @@ export class DatabaseWriterWithTriggers<
   ): Promise<void>;
   replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
     return arg2 !== undefined
-      ? this.writer.replace(arg0, arg1, arg2)
+      ? this.writer.replace(
+          arg0,
+          arg1,
+          // @ts-expect-error -- replace supports 3 args since convex@1.25.4, but the type is marked as internal
+          arg2,
+        )
       : this.writer.replace(arg0, arg1);
   }
 
@@ -274,7 +292,12 @@ export function writerWithTriggers<
       isWithinTrigger,
       async () => {
         const oldDoc = (await innerDb.get(id))!;
-        await innerDb.patch(tableName, id, value);
+        await innerDb.patch(
+          tableName,
+          id,
+          // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+          value,
+        );
         const newDoc = (await innerDb.get(id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
@@ -297,7 +320,12 @@ export function writerWithTriggers<
       isWithinTrigger,
       async () => {
         const oldDoc = (await innerDb.get(id))!;
-        await innerDb.replace(tableName, id, value);
+        await innerDb.replace(
+          tableName,
+          id,
+          // @ts-expect-error -- replace supports 3 args since convex@1.25.4, but the type is marked as internal
+          value,
+        );
         const newDoc = (await innerDb.get(id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
@@ -319,7 +347,11 @@ export function writerWithTriggers<
       isWithinTrigger,
       async () => {
         const oldDoc = (await innerDb.get(id))!;
-        await innerDb.delete(tableName, id);
+        await innerDb.delete(
+          tableName,
+          // @ts-expect-error -- delete supports 2 args since convex@1.25.4, but the type is marked as internal
+          id,
+        );
         return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
       },
     );
