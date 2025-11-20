@@ -19,6 +19,7 @@ import type * as sessionsExample from "../sessionsExample.js";
 import type * as streamsExample from "../streamsExample.js";
 import type * as testingFunctions from "../testingFunctions.js";
 import type * as triggersExample from "../triggersExample.js";
+import type * as zodFunctionsExample from "../zodFunctionsExample.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   streamsExample: typeof streamsExample;
   testingFunctions: typeof testingFunctions;
   triggersExample: typeof triggersExample;
+  zodFunctionsExample: typeof zodFunctionsExample;
 }>;
 
 /**
