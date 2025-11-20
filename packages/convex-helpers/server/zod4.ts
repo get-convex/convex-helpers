@@ -961,7 +961,7 @@ type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
   [ArgsValidator] extends [zCore.$ZodObject<any>]
     ? [zCore.input<ArgsValidator>]
     : [ArgsValidator] extends [ZodFields]
-      ? [zCore.input<zCore.$ZodObject<ArgsValidator>>]
+      ? [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
       : OneArgArray;
 
 // The args after they've been validated: passed to the handler
