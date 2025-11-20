@@ -846,7 +846,7 @@ function customFnBuilder(
 
     const returns =
       maybeObject && !(maybeObject instanceof zCore.$ZodType)
-        ? z.object(maybeObject)
+        ? z.strictObject(maybeObject)
         : maybeObject;
 
     const returnValidator =
@@ -877,7 +877,7 @@ function customFnBuilder(
             extra,
           );
           const rawArgs = pick(allArgs, Object.keys(argsValidator));
-          const parsed = z.object(argsValidator).safeParse(rawArgs);
+          const parsed = z.strictObject(argsValidator).safeParse(rawArgs);
           if (!parsed.success) {
             throw new ConvexError({
               ZodError: JSON.parse(
