@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.22.0",
+    "convex": "^1.29.0",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^19.0.0",
@@ -54,7 +54,7 @@
     "@vitest/coverage-v8": "3.2.4",
     "chokidar-cli": "3.0.0",
     "convex": "1.29.0",
-    "convex-test": "0.0.38",
+    "convex-test": "0.0.39",
     "eslint": "9.39.1",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",

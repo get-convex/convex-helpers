@@ -22,6 +22,16 @@ const schema = defineSchema({
     lastName: v.string(),
     fullName: v.string(),
   }),
+  usersExplicit: defineTable({
+    firstName: v.string(),
+    lastName: v.string(),
+    fullName: v.string(),
+  }),
+  usersExplicitIncorrectTable: defineTable({
+    firstName: v.string(),
+    lastName: v.string(),
+    fullName: v.string(),
+  }),
 });
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 const rawMutation = mutationGeneric as MutationBuilder<DataModel, "public">;
@@ -33,6 +43,32 @@ triggers.register("users", async (ctx, change) => {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
       await ctx.db.patch(change.id, { fullName });
+    }
+  }
+});
+triggers.register("usersExplicit", async (ctx, change) => {
+  if (change.newDoc) {
+    const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
+    if (change.newDoc.fullName !== fullName) {
+      await ctx.db.patch(
+        "usersExplicit",
+        change.id,
+        // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+        { fullName },
+      );
+    }
+  }
+});
+triggers.register("usersExplicitIncorrectTable", async (ctx, change) => {
+  if (change.newDoc) {
+    const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
+    if (change.newDoc.fullName !== fullName) {
+      await ctx.db.patch(
+        "users",
+        change.id,
+        // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+        { fullName },
+      );
     }
   }
 });
@@ -50,9 +86,33 @@ export const createUser = mutation({
   },
 });
 
+export const createUserExplicit = mutation({
+  args: { firstName: v.string(), lastName: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db.insert("usersExplicit", {
+      firstName: args.firstName,
+      lastName: args.lastName,
+      fullName: "",
+    });
+  },
+});
+
+export const createUserExplicitIncorrectTable = mutation({
+  args: { firstName: v.string(), lastName: v.string() },
+  handler: async (ctx, args) => {
+    return ctx.db.insert("usersExplicitIncorrectTable", {
+      firstName: args.firstName,
+      lastName: args.lastName,
+      fullName: "",
+    });
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     createUser: typeof createUser;
+    createUserExplicit: typeof createUserExplicit;
+    createUserExplicitIncorrectTable: typeof createUserExplicitIncorrectTable;
   };
 }>["fns"] = anyApi["triggers.test"] as any;
 
@@ -66,4 +126,28 @@ test("trigger denormalizes field", async () => {
     const user = await ctx.db.get(userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
+});
+
+test("trigger with explicit IDs denormalizes field", async () => {
+  const t = convexTest(schema, modules);
+  const userId = await t.mutation(testApi.createUserExplicit, {
+    firstName: "John",
+    lastName: "Doe",
+  });
+  await t.run(async (ctx) => {
+    const user = await ctx.db.get(userId);
+    expect(user!.fullName).toStrictEqual("John Doe");
+  });
+});
+
+test("trigger with wrong usage of explicit IDs fails", async () => {
+  const t = convexTest(schema, modules);
+  await expect(
+    t.mutation(testApi.createUserExplicitIncorrectTable, {
+      firstName: "John",
+      lastName: "Doe",
+    }),
+  ).rejects.toThrow(
+    "Invalid argument `id`, expected ID in table 'users' but got ID in table 'usersExplicitIncorrectTable'",
+  );
 });
