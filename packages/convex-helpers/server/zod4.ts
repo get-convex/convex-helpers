@@ -430,15 +430,18 @@ export function zodToConvex<Z extends zCore.$ZodType>(
     }
     visited.add(validator);
 
-    if (validator instanceof zCore.$ZodDefault) {
-      return v.optional(zodToConvexInner(validator._zod.def.innerType));
-    }
+    const result =
+      validator instanceof zCore.$ZodDefault
+        ? v.optional(zodToConvexInner(validator._zod.def.innerType))
+        : validator instanceof zCore.$ZodPipe
+          ? zodToConvexInner(validator._zod.def.in)
+          : zodToConvexCommon(validator, zodToConvexInner);
 
-    if (validator instanceof zCore.$ZodPipe) {
-      return zodToConvexInner(validator._zod.def.in);
-    }
-
-    return zodToConvexCommon(validator, zodToConvexInner);
+    // After returning, we remove the validator from the visited set because
+    // we only want to detect circular types, not cases where part of a type
+    // is reused (e.g. `v.object({ field1: mySchema, field2: mySchema })`).
+    visited.delete(validator);
+    return result;
   }
 
   // `as any` because ConvexValidatorFromZod is defined from the behavior of zodToConvex.
@@ -517,20 +520,20 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
     }
     visited.add(validator);
 
-    if (validator instanceof zCore.$ZodDefault) {
-      // Output: always there
-      return zodOutputToConvexInner(validator._zod.def.innerType);
-    }
+    const result =
+      validator instanceof zCore.$ZodDefault
+        ? zodOutputToConvexInner(validator._zod.def.innerType)
+        : validator instanceof zCore.$ZodPipe
+          ? zodOutputToConvexInner(validator._zod.def.out)
+          : validator instanceof zCore.$ZodTransform
+            ? v.any()
+            : zodToConvexCommon(validator, zodOutputToConvexInner);
 
-    if (validator instanceof zCore.$ZodPipe) {
-      return zodOutputToConvexInner(validator._zod.def.out);
-    }
-
-    if (validator instanceof zCore.$ZodTransform) {
-      return v.any();
-    }
-
-    return zodToConvexCommon(validator, zodOutputToConvexInner);
+    // After returning, we remove the validator from the visited set because
+    // we only want to detect circular types, not cases where part of a type
+    // is reused (e.g. `v.object({ field1: mySchema, field2: mySchema })`).
+    visited.delete(validator);
+    return result;
   }
 
   // `as any` because ConvexValidatorFromZodOutput is defined from the behavior of zodOutputToConvex.
