@@ -962,7 +962,7 @@ type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
     ? [zCore.input<ArgsValidator>]
     : [ArgsValidator] extends [ZodFields]
       ? keyof ArgsValidator extends never
-        ? OneArgArray
+        ? [{}]
         : [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
       : OneArgArray;
 
@@ -973,7 +973,7 @@ type ArgsOutput<
   ? [zCore.output<ArgsValidator>]
   : [ArgsValidator] extends [ZodFields]
     ? keyof ArgsValidator extends never
-      ? OneArgArray
+      ? [{}]
       : [zCore.output<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
     : OneArgArray;
 
