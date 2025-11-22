@@ -894,7 +894,9 @@ function customFnBuilder(
           const ret = await handler(finalCtx, finalArgs);
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.
-          const result = returns ? await returns.parseAsync(ret) : ret;
+          const result = returns
+            ? await returns.parseAsync(ret === undefined ? null : ret)
+            : ret;
           if (added.onSuccess) {
             await added.onSuccess({ ctx, args, result });
           }
@@ -917,7 +919,9 @@ function customFnBuilder(
         const ret = await handler(finalCtx, finalArgs);
         // We don't catch the error here. It's a developer error and we
         // don't want to risk exposing the unexpected value to the client.
-        const result = returns ? await returns.parseAsync(ret) : ret;
+        const result = returns
+          ? await returns.parseAsync(ret === undefined ? null : ret)
+          : ret;
         if (added.onSuccess) {
           await added.onSuccess({ ctx, args, result });
         }

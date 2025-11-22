@@ -117,6 +117,11 @@ export const testAction = zAction({
   }),
 });
 
+export const returnsNothing = zQuery({
+  handler: async () => {},
+  returns: z.null(),
+});
+
 /**
  * Test transform in query args and return value
  */
@@ -251,6 +256,7 @@ const testApi: ApiFromModules<{
     testQuery: typeof testQuery;
     testMutation: typeof testMutation;
     testAction: typeof testAction;
+    returnsNothing: typeof returnsNothing;
     transform: typeof transform;
     transformAsync: typeof transformAsync;
     codec: typeof codec;
@@ -321,6 +327,14 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
           { result: string; length: number }
         >
       >();
+    });
+
+    test("function that returns nothing has a return value of null", async () => {
+      // `undefined` is not a valid Convex value, so functions returning `undefined` actually return `null`.
+      const t = convexTest(schema, modules);
+      const response = await t.query(testApi.returnsNothing, {});
+      expect(response).toEqual(null);
+      expectTypeOf(response).toExtend<null>();
     });
 
     test("README example", async () => {
