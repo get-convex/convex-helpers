@@ -119,6 +119,11 @@ export const kitchenSink = zQuery({
   // .strict(),
 });
 
+export const returnsNothing = zQuery({
+  handler: async () => {},
+  returns: z.null(),
+});
+
 export const dateRoundTrip = zQuery({
   args: { date: z.string().transform((s) => new Date(Date.parse(s))) },
   handler: async (ctx, args) => {
@@ -374,6 +379,7 @@ function queryMatches<
 const testApi: ApiFromModules<{
   fns: {
     kitchenSink: typeof kitchenSink;
+    returnsNothing: typeof returnsNothing;
     dateRoundTrip: typeof dateRoundTrip;
     failsReturnsValidator: typeof failsReturnsValidator;
     returnsWithoutArgs: typeof returnsWithoutArgs;
@@ -578,6 +584,14 @@ test("zod kitchen sink", async () => {
     return ctx.db.get(id);
   });
   expect(stored).toMatchObject(omit(kitchenSink, ["optional", "default"]));
+});
+
+test("function that returns nothing has a return value of null", async () => {
+  // `undefined` is not a valid Convex value, so functions returning `undefined` actually return `null`.
+  const t = convexTest(schema, modules);
+  const response = await t.query(testApi.returnsNothing, {});
+  expect(response).toEqual(null);
+  expectTypeOf(response).toExtend<null>();
 });
 
 test("zod date round trip", async () => {
