@@ -849,7 +849,7 @@ function customFnBuilder(
 
     const returns =
       maybeObject && !(maybeObject instanceof zCore.$ZodType)
-        ? z.object(maybeObject)
+        ? z.strictObject(maybeObject)
         : maybeObject;
 
     const returnValidator =
@@ -880,7 +880,7 @@ function customFnBuilder(
             extra,
           );
           const rawArgs = pick(allArgs, Object.keys(argsValidator));
-          const parsed = z.object(argsValidator).safeParse(rawArgs);
+          const parsed = z.strictObject(argsValidator).safeParse(rawArgs);
           if (!parsed.success) {
             throw new ConvexError({
               ZodError: JSON.parse(
@@ -968,7 +968,9 @@ type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
   [ArgsValidator] extends [zCore.$ZodObject<any>]
     ? [zCore.input<ArgsValidator>]
     : [ArgsValidator] extends [ZodFields]
-      ? [zCore.input<zCore.$ZodObject<ArgsValidator>>]
+      ? keyof ArgsValidator extends never
+        ? OneArgArray
+        : [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
       : OneArgArray;
 
 // The args after they've been validated: passed to the handler
@@ -977,7 +979,9 @@ type ArgsOutput<
 > = [ArgsValidator] extends [zCore.$ZodObject<any>]
   ? [zCore.output<ArgsValidator>]
   : [ArgsValidator] extends [ZodFields]
-    ? [zCore.output<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
+    ? keyof ArgsValidator extends never
+      ? OneArgArray
+      : [zCore.output<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
     : OneArgArray;
 
 type Overwrite<T, U> = Omit<T, keyof U> & U;
