@@ -148,6 +148,28 @@ export const transform = zQuery({
   }),
 });
 
+export const transformAsync = zQuery({
+  args: {
+    count: z.number().transform(async (n) => n.toString()),
+    items: z.array(z.string().transform(async (s) => s.toUpperCase())),
+  },
+  handler: async (_ctx, args) => {
+    // Type should be the output of the transform
+    assertType<{ count: string; items: string[] }>(args);
+    // Verify the transform worked
+    expect(typeof args.count).toBe("string");
+    expect(args.items.every((item) => item === item.toUpperCase())).toBe(true);
+
+    const total = parseInt(args.count, 10) * args.items.length;
+    return {
+      total,
+    };
+  },
+  returns: z.object({
+    total: z.number().transform(async (s) => s.toString()),
+  }),
+});
+
 /**
  * Test codec in query args and return value
  */
@@ -230,6 +252,7 @@ const testApi: ApiFromModules<{
     testMutation: typeof testMutation;
     testAction: typeof testAction;
     transform: typeof transform;
+    transformAsync: typeof transformAsync;
     codec: typeof codec;
     myComplexQuery: typeof myComplexQuery;
     generateUserId: typeof generateUserId;
@@ -338,7 +361,7 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
   });
 
   describe("transform", () => {
-    test("calling a function with transforms in arguments and return values", async () => {
+    test("calling a function with synchronous transforms in arguments and return values", async () => {
       const t = convexTest(schema, modules);
       const response = await t.query(testApi.transform, {
         count: 5,
@@ -359,6 +382,25 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
           "public",
           { count: number; items: string[] },
           { total: number; totalAsString: number; items: string[] }
+        >
+      >();
+    });
+
+    test("calling a function with asynchronous transforms in arguments and return values", async () => {
+      const t = convexTest(schema, modules);
+      const response = await t.query(testApi.transformAsync, {
+        count: 5,
+        items: ["hello", "world"],
+      });
+
+      expect(response.total).toBe("10");
+
+      expectTypeOf(testApi.transformAsync).toExtend<
+        FunctionReference<
+          "query",
+          "public",
+          { count: number; items: string[] },
+          { total: string }
         >
       >();
     });
