@@ -880,7 +880,7 @@ function customFnBuilder(
             extra,
           );
           const rawArgs = pick(allArgs, Object.keys(argsValidator));
-          const parsed = z.object(argsValidator).safeParse(rawArgs);
+          const parsed = await z.object(argsValidator).safeParseAsync(rawArgs);
           if (!parsed.success) {
             throw new ConvexError({
               ZodError: JSON.parse(
@@ -895,7 +895,7 @@ function customFnBuilder(
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.
           const result = returns
-            ? returns.parse(ret === undefined ? null : ret)
+            ? await returns.parseAsync(ret === undefined ? null : ret)
             : ret;
           if (added.onSuccess) {
             await added.onSuccess({ ctx, args, result });
@@ -920,7 +920,7 @@ function customFnBuilder(
         // We don't catch the error here. It's a developer error and we
         // don't want to risk exposing the unexpected value to the client.
         const result = returns
-          ? returns.parse(ret === undefined ? null : ret)
+          ? await returns.parseAsync(ret === undefined ? null : ret)
           : ret;
         if (added.onSuccess) {
           await added.onSuccess({ ctx, args, result });

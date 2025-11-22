@@ -943,11 +943,20 @@ describe("zodToConvex + zodOutputToConvex", () => {
 });
 
 describe("zodToConvex", () => {
-  test("transform", () => {
-    testZodToConvex(
-      z.number().transform((s) => s.toString()),
-      v.number(), // input type
-    );
+  describe("transform", () => {
+    test("sync transform", () => {
+      testZodToConvex(
+        z.number().transform((s) => s.toString()),
+        v.number(), // input type
+      );
+    });
+
+    test("async transform", () => {
+      testZodToConvex(
+        z.number().transform(async (s) => s.toString()),
+        v.number(), // input type
+      );
+    });
   });
 
   test("pipe", () => {
@@ -1014,11 +1023,20 @@ describe("zodToConvex", () => {
 });
 
 describe("zodOutputToConvex", () => {
-  test("transform", () => {
-    testZodOutputToConvex(
-      z.number().transform((s) => s.toString()),
-      v.any(), // this transform doesn’t hold runtime info about the output type
-    );
+  describe("transform", () => {
+    test("sync transform", () => {
+      testZodOutputToConvex(
+        z.number().transform((s) => s.toString()),
+        v.any(), // this transform doesn’t hold runtime info about the output type
+      );
+    });
+
+    test("async transform", () => {
+      testZodOutputToConvex(
+        z.number().transform(async (s) => s.toString()),
+        v.any(), // this transform doesn’t hold runtime info about the output type
+      );
+    });
   });
 
   test("pipe", () => {
