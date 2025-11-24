@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.22.0",
+    "convex": "^1.29.0",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^19.0.0",
@@ -47,14 +47,14 @@
     "@testing-library/react": "16.3.0",
     "@types/babel__core": "7.20.5",
     "@types/jest": "30.0.0",
-    "@types/node": "22.19.0",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "@vitejs/plugin-react": "5.1.0",
+    "@types/node": "22.19.1",
+    "@types/react": "19.2.6",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "5.1.1",
     "@vitest/coverage-v8": "3.2.4",
     "chokidar-cli": "3.0.0",
-    "convex": "1.29.0",
-    "convex-test": "0.0.38",
+    "convex": "1.29.3",
+    "convex-test": "0.0.39",
     "eslint": "9.39.1",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
@@ -64,9 +64,9 @@
     "pkg-pr-new": "0.0.60",
     "prettier": "3.6.2",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.46.4",
+    "typescript-eslint": "8.47.0",
     "vitest": "3.2.4",
     "yaml": "2.8.1",
-    "zod-compare": "^2.0.0"
+    "zod-compare": "2.0.0"
   }
 }

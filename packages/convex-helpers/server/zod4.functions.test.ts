@@ -124,6 +124,11 @@ export const testAction = zAction({
   }),
 });
 
+export const returnsNothing = zQuery({
+  handler: async () => {},
+  returns: z.null(),
+});
+
 /**
  * Test transform in query args and return value
  */
@@ -152,6 +157,28 @@ export const transform = zQuery({
     total: z.number(),
     totalAsString: z.string().transform((s) => parseInt(s, 10)),
     items: z.array(z.string()),
+  }),
+});
+
+export const transformAsync = zQuery({
+  args: {
+    count: z.number().transform(async (n) => n.toString()),
+    items: z.array(z.string().transform(async (s) => s.toUpperCase())),
+  },
+  handler: async (_ctx, args) => {
+    // Type should be the output of the transform
+    assertType<{ count: string; items: string[] }>(args);
+    // Verify the transform worked
+    expect(typeof args.count).toBe("string");
+    expect(args.items.every((item) => item === item.toUpperCase())).toBe(true);
+
+    const total = parseInt(args.count, 10) * args.items.length;
+    return {
+      total,
+    };
+  },
+  returns: z.object({
+    total: z.number().transform(async (s) => s.toString()),
   }),
 });
 
@@ -237,7 +264,9 @@ const testApi: ApiFromModules<{
     testQueryNoArgs: typeof testQueryNoArgs;
     testMutation: typeof testMutation;
     testAction: typeof testAction;
+    returnsNothing: typeof returnsNothing;
     transform: typeof transform;
+    transformAsync: typeof transformAsync;
     codec: typeof codec;
     myComplexQuery: typeof myComplexQuery;
     generateUserId: typeof generateUserId;
@@ -324,6 +353,14 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
       >();
     });
 
+    test("function that returns nothing has a return value of null", async () => {
+      // `undefined` is not a valid Convex value, so functions returning `undefined` actually return `null`.
+      const t = convexTest(schema, modules);
+      const response = await t.query(testApi.returnsNothing, {});
+      expect(response).toEqual(null);
+      expectTypeOf(response).toExtend<null>();
+    });
+
     test("README example", async () => {
       const t = convexTest(schema, modules);
       const userId = await t.mutation(testApi.generateUserId);
@@ -362,7 +399,7 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
   });
 
   describe("transform", () => {
-    test("calling a function with transforms in arguments and return values", async () => {
+    test("calling a function with synchronous transforms in arguments and return values", async () => {
       const t = convexTest(schema, modules);
       const response = await t.query(testApi.transform, {
         count: 5,
@@ -383,6 +420,25 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
           "public",
           { count: number; items: string[] },
           { total: number; totalAsString: number; items: string[] }
+        >
+      >();
+    });
+
+    test("calling a function with asynchronous transforms in arguments and return values", async () => {
+      const t = convexTest(schema, modules);
+      const response = await t.query(testApi.transformAsync, {
+        count: 5,
+        items: ["hello", "world"],
+      });
+
+      expect(response.total).toBe("10");
+
+      expectTypeOf(testApi.transformAsync).toExtend<
+        FunctionReference<
+          "query",
+          "public",
+          { count: number; items: string[] },
+          { total: string }
         >
       >();
     });

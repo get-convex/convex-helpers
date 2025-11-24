@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.106-alpha.1",
+  "version": "0.1.106-alpha.2",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
@@ -164,7 +164,7 @@
   "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "convex": "^1.24.0",
+    "convex": "^1.25.4",
     "hono": "^4.0.5",
     "react": "^17.0.2 || ^18.0.0 || ^19.0.0",
     "typescript": "^5.5",

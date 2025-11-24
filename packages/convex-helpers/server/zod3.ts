@@ -394,7 +394,9 @@ function customFnBuilder(
           const ret = await handler(finalCtx, finalArgs);
           // We don't catch the error here. It's a developer error and we
           // don't want to risk exposing the unexpected value to the client.
-          const result = returns ? returns.parse(ret) : ret;
+          const result = returns
+            ? returns.parse(ret === undefined ? null : ret)
+            : ret;
           if (added.onSuccess) {
             await added.onSuccess({ ctx, args, result });
           }
@@ -417,7 +419,9 @@ function customFnBuilder(
         const ret = await handler(finalCtx, finalArgs);
         // We don't catch the error here. It's a developer error and we
         // don't want to risk exposing the unexpected value to the client.
-        const result = returns ? returns.parse(ret) : ret;
+        const result = returns
+          ? returns.parse(ret === undefined ? null : ret)
+          : ret;
         if (added.onSuccess) {
           await added.onSuccess({ ctx, args, result });
         }
@@ -1286,9 +1290,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
         zod._def.innerType,
       ) as unknown as ConvexValidatorFromZodOutput<Z>;
     case "ZodEffects":
-      console.warn(
-        "Note: ZodEffects (like z.transform) do not do output validation",
-      );
+      // IMPORTANT: Note: ZodEffects (like z.transform) do not do output validation
       return v.any() as ConvexValidatorFromZodOutput<Z>;
     case "ZodPipeline":
       // IMPORTANT: The output type of the pipeline can differ from the input.

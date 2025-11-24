@@ -177,6 +177,75 @@ describe("zodToConvex + zodOutputToConvex", () => {
     );
   });
 
+  describe(".extend", () => {
+    test("extended object", () => {
+      testZodToConvexInputAndOutput(
+        z
+          .object({
+            baseField: z.string(),
+          })
+          .extend({
+            extraField: z.number(),
+          }),
+        v.object({
+          baseField: v.string(),
+          extraField: v.number(),
+        }),
+      );
+    });
+
+    test("extended strict object", () => {
+      testZodToConvexInputAndOutput(
+        z
+          .strictObject({
+            baseField: z.string(),
+          })
+          .extend({
+            extraField: z.number(),
+          }),
+        v.object({
+          baseField: v.string(),
+          extraField: v.number(),
+        }),
+      );
+    });
+
+    test("with optional field", () => {
+      testZodToConvexInputAndOutput(
+        z
+          .object({
+            baseRequiredField: z.string(),
+            baseOptionalField: z.string().optional(),
+          })
+          .extend({
+            extraRequiredField: z.string(),
+            extraOptionalField: z.string().optional(),
+          }),
+        v.object({
+          baseRequiredField: v.string(),
+          baseOptionalField: v.optional(v.string()),
+          extraRequiredField: v.string(),
+          extraOptionalField: v.optional(v.string()),
+        }),
+      );
+    });
+
+    test("same type", () => {
+      testZodToConvexInputAndOutput(
+        z
+          .object({
+            field: z.string().optional(),
+          })
+          .extend({
+            field: z.string(),
+          }),
+        v.object({
+          field: v.string(),
+        }),
+      );
+    });
+  });
+
   describe("record", () => {
     test("key = string", () => {
       testZodToConvexInputAndOutput(
@@ -694,22 +763,96 @@ describe("zodToConvex + zodOutputToConvex", () => {
     );
   });
 
-  test("recursive type", () => {
-    const category = z.object({
-      name: z.string(),
-      get subcategories() {
-        return z.array(category);
-      },
+  describe("recursive types", () => {
+    test("recursive type", () => {
+      const category = z.object({
+        name: z.string(),
+        get subcategories() {
+          return z.array(category);
+        },
+      });
+
+      testZodToConvexInputAndOutput(
+        category,
+        // @ts-expect-error The type of zodToConvex(linkedList) is recursive so we can’t check it
+        v.object({
+          name: v.string(),
+          subcategories: v.array(v.any()),
+        }),
+      );
     });
 
-    testZodToConvexInputAndOutput(
-      category,
-      // @ts-expect-error -- TypeScript can’t compute the full type and uses `unknown`
-      v.object({
-        name: v.string(),
-        subcategories: v.array(v.any()),
-      }),
-    );
+    test("recursive type with optional", () => {
+      const linkedList = z.object({
+        value: z.string(),
+        get next() {
+          return z.optional(linkedList);
+        },
+      });
+
+      testZodToConvexInputAndOutput(
+        linkedList,
+        // @ts-expect-error The type of zodToConvex(linkedList) is recursive so we can’t check it
+        v.object({
+          value: v.string(),
+          next: v.optional(v.any()), // not `v.any()`!
+        }),
+      );
+    });
+
+    test("schemas with a part that is reused", () => {
+      const commonField = z.object({
+        name: z.string(),
+      });
+
+      testZodOutputToConvex(
+        z.object({
+          field1: commonField,
+          field2: commonField,
+        }),
+        v.object({
+          field1: v.object({
+            name: v.string(),
+          }),
+          field2: v.object({
+            name: v.string(),
+          }),
+        }),
+      );
+    });
+
+    test("extended schemas without actual recursion", () => {
+      // convex-helpers issue #856
+      const baseSchema = z.strictObject({
+        sharedField: z.string(),
+        optionalField: z.boolean().optional(),
+      });
+
+      testZodOutputToConvex(
+        z.union([
+          baseSchema.extend({
+            kind: z.literal("A"),
+          }),
+          baseSchema.extend({
+            kind: z.literal("B"),
+            extra: z.number(),
+          }),
+        ]),
+        v.union(
+          v.object({
+            sharedField: v.string(),
+            kind: v.literal("A"),
+            optionalField: v.optional(v.boolean()),
+          }),
+          v.object({
+            sharedField: v.string(),
+            kind: v.literal("B"),
+            extra: v.number(),
+            optionalField: v.optional(v.boolean()),
+          }),
+        ),
+      );
+    });
   });
 
   test("catch", () => {
@@ -800,11 +943,20 @@ describe("zodToConvex + zodOutputToConvex", () => {
 });
 
 describe("zodToConvex", () => {
-  test("transform", () => {
-    testZodToConvex(
-      z.number().transform((s) => s.toString()),
-      v.number(), // input type
-    );
+  describe("transform", () => {
+    test("sync transform", () => {
+      testZodToConvex(
+        z.number().transform((s) => s.toString()),
+        v.number(), // input type
+      );
+    });
+
+    test("async transform", () => {
+      testZodToConvex(
+        z.number().transform(async (s) => s.toString()),
+        v.number(), // input type
+      );
+    });
   });
 
   test("pipe", () => {
@@ -871,11 +1023,20 @@ describe("zodToConvex", () => {
 });
 
 describe("zodOutputToConvex", () => {
-  test("transform", () => {
-    testZodOutputToConvex(
-      z.number().transform((s) => s.toString()),
-      v.any(), // this transform doesn’t hold runtime info about the output type
-    );
+  describe("transform", () => {
+    test("sync transform", () => {
+      testZodOutputToConvex(
+        z.number().transform((s) => s.toString()),
+        v.any(), // this transform doesn’t hold runtime info about the output type
+      );
+    });
+
+    test("async transform", () => {
+      testZodOutputToConvex(
+        z.number().transform(async (s) => s.toString()),
+        v.any(), // this transform doesn’t hold runtime info about the output type
+      );
+    });
   });
 
   test("pipe", () => {

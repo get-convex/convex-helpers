@@ -159,6 +159,7 @@ export class DatabaseWriterWithTriggers<
 > implements GenericDatabaseWriter<DataModel>
 {
   writer: GenericDatabaseWriter<DataModel>;
+
   constructor(
     ctx: Ctx,
     innerDb: GenericDatabaseWriter<DataModel>,
@@ -168,43 +169,91 @@ export class DatabaseWriterWithTriggers<
     this.system = innerDb.system;
     this.writer = writerWithTriggers(ctx, innerDb, triggers, isWithinTrigger);
   }
-  delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void> {
-    return this.writer.delete(id);
+
+  delete<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+  ): Promise<void>;
+  delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
+  delete(arg0: any, arg1?: any): Promise<void> {
+    return this.writer.delete(
+      arg0,
+      // @ts-expect-error -- delete supports 2 args since convex@1.25.4, but the type is marked as internal
+      arg1,
+    );
   }
+
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
   get<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
-  ): Promise<DocumentByName<DataModel, TableName> | null> {
-    return this.writer.get(id);
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
+  get(arg0: any, arg1?: any) {
+    return this.writer.get(
+      arg0,
+      // @ts-expect-error -- get supports 2 args since convex@1.25.4, but the type is marked as internal
+      arg1,
+    );
   }
+
   insert<TableName extends TableNamesInDataModel<DataModel>>(
     table: TableName,
     value: WithoutSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<GenericId<TableName>> {
     return this.writer.insert(table, value);
   }
+
+  patch<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+    value: PatchValue<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
   patch<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
-    value: Partial<DocumentByName<DataModel, TableName>>,
-  ): Promise<void> {
-    return this.writer.patch(id, value);
+    value: PatchValue<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
+    return this.writer.patch(
+      arg0,
+      arg1,
+      // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+      arg2,
+    );
   }
+
   query<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
   ): QueryInitializer<NamedTableInfo<DataModel, TableName>> {
     return this.writer.query(tableName);
   }
+
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     id: string,
   ): GenericId<TableName> | null {
     return this.writer.normalizeId(tableName, id);
   }
+
+  replace<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
   replace<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
     value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
-  ): Promise<void> {
-    return this.writer.replace(id, value);
+  ): Promise<void>;
+  replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
+    return this.writer.replace(
+      arg0,
+      arg1,
+      // @ts-expect-error -- replace supports 3 args since convex@1.25.4, but the type is marked as internal
+      arg2,
+    );
   }
+
   system: GenericDatabaseWriter<DataModel>["system"];
 }
 
@@ -219,6 +268,137 @@ export function writerWithTriggers<
   triggers: Triggers<DataModel, Ctx>,
   isWithinTrigger: boolean = false,
 ): GenericDatabaseWriter<DataModel> {
+  const patch: {
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      table: NonUnion<TableName>,
+      id: GenericId<TableName>,
+      value: PatchValue<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      id: GenericId<TableName>,
+      value: PatchValue<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+  } = async (arg0: any, arg1: any, arg2?: any) => {
+    const [tableName, id, value] =
+      arg2 !== undefined
+        ? [arg0, arg1, arg2]
+        : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
+    return await _patch(tableName, id, value);
+  };
+
+  async function _patch<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName | null,
+    id: GenericId<TableName>,
+    value: Partial<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
+    if (!tableName) {
+      return await innerDb.patch(id, value);
+    }
+    return await _execThenTrigger(
+      ctx,
+      innerDb,
+      triggers,
+      tableName,
+      isWithinTrigger,
+      async () => {
+        const oldDoc = (await innerDb.get(id))!;
+        await innerDb.patch(
+          tableName,
+          id,
+          // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
+          value,
+        );
+        const newDoc = (await innerDb.get(id))!;
+        return [undefined, { operation: "update", id, oldDoc, newDoc }];
+      },
+    );
+  }
+
+  const replace: {
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      table: NonUnion<TableName>,
+      id: GenericId<TableName>,
+      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      id: GenericId<TableName>,
+      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+    ): Promise<void>;
+  } = async (arg0: any, arg1: any, arg2?: any) => {
+    const [tableName, id, value] =
+      arg2 !== undefined
+        ? [arg0, arg1, arg2]
+        : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0, arg1];
+    return await _replace(tableName, id, value);
+  };
+
+  async function _replace<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName | null,
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void> {
+    if (!tableName) {
+      return await innerDb.replace(id, value);
+    }
+    return await _execThenTrigger(
+      ctx,
+      innerDb,
+      triggers,
+      tableName,
+      isWithinTrigger,
+      async () => {
+        const oldDoc = (await innerDb.get(id))!;
+        await innerDb.replace(
+          tableName,
+          id,
+          // @ts-expect-error -- replace supports 3 args since convex@1.25.4, but the type is marked as internal
+          value,
+        );
+        const newDoc = (await innerDb.get(id))!;
+        return [undefined, { operation: "update", id, oldDoc, newDoc }];
+      },
+    );
+  }
+
+  const delete_: {
+    <TableName extends TableNamesInDataModel<DataModel>>(
+      table: NonUnion<TableName>,
+      id: GenericId<TableName>,
+    ): Promise<void>;
+    (id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
+  } = async (arg0: any, arg1?: any) => {
+    const [tableName, id] =
+      arg1 !== undefined
+        ? [arg0, arg1]
+        : [_tableNameFromId(innerDb, triggers.registered, arg0), arg0];
+    return await _delete(tableName, id);
+  };
+
+  async function _delete<TableName extends TableNamesInDataModel<DataModel>>(
+    tableName: TableName | null,
+    id: GenericId<TableNamesInDataModel<DataModel>>,
+  ): Promise<void> {
+    if (!tableName) {
+      return await innerDb.delete(id);
+    }
+    return await _execThenTrigger(
+      ctx,
+      innerDb,
+      triggers,
+      tableName,
+      isWithinTrigger,
+      async () => {
+        const oldDoc = (await innerDb.get(id))!;
+        await innerDb.delete(
+          tableName,
+          // @ts-expect-error -- delete supports 2 args since convex@1.25.4, but the type is marked as internal
+          id,
+        );
+        return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
+      },
+    );
+  }
+
   return {
     insert: async <TableName extends TableNamesInDataModel<DataModel>>(
       table: TableName,
@@ -240,71 +420,9 @@ export function writerWithTriggers<
         },
       );
     },
-    patch: async <TableName extends TableNamesInDataModel<DataModel>>(
-      id: GenericId<TableName>,
-      value: Partial<DocumentByName<DataModel, TableName>>,
-    ): Promise<void> => {
-      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
-      if (!tableName) {
-        return await innerDb.patch(id, value);
-      }
-      return await _execThenTrigger(
-        ctx,
-        innerDb,
-        triggers,
-        tableName,
-        isWithinTrigger,
-        async () => {
-          const oldDoc = (await innerDb.get(id))!;
-          await innerDb.patch(id, value);
-          const newDoc = (await innerDb.get(id))!;
-          return [undefined, { operation: "update", id, oldDoc, newDoc }];
-        },
-      );
-    },
-    replace: async <TableName extends TableNamesInDataModel<DataModel>>(
-      id: GenericId<TableName>,
-      value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
-    ): Promise<void> => {
-      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
-      if (!tableName) {
-        return await innerDb.replace(id, value);
-      }
-      return await _execThenTrigger(
-        ctx,
-        innerDb,
-        triggers,
-        tableName,
-        isWithinTrigger,
-        async () => {
-          const oldDoc = (await innerDb.get(id))!;
-          await innerDb.replace(id, value);
-          const newDoc = (await innerDb.get(id))!;
-          return [undefined, { operation: "update", id, oldDoc, newDoc }];
-        },
-      );
-    },
-    delete: async (
-      id: GenericId<TableNamesInDataModel<DataModel>>,
-    ): Promise<void> => {
-      const tableName = _tableNameFromId(innerDb, triggers.registered, id);
-      if (!tableName) {
-        return await innerDb.delete(id);
-      }
-      return await _execThenTrigger(
-        ctx,
-        innerDb,
-        triggers,
-        tableName,
-        isWithinTrigger,
-        async () => {
-          const oldDoc = (await innerDb.get(id))!;
-          await innerDb.delete(id);
-          return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
-        },
-      );
-    },
-
+    patch,
+    replace,
+    delete: delete_,
     system: innerDb.system,
     get: innerDb.get,
     query: innerDb.query,
@@ -401,3 +519,19 @@ async function _execThenTrigger<
     return result;
   });
 }
+
+/**
+ * This prevents TypeScript from inferring that the generic `TableName` type is
+ * a union type when `table` and `id` disagree.
+ */
+type NonUnion<T> = T extends never // `never` is the bottom type for TypeScript unions
+  ? never
+  : T;
+
+/**
+ * This is like Partial, but it also allows undefined to be passed to optional
+ * fields when `exactOptionalPropertyTypes` is enabled in the tsconfig.
+ */
+type PatchValue<T> = {
+  [P in keyof T]?: undefined extends T[P] ? T[P] | undefined : T[P];
+};
