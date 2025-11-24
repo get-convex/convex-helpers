@@ -1290,9 +1290,7 @@ export function zodOutputToConvex<Z extends z.ZodTypeAny>(
         zod._def.innerType,
       ) as unknown as ConvexValidatorFromZodOutput<Z>;
     case "ZodEffects":
-      console.warn(
-        "Note: ZodEffects (like z.transform) do not do output validation",
-      );
+      // IMPORTANT: Note: ZodEffects (like z.transform) do not do output validation
       return v.any() as ConvexValidatorFromZodOutput<Z>;
     case "ZodPipeline":
       // IMPORTANT: The output type of the pipeline can differ from the input.
