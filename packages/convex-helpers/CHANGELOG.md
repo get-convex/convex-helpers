@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.1.106 alpha
+## 0.1.106
 
 - Update typedV to match the type of the installed convex validators for v.nullable
 - Improves handling of literals() helper to keep the ordering of its members
-- Improved Zod 4 handling of circular types, empty returns, and async transforms
+- Improved Zod 4 handling of circular types, empty returns, and empty function args
+- Zod 4 transforms can now be asynchronous
 
 ## 0.1.105
 
