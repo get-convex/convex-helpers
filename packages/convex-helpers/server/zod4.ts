@@ -968,10 +968,11 @@ type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
   [ArgsValidator] extends [zCore.$ZodObject<any>]
     ? [zCore.input<ArgsValidator>]
     : ArgsValidator extends Record<string, never>
-      ? [{}]
+      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        [{}]
       : [ArgsValidator] extends [Record<string, z.ZodTypeAny>]
         ? [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
-      : OneArgArray;
+        : OneArgArray;
 
 // The args after they've been validated: passed to the handler
 type ArgsOutput<
