@@ -960,16 +960,19 @@ type ReturnValueOutput<
 > = [ReturnsValidator] extends [zCore.$ZodType]
   ? Returns<zCore.output<ReturnsValidator>>
   : [ReturnsValidator] extends [ZodFields]
-    ? Returns<zCore.output<zCore.$ZodObject<ReturnsValidator>>>
+    ? Returns<zCore.output<zCore.$ZodObject<ReturnsValidator, zCore.$strict>>>
     : any;
 
 // The args before they've been validated: passed from the client
 type ArgsInput<ArgsValidator extends ZodFields | zCore.$ZodObject<any> | void> =
   [ArgsValidator] extends [zCore.$ZodObject<any>]
     ? [zCore.input<ArgsValidator>]
-    : [ArgsValidator] extends [ZodFields]
-      ? [zCore.input<zCore.$ZodObject<ArgsValidator>>]
-      : OneArgArray;
+    : ArgsValidator extends Record<string, never>
+      ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+        [{}]
+      : [ArgsValidator] extends [Record<string, z.ZodTypeAny>]
+        ? [zCore.input<zCore.$ZodObject<ArgsValidator, zCore.$strict>>]
+        : OneArgArray;
 
 // The args after they've been validated: passed to the handler
 type ArgsOutput<

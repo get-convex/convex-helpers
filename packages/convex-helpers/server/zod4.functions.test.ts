@@ -68,6 +68,13 @@ export const testQuery = zQuery({
   }),
 });
 
+export const testQueryNoArgs = zQuery({
+  args: {},
+  handler: async (_ctx, args) => {
+    assertType<Record<string, never>>(args);
+  },
+});
+
 /**
  * Test zCustomMutation with Zod schemas for args and return value
  */
@@ -254,6 +261,7 @@ export const generateUserId = mutation({
 const testApi: ApiFromModules<{
   fns: {
     testQuery: typeof testQuery;
+    testQueryNoArgs: typeof testQueryNoArgs;
     testMutation: typeof testMutation;
     testAction: typeof testAction;
     returnsNothing: typeof returnsNothing;
@@ -285,6 +293,22 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
           { message: string; doubledAge: number }
         >
       >();
+    });
+
+    describe("zCustomQuery with no args", () => {
+      test("through t.query", async () => {
+        const t = convexTest(schema, modules);
+        const response = await t.query(testApi.testQueryNoArgs);
+        expect(response).toBeNull();
+      });
+
+      test("through t.run", async () => {
+        const t = convexTest(schema, modules);
+        const response = await t.run((ctx) =>
+          ctx.runQuery(testApi.testQueryNoArgs),
+        );
+        expect(response).toBeNull();
+      });
     });
 
     test("zCustomMutation", async () => {
