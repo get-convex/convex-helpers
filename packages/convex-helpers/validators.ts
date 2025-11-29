@@ -14,10 +14,18 @@ import type {
   OptionalProperty,
   PropertyValidators,
   Validator,
+  VAny,
+  VArray,
+  VBoolean,
+  VBytes,
+  VFloat64,
   VId,
+  VInt64,
   VLiteral,
+  VNull,
   VObject,
   VOptional,
+  VRecord,
   VString,
   VUnion,
 } from "convex/values";
@@ -888,4 +896,143 @@ function stripUnknownFields<T extends Validator<any, any, any>>(
 
 function appendPath(opts: { _pathPrefix?: string } | undefined, path: string) {
   return opts?._pathPrefix ? `${opts._pathPrefix}.${path}` : path;
+}
+
+type NotUndefined<T> = Exclude<T, undefined>;
+
+/**
+ * A type that converts an optional validator to a required validator.
+ *
+ * This is the inverse of `VOptional`. It takes a validator that may be optional
+ * and returns the equivalent required validator type.
+ *
+ * @example
+ * ```ts
+ * type OptionalString = VOptional<VString<string, "required">>;
+ * type RequiredString = VRequired<OptionalString>; // VString<string, "required">
+ * ```
+ */
+export type VRequired<T extends Validator<any, OptionalProperty, any>> =
+  T extends VId<infer Type, OptionalProperty>
+    ? VId<NotUndefined<Type>, "required">
+    : T extends VString<infer Type, OptionalProperty>
+      ? VString<NotUndefined<Type>, "required">
+      : T extends VFloat64<infer Type, OptionalProperty>
+        ? VFloat64<NotUndefined<Type>, "required">
+        : T extends VInt64<infer Type, OptionalProperty>
+          ? VInt64<NotUndefined<Type>, "required">
+          : T extends VBoolean<infer Type, OptionalProperty>
+            ? VBoolean<NotUndefined<Type>, "required">
+            : T extends VNull<infer Type, OptionalProperty>
+              ? VNull<NotUndefined<Type>, "required">
+              : T extends VAny<infer Type, OptionalProperty>
+                ? VAny<NotUndefined<Type>, "required">
+                : T extends VLiteral<infer Type, OptionalProperty>
+                  ? VLiteral<NotUndefined<Type>, "required">
+                  : T extends VBytes<infer Type, OptionalProperty>
+                    ? VBytes<NotUndefined<Type>, "required">
+                    : T extends VObject<
+                          infer Type,
+                          infer Fields,
+                          OptionalProperty,
+                          infer FieldPaths
+                        >
+                      ? VObject<
+                          NotUndefined<Type>,
+                          Fields,
+                          "required",
+                          FieldPaths
+                        >
+                      : T extends VArray<
+                            infer Type,
+                            infer Element,
+                            OptionalProperty
+                          >
+                        ? VArray<NotUndefined<Type>, Element, "required">
+                        : T extends VRecord<
+                              infer Type,
+                              infer Key,
+                              infer Value,
+                              OptionalProperty,
+                              infer FieldPaths
+                            >
+                          ? VRecord<
+                              NotUndefined<Type>,
+                              Key,
+                              Value,
+                              "required",
+                              FieldPaths
+                            >
+                          : T extends VUnion<
+                                infer Type,
+                                infer Members,
+                                OptionalProperty,
+                                infer FieldPaths
+                              >
+                            ? VUnion<
+                                NotUndefined<Type>,
+                                Members,
+                                "required",
+                                FieldPaths
+                              >
+                            : never;
+
+/**
+ * Converts an optional validator to a required validator.
+ *
+ * This is the inverse of `v.optional()`. It takes a validator that may be optional
+ * and returns the equivalent required validator.
+ *
+ * @example
+ * ```ts
+ * const optionalString = v.optional(v.string());
+ * const requiredString = vRequired(optionalString); // v.string()
+ *
+ * // Already required validators are returned as-is
+ * const alreadyRequired = v.string();
+ * const stillRequired = vRequired(alreadyRequired); // v.string()
+ * ```
+ *
+ * @param validator The validator to make required.
+ * @returns A required version of the validator.
+ */
+export function vRequired<T extends Validator<any, OptionalProperty, any>>(
+  validator: T,
+): VRequired<T> {
+  const { kind, isOptional } = validator;
+  if (isOptional === "required") {
+    return validator as VRequired<T>;
+  }
+
+  switch (kind) {
+    case "id":
+      return v.id(validator.tableName) as VRequired<T>;
+    case "string":
+      return v.string() as VRequired<T>;
+    case "float64":
+      return v.float64() as VRequired<T>;
+    case "int64":
+      return v.int64() as VRequired<T>;
+    case "boolean":
+      return v.boolean() as VRequired<T>;
+    case "null":
+      return v.null() as VRequired<T>;
+    case "any":
+      return v.any() as VRequired<T>;
+    case "literal":
+      return v.literal(validator.value) as VRequired<T>;
+    case "bytes":
+      return v.bytes() as VRequired<T>;
+    case "object":
+      return v.object(validator.fields) as VRequired<T>;
+    case "array":
+      return v.array(validator.element) as VRequired<T>;
+    case "record":
+      return v.record(validator.key, validator.value) as VRequired<T>;
+    case "union":
+      return v.union(...validator.members) as VRequired<T>;
+    default:
+      kind satisfies never;
+      throw new Error("Unknown Convex validator type: " + kind);
+  }
 }
