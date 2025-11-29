@@ -1001,7 +1001,8 @@ export function vRequired<T extends Validator<any, OptionalProperty, any>>(
 ): VRequired<T> {
   const { kind, isOptional } = validator;
   if (isOptional === "required") {
-    return validator as VRequired<T>;
+    // TS can't prove T is already VRequired<T>, so we go via unknown.
+    return validator as unknown as VRequired<T>;
   }
 
   switch (kind) {
