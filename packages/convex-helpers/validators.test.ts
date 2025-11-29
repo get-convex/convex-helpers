@@ -110,21 +110,31 @@ describe("vRequired", () => {
 
 describe("VRequired type", () => {
   test("converts optional string type to required", () => {
-    type OptionalString = ReturnType<typeof v.optional<ReturnType<typeof v.string>>>;
+    type OptionalString = ReturnType<
+      typeof v.optional<ReturnType<typeof v.string>>
+    >;
     type RequiredString = VRequired<OptionalString>;
     expectTypeOf<RequiredString>().toMatchTypeOf<VString<string, "required">>();
   });
 
   test("converts optional number type to required", () => {
-    type OptionalNumber = ReturnType<typeof v.optional<ReturnType<typeof v.float64>>>;
+    type OptionalNumber = ReturnType<
+      typeof v.optional<ReturnType<typeof v.float64>>
+    >;
     type RequiredNumber = VRequired<OptionalNumber>;
-    expectTypeOf<RequiredNumber>().toMatchTypeOf<VFloat64<number, "required">>();
+    expectTypeOf<RequiredNumber>().toMatchTypeOf<
+      VFloat64<number, "required">
+    >();
   });
 
   test("converts optional boolean type to required", () => {
-    type OptionalBoolean = ReturnType<typeof v.optional<ReturnType<typeof v.boolean>>>;
+    type OptionalBoolean = ReturnType<
+      typeof v.optional<ReturnType<typeof v.boolean>>
+    >;
     type RequiredBoolean = VRequired<OptionalBoolean>;
-    expectTypeOf<RequiredBoolean>().toMatchTypeOf<VBoolean<boolean, "required">>();
+    expectTypeOf<RequiredBoolean>().toMatchTypeOf<
+      VBoolean<boolean, "required">
+    >();
   });
 
   test("vRequired function returns correct type", () => {
