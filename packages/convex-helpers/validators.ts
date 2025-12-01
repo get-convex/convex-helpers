@@ -983,7 +983,6 @@ export type VRequired<T extends Validator<any, OptionalProperty, any>> =
  * This is the inverse of `v.optional()`. It takes a validator that may be optional
  * and returns the equivalent required validator.
  *
- * @example
  * ```ts
  * const optionalString = v.optional(v.string());
  * const requiredString = vRequired(optionalString); // v.string()
@@ -1001,7 +1000,7 @@ export function vRequired<T extends Validator<any, OptionalProperty, any>>(
 ): VRequired<T> {
   const { kind, isOptional } = validator;
   if (isOptional === "required") {
-    // TS can't prove T is already VRequired<T>, so we go via unknown.
+    // TypeScript can't prove T is already VRequired<T>, so we go via unknown.
     return validator as unknown as VRequired<T>;
   }
 
