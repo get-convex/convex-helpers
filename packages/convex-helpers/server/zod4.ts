@@ -40,7 +40,11 @@ import type {
 import { pick, type Expand } from "../index.js";
 import type { Customization, Registration } from "./customFunctions.js";
 import { NoOp } from "./customFunctions.js";
-import { addFieldsToValidator } from "../validators.js";
+import {
+  addFieldsToValidator,
+  vRequired,
+  type VRequired,
+} from "../validators.js";
 
 // #region Convex function definition with Zod
 
@@ -1881,110 +1885,6 @@ const _zidRegistry = zCore.registry<{ tableName: string }>();
 // #region Implementation: Utilities
 
 type NotUndefined<T> = Exclude<T, undefined>;
-
-type VRequired<T extends Validator<any, OptionalProperty, any>> =
-  T extends VId<infer Type, OptionalProperty>
-    ? VId<NotUndefined<Type>, "required">
-    : T extends VString<infer Type, OptionalProperty>
-      ? VString<NotUndefined<Type>, "required">
-      : T extends VFloat64<infer Type, OptionalProperty>
-        ? VFloat64<NotUndefined<Type>, "required">
-        : T extends VInt64<infer Type, OptionalProperty>
-          ? VInt64<NotUndefined<Type>, "required">
-          : T extends VBoolean<infer Type, OptionalProperty>
-            ? VBoolean<NotUndefined<Type>, "required">
-            : T extends VNull<infer Type, OptionalProperty>
-              ? VNull<NotUndefined<Type>, "required">
-              : T extends VAny<infer Type, OptionalProperty>
-                ? VAny<NotUndefined<Type>, "required">
-                : T extends VLiteral<infer Type, OptionalProperty>
-                  ? VLiteral<NotUndefined<Type>, "required">
-                  : T extends VBytes<infer Type, OptionalProperty>
-                    ? VBytes<NotUndefined<Type>, "required">
-                    : T extends VObject<
-                          infer Type,
-                          infer Fields,
-                          OptionalProperty,
-                          infer FieldPaths
-                        >
-                      ? VObject<
-                          NotUndefined<Type>,
-                          Fields,
-                          "required",
-                          FieldPaths
-                        >
-                      : T extends VArray<
-                            infer Type,
-                            infer Element,
-                            OptionalProperty
-                          >
-                        ? VArray<NotUndefined<Type>, Element, "required">
-                        : T extends VRecord<
-                              infer Type,
-                              infer Key,
-                              infer Value,
-                              OptionalProperty,
-                              infer FieldPaths
-                            >
-                          ? VRecord<
-                              NotUndefined<Type>,
-                              Key,
-                              Value,
-                              "required",
-                              FieldPaths
-                            >
-                          : T extends VUnion<
-                                infer Type,
-                                infer Members,
-                                OptionalProperty,
-                                infer FieldPaths
-                              >
-                            ? VUnion<
-                                NotUndefined<Type>,
-                                Members,
-                                "required",
-                                FieldPaths
-                              >
-                            : never;
-
-function vRequired(validator: GenericValidator) {
-  const { kind, isOptional } = validator;
-  if (isOptional === "required") {
-    return validator;
-  }
-
-  switch (kind) {
-    case "id":
-      return v.id(validator.tableName);
-    case "string":
-      return v.string();
-    case "float64":
-      return v.float64();
-    case "int64":
-      return v.int64();
-    case "boolean":
-      return v.boolean();
-    case "null":
-      return v.null();
-    case "any":
-      return v.any();
-    case "literal":
-      return v.literal(validator.value);
-    case "bytes":
-      return v.bytes();
-    case "object":
-      return v.object(validator.fields);
-    case "array":
-      return v.array(validator.element);
-    case "record":
-      return v.record(validator.key, validator.value);
-    case "union":
-      return v.union(...validator.members);
-    default:
-      kind satisfies never;
-      throw new Error("Unknown Convex validator type: " + kind);
-  }
-}
 
 type TableNameFromType<T> =
   T extends GenericId<infer TableName> ? TableName : string;
