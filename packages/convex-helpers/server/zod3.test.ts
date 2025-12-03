@@ -22,6 +22,7 @@ import {
   zodToConvex,
   convexToZod,
   convexToZodFields,
+  type ZodValidatorFromConvex,
 } from "./zod3.js";
 import { customCtx } from "./customFunctions.js";
 import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
@@ -1226,4 +1227,94 @@ test("convexToZod object with union of one literal", () => {
   expect(zodUnion.constructor.name).toBe("ZodObject");
   expect(zodUnion.parse({ member: "hello" })).toEqual({ member: "hello" });
   expect(() => zodUnion.parse({ member: "world" })).toThrow();
+});
+
+// Test for issue #861: ZodValidatorFromConvex infers `never` when using enum values
+// with Object.values(Enum).map(v.literal) instead of explicit literals
+// https://github.com/get-convex/convex-helpers/issues/861
+describe("convexToZod with enum values (issue #861)", () => {
+  enum Gender {
+    Male = "male",
+    Female = "female",
+    Other = "other",
+  }
+
+  test("runtime conversion works correctly with enum values", () => {
+    // Using Object.values(Enum).map(v.literal) - the pattern from the issue
+    const enumValidator = v.union(
+      ...Object.values(Gender).map((val) => v.literal(val)),
+    );
+    const zodEnum = convexToZod(enumValidator);
+
+    // Runtime conversion should work correctly
+    expect(zodEnum.constructor.name).toBe("ZodUnion");
+    expect(zodEnum.parse("male")).toBe("male");
+    expect(zodEnum.parse("female")).toBe("female");
+    expect(zodEnum.parse("other")).toBe("other");
+    expect(() => zodEnum.parse("invalid")).toThrow();
+  });
+
+  test("explicit literals work correctly with type inference", () => {
+    // Using explicit literals - this works correctly
+    const explicitValidator = v.union(
+      v.literal("male"),
+      v.literal("female"),
+      v.literal("other"),
+    );
+    const zodExplicit = convexToZod(explicitValidator);
+
+    // Runtime works
+    expect(zodExplicit.parse("male")).toBe("male");
+
+    // Type inference works correctly with explicit literals
+    type ExplicitZodType = ZodValidatorFromConvex<typeof explicitValidator>;
+    type ExplicitInferred = z.infer<ExplicitZodType>;
+
+    // This should be "male" | "female" | "other", not never
+    expectTypeOf<ExplicitInferred>().toEqualTypeOf<
+      "male" | "female" | "other"
+    >();
+  });
+
+  test("enum values mapped to literals have broken type inference", () => {
+    // Using Object.values(Enum).map(v.literal) - the pattern from the issue
+    const enumValidator = v.union(
+      ...Object.values(Gender).map((val) => v.literal(val)),
+    );
+
+    // Runtime conversion works correctly
+    const zodEnum = convexToZod(enumValidator);
+    expect(zodEnum.parse("male")).toBe("male");
+
+    // BUG: Type inference produces incorrect type instead of the expected union
+    // This is because Object.values(Gender).map(v.literal) produces
+    // VLiteral<string>[] instead of a tuple of specific literal types,
+    // which causes the union type inference to fall back to z.ZodTypeAny.
+    type EnumZodType = ZodValidatorFromConvex<typeof enumValidator>;
+    type EnumInferred = z.infer<EnumZodType>;
+
+    // TODO: When this issue is fixed, this test should be updated to:
+    // expectTypeOf<EnumInferred>().toEqualTypeOf<"male" | "female" | "other">();
+    //
+    // Currently, EnumZodType falls back to z.ZodTypeAny because the union
+    // type inference fails, and z.infer<z.ZodTypeAny> is `any`.
+    // The following assertion documents the current (broken) behavior:
+    expectTypeOf<EnumInferred>().toBeAny();
+  });
+
+  test("workaround: use as const assertion for proper type inference", () => {
+    // Workaround: Define literals as a const tuple
+    const genderLiterals = ["male", "female", "other"] as const;
+    const workaroundValidator = v.union(
+      ...genderLiterals.map((val) => v.literal(val)),
+    );
+
+    // Runtime works
+    const zodWorkaround = convexToZod(workaroundValidator);
+    expect(zodWorkaround.parse("male")).toBe("male");
+
+    // Note: Even with `as const`, the type inference still has issues because
+    // .map() loses the tuple type information. The proper workaround is to
+    // use explicit literals or define the union manually.
+  });
 });
