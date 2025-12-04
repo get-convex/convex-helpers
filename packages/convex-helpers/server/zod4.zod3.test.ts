@@ -870,7 +870,7 @@ expectTypeOf<_BrandedObjectOutput2Type>().toEqualTypeOf<
   { id: string } & z.BRAND<"UserId">
 >();
 
-// Test more complex branded object (like the user's example)
+// Test more complex branded object
 const ZUserBase = z.object({
   email: z.email(),
   name: z.string(),
