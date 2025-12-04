@@ -936,14 +936,14 @@ expectTypeOf<z.input<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
 expectTypeOf<z.output<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
 
 // Test branded objects preserve their brand
-const _ZBrandedObject = z
+const ZBrandedObject = z
   .object({ name: z.string(), age: z.number() })
   .brand<"User">();
-const _ZBrandedObject2 = z.object({ id: z.string() }).brand("UserId");
-const _vBrandedObject = zodToConvex(_ZBrandedObject);
-const _vBrandedObject2 = zodToConvex(_ZBrandedObject2);
-const _vBrandedObjectOutput = zodOutputToConvex(_ZBrandedObject);
-const _vBrandedObjectOutput2 = zodOutputToConvex(_ZBrandedObject2);
+const ZBrandedObject2 = z.object({ id: z.string() }).brand("UserId");
+const _vBrandedObject = zodToConvex(ZBrandedObject);
+const _vBrandedObject2 = zodToConvex(ZBrandedObject2);
+const _vBrandedObjectOutput = zodOutputToConvex(ZBrandedObject);
+const _vBrandedObjectOutput2 = zodOutputToConvex(ZBrandedObject2);
 
 // Verify branded objects have the brand in their type
 type _BrandedObjectType = Infer<typeof _vBrandedObject>;
@@ -965,23 +965,23 @@ expectTypeOf<_BrandedObjectOutput2Type>().toEqualTypeOf<
 >();
 
 // Test more complex branded object (like the user's example)
-const _ZUserBase = z.object({
+const ZUserBase = z.object({
   email: z.string().email(),
   name: z.string(),
   createdAt: z.number(),
 });
-const _ZUser = _ZUserBase
-  .extend({ role: z.enum(["admin", "user"]) })
-  .brand<"User">();
-const _ZUser2 = _ZUserBase
-  .extend({ role: z.enum(["admin", "user"]) })
-  .brand("User2");
-const _vUser = zodToConvex(_ZUser);
-const _vUser2 = zodToConvex(_ZUser2);
+const ZUser = ZUserBase.extend({
+  role: z.enum(["admin", "user"]),
+}).brand<"User">();
+const ZUser2 = ZUserBase.extend({ role: z.enum(["admin", "user"]) }).brand(
+  "User2",
+);
+const _vUser = zodToConvex(ZUser);
+const _vUser2 = zodToConvex(ZUser2);
 
-type _UserType = Infer<typeof _vUser>;
-type _User2Type = Infer<typeof _vUser2>;
-expectTypeOf<_UserType>().toEqualTypeOf<
+type UserType = Infer<typeof _vUser>;
+type User2Type = Infer<typeof _vUser2>;
+expectTypeOf<UserType>().toEqualTypeOf<
   {
     email: string;
     name: string;
@@ -989,7 +989,7 @@ expectTypeOf<_UserType>().toEqualTypeOf<
     role: "admin" | "user";
   } & z.BRAND<"User">
 >();
-expectTypeOf<_User2Type>().toEqualTypeOf<
+expectTypeOf<User2Type>().toEqualTypeOf<
   {
     email: string;
     name: string;
