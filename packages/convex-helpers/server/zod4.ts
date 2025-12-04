@@ -650,7 +650,7 @@ export function convexToZod<V extends GenericValidator>(
       break;
     case "array": {
       convexValidator satisfies VArray<any, any>;
-      zodValidator = z.array(convexToZod(convexValidator.element as any));
+      zodValidator = z.array(convexToZod(convexValidator.element));
       break;
     }
     case "object": {
@@ -1832,21 +1832,9 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : V extends VUnion<
-                                    any,
-                                    // VUnion<…, T[]> can
-                                    infer Is extends GenericValidator[],
-                                    OptionalProperty,
-                                    any
-                                  >
-                                ? ZodValidatorFromConvex<
-                                    Is[number]
-                                  > extends zCore.$ZodType
-                                  ? ZodValidatorFromConvex<Is[number]>
-                                  : never
-                                : V extends VAny<any, OptionalProperty, any>
-                                  ? z.ZodAny
-                                  : never;
+                              : V extends VAny<any, OptionalProperty, any>
+                                ? z.ZodAny
+                                : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
