@@ -1244,10 +1244,20 @@ type ConvexValidatorFromZodCommon<
                                                       zCore.$brand<Brand>,
                                                     IsOptional
                                                   >
-                                                : ConvexValidatorFromZod<
-                                                    Inner,
-                                                    IsOptional
-                                                  >
+                                                : Inner extends zCore.$ZodObject<
+                                                      infer Fields extends
+                                                        Readonly<zCore.$ZodShape>
+                                                    >
+                                                  ? VObject<
+                                                      zCore.infer<Inner> &
+                                                        zCore.$brand<Brand>,
+                                                      ConvexObjectFromZodShape<Fields>,
+                                                      IsOptional
+                                                    >
+                                                  : ConvexValidatorFromZod<
+                                                      Inner,
+                                                      IsOptional
+                                                    >
                                           : // z.record()
                                             Z extends zCore.$ZodRecord<
                                                 infer Key extends

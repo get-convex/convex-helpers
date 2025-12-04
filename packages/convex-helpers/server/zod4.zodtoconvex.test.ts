@@ -10,6 +10,7 @@ import {
   VFloat64,
   VLiteral,
   VNull,
+  VObject,
   VOptional,
   VString,
   VUnion,
@@ -140,6 +141,21 @@ describe("zodToConvex + zodOutputToConvex", () => {
       testZodToConvexInputAndOutput(
         z.number().brand("myBrand"),
         v.number() as VFloat64<number & zCore.$brand<"myBrand">>,
+      );
+    });
+    test("object", () => {
+      testZodToConvexInputAndOutput(
+        z.object({ name: z.string() }).brand("myBrand"),
+        v.object({ name: v.string() }) as VObject<
+          {
+            name: string;
+          } & zCore.$brand<"myBrand">,
+          {
+            name: VString<string, "required">;
+          },
+          "required",
+          "name"
+        >,
       );
     });
   });

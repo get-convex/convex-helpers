@@ -841,6 +841,69 @@ expectTypeOf<z.output<typeof _n>>().toEqualTypeOf<number & z.BRAND<"brand">>();
 expectTypeOf<z.input<typeof _i>>().toEqualTypeOf<bigint>();
 expectTypeOf<z.output<typeof _i>>().toEqualTypeOf<bigint & z.BRAND<"brand">>();
 
+// Test branded objects preserve their brand
+const ZBrandedObject = z
+  .object({ name: z.string(), age: z.number() })
+  .brand<"User">();
+const ZBrandedObject2 = z.object({ id: z.string() }).brand("UserId");
+const _vBrandedObject = zodToConvex(ZBrandedObject);
+const _vBrandedObject2 = zodToConvex(ZBrandedObject2);
+const _vBrandedObjectOutput = zodOutputToConvex(ZBrandedObject);
+const _vBrandedObjectOutput2 = zodOutputToConvex(ZBrandedObject2);
+
+// Verify branded objects have the brand in their type
+type _BrandedObjectType = Infer<typeof _vBrandedObject>;
+type _BrandedObject2Type = Infer<typeof _vBrandedObject2>;
+type _BrandedObjectOutputType = Infer<typeof _vBrandedObjectOutput>;
+type _BrandedObjectOutput2Type = Infer<typeof _vBrandedObjectOutput2>;
+
+expectTypeOf<_BrandedObjectType>().toEqualTypeOf<
+  { name: string; age: number } & z.BRAND<"User">
+>();
+expectTypeOf<_BrandedObject2Type>().toEqualTypeOf<
+  { id: string } & z.BRAND<"UserId">
+>();
+expectTypeOf<_BrandedObjectOutputType>().toEqualTypeOf<
+  { name: string; age: number } & z.BRAND<"User">
+>();
+expectTypeOf<_BrandedObjectOutput2Type>().toEqualTypeOf<
+  { id: string } & z.BRAND<"UserId">
+>();
+
+// Test more complex branded object (like the user's example)
+const ZUserBase = z.object({
+  email: z.email(),
+  name: z.string(),
+  createdAt: z.number(),
+});
+const ZUser = ZUserBase.extend({
+  role: z.enum(["admin", "user"]),
+}).brand<"User">();
+const ZUser2 = ZUserBase.extend({ role: z.enum(["admin", "user"]) }).brand(
+  "User2",
+);
+const _vUser = zodToConvex(ZUser);
+const _vUser2 = zodToConvex(ZUser2);
+
+type UserType = Infer<typeof _vUser>;
+type User2Type = Infer<typeof _vUser2>;
+expectTypeOf<UserType>().toEqualTypeOf<
+  {
+    email: string;
+    name: string;
+    createdAt: number;
+    role: "admin" | "user";
+  } & z.BRAND<"User">
+>();
+expectTypeOf<User2Type>().toEqualTypeOf<
+  {
+    email: string;
+    name: string;
+    createdAt: number;
+    role: "admin" | "user";
+  } & z.BRAND<"User2">
+>();
+
 function sameType<T, U>(_t: T, _u: U): Equals<T, U> {
   return true as any;
 }

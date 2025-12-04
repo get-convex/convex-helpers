@@ -764,7 +764,25 @@ export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                   ? VInt64<
                                                       bigint & z.BRAND<Brand>
                                                     >
-                                                  : ConvexValidatorFromZod<Inner>
+                                                  : Inner extends z.ZodObject<
+                                                        infer ZodShape
+                                                      >
+                                                    ? VObject<
+                                                        ObjectType<{
+                                                          [key in keyof ZodShape]: ZodShape[key] extends z.ZodTypeAny
+                                                            ? ConvexValidatorFromZod<
+                                                                ZodShape[key]
+                                                              >
+                                                            : never;
+                                                        }> &
+                                                          z.BRAND<Brand>,
+                                                        {
+                                                          [key in keyof ZodShape]: ConvexValidatorFromZod<
+                                                            ZodShape[key]
+                                                          >;
+                                                        }
+                                                      >
+                                                    : ConvexValidatorFromZod<Inner>
                                             : Z extends z.ZodDefault<
                                                   infer Inner
                                                 > // Treat like optional
@@ -1170,7 +1188,25 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
                                                 ? VInt64<
                                                     bigint & z.BRAND<Brand>
                                                   >
-                                                : ConvexValidatorFromZodOutput<Inner>
+                                                : Inner extends z.ZodObject<
+                                                      infer ZodShape
+                                                    >
+                                                  ? VObject<
+                                                      ObjectType<{
+                                                        [key in keyof ZodShape]: ZodShape[key] extends z.ZodTypeAny
+                                                          ? ConvexValidatorFromZodOutput<
+                                                              ZodShape[key]
+                                                            >
+                                                          : never;
+                                                      }> &
+                                                        z.BRAND<Brand>,
+                                                      {
+                                                        [key in keyof ZodShape]: ConvexValidatorFromZodOutput<
+                                                          ZodShape[key]
+                                                        >;
+                                                      }
+                                                    >
+                                                  : ConvexValidatorFromZodOutput<Inner>
                                           : Z extends z.ZodRecord<
                                                 infer K,
                                                 infer V
