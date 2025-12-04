@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Zod support: branded object types are now supported (credit: gari-ix)
+
 ## 0.1.106
 
 - Update typedV to match the type of the installed convex validators for v.nullable
