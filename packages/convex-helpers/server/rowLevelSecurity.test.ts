@@ -38,7 +38,7 @@ const schema = defineSchema({
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 
-const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
+const withRLSImplicit = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
   const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
   if (!tokenIdentifier) throw new Error("Unauthenticated");
   return {
@@ -54,57 +54,147 @@ const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
   };
 };
 
-describe("row level security", () => {
-  test("can only read own notes", async () => {
-    const t = convexTest(schema, modules);
-    await t.run(async (ctx) => {
-      const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
-      const bId = await ctx.db.insert("users", { tokenIdentifier: "Person B" });
-      await ctx.db.insert("notes", {
-        note: "Hello from Person A",
-        userId: aId,
-      });
-      await ctx.db.insert("notes", {
-        note: "Hello from Person B",
-        userId: bId,
-      });
-    });
-    const asA = t.withIdentity({ tokenIdentifier: "Person A" });
-    const asB = t.withIdentity({ tokenIdentifier: "Person B" });
-    const notesA = await asA.run(async (ctx) => {
-      const rls = await withRLS(ctx);
-      return await rls.db.query("notes").collect();
-    });
-    expect(notesA).toMatchObject([{ note: "Hello from Person A" }]);
+const withRLSExplicit = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
+  const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+  if (!tokenIdentifier) throw new Error("Unauthenticated");
+  return {
+    ...ctx,
+    db: wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
+      notes: {
+        read: async ({ tokenIdentifier }, doc) => {
+          // @ts-expect-error - testing new explicit table name API
+          const author = (await ctx.db.get("users", doc.userId)) as {
+            tokenIdentifier: string;
+          } | null;
+          return tokenIdentifier === author?.tokenIdentifier;
+        },
+      },
+    }),
+  };
+};
 
-    const notesB = await asB.run(async (ctx) => {
-      const rls = await withRLS(ctx);
-      return await rls.db.query("notes").collect();
+describe("row level security", () => {
+  describe("can only read own notes", () => {
+    test("implicit table names", async () => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        const aId = await ctx.db.insert("users", {
+          tokenIdentifier: "Person A",
+        });
+        const bId = await ctx.db.insert("users", {
+          tokenIdentifier: "Person B",
+        });
+        await ctx.db.insert("notes", {
+          note: "Hello from Person A",
+          userId: aId,
+        });
+        await ctx.db.insert("notes", {
+          note: "Hello from Person B",
+          userId: bId,
+        });
+      });
+      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+      const asB = t.withIdentity({ tokenIdentifier: "Person B" });
+      const notesA = await asA.run(async (ctx) => {
+        const rls = await withRLSImplicit(ctx);
+        return await rls.db.query("notes").collect();
+      });
+      expect(notesA).toMatchObject([{ note: "Hello from Person A" }]);
+
+      const notesB = await asB.run(async (ctx) => {
+        const rls = await withRLSImplicit(ctx);
+        return await rls.db.query("notes").collect();
+      });
+      expect(notesB).toMatchObject([{ note: "Hello from Person B" }]);
     });
-    expect(notesB).toMatchObject([{ note: "Hello from Person B" }]);
+
+    test("explicit table names", async () => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        const aId = await ctx.db.insert("users", {
+          tokenIdentifier: "Person A",
+        });
+        const bId = await ctx.db.insert("users", {
+          tokenIdentifier: "Person B",
+        });
+        await ctx.db.insert("notes", {
+          note: "Hello from Person A",
+          userId: aId,
+        });
+        await ctx.db.insert("notes", {
+          note: "Hello from Person B",
+          userId: bId,
+        });
+      });
+      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+      const asB = t.withIdentity({ tokenIdentifier: "Person B" });
+      const notesA = await asA.run(async (ctx) => {
+        const rls = await withRLSExplicit(ctx);
+        return await rls.db.query("notes").collect();
+      });
+      expect(notesA).toMatchObject([{ note: "Hello from Person A" }]);
+
+      const notesB = await asB.run(async (ctx) => {
+        const rls = await withRLSExplicit(ctx);
+        return await rls.db.query("notes").collect();
+      });
+      expect(notesB).toMatchObject([{ note: "Hello from Person B" }]);
+    });
   });
 
-  test("cannot delete someone else's note", async () => {
-    const t = convexTest(schema, modules);
-    const noteId = await t.run(async (ctx) => {
-      const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
-      await ctx.db.insert("users", { tokenIdentifier: "Person B" });
-      return ctx.db.insert("notes", {
-        note: "Hello from Person A",
-        userId: aId,
+  describe("cannot delete someone else's note", () => {
+    test("implicit table names", async () => {
+      const t = convexTest(schema, modules);
+      const noteId = await t.run(async (ctx) => {
+        const aId = await ctx.db.insert("users", {
+          tokenIdentifier: "Person A",
+        });
+        await ctx.db.insert("users", { tokenIdentifier: "Person B" });
+        return ctx.db.insert("notes", {
+          note: "Hello from Person A",
+          userId: aId,
+        });
+      });
+      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+      const asB = t.withIdentity({ tokenIdentifier: "Person B" });
+      await expect(() =>
+        asB.run(async (ctx) => {
+          const rls = await withRLSImplicit(ctx);
+          return rls.db.delete(noteId);
+        }),
+      ).rejects.toThrow(/no read access/);
+      await asA.run(async (ctx) => {
+        const rls = await withRLSImplicit(ctx);
+        return rls.db.delete(noteId);
       });
     });
-    const asA = t.withIdentity({ tokenIdentifier: "Person A" });
-    const asB = t.withIdentity({ tokenIdentifier: "Person B" });
-    await expect(() =>
-      asB.run(async (ctx) => {
-        const rls = await withRLS(ctx);
-        return rls.db.delete(noteId);
-      }),
-    ).rejects.toThrow(/no read access/);
-    await asA.run(async (ctx) => {
-      const rls = await withRLS(ctx);
-      return rls.db.delete(noteId);
+
+    test("explicit table names", async () => {
+      const t = convexTest(schema, modules);
+      const noteId = await t.run(async (ctx) => {
+        const aId = await ctx.db.insert("users", {
+          tokenIdentifier: "Person A",
+        });
+        await ctx.db.insert("users", { tokenIdentifier: "Person B" });
+        return ctx.db.insert("notes", {
+          note: "Hello from Person A",
+          userId: aId,
+        });
+      });
+      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+      const asB = t.withIdentity({ tokenIdentifier: "Person B" });
+      await expect(() =>
+        asB.run(async (ctx) => {
+          const rls = await withRLSExplicit(ctx);
+          // @ts-expect-error - testing new explicit table name API
+          return rls.db.delete("notes", noteId);
+        }),
+      ).rejects.toThrow(/no read access/);
+      await asA.run(async (ctx) => {
+        const rls = await withRLSExplicit(ctx);
+        // @ts-expect-error - testing new explicit table name API
+        return rls.db.delete("notes", noteId);
+      });
     });
   });
 
@@ -244,39 +334,18 @@ describe("row level security", () => {
     ).rejects.toThrow(/insert access not allowed/);
   });
 
-  test("default deny policy blocks modifications to tables without rules", async () => {
-    const t = convexTest(schema, modules);
-    const docId = await t.run(async (ctx) => {
-      await ctx.db.insert("users", { tokenIdentifier: "Person A" });
-      return ctx.db.insert("publicData", { content: "Initial content" });
-    });
+  describe("default deny policy blocks modifications to tables without rules", () => {
+    test("implicit table names", async () => {
+      const t = convexTest(schema, modules);
+      const docId = await t.run(async (ctx) => {
+        await ctx.db.insert("users", { tokenIdentifier: "Person A" });
+        return ctx.db.insert("publicData", { content: "Initial content" });
+      });
 
-    const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
 
-    // Test with default allow
-    await asA.run(async (ctx) => {
-      const tokenIdentifier = (await ctx.auth.getUserIdentity())
-        ?.tokenIdentifier;
-      if (!tokenIdentifier) throw new Error("Unauthenticated");
-
-      const db = wrapDatabaseWriter(
-        { tokenIdentifier },
-        ctx.db,
-        {
-          publicData: {
-            read: async () => true, // Allow reads
-          },
-        },
-        { defaultPolicy: "allow" },
-      );
-
-      // Should be able to modify (no modify rule, default allow)
-      await db.patch(docId, { content: "Modified content" });
-    });
-
-    // Test with default deny
-    await expect(() =>
-      asA.run(async (ctx) => {
+      // Test with default allow
+      await asA.run(async (ctx) => {
         const tokenIdentifier = (await ctx.auth.getUserIdentity())
           ?.tokenIdentifier;
         if (!tokenIdentifier) throw new Error("Unauthenticated");
@@ -286,16 +355,97 @@ describe("row level security", () => {
           ctx.db,
           {
             publicData: {
-              read: async () => true, // Allow reads but no modify rule
+              read: async () => true, // Allow reads
             },
           },
-          { defaultPolicy: "deny" },
+          { defaultPolicy: "allow" },
         );
 
-        // Should NOT be able to modify (no modify rule, default deny)
-        await db.patch(docId, { content: "Blocked modification" });
-      }),
-    ).rejects.toThrow(/write access not allowed/);
+        // Should be able to modify (no modify rule, default allow)
+        await db.patch(docId, { content: "Modified content" });
+      });
+
+      // Test with default deny
+      await expect(() =>
+        asA.run(async (ctx) => {
+          const tokenIdentifier = (await ctx.auth.getUserIdentity())
+            ?.tokenIdentifier;
+          if (!tokenIdentifier) throw new Error("Unauthenticated");
+
+          const db = wrapDatabaseWriter(
+            { tokenIdentifier },
+            ctx.db,
+            {
+              publicData: {
+                read: async () => true, // Allow reads but no modify rule
+              },
+            },
+            { defaultPolicy: "deny" },
+          );
+
+          // Should NOT be able to modify (no modify rule, default deny)
+          await db.patch(docId, { content: "Blocked modification" });
+        }),
+      ).rejects.toThrow(/write access not allowed/);
+    });
+
+    test("explicit table names", async () => {
+      const t = convexTest(schema, modules);
+      const docId = await t.run(async (ctx) => {
+        await ctx.db.insert("users", { tokenIdentifier: "Person A" });
+        return ctx.db.insert("publicData", { content: "Initial content" });
+      });
+
+      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+
+      // Test with default allow
+      await asA.run(async (ctx) => {
+        const tokenIdentifier = (await ctx.auth.getUserIdentity())
+          ?.tokenIdentifier;
+        if (!tokenIdentifier) throw new Error("Unauthenticated");
+
+        const db = wrapDatabaseWriter(
+          { tokenIdentifier },
+          ctx.db,
+          {
+            publicData: {
+              read: async () => true, // Allow reads
+            },
+          },
+          { defaultPolicy: "allow" },
+        );
+
+        // Should be able to modify (no modify rule, default allow)
+        // @ts-expect-error - testing new explicit table name API
+        await db.patch("publicData", docId, { content: "Modified content" });
+      });
+
+      // Test with default deny
+      await expect(() =>
+        asA.run(async (ctx) => {
+          const tokenIdentifier = (await ctx.auth.getUserIdentity())
+            ?.tokenIdentifier;
+          if (!tokenIdentifier) throw new Error("Unauthenticated");
+
+          const db = wrapDatabaseWriter(
+            { tokenIdentifier },
+            ctx.db,
+            {
+              publicData: {
+                read: async () => true, // Allow reads but no modify rule
+              },
+            },
+            { defaultPolicy: "deny" },
+          );
+
+          // Should NOT be able to modify (no modify rule, default deny)
+          // @ts-expect-error - testing new explicit table name API
+          await db.patch("publicData", docId, {
+            content: "Blocked modification",
+          });
+        }),
+      ).rejects.toThrow(/write access not allowed/);
+    });
   });
 });
 
@@ -303,7 +453,7 @@ const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 
 const mutationWithRLS = customMutation(
   mutation,
-  customCtx((ctx) => withRLS(ctx)),
+  customCtx((ctx) => withRLSImplicit(ctx)),
 );
 
 customMutation(
