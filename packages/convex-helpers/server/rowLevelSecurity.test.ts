@@ -38,7 +38,7 @@ const schema = defineSchema({
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 type DatabaseWriter = GenericDatabaseWriter<DataModel>;
 
-const withRLSImplicit = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
+const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
   const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
   if (!tokenIdentifier) throw new Error("Unauthenticated");
   return {
@@ -54,92 +54,34 @@ const withRLSImplicit = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
   };
 };
 
-const withRLSExplicit = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
-  const tokenIdentifier = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
-  if (!tokenIdentifier) throw new Error("Unauthenticated");
-  return {
-    ...ctx,
-    db: wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
-      notes: {
-        read: async ({ tokenIdentifier }, doc) => {
-          // @ts-expect-error - testing new explicit table name API
-          const author = (await ctx.db.get("users", doc.userId)) as {
-            tokenIdentifier: string;
-          } | null;
-          return tokenIdentifier === author?.tokenIdentifier;
-        },
-      },
-    }),
-  };
-};
-
 describe("row level security", () => {
-  describe("can only read own notes", () => {
-    test("implicit table names", async () => {
-      const t = convexTest(schema, modules);
-      await t.run(async (ctx) => {
-        const aId = await ctx.db.insert("users", {
-          tokenIdentifier: "Person A",
-        });
-        const bId = await ctx.db.insert("users", {
-          tokenIdentifier: "Person B",
-        });
-        await ctx.db.insert("notes", {
-          note: "Hello from Person A",
-          userId: aId,
-        });
-        await ctx.db.insert("notes", {
-          note: "Hello from Person B",
-          userId: bId,
-        });
+  test("can only read own notes", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const aId = await ctx.db.insert("users", { tokenIdentifier: "Person A" });
+      const bId = await ctx.db.insert("users", { tokenIdentifier: "Person B" });
+      await ctx.db.insert("notes", {
+        note: "Hello from Person A",
+        userId: aId,
       });
-      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
-      const asB = t.withIdentity({ tokenIdentifier: "Person B" });
-      const notesA = await asA.run(async (ctx) => {
-        const rls = await withRLSImplicit(ctx);
-        return await rls.db.query("notes").collect();
+      await ctx.db.insert("notes", {
+        note: "Hello from Person B",
+        userId: bId,
       });
-      expect(notesA).toMatchObject([{ note: "Hello from Person A" }]);
-
-      const notesB = await asB.run(async (ctx) => {
-        const rls = await withRLSImplicit(ctx);
-        return await rls.db.query("notes").collect();
-      });
-      expect(notesB).toMatchObject([{ note: "Hello from Person B" }]);
     });
-
-    test("explicit table names", async () => {
-      const t = convexTest(schema, modules);
-      await t.run(async (ctx) => {
-        const aId = await ctx.db.insert("users", {
-          tokenIdentifier: "Person A",
-        });
-        const bId = await ctx.db.insert("users", {
-          tokenIdentifier: "Person B",
-        });
-        await ctx.db.insert("notes", {
-          note: "Hello from Person A",
-          userId: aId,
-        });
-        await ctx.db.insert("notes", {
-          note: "Hello from Person B",
-          userId: bId,
-        });
-      });
-      const asA = t.withIdentity({ tokenIdentifier: "Person A" });
-      const asB = t.withIdentity({ tokenIdentifier: "Person B" });
-      const notesA = await asA.run(async (ctx) => {
-        const rls = await withRLSExplicit(ctx);
-        return await rls.db.query("notes").collect();
-      });
-      expect(notesA).toMatchObject([{ note: "Hello from Person A" }]);
-
-      const notesB = await asB.run(async (ctx) => {
-        const rls = await withRLSExplicit(ctx);
-        return await rls.db.query("notes").collect();
-      });
-      expect(notesB).toMatchObject([{ note: "Hello from Person B" }]);
+    const asA = t.withIdentity({ tokenIdentifier: "Person A" });
+    const asB = t.withIdentity({ tokenIdentifier: "Person B" });
+    const notesA = await asA.run(async (ctx) => {
+      const rls = await withRLS(ctx);
+      return await rls.db.query("notes").collect();
     });
+    expect(notesA).toMatchObject([{ note: "Hello from Person A" }]);
+
+    const notesB = await asB.run(async (ctx) => {
+      const rls = await withRLS(ctx);
+      return await rls.db.query("notes").collect();
+    });
+    expect(notesB).toMatchObject([{ note: "Hello from Person B" }]);
   });
 
   describe("cannot delete someone else's note", () => {
@@ -159,12 +101,12 @@ describe("row level security", () => {
       const asB = t.withIdentity({ tokenIdentifier: "Person B" });
       await expect(() =>
         asB.run(async (ctx) => {
-          const rls = await withRLSImplicit(ctx);
+          const rls = await withRLS(ctx);
           return rls.db.delete(noteId);
         }),
       ).rejects.toThrow(/no read access/);
       await asA.run(async (ctx) => {
-        const rls = await withRLSImplicit(ctx);
+        const rls = await withRLS(ctx);
         return rls.db.delete(noteId);
       });
     });
@@ -185,13 +127,13 @@ describe("row level security", () => {
       const asB = t.withIdentity({ tokenIdentifier: "Person B" });
       await expect(() =>
         asB.run(async (ctx) => {
-          const rls = await withRLSExplicit(ctx);
+          const rls = await withRLS(ctx);
           // @ts-expect-error - testing new explicit table name API
           return rls.db.delete("notes", noteId);
         }),
       ).rejects.toThrow(/no read access/);
       await asA.run(async (ctx) => {
-        const rls = await withRLSExplicit(ctx);
+        const rls = await withRLS(ctx);
         // @ts-expect-error - testing new explicit table name API
         return rls.db.delete("notes", noteId);
       });
@@ -453,7 +395,7 @@ const mutation = mutationGeneric as MutationBuilder<DataModel, "public">;
 
 const mutationWithRLS = customMutation(
   mutation,
-  customCtx((ctx) => withRLSImplicit(ctx)),
+  customCtx((ctx) => withRLS(ctx)),
 );
 
 customMutation(
