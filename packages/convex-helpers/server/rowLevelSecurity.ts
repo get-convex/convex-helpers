@@ -272,7 +272,6 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   db: GenericDatabaseWriter<DataModel>;
   system: GenericDatabaseWriter<DataModel>["system"];
   reader: GenericDatabaseReader<DataModel>;
-  // reader: WrapReader<Ctx, DataModel>;
   rules: Rules<Ctx, DataModel>;
   config: RLSConfig;
 
