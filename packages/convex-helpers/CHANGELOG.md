@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Zod support: branded object types are now supported (credit: gari-ix)
+- Fixes `skipConvexValidation` for zod custom functions to still do zod validation.
 
 ## 0.1.106
 
