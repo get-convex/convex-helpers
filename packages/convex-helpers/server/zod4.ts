@@ -849,7 +849,13 @@ function customFnBuilder(
     customization.input ?? NoOp.input;
   const inputArgs = customization.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
-    const { args, handler = fn, returns: maybeObject, ...extra } = fn;
+    const {
+      args,
+      handler = fn,
+      skipConvexValidation = false,
+      returns: maybeObject,
+      ...extra
+    } = fn;
 
     const returns =
       maybeObject && !(maybeObject instanceof zCore.$ZodType)
@@ -857,11 +863,11 @@ function customFnBuilder(
         : maybeObject;
 
     const returnValidator =
-      returns && !fn.skipConvexValidation
+      returns && !skipConvexValidation
         ? { returns: zodOutputToConvex(returns) }
         : null;
 
-    if (args && !fn.skipConvexValidation) {
+    if (args) {
       let argsValidator = args;
       if (argsValidator instanceof zCore.$ZodType) {
         if (argsValidator instanceof zCore.$ZodObject) {
@@ -875,7 +881,9 @@ function customFnBuilder(
       }
       const convexValidator = zodToConvexFields(argsValidator);
       return builder({
-        args: addFieldsToValidator(convexValidator, inputArgs),
+        args: skipConvexValidation
+          ? undefined
+          : addFieldsToValidator(convexValidator, inputArgs),
         ...returnValidator,
         handler: async (ctx: any, allArgs: any) => {
           const added = await customInput(
@@ -908,10 +916,10 @@ function customFnBuilder(
         },
       });
     }
-    if (Object.keys(inputArgs).length > 0 && !fn.skipConvexValidation) {
+    if (skipConvexValidation && Object.keys(inputArgs).length > 0) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "customization, you must declare the arguments for the function too.",
+          "customization, you cannot skip convex validation.",
       );
     }
     return builder({
