@@ -11,6 +11,7 @@ import type {
   GenericQueryCtx,
   QueryInitializer,
   TableNamesInDataModel,
+  WithOptionalSystemFields,
   WithoutSystemFields,
 } from "convex/server";
 import type { GenericId } from "convex/values";
@@ -235,12 +236,18 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
     return await this.rules[tableName]!.read!(this.ctx, doc);
   }
 
-  async get<TableName extends string>(
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
     id: GenericId<TableName>,
-  ): Promise<DocumentByName<DataModel, TableName> | null> {
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
+  async get(arg0: any, arg1?: any): Promise<any> {
+    const [tableName, id]: [string | null, GenericId<string>] =
+      arg1 !== undefined ? [arg0, arg1] : [this.tableName(arg0), arg0];
     const doc = await this.db.get(id);
     if (doc) {
-      const tableName = this.tableName(id);
       if (tableName && !(await this.predicate(tableName, doc))) {
         return null;
       }
@@ -291,12 +298,14 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     this.rules = rules;
     this.config = config ?? { defaultPolicy: "allow" };
   }
+
   normalizeId<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName,
     id: string,
   ): GenericId<TableName> | null {
     return this.db.normalizeId(tableName, id);
   }
+
   async insert<TableName extends string>(
     table: TableName,
     value: any,
@@ -311,6 +320,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     }
     return await this.db.insert(table, value);
   }
+
   tableName<TableName extends string>(
     id: GenericId<TableName>,
   ): TableName | null {
@@ -321,16 +331,22 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     }
     return null;
   }
-  async checkAuth<TableName extends string>(id: GenericId<TableName>) {
+
+  async checkAuth<TableName extends string>(
+    tableNameArg: string | null,
+    id: GenericId<TableName>,
+  ) {
     // Note all writes already do a `db.get` internally, so this isn't
     // an extra read; it's just populating the cache earlier.
     // Since we call `this.get`, read access controls apply and this may return
     // null even if the document exists.
-    const doc = await this.get(id);
+    const doc = tableNameArg
+      ? await this.get(tableNameArg as any, id)
+      : await this.get(id);
     if (doc === null) {
       throw new Error("no read access or doc does not exist");
     }
-    const tableName = this.tableName(id);
+    const tableName = tableNameArg ?? this.tableName(id);
     if (tableName === null) {
       return;
     }
@@ -338,28 +354,75 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
       throw new Error("write access not allowed");
     }
   }
-  async patch<TableName extends string>(
+
+  patch<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
     id: GenericId<TableName>,
-    value: Partial<any>,
-  ): Promise<void> {
-    await this.checkAuth(id);
-    return await this.db.patch(id, value);
-  }
-  async replace<TableName extends string>(
+    value: Partial<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  patch<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
-    value: any,
-  ): Promise<void> {
-    await this.checkAuth(id);
-    return await this.db.replace(id, value);
+    value: Partial<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  async patch(arg0: any, arg1: any, arg2?: any): Promise<void> {
+    const [tableName, id, value]: [string | null, GenericId<string>, any] =
+      arg2 !== undefined ? [arg0, arg1, arg2] : [null, arg0, arg1];
+    await this.checkAuth(tableName, id);
+    return tableName
+      ? // @ts-expect-error -- patch supports 3 args since convex@1.25.4
+        this.db.patch(tableName, id, value)
+      : this.db.patch(id, value);
   }
-  async delete(id: GenericId<string>): Promise<void> {
-    await this.checkAuth(id);
-    return await this.db.delete(id);
+
+  replace<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  replace<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+    value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
+  ): Promise<void>;
+  async replace(arg0: any, arg1: any, arg2?: any): Promise<void> {
+    const [tableName, id, value]: [string | null, GenericId<string>, any] =
+      arg2 !== undefined ? [arg0, arg1, arg2] : [null, arg0, arg1];
+    await this.checkAuth(tableName, id);
+    return tableName
+      ? // @ts-expect-error -- replace supports 3 args since convex@1.25.4
+        this.db.replace(tableName, id, value)
+      : this.db.replace(id, value);
   }
-  get<TableName extends string>(id: GenericId<TableName>): Promise<any> {
-    return this.reader.get(id);
+
+  delete<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+  ): Promise<void>;
+  delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
+  async delete(arg0: any, arg1?: any): Promise<void> {
+    const [tableName, id]: [string | null, GenericId<string>] =
+      arg1 !== undefined ? [arg0, arg1] : [null, arg0];
+    await this.checkAuth(tableName, id);
+
+    return tableName
+      ? // @ts-expect-error -- delete supports 2 args since convex@1.25.4
+        this.db.delete(tableName, id)
+      : this.db.delete(id);
+  }
+
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    table: NonUnion<TableName>,
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
+  get<TableName extends TableNamesInDataModel<DataModel>>(
+    id: GenericId<TableName>,
+  ): Promise<DocumentByName<DataModel, TableName> | null>;
+  get(arg0: any, arg1?: any): Promise<any> {
+    // @ts-expect-error -- get supports 2 args since convex@1.25.4
+    return this.reader.get(arg0, arg1);
   }
   query<TableName extends string>(tableName: TableName): QueryInitializer<any> {
     return this.reader.query(tableName);
   }
 }
+
+type NonUnion<T> = T extends never ? never : T;
