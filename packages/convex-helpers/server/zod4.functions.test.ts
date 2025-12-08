@@ -182,6 +182,37 @@ export const transformAsync = zQuery({
   }),
 });
 
+export const testQueryWithSkipConvexValidation = zQuery({
+  args: {
+    name: z.string(),
+    age: z.number(),
+    returnBadData: z.boolean().default(false),
+  },
+  handler: async (_ctx, args) => {
+    assertType<{ name: string; age: number }>(args);
+    const { name, age, returnBadData, ...rest } = args;
+    if (Object.keys(rest).length > 0) {
+      throw new Error("extraArg should be dropped");
+    }
+    if (returnBadData) {
+      return {
+        message: "bad data",
+        doubledAge: 0n as any,
+      };
+    }
+    return {
+      message: `Hello ${name}, you are ${age} years old`,
+      doubledAge: age * 2,
+      extraArg: "extraArg",
+    };
+  },
+  returns: z.object({
+    message: z.string(),
+    doubledAge: z.number(),
+  }),
+  skipConvexValidation: true,
+});
+
 /**
  * Test codec in query args and return value
  */
@@ -264,6 +295,7 @@ const testApi: ApiFromModules<{
     testQueryNoArgs: typeof testQueryNoArgs;
     testMutation: typeof testMutation;
     testAction: typeof testAction;
+    testQueryWithSkipConvexValidation: typeof testQueryWithSkipConvexValidation;
     returnsNothing: typeof returnsNothing;
     transform: typeof transform;
     transformAsync: typeof transformAsync;
@@ -398,6 +430,39 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
     });
   });
 
+  describe("skipConvexValidation", () => {
+    test("zCustomQuery with skipConvexValidation", async () => {
+      const t = convexTest(schema, modules);
+      const args = {
+        name: "Alice",
+        age: 30,
+        // Should get dropped
+        extraArg: "extraArg",
+      };
+      const response = await t.query(
+        testApi.testQueryWithSkipConvexValidation,
+        args,
+      );
+      expect(response).toMatchObject({
+        message: "Hello Alice, you are 30 years old",
+        doubledAge: 60,
+      });
+    });
+    test("throwing ConvexError on zod arg validation", async () => {
+      const t = convexTest(schema, modules);
+      await expect(
+        t.query(testApi.testQueryWithSkipConvexValidation, {
+          name: 123,
+        } as any),
+      ).rejects.toThrowError(
+        expect.objectContaining({
+          data: expect.stringMatching(
+            /(?=.*"ZodError")(?=.*"name")(?=.*"invalid_type")(?=.*"expected")(?=.*"string")/s,
+          ),
+        }),
+      );
+    });
+  });
   describe("transform", () => {
     test("calling a function with synchronous transforms in arguments and return values", async () => {
       const t = convexTest(schema, modules);
