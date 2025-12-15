@@ -128,13 +128,11 @@ describe("row level security", () => {
       await expect(() =>
         asB.run(async (ctx) => {
           const rls = await withRLS(ctx);
-          // @ts-expect-error - testing new explicit table name API
           return rls.db.delete("notes", noteId);
         }),
       ).rejects.toThrow(/no read access/);
       await asA.run(async (ctx) => {
         const rls = await withRLS(ctx);
-        // @ts-expect-error - testing new explicit table name API
         return rls.db.delete("notes", noteId);
       });
     });
@@ -358,7 +356,6 @@ describe("row level security", () => {
         );
 
         // Should be able to modify (no modify rule, default allow)
-        // @ts-expect-error - testing new explicit table name API
         await db.patch("publicData", docId, { content: "Modified content" });
       });
 
@@ -381,7 +378,6 @@ describe("row level security", () => {
           );
 
           // Should NOT be able to modify (no modify rule, default deny)
-          // @ts-expect-error - testing new explicit table name API
           await db.patch("publicData", docId, {
             content: "Blocked modification",
           });
