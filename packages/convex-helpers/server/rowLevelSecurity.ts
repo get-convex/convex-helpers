@@ -369,8 +369,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
       arg2 !== undefined ? [arg0, arg1, arg2] : [null, arg0, arg1];
     await this.checkAuth(tableName, id);
     return tableName
-      ? // @ts-expect-error -- patch supports 3 args since convex@1.25.4
-        this.db.patch(tableName, id, value)
+      ? this.db.patch(tableName, id, value)
       : this.db.patch(id, value);
   }
 
@@ -388,8 +387,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
       arg2 !== undefined ? [arg0, arg1, arg2] : [null, arg0, arg1];
     await this.checkAuth(tableName, id);
     return tableName
-      ? // @ts-expect-error -- replace supports 3 args since convex@1.25.4
-        this.db.replace(tableName, id, value)
+      ? this.db.replace(tableName, id, value)
       : this.db.replace(id, value);
   }
 
@@ -403,10 +401,7 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
       arg1 !== undefined ? [arg0, arg1] : [null, arg0];
     await this.checkAuth(tableName, id);
 
-    return tableName
-      ? // @ts-expect-error -- delete supports 2 args since convex@1.25.4
-        this.db.delete(tableName, id)
-      : this.db.delete(id);
+    return tableName ? this.db.delete(tableName, id) : this.db.delete(id);
   }
 
   get<TableName extends TableNamesInDataModel<DataModel>>(
@@ -417,7 +412,6 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     id: GenericId<TableName>,
   ): Promise<DocumentByName<DataModel, TableName> | null>;
   get(arg0: any, arg1?: any): Promise<any> {
-    // @ts-expect-error -- get supports 2 args since convex@1.25.4
     return this.reader.get(arg0, arg1);
   }
   query<TableName extends string>(tableName: TableName): QueryInitializer<any> {
