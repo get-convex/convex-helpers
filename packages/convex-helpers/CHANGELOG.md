@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.108
+
+- `makeUseQueryWithStatus`: fix handling of some argument values
+  (credit: RhysSullivan)
+- Triggers: fix handling of `ctx.db` calls with a table name parameter
+
 ## 0.1.107
 
 - Zod support: branded object types are now supported (credit: gary-ix)
