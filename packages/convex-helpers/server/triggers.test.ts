@@ -13,7 +13,7 @@ import {
   mutationGeneric,
 } from "convex/server";
 import { v } from "convex/values";
-import { describe, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
