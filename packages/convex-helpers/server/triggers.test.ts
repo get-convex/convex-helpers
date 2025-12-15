@@ -32,6 +32,10 @@ const schema = defineSchema({
     lastName: v.string(),
     fullName: v.string(),
   }),
+
+  userCount: defineTable({
+    count: v.number(),
+  }),
 });
 type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 const rawMutation = mutationGeneric as MutationBuilder<DataModel, "public">;
@@ -70,6 +74,20 @@ triggers.register("usersExplicitIncorrectTable", async (ctx, change) => {
   }
 });
 
+// Keep a denormalized count of all users.
+triggers.register("usersExplicit", async (ctx, change) => {
+  const countDoc = await ctx.db.query("userCount").first();
+  const currentCount = countDoc?.count ?? 0;
+  const countId =
+    countDoc?._id ?? (await ctx.db.insert("userCount", { count: 0 }));
+
+  if (change.operation === "insert") {
+    await ctx.db.patch("userCount", countId, { count: currentCount + 1 });
+  } else if (change.operation === "delete") {
+    await ctx.db.patch("userCount", countId, { count: currentCount - 1 });
+  }
+});
+
 const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 
 export const createUser = mutation({
@@ -105,11 +123,30 @@ export const createUserExplicitIncorrectTable = mutation({
   },
 });
 
+export const updateUser = mutation({
+  args: {
+    id: v.id("usersExplicit"),
+    firstName: v.string(),
+  },
+  handler: async (ctx, { id, firstName }) => {
+    return ctx.db.patch("usersExplicit", id, { firstName });
+  },
+});
+
+export const deleteUser = mutation({
+  args: { id: v.id("usersExplicit") },
+  handler: async (ctx, args) => {
+    return ctx.db.delete("usersExplicit", args.id);
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     createUser: typeof createUser;
     createUserExplicit: typeof createUserExplicit;
     createUserExplicitIncorrectTable: typeof createUserExplicitIncorrectTable;
+    updateUser: typeof updateUser;
+    deleteUser: typeof deleteUser;
   };
 }>["fns"] = anyApi["triggers.test"] as any;
 
@@ -147,4 +184,41 @@ test("trigger with wrong usage of explicit IDs fails", async () => {
   ).rejects.toThrow(
     "Invalid argument `id`, expected ID in table 'users' but got ID in table 'usersExplicitIncorrectTable'",
   );
+});
+
+test("create, update and delete", async () => {
+  const t = convexTest(schema, modules);
+
+  async function getUserCount() {
+    return await t.run(async (ctx) => {
+      const countDoc = await ctx.db.query("userCount").first();
+      return countDoc?.count ?? null;
+    });
+  }
+
+  expect(await getUserCount()).toBeNull();
+
+  const userId = await t.mutation(testApi.createUserExplicit, {
+    firstName: "Jane",
+    lastName: "Smith",
+  });
+  expect(await getUserCount()).toBe(1);
+
+  const user2Id = await t.mutation(testApi.createUserExplicit, {
+    firstName: "Alex",
+    lastName: "Johnson",
+  });
+  expect(await getUserCount()).toBe(2);
+
+  await t.mutation(testApi.updateUser, {
+    id: userId,
+    firstName: "Janet",
+  });
+  expect(await getUserCount()).toBe(2);
+
+  await t.mutation(testApi.deleteUser, { id: userId });
+  expect(await getUserCount()).toBe(1);
+
+  await t.mutation(testApi.deleteUser, { id: user2Id });
+  expect(await getUserCount()).toBe(0);
 });

@@ -439,7 +439,7 @@ async function _queueTriggers<
       db: writerWithTriggers(ctx, innerDb, triggers, true),
       innerDb: innerDb,
     };
-    for (const trigger of triggers.registered[tableName]!) {
+    for (const trigger of triggers.registered[tableName] ?? []) {
       triggerQueue.push(async () => {
         await trigger(recursiveCtx, change);
       });
