@@ -13,7 +13,7 @@ import {
   mutationGeneric,
 } from "convex/server";
 import { v } from "convex/values";
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { modules } from "./setup.test.js";
 
 const schema = defineSchema({
@@ -108,11 +108,27 @@ export const createUserExplicitIncorrectTable = mutation({
   },
 });
 
+export const deleteUser = mutation({
+  args: { id: v.id("users") },
+  handler: async (ctx, args) => {
+    return ctx.db.delete(args.id);
+  },
+});
+
+export const deleteUserExplicit = mutation({
+  args: { id: v.id("usersExplicit") },
+  handler: async (ctx, args) => {
+    return ctx.db.delete("usersExplicit", args.id);
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     createUser: typeof createUser;
     createUserExplicit: typeof createUserExplicit;
     createUserExplicitIncorrectTable: typeof createUserExplicitIncorrectTable;
+    deleteUser: typeof deleteUser;
+    deleteUserExplicit: typeof deleteUserExplicit;
   };
 }>["fns"] = anyApi["triggers.test"] as any;
 
@@ -150,4 +166,30 @@ test("trigger with wrong usage of explicit IDs fails", async () => {
   ).rejects.toThrow(
     "Invalid argument `id`, expected ID in table 'users' but got ID in table 'usersExplicitIncorrectTable'",
   );
+});
+
+describe("trigger on delete", () => {
+  test("implicit IDs", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => {
+      return ctx.db.insert("users", {
+        firstName: "John",
+        lastName: "Doe",
+        fullName: "John Doe",
+      });
+    });
+    await t.mutation(testApi.deleteUser, { id: userId });
+  });
+
+  test("explicit IDs", async () => {
+    const t = convexTest(schema, modules);
+    const userId = await t.run(async (ctx) => {
+      return ctx.db.insert("usersExplicit", {
+        firstName: "John",
+        lastName: "Doe",
+        fullName: "John Doe",
+      });
+    });
+    await t.mutation(testApi.deleteUserExplicit, { id: userId });
+  });
 });
