@@ -50,12 +50,7 @@ triggers.register("usersExplicit", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
-      await ctx.db.patch(
-        "usersExplicit",
-        change.id,
-        // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
-        { fullName },
-      );
+      await ctx.db.patch("usersExplicit", change.id, { fullName });
     }
   }
 });
@@ -63,12 +58,7 @@ triggers.register("usersExplicitIncorrectTable", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
-      await ctx.db.patch(
-        "users",
-        change.id,
-        // @ts-expect-error -- patch supports 3 args since convex@1.25.4, but the type is marked as internal
-        { fullName },
-      );
+      await ctx.db.patch("users", change.id, { fullName });
     }
   }
 });
