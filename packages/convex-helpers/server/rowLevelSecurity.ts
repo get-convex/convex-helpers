@@ -237,8 +237,8 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   }
 
   get<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
   ): Promise<DocumentByName<DataModel, TableName> | null>;
   get<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
@@ -356,8 +356,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
 
   patch<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
     value: Partial<DocumentByName<DataModel, TableName>>,
   ): Promise<void>;
   patch<TableName extends TableNamesInDataModel<DataModel>>(
@@ -374,8 +374,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
 
   replace<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
     value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<void>;
   replace<TableName extends TableNamesInDataModel<DataModel>>(
@@ -392,8 +392,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
 
   delete<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
   ): Promise<void>;
   delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
   async delete(arg0: any, arg1?: any): Promise<void> {
@@ -405,8 +405,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
   }
 
   get<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
   ): Promise<DocumentByName<DataModel, TableName> | null>;
   get<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
