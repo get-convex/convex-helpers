@@ -158,6 +158,7 @@ test("trigger denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- Testing the old API
     const user = await ctx.db.get(userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
@@ -170,7 +171,7 @@ test("trigger with explicit IDs denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
 });
