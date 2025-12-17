@@ -246,7 +246,10 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   async get(arg0: any, arg1?: any): Promise<any> {
     const [tableName, id]: [string | null, GenericId<string>] =
       arg1 !== undefined ? [arg0, arg1] : [this.tableName(arg0), arg0];
-    const doc = await this.db.get(id);
+    const doc = tableName
+      ? await this.db.get(tableName, id)
+      : // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
+        await this.db.get(id);
     if (doc) {
       if (tableName && !(await this.predicate(tableName, doc))) {
         return null;
@@ -370,7 +373,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     await this.checkAuth(tableName, id);
     return tableName
       ? this.db.patch(tableName, id, value)
-      : this.db.patch(id, value);
+      : // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
+        this.db.patch(id, value);
   }
 
   replace<TableName extends TableNamesInDataModel<DataModel>>(
@@ -388,7 +392,8 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
     await this.checkAuth(tableName, id);
     return tableName
       ? this.db.replace(tableName, id, value)
-      : this.db.replace(id, value);
+      : // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
+        this.db.replace(id, value);
   }
 
   delete<TableName extends TableNamesInDataModel<DataModel>>(
@@ -401,7 +406,10 @@ class WrapWriter<Ctx, DataModel extends GenericDataModel>
       arg1 !== undefined ? [arg0, arg1] : [null, arg0];
     await this.checkAuth(tableName, id);
 
-    return tableName ? this.db.delete(tableName, id) : this.db.delete(id);
+    return tableName
+      ? this.db.delete(tableName, id)
+      : // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
+        this.db.delete(id);
   }
 
   get<TableName extends TableNamesInDataModel<DataModel>>(
