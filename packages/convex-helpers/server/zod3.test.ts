@@ -581,7 +581,7 @@ test("zod kitchen sink", async () => {
   });
   const stored = await t.run(async (ctx) => {
     const id = await ctx.db.insert("sink", kitchenSink);
-    return ctx.db.get(id);
+    return ctx.db.get("sink", id);
   });
   expect(stored).toMatchObject(omit(kitchenSink, ["optional", "default"]));
 });

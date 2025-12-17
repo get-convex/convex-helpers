@@ -414,7 +414,7 @@ export function makeMigration<
           // 2. The migration is being resumed at a different cursor.
           // 3. There are two instances of the same migration racing.
           const worker =
-            state.workerId && (await ctx.db.system.get(state.workerId));
+            state.workerId && (await ctx.db.system.get("_scheduled_functions", state.workerId));
           if (
             worker &&
             (worker.state.kind === "pending" ||
@@ -631,7 +631,7 @@ export async function getStatus<
     docs.reverse().map(async (migration) => {
       const { workerId, isDone } = migration;
       if (isDone) return migration;
-      const worker = workerId && (await ctx.db.system.get(workerId));
+      const worker = workerId && (await ctx.db.system.get("_scheduled_functions", workerId));
       return {
         ...migration,
         workerStatus: worker?.state.kind,
@@ -669,7 +669,7 @@ export async function cancelMigration<DataModel extends GenericDataModel>(
   if (state.isDone) {
     return state;
   }
-  const worker = state.workerId && (await ctx.db.system.get(state.workerId));
+  const worker = state.workerId && (await ctx.db.system.get("_scheduled_functions", state.workerId));
   if (
     worker &&
     (worker.state.kind === "pending" || worker.state.kind === "inProgress")

@@ -46,6 +46,7 @@ triggers.register("users", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- Testing the old API
       await ctx.db.patch(change.id, { fullName });
     }
   }

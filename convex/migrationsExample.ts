@@ -30,10 +30,10 @@ export const increment = migration({
 export const cleanUpBrokenRefs = migration({
   table: "join_table_example",
   migrateOne: async (ctx, doc) => {
-    const user = await ctx.db.get(doc.userId);
-    const presence = await ctx.db.get(doc.presenceId);
+    const user = await ctx.db.get("users", doc.userId);
+    const presence = await ctx.db.get("presence", doc.presenceId);
     if (!user || !presence) {
-      await ctx.db.delete(doc._id);
+      await ctx.db.delete("join_table_example", doc._id);
     }
   },
 });

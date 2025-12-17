@@ -131,7 +131,7 @@ export const logIn = mutationWithSession({
       .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
       .collect();
     await Promise.all(
-      presenceDocs.map((doc) => ctx.db.patch(doc._id, { user: args.new })),
+      presenceDocs.map((doc) => ctx.db.patch("presence", doc._id, { user: args.new })),
     );
   },
 });
@@ -144,7 +144,7 @@ export const logOut = mutationWithSession({
       .query("presence")
       .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
       .collect();
-    await Promise.all(presenceDocs.map((doc) => ctx.db.delete(doc._id)));
+    await Promise.all(presenceDocs.map((doc) => ctx.db.delete("presence", doc._id)));
   },
 });
 
@@ -183,7 +183,7 @@ export const joinRoom = mutationWithSession({
       )
       .first();
     if (existing) {
-      await ctx.db.patch(existing._id, { updated: Date.now() });
+      await ctx.db.patch("presence", existing._id, { updated: Date.now() });
     } else {
       await ctx.db.insert("presence", {
         user: ctx.sessionId,
