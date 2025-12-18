@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.109 (upcoming)
+
+- Triggers/row-level security: fix a type issue with the `ctx.db` APIs with
+  table name arguments (see the changelog of
+  [`convex@1.31.2`](https://github.com/get-convex/convex-js/blob/main/CHANGELOG.md#1312))
+
 ## 0.1.108
 
 - `makeUseQueryWithStatus`: fix handling of some argument values

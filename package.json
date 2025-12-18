@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "classnames": "^2.3.2",
-    "convex": "^1.31.0",
+    "convex": "^1.31.2",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^19.2.3",
