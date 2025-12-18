@@ -171,8 +171,8 @@ export class DatabaseWriterWithTriggers<
   }
 
   delete<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
   ): Promise<void>;
   delete(id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
   delete(arg0: any, arg1?: any): Promise<void> {
@@ -180,8 +180,8 @@ export class DatabaseWriterWithTriggers<
   }
 
   get<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
   ): Promise<DocumentByName<DataModel, TableName> | null>;
   get<TableName extends TableNamesInDataModel<DataModel>>(
     id: GenericId<TableName>,
@@ -198,8 +198,8 @@ export class DatabaseWriterWithTriggers<
   }
 
   patch<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
     value: PatchValue<DocumentByName<DataModel, TableName>>,
   ): Promise<void>;
   patch<TableName extends TableNamesInDataModel<DataModel>>(
@@ -224,8 +224,8 @@ export class DatabaseWriterWithTriggers<
   }
 
   replace<TableName extends TableNamesInDataModel<DataModel>>(
-    table: NonUnion<TableName>,
-    id: GenericId<TableName>,
+    table: TableName,
+    id: GenericId<NonUnion<TableName>>,
     value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<void>;
   replace<TableName extends TableNamesInDataModel<DataModel>>(
@@ -252,8 +252,8 @@ export function writerWithTriggers<
 ): GenericDatabaseWriter<DataModel> {
   const patch: {
     <TableName extends TableNamesInDataModel<DataModel>>(
-      table: NonUnion<TableName>,
-      id: GenericId<TableName>,
+      table: TableName,
+      id: GenericId<NonUnion<TableName>>,
       value: PatchValue<DocumentByName<DataModel, TableName>>,
     ): Promise<void>;
     <TableName extends TableNamesInDataModel<DataModel>>(
@@ -293,8 +293,8 @@ export function writerWithTriggers<
 
   const replace: {
     <TableName extends TableNamesInDataModel<DataModel>>(
-      table: NonUnion<TableName>,
-      id: GenericId<TableName>,
+      table: TableName,
+      id: GenericId<NonUnion<TableName>>,
       value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
     ): Promise<void>;
     <TableName extends TableNamesInDataModel<DataModel>>(
@@ -334,8 +334,8 @@ export function writerWithTriggers<
 
   const delete_: {
     <TableName extends TableNamesInDataModel<DataModel>>(
-      table: NonUnion<TableName>,
-      id: GenericId<TableName>,
+      table: TableName,
+      id: GenericId<NonUnion<TableName>>,
     ): Promise<void>;
     (id: GenericId<TableNamesInDataModel<DataModel>>): Promise<void>;
   } = async (arg0: any, arg1?: any) => {
