@@ -348,7 +348,7 @@ export function writerWithTriggers<
 
   async function _delete<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName | null,
-    id: GenericId<TableNamesInDataModel<DataModel>>,
+    id: GenericId<NonUnion<TableNamesInDataModel<DataModel>>>,
   ): Promise<void> {
     if (!tableName) {
       return await innerDb.delete(id);
