@@ -350,7 +350,7 @@ export function writerWithTriggers<
 
   async function _delete<TableName extends TableNamesInDataModel<DataModel>>(
     tableName: TableName | null,
-    id: GenericId<TableNamesInDataModel<DataModel>>,
+    id: GenericId<NonUnion<TableNamesInDataModel<DataModel>>>,
   ): Promise<void> {
     if (!tableName) {
       // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here–
