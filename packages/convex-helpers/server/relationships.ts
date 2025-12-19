@@ -15,6 +15,22 @@ import { asyncMap, nullThrows } from "../index.js";
 
 /**
  * Gets a document by its ID. Throws if not found.
+ *
+ * @param ctx The database reader to use to get the document.
+ * @param table The table name.
+ * @param id The id of the document to get.
+ * @returns The document with the given ID.
+ */
+export async function getOrThrow<
+  DataModel extends GenericDataModel,
+  Table extends TableNamesInDataModel<DataModel>,
+>(
+  ctx: { db: GenericDatabaseReader<DataModel> },
+  table: Table,
+  id: GenericId<Table>,
+): Promise<DocumentByName<DataModel, Table>>;
+/**
+ * Gets a document by its ID. Throws if not found.
  * @param ctx The database reader to use to get the document.
  * @param id The id of the document to get.
  * @returns The document with the given ID.
@@ -25,14 +41,41 @@ export async function getOrThrow<
 >(
   ctx: { db: GenericDatabaseReader<DataModel> },
   id: GenericId<Table>,
-): Promise<DocumentByName<DataModel, Table>> {
-  const doc = await ctx.db.get(id);
+): Promise<DocumentByName<DataModel, Table>>;
+export async function getOrThrow(
+  ctx: any,
+  arg1: any,
+  arg2?: any,
+): Promise<any> {
+  const [table, id]: [string | null, GenericId<string>] =
+    arg2 !== undefined ? [arg1, arg2] : [null, arg1];
+  const doc = table
+    ? await ctx.db.get(table, id)
+    : // eslint-disable-next-line @convex-dev/explicit-table-ids
+      await ctx.db.get(id);
   if (!doc) {
     throw new Error(`Could not find id ${id}`);
   }
   return doc;
 }
 
+/**
+ * getAll returns a list of Documents (or null) for the `Id`s passed in.
+ *
+ * Nulls are returned for documents not found.
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param table The table name.
+ * @param ids An list (or other iterable) of Ids pointing to a table.
+ * @returns The Documents referenced by the Ids, in order. `null` if not found.
+ */
+export async function getAll<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: TableName,
+  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
+): Promise<(DocumentByName<DataModel, TableName> | null)[]>;
 /**
  * getAll returns a list of Documents (or null) for the `Id`s passed in.
  *
@@ -47,8 +90,13 @@ export async function getAll<
 >(
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
-): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
-  return asyncMap(ids, (id) => db.get(id));
+): Promise<(DocumentByName<DataModel, TableName> | null)[]>;
+export async function getAll(db: any, arg1: any, arg2?: any): Promise<any> {
+  const [table, ids]: [string | null, any] =
+    arg2 !== undefined ? [arg1, arg2] : [null, arg1];
+  return table
+    ? asyncMap(ids, (id) => db.get(table, id))
+    : asyncMap(ids, (id) => db.get(id));
 }
 
 /**
@@ -56,8 +104,25 @@ export async function getAll<
  *
  * It throws if any documents are not found (null).
  * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param table The table name.
  * @param ids An list (or other iterable) of Ids pointing to a table.
- * @returns The Documents referenced by the Ids, in order. `null` if not found.
+ * @returns The Documents referenced by the Ids, in order.
+ */
+export async function getAllOrThrow<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: TableName,
+  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
+): Promise<DocumentByName<DataModel, TableName>[]>;
+/**
+ * getAllOrThrow returns a list of Documents for the `Id`s passed in.
+ *
+ * It throws if any documents are not found (null).
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param ids An list (or other iterable) of Ids pointing to a table.
+ * @returns The Documents referenced by the Ids, in order.
  */
 export async function getAllOrThrow<
   DataModel extends GenericDataModel,
@@ -65,8 +130,21 @@ export async function getAllOrThrow<
 >(
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
-): Promise<DocumentByName<DataModel, TableName>[]> {
-  return await asyncMap(ids, (id) => getOrThrow({ db }, id));
+): Promise<DocumentByName<DataModel, TableName>[]>;
+export async function getAllOrThrow(
+  db: any,
+  arg1: any,
+  arg2?: any,
+): Promise<any> {
+  const [table, ids]: [string | null, any] =
+    arg2 !== undefined ? [arg1, arg2] : [null, arg1];
+  if (table) {
+    return await asyncMap(ids, (id: any) =>
+      getOrThrow({ db }, table as any, id),
+    );
+  } else {
+    return await asyncMap(ids, (id: any) => getOrThrow({ db }, id));
+  }
 }
 
 type UserIndexes<
@@ -363,8 +441,10 @@ export async function getManyVia<
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
+        // eslint-disable-next-line @convex-dev/explicit-table-ids
         return await db.get(id);
       } catch {
+        // eslint-disable-next-line @convex-dev/explicit-table-ids
         return await db.system.get(id as GenericId<SystemTableNames>);
       }
     },
@@ -424,6 +504,7 @@ export async function getManyViaOrThrow<
       const id = link[toField];
       try {
         return nullThrows(
+          // eslint-disable-next-line @convex-dev/explicit-table-ids
           await db.get(id as GenericId<TargetTableName>),
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
@@ -431,6 +512,7 @@ export async function getManyViaOrThrow<
         );
       } catch {
         return nullThrows(
+          // eslint-disable-next-line @convex-dev/explicit-table-ids
           await db.system.get(id as GenericId<SystemTableNames>),
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
