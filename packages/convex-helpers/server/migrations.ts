@@ -484,8 +484,8 @@ export function makeMigration<
         }
 
         // Step 4: Update the state
-        if (state._id) {
-          await db.patch(state._id, state);
+        if (state._id && migrationTableName) {
+          await db.patch(migrationTableName, state._id, state);
         }
         if (args.dryRun) {
           // By throwing an error, the transaction will be rolled back.
