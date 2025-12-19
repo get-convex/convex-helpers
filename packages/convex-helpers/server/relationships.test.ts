@@ -81,25 +81,6 @@ describe("getOrThrow", () => {
       });
     }).rejects.toThrowError(`Could not find id ${nonExistentId}`);
   });
-
-  test("throws when document not found", async () => {
-    const t = convexTest(schema, modules);
-
-    const nonExistentId = await t.run(async (ctx) => {
-      const id = await ctx.db.insert("users", {
-        name: "Temp2",
-        email: "temp2@example.com",
-      });
-      await ctx.db.delete("users", id);
-      return id;
-    });
-
-    await expect(async () => {
-      await t.run(async (ctx) => {
-        return await getOrThrow(ctx, nonExistentId);
-      });
-    }).rejects.toThrowError(`Could not find id ${nonExistentId}`);
-  });
 });
 
 describe("getAll", () => {
