@@ -63,8 +63,8 @@ triggers.register("usersExplicitIncorrectTable", async (ctx, change) => {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
       await ctx.db.patch(
-        // @ts-expect-error -- this code uses the wrong table name so it shouldn’t typecheck
         "users",
+        // @ts-expect-error -- this code uses the wrong table name so it shouldn’t typecheck
         change.id,
         {
           fullName,

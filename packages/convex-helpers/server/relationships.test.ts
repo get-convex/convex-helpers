@@ -42,7 +42,7 @@ const schema = defineSchema({
 });
 
 describe("getOrThrow", () => {
-  test("gets document with ID-only signature", async () => {
+  test("gets document", async () => {
     const t = convexTest(schema, modules);
 
     const userId = await t.run(async (ctx) => {
@@ -63,28 +63,7 @@ describe("getOrThrow", () => {
     });
   });
 
-  test("gets document with explicit table name signature", async () => {
-    const t = convexTest(schema, modules);
-
-    const userId = await t.run(async (ctx) => {
-      return await ctx.db.insert("users", {
-        name: "Bob",
-        email: "bob@example.com",
-      });
-    });
-
-    const user = await t.run(async (ctx) => {
-      return await getOrThrow(ctx, "users", userId);
-    });
-
-    expect(user).toMatchObject({
-      _id: userId,
-      name: "Bob",
-      email: "bob@example.com",
-    });
-  });
-
-  test("throws when document not found (ID-only)", async () => {
+  test("throws when document not found", async () => {
     const t = convexTest(schema, modules);
 
     const nonExistentId = await t.run(async (ctx) => {
@@ -102,29 +81,10 @@ describe("getOrThrow", () => {
       });
     }).rejects.toThrowError(`Could not find id ${nonExistentId}`);
   });
-
-  test("throws when document not found (explicit table)", async () => {
-    const t = convexTest(schema, modules);
-
-    const nonExistentId = await t.run(async (ctx) => {
-      const id = await ctx.db.insert("users", {
-        name: "Temp2",
-        email: "temp2@example.com",
-      });
-      await ctx.db.delete("users", id);
-      return id;
-    });
-
-    await expect(async () => {
-      await t.run(async (ctx) => {
-        return await getOrThrow(ctx, "users", nonExistentId);
-      });
-    }).rejects.toThrowError(`Could not find id ${nonExistentId}`);
-  });
 });
 
 describe("getAll", () => {
-  test("gets all documents with ID-only signature", async () => {
+  test("gets all documents", async () => {
     const t = convexTest(schema, modules);
 
     const [userId1, userId2, userId3] = await t.run(async (ctx) => {
@@ -148,26 +108,7 @@ describe("getAll", () => {
     expect(users[2]).toMatchObject({ _id: userId3, name: "Charlie" });
   });
 
-  test("gets all documents with explicit table name signature", async () => {
-    const t = convexTest(schema, modules);
-
-    const [userId1, userId2] = await t.run(async (ctx) => {
-      return await Promise.all([
-        ctx.db.insert("users", { name: "Dave", email: "dave@example.com" }),
-        ctx.db.insert("users", { name: "Eve", email: "eve@example.com" }),
-      ]);
-    });
-
-    const users = await t.run(async (ctx) => {
-      return await getAll(ctx.db, "users", [userId1, userId2]);
-    });
-
-    expect(users).toHaveLength(2);
-    expect(users[0]).toMatchObject({ _id: userId1, name: "Dave" });
-    expect(users[1]).toMatchObject({ _id: userId2, name: "Eve" });
-  });
-
-  test("returns null for missing documents (ID-only)", async () => {
+  test("returns null for missing documents", async () => {
     const t = convexTest(schema, modules);
 
     const [validId, deletedId] = await t.run(async (ctx) => {
@@ -192,31 +133,6 @@ describe("getAll", () => {
     expect(users[1]).toBeNull();
   });
 
-  test("returns null for missing documents (explicit table)", async () => {
-    const t = convexTest(schema, modules);
-
-    const [validId, deletedId] = await t.run(async (ctx) => {
-      const id1 = await ctx.db.insert("users", {
-        name: "Grace",
-        email: "grace@example.com",
-      });
-      const id2 = await ctx.db.insert("users", {
-        name: "Temp2",
-        email: "temp2@example.com",
-      });
-      await ctx.db.delete("users", id2);
-      return [id1, id2];
-    });
-
-    const users = await t.run(async (ctx) => {
-      return await getAll(ctx.db, "users", [validId, deletedId]);
-    });
-
-    expect(users).toHaveLength(2);
-    expect(users[0]).toMatchObject({ _id: validId, name: "Grace" });
-    expect(users[1]).toBeNull();
-  });
-
   test("handles empty array", async () => {
     const t = convexTest(schema, modules);
 
@@ -229,7 +145,7 @@ describe("getAll", () => {
 });
 
 describe("getAllOrThrow", () => {
-  test("gets all documents with ID-only signature", async () => {
+  test("gets all documents", async () => {
     const t = convexTest(schema, modules);
 
     const [userId1, userId2] = await t.run(async (ctx) => {
@@ -248,26 +164,7 @@ describe("getAllOrThrow", () => {
     expect(users[1]).toMatchObject({ _id: userId2, name: "Ivy" });
   });
 
-  test("gets all documents with explicit table name signature", async () => {
-    const t = convexTest(schema, modules);
-
-    const [userId1, userId2] = await t.run(async (ctx) => {
-      return await Promise.all([
-        ctx.db.insert("users", { name: "Jack", email: "jack@example.com" }),
-        ctx.db.insert("users", { name: "Kate", email: "kate@example.com" }),
-      ]);
-    });
-
-    const users = await t.run(async (ctx) => {
-      return await getAllOrThrow(ctx.db, "users", [userId1, userId2]);
-    });
-
-    expect(users).toHaveLength(2);
-    expect(users[0]).toMatchObject({ _id: userId1, name: "Jack" });
-    expect(users[1]).toMatchObject({ _id: userId2, name: "Kate" });
-  });
-
-  test("throws when any document not found (ID-only)", async () => {
+  test("throws when any document not found", async () => {
     const t = convexTest(schema, modules);
 
     const [validId, deletedId] = await t.run(async (ctx) => {
@@ -286,29 +183,6 @@ describe("getAllOrThrow", () => {
     await expect(async () => {
       await t.run(async (ctx) => {
         return await getAllOrThrow(ctx.db, [validId, deletedId]);
-      });
-    }).rejects.toThrowError(`Could not find id ${deletedId}`);
-  });
-
-  test("throws when any document not found (explicit table)", async () => {
-    const t = convexTest(schema, modules);
-
-    const [validId, deletedId] = await t.run(async (ctx) => {
-      const id1 = await ctx.db.insert("users", {
-        name: "Mia",
-        email: "mia@example.com",
-      });
-      const id2 = await ctx.db.insert("users", {
-        name: "Temp2",
-        email: "temp2@example.com",
-      });
-      await ctx.db.delete("users", id2);
-      return [id1, id2];
-    });
-
-    await expect(async () => {
-      await t.run(async (ctx) => {
-        return await getAllOrThrow(ctx.db, "users", [validId, deletedId]);
       });
     }).rejects.toThrowError(`Could not find id ${deletedId}`);
   });
@@ -729,85 +603,5 @@ describe("getManyViaOrThrow", () => {
     });
 
     expect(tags).toEqual([]);
-  });
-
-  test("finds system table documents via join table", async () => {
-    const t = convexTest(schema, modules);
-
-    const postId = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
-        name: "Yvonne",
-        email: "yvonne@example.com",
-      });
-      const pId = await ctx.db.insert("posts", {
-        title: "Post with Attachments",
-        content: "Content",
-        authorId: userId,
-      });
-
-      // Store some files to get _storage IDs
-      const file1 = await ctx.storage.store(new Blob(["attachment1"]));
-      const file2 = await ctx.storage.store(new Blob(["attachment2"]));
-
-      // Create join entries pointing to system table documents
-      await ctx.db.insert("postFiles", { postId: pId, fileId: file1 });
-      await ctx.db.insert("postFiles", { postId: pId, fileId: file2 });
-
-      return pId;
-    });
-
-    const files = await t.run(async (ctx) => {
-      return await getManyViaOrThrow(
-        ctx.db,
-        "postFiles",
-        "fileId",
-        "postId",
-        postId,
-      );
-    });
-
-    expect(files).toHaveLength(2);
-    expect(files[0]).toBeTruthy();
-    expect(files[1]).toBeTruthy();
-    // Check for _storage document properties
-    expect((files[0] as any)._id).toBeDefined();
-    expect((files[1] as any)._id).toBeDefined();
-  });
-
-  test("throws when system table document is missing", async () => {
-    const t = convexTest(schema, modules);
-
-    const { postId, deletedFileId } = await t.run(async (ctx) => {
-      const userId = await ctx.db.insert("users", {
-        name: "Zachary",
-        email: "zachary@example.com",
-      });
-      const pId = await ctx.db.insert("posts", {
-        title: "Post with Missing File",
-        content: "Content",
-        authorId: userId,
-      });
-
-      // Store a file and then delete it
-      const file1 = await ctx.storage.store(new Blob(["will be deleted"]));
-      await ctx.db.insert("postFiles", { postId: pId, fileId: file1 });
-      await ctx.storage.delete(file1);
-
-      return { postId: pId, deletedFileId: file1 };
-    });
-
-    await expect(async () => {
-      await t.run(async (ctx) => {
-        return await getManyViaOrThrow(
-          ctx.db,
-          "postFiles",
-          "fileId",
-          "postId",
-          postId,
-        );
-      });
-    }).rejects.toThrowError(
-      `Can't find document ${deletedFileId} referenced in postFiles's field fileId`,
-    );
   });
 });
