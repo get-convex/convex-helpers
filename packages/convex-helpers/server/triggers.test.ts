@@ -46,6 +46,7 @@ triggers.register("users", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- Testing the old API
       await ctx.db.patch(change.id, { fullName });
     }
   }
@@ -157,6 +158,7 @@ test("trigger denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- Testing the old API
     const user = await ctx.db.get(userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
@@ -169,7 +171,7 @@ test("trigger with explicit IDs denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("users", userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
 });

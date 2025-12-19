@@ -61,7 +61,7 @@ export const allAtOnce = internalQuery({
 export const get = internalQuery({
   args: { id: Example._id },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get("table_example", args.id);
   },
 });
 
@@ -88,7 +88,7 @@ export const patch = internalMutation({
     patch: v.object(partial(Example.withoutSystemFields)),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.id, args.patch);
+    await ctx.db.patch("table_example", args.id, args.patch);
   },
 });
 
@@ -100,7 +100,7 @@ export const replace = internalMutation({
     _id: Example._id,
   },
   handler: async (ctx, args) => {
-    await ctx.db.replace(args._id, args);
+    await ctx.db.replace("table_example", args._id, args);
   },
 });
 
