@@ -484,7 +484,11 @@ export function makeMigration<
         }
 
         // Step 4: Update the state
-        if (state._id && migrationTableName) {
+        if (state._id) {
+          if (!migrationTableName) {
+            throw new Error("Unexpected state: migrationTableName is not set");
+          }
+
           await db.patch(migrationTableName, state._id, state);
         }
         if (args.dryRun) {
