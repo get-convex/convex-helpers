@@ -137,8 +137,12 @@ describe("getOrThrow", () => {
 
       await expect(async () => {
         await t.run(async (ctx) => {
-          // Runtime check: passing userId (from "users" table) to "posts" table should throw
-          return await getOrThrow(ctx, "posts", userId as any);
+          return await getOrThrow(
+            ctx,
+            "posts",
+            // @ts-expect-error - wrong table!
+            userId,
+          );
         });
       }).rejects.toThrowError(
         "Invalid argument `id`, expected ID in table 'posts' but got ID in table 'users'",
@@ -281,8 +285,12 @@ describe("getAll", () => {
 
       await expect(async () => {
         await t.run(async (ctx) => {
-          // Runtime check: passing userId (from "users" table) to "posts" table should throw
-          return await getAll(ctx.db, "posts", [userId] as any);
+          return await getAll(
+            ctx.db,
+            "posts",
+            // @ts-expect-error - wrong table!
+            [userId],
+          );
         });
       }).rejects.toThrowError(
         "Invalid argument `id`, expected ID in table 'posts' but got ID in table 'users'",

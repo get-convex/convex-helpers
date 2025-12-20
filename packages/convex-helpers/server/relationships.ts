@@ -27,7 +27,7 @@ export async function getOrThrow<
 >(
   ctx: { db: GenericDatabaseReader<DataModel> },
   table: Table,
-  id: GenericId<Table>,
+  id: GenericId<NonUnion<Table>>,
 ): Promise<DocumentByName<DataModel, Table>>;
 /**
  * Gets a document by its ID. Throws if not found.
