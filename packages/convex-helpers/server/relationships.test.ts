@@ -125,7 +125,25 @@ describe("getOrThrow", () => {
       }).rejects.toThrowError(`Could not find id ${nonExistentId}`);
     });
 
-    // TODO Test with incorrect table name
+    test("throws when fetching document from wrong table", async () => {
+      const t = convexTest(schema, modules);
+
+      const userId = await t.run(async (ctx) => {
+        return await ctx.db.insert("users", {
+          name: "Alice",
+          email: "alice@example.com",
+        });
+      });
+
+      await expect(async () => {
+        await t.run(async (ctx) => {
+          // Runtime check: passing userId (from "users" table) to "posts" table should throw
+          return await getOrThrow(ctx, "posts", userId as any);
+        });
+      }).rejects.toThrowError(
+        "Invalid argument `id`, expected ID in table 'posts' but got ID in table 'users'",
+      );
+    });
   });
 });
 
@@ -251,7 +269,25 @@ describe("getAll", () => {
       expect(users).toEqual([]);
     });
 
-    // TODO Test with incorrect table name
+    test("throws when fetching documents from wrong table", async () => {
+      const t = convexTest(schema, modules);
+
+      const userId = await t.run(async (ctx) => {
+        return await ctx.db.insert("users", {
+          name: "Alice",
+          email: "alice@example.com",
+        });
+      });
+
+      await expect(async () => {
+        await t.run(async (ctx) => {
+          // Runtime check: passing userId (from "users" table) to "posts" table should throw
+          return await getAll(ctx.db, "posts", [userId] as any);
+        });
+      }).rejects.toThrowError(
+        "Invalid argument `id`, expected ID in table 'posts' but got ID in table 'users'",
+      );
+    });
   });
 });
 
@@ -361,6 +397,38 @@ describe("getAllOrThrow", () => {
       });
 
       expect(users).toEqual([]);
+    });
+
+    test("throws when a document is not in the right table", async () => {
+      const t = convexTest(schema, modules);
+
+      const userId = await t.run(async (ctx) => {
+        return await ctx.db.insert("users", {
+          name: "Alice",
+          email: "alice@example.com",
+        });
+      });
+
+      const postId = await t.run(async (ctx) => {
+        return await ctx.db.insert("posts", {
+          title: "Post 1",
+          content: "Content 1",
+          authorId: userId,
+        });
+      });
+
+      await expect(async () => {
+        await t.run(async (ctx) => {
+          return await getAllOrThrow(
+            ctx.db,
+            "users",
+            // @ts-expect-error - wrong table!
+            [userId, postId],
+          );
+        });
+      }).rejects.toThrowError(
+        "Invalid argument `id`, expected ID in table 'users' but got ID in table 'posts'",
+      );
     });
   });
 });
@@ -631,6 +699,7 @@ describe("getManyVia", () => {
     expect(files[0]).toBeTruthy();
     expect(files[1]).toBeTruthy();
     // Check for _storage document properties
+    // FIXME: currently the implementation of getManyVia returns `unknown[]` for system tables
     expect((files[0] as any)._id).toBeDefined();
     expect((files[1] as any)._id).toBeDefined();
   });
@@ -669,6 +738,7 @@ describe("getManyVia", () => {
     expect(files).toHaveLength(2);
     expect(files[0]).toBeTruthy();
     // Check for _storage document property
+    // FIXME: currently the implementation of getManyVia returns `unknown[]` for system tables
     expect((files[0] as any)._id).toBeDefined();
     expect(files[1]).toBeNull();
   });

@@ -74,7 +74,9 @@ export async function getAll<
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
+  ids:
+    | Iterable<GenericId<NonUnion<TableName>>>
+    | Promise<Iterable<GenericId<NonUnion<TableName>>>>,
 ): Promise<(DocumentByName<DataModel, TableName> | null)[]>;
 /**
  * getAll returns a list of Documents (or null) for the `Id`s passed in.
@@ -114,7 +116,9 @@ export async function getAllOrThrow<
 >(
   db: GenericDatabaseReader<DataModel>,
   table: TableName,
-  ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
+  ids:
+    | Iterable<GenericId<NonUnion<TableName>>>
+    | Promise<Iterable<GenericId<NonUnion<TableName>>>>,
 ): Promise<DocumentByName<DataModel, TableName>[]>;
 /**
  * getAllOrThrow returns a list of Documents for the `Id`s passed in.
@@ -522,3 +526,11 @@ export async function getManyViaOrThrow<
     },
   );
 }
+
+/**
+ * This prevents TypeScript from inferring that the generic `TableName` type is
+ * a union type when `table` and `id` disagree.
+ */
+type NonUnion<T> = T extends never // `never` is the bottom type for TypeScript unions
+  ? never
+  : T;
