@@ -107,7 +107,7 @@ export function crud<
         if ("_id" in args) delete args._id;
         if ("_creationTime" in args) delete args._creationTime;
         const id = await ctx.db.insert(table, args);
-        return (await ctx.db.get(id))!;
+        return (await ctx.db.get(table, id))!;
       },
     }) as RegisteredMutation<
       MutationVisibility,
@@ -117,7 +117,7 @@ export function crud<
     read: query({
       args: { id: v.id(table) },
       handler: async (ctx, args) => {
-        return await ctx.db.get(args.id);
+        return await ctx.db.get(table, args.id);
       },
     }) as RegisteredQuery<
       QueryVisibility,
@@ -147,6 +147,7 @@ export function crud<
       },
       handler: async (ctx, args) => {
         await ctx.db.patch(
+          table,
           args.id,
           args.patch as Partial<DocumentByName<DataModel, TableName>>,
         );
@@ -164,9 +165,9 @@ export function crud<
     destroy: mutation({
       args: { id: v.id(table) },
       handler: async (ctx, args) => {
-        const old = await ctx.db.get(args.id);
+        const old = await ctx.db.get(table, args.id);
         if (old) {
-          await ctx.db.delete(args.id);
+          await ctx.db.delete(table, args.id);
         }
         return old;
       },

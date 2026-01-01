@@ -72,7 +72,7 @@ export const incrementCounter = mutation({
       });
     } else {
       counterDoc.counter += increment;
-      await ctx.db.replace(counterDoc._id, counterDoc);
+      await ctx.db.replace("counter_table", counterDoc._id, counterDoc);
     }
   },
 });

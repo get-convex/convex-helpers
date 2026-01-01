@@ -97,7 +97,7 @@ export const relationshipTest = mutation({
     (await getAllOrThrow(ctx.db, userIds)).map(assertNotNull);
 
     // Now let's delete one and see if everything behaves as we expect
-    await ctx.db.delete(user2._id);
+    await ctx.db.delete("users", user2._id);
     assertNull(await getOneFrom(ctx.db, "users", "tokenIdentifier", "test456"));
     assertHasNull(await getAll(ctx.db, userIds));
     try {
@@ -106,7 +106,7 @@ export const relationshipTest = mutation({
       console.log("Successfully caught missing userId");
     }
 
-    await ctx.db.delete(presenceId2);
+    await ctx.db.delete("presence", presenceId2);
     assertHasNull(
       await getManyVia(
         ctx.db,
@@ -127,10 +127,10 @@ export const relationshipTest = mutation({
     } catch {
       console.log("Successfully caught missing presenceId");
     }
-    await asyncMap(edges, (edge) => ctx.db.delete(edge._id));
+    await asyncMap(edges, (edge) => ctx.db.delete("join_table_example", edge._id));
     await asyncMap(
       await getManyFrom(ctx.db, "join_table_example", "by_userId", user2._id),
-      (edge) => ctx.db.delete(edge._id),
+      (edge) => ctx.db.delete("join_table_example", edge._id),
     );
 
     // Testing custom index names
@@ -144,7 +144,7 @@ export const relationshipTest = mutation({
     (await getManyFrom(ctx.db, "presence", "user_room", userId, "user")).map(
       assertNotNull,
     );
-    await ctx.db.delete(presenceId);
+    await ctx.db.delete("presence", presenceId);
 
     const file = await ctx.db.system.query("_storage").first();
     if (!file) {
@@ -180,8 +180,8 @@ export const relationshipTest = mutation({
         "userId",
       )
     ).map(assertNotNull);
-    await ctx.db.delete(userId);
-    await ctx.db.delete(edgeId);
+    await ctx.db.delete("users", userId);
+    await ctx.db.delete("join_storage_example", edgeId);
 
     return true;
   },

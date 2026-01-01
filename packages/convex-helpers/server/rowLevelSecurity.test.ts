@@ -46,7 +46,7 @@ const withRLS = async (ctx: { db: DatabaseWriter; auth: Auth }) => {
     db: wrapDatabaseWriter({ tokenIdentifier }, ctx.db, {
       notes: {
         read: async ({ tokenIdentifier }, doc) => {
-          const author = await ctx.db.get(doc.userId);
+          const author = await ctx.db.get("users", doc.userId);
           return tokenIdentifier === author?.tokenIdentifier;
         },
       },
@@ -102,11 +102,13 @@ describe("row level security", () => {
       await expect(() =>
         asB.run(async (ctx) => {
           const rls = await withRLS(ctx);
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- testing the implicit API
           return rls.db.delete(noteId);
         }),
       ).rejects.toThrow(/no read access/);
       await asA.run(async (ctx) => {
         const rls = await withRLS(ctx);
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- testing the implicit API
         return rls.db.delete(noteId);
       });
     });
@@ -161,7 +163,7 @@ describe("row level security", () => {
       const db = wrapDatabaseReader({ tokenIdentifier }, ctx.db, {
         notes: {
           read: async ({ tokenIdentifier }, doc) => {
-            const author = await ctx.db.get(doc.userId);
+            const author = await ctx.db.get("users", doc.userId);
             return tokenIdentifier === author?.tokenIdentifier;
           },
         },
@@ -205,7 +207,7 @@ describe("row level security", () => {
         {
           notes: {
             read: async ({ tokenIdentifier }, doc) => {
-              const author = await ctx.db.get(doc.userId);
+              const author = await ctx.db.get("users", doc.userId);
               return tokenIdentifier === author?.tokenIdentifier;
             },
           },
@@ -302,6 +304,7 @@ describe("row level security", () => {
         );
 
         // Should be able to modify (no modify rule, default allow)
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- testing the implicit API
         await db.patch(docId, { content: "Modified content" });
       });
 
@@ -324,6 +327,7 @@ describe("row level security", () => {
           );
 
           // Should NOT be able to modify (no modify rule, default deny)
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- testing the implicit API
           await db.patch(docId, { content: "Blocked modification" });
         }),
       ).rejects.toThrow(/write access not allowed/);
