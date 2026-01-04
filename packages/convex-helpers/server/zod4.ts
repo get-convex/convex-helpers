@@ -427,6 +427,11 @@ export function zodToConvex<Z extends zCore.$ZodType>(
   const visited = new WeakSet<zCore.$ZodType>();
 
   function zodToConvexInner(validator: zCore.$ZodType): GenericValidator {
+    // Guard: Ensure validator is an object before using WeakSet
+    if (typeof validator !== "object" || validator === null) {
+      return v.any();
+    }
+    
     // Circular validator definitions are not supported by Convex validators,
     // so we use v.any() when there is a cycle.
     if (visited.has(validator)) {
@@ -517,6 +522,11 @@ export function zodOutputToConvex<Z extends zCore.$ZodType>(
   const visited = new WeakSet<zCore.$ZodType>();
 
   function zodOutputToConvexInner(validator: zCore.$ZodType): GenericValidator {
+    // Guard: Ensure validator is an object before using WeakSet
+    if (typeof validator !== "object" || validator === null) {
+      return v.any();
+    }
+    
     // Circular validator definitions are not supported by Convex validators,
     // so we use v.any() when there is a cycle.
     if (visited.has(validator)) {
