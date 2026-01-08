@@ -36,8 +36,12 @@ export const openApiSpec = new Command("open-api-spec")
   )
   .action(async (options) => {
     const content = getFunctionSpec(options.prod, options.inputFile);
+    const baseOutputPath =
+      options.outputFile ?? `convex-spec-${Date.now().valueOf()}`;
     const outputPath =
-      (options.outputFile ?? `convex-spec-${Date.now().valueOf()}`) + ".yaml";
+      baseOutputPath.endsWith(".yaml") || baseOutputPath.endsWith(".yml")
+        ? baseOutputPath
+        : baseOutputPath + ".yaml";
 
     try {
       const apiSpec = generateOpenApiSpec(

@@ -30,7 +30,7 @@ jobs:
 
       - name: Publish pkg-pr-new
         run: |
-          npx pkg-pr-new publish ./packages/convex-helpers
+          npx pkg-pr-new publish ./packages/convex-helpers/dist
 
       - name: Run lint, test, and codegen
         run: |
