@@ -283,9 +283,14 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.patch(tableName, id, value);
-        const newDoc = (await innerDb.get(id))!;
+        const newDoc = deleteUndefinedFields({
+          _id: oldDoc._id,
+          _creationTime: oldDoc._creationTime,
+          ...oldDoc,
+          ...value,
+        });
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -324,9 +329,13 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.replace(tableName, id, value);
-        const newDoc = (await innerDb.get(id))!;
+        const newDoc = deleteUndefinedFields({
+          _id: oldDoc._id,
+          _creationTime: oldDoc._creationTime,
+          ...value,
+        });
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -360,7 +369,7 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.delete(tableName, id);
         return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
       },
@@ -383,7 +392,11 @@ export function writerWithTriggers<
         isWithinTrigger,
         async () => {
           const id = await innerDb.insert(table, value);
-          const newDoc = (await innerDb.get(id))!;
+          const newDoc = deleteUndefinedFields({
+            _id: id,
+            _creationTime: Date.now(),
+            ...value,
+          });
           return [id, { operation: "insert", id, oldDoc: null, newDoc }];
         },
       );
@@ -503,3 +516,13 @@ type NonUnion<T> = T extends never // `never` is the bottom type for TypeScript 
 type PatchValue<T> = {
   [P in keyof T]?: undefined extends T[P] ? T[P] | undefined : T[P];
 };
+
+function deleteUndefinedFields<T>(obj: T): T {
+  const result = { ...obj };
+  for (const key in result) {
+    if (result[key] === undefined) {
+      delete result[key];
+    }
+  }
+  return result;
+}
