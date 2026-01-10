@@ -757,7 +757,10 @@ export function validate<T extends Validator<any, any, any>>(
         }
         if (!opts?.allowUnknownFields) {
           for (const k of Object.keys(value)) {
-            if (validator.fields[k] === undefined) {
+            if (
+              validator.fields[k] === undefined &&
+              value[k as keyof typeof value] !== undefined
+            ) {
               if (opts?.throw) {
                 throw new ValidationError(
                   "nothing",
@@ -796,6 +799,10 @@ export function validate<T extends Validator<any, any, any>>(
           break;
         }
         for (const [k, fieldValue] of Object.entries(value)) {
+          // Skip validation for undefined values as they will be stripped out
+          if (fieldValue === undefined) {
+            continue;
+          }
           valid = validate(validator.key, k, {
             ...opts,
             _pathPrefix: appendPath(opts, k),
@@ -864,7 +871,9 @@ function stripUnknownFields<T extends Validator<any, any, any>>(
     case "record": {
       const result: Infer<T> = {};
       for (const [k, v] of Object.entries(value)) {
-        result[k] = stripUnknownFields(validator.value, v);
+        if (v !== undefined) {
+          result[k] = stripUnknownFields(validator.value, v);
+        }
       }
       return result;
     }

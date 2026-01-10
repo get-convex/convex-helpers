@@ -1,8 +1,57 @@
 import { v } from "convex/values";
 import { describe, expect, test, expectTypeOf } from "vitest";
-import { vRequired, type VRequired } from "./validators.js";
+import { vRequired, type VRequired, validate, parse } from "./validators.js";
 import type { Equals } from "./index.js";
 import type { Validator } from "convex/values";
+
+describe("validate with undefined values", () => {
+  test("should skip validation for undefined values in records", () => {
+    const recordValidator = v.record(v.string(), v.string());
+    const valueWithUndefined = {
+      validKey: "validValue",
+      undefinedKey: undefined,
+    };
+
+    // Should not throw because undefined values get stripped
+    expect(validate(recordValidator, valueWithUndefined, { throw: true })).toBe(
+      true,
+    );
+  });
+
+  test("should skip validation for undefined values in objects with and without allowUnknownFields", () => {
+    const objectValidator = v.object({ knownField: v.string() });
+    const valueWithUndefinedUnknown = {
+      knownField: "value",
+      unknownField: undefined,
+    };
+
+    // Should not throw because undefined values get stripped
+    expect(
+      validate(objectValidator, valueWithUndefinedUnknown, {
+        throw: true,
+        allowUnknownFields: true,
+      }),
+    ).toBe(true);
+    expect(
+      validate(objectValidator, valueWithUndefinedUnknown, {
+        throw: true,
+        allowUnknownFields: false,
+      }),
+    ).toBe(true);
+  });
+
+  test("should strip undefined values from records when using parse", () => {
+    const recordValidator = v.record(v.string(), v.string());
+    const valueWithUndefined = {
+      validKey: "validValue",
+      undefinedKey: undefined,
+    };
+
+    const result = parse(recordValidator, valueWithUndefined);
+    expect(result).toEqual({ validKey: "validValue" });
+    expect("undefinedKey" in result).toBe(false);
+  });
+});
 
 describe("vRequired", () => {
   test("returns required validator unchanged", () => {
