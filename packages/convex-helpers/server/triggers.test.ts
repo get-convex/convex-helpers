@@ -144,8 +144,8 @@ export const deleteUser = mutation({
 const triggersForRlsBinding = new Triggers<DataModel>();
 const mutationRlsThenTriggers = customMutation(
   rawMutation,
-  customCtx((ctx) => ({
-    db: wrapDatabaseWriter(
+  customCtx((ctx) => {
+    const db = wrapDatabaseWriter(
       ctx,
       ctx.db,
       {
@@ -156,9 +156,10 @@ const mutationRlsThenTriggers = customMutation(
         },
       },
       { defaultPolicy: "deny" },
-    ),
-  })),
-  customCtx(triggersForRlsBinding.wrapDB),
+    );
+    // Compose RLS wrapping with triggers.wrapDB in a single customization.
+    return triggersForRlsBinding.wrapDB({ ...ctx, db });
+  }),
 );
 
 export const createUserAndReadBackWithRlsWrappedDb = mutationRlsThenTriggers({
