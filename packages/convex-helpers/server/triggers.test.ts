@@ -1,5 +1,6 @@
 import { customCtx, customMutation } from "./customFunctions.js";
 import { Triggers } from "./triggers.js";
+import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
 import { convexTest } from "convex-test";
 import type {
   ApiFromModules,
@@ -140,6 +141,48 @@ export const deleteUser = mutation({
   },
 });
 
+const triggersForRlsBinding = new Triggers<DataModel>();
+const mutationRlsThenTriggers = customMutation(
+  rawMutation,
+  customCtx((ctx) => ({
+    db: wrapDatabaseWriter(
+      ctx,
+      ctx.db,
+      {
+        users: {
+          read: async () => true,
+          modify: async () => true,
+          insert: async () => true,
+        },
+      },
+      { defaultPolicy: "deny" },
+    ),
+  })),
+  customCtx(triggersForRlsBinding.wrapDB),
+);
+
+export const createUserAndReadBackWithRlsWrappedDb = mutationRlsThenTriggers({
+  args: { firstName: v.string(), lastName: v.string() },
+  handler: async (ctx, args) => {
+    const id = await ctx.db.insert("users", {
+      firstName: args.firstName,
+      lastName: args.lastName,
+      fullName: "",
+    });
+
+    // Regression test: when `ctx.db` is wrapped by `wrapDatabaseWriter`, calling
+    // `triggers.wrapDB` must not break `this` binding for get/query/normalizeId.
+    const normalized = ctx.db.normalizeId("users", id);
+    const doc = await ctx.db.get(id);
+    const first = await ctx.db.query("users").first();
+
+    return {
+      normalizedIsNonNull: normalized !== null,
+      readBackMatches: doc?._id === id && first?._id === id,
+    };
+  },
+});
+
 const testApi: ApiFromModules<{
   fns: {
     createUser: typeof createUser;
@@ -147,6 +190,7 @@ const testApi: ApiFromModules<{
     createUserExplicitIncorrectTable: typeof createUserExplicitIncorrectTable;
     updateUser: typeof updateUser;
     deleteUser: typeof deleteUser;
+    createUserAndReadBackWithRlsWrappedDb: typeof createUserAndReadBackWithRlsWrappedDb;
   };
 }>["fns"] = anyApi["triggers.test"] as any;
 
@@ -221,4 +265,16 @@ test("create, update and delete", async () => {
 
   await t.mutation(testApi.deleteUser, { id: user2Id });
   expect(await getUserCount()).toBe(0);
+});
+
+test("triggers.wrapDB preserves `this` binding for RLS-wrapped db", async () => {
+  const t = convexTest(schema, modules);
+  const result = await t.mutation(testApi.createUserAndReadBackWithRlsWrappedDb, {
+    firstName: "John",
+    lastName: "Doe",
+  });
+  expect(result).toStrictEqual({
+    normalizedIsNonNull: true,
+    readBackMatches: true,
+  });
 });
