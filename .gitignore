@@ -111,3 +111,6 @@ tsconfig.tsbuildinfo
 convex-local-backend*
 .mypy_cache
 __pycache__/
+
+# Claude Code local settings
+.claude/settings.local.json

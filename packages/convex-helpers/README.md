@@ -1061,8 +1061,7 @@ By default, this connects to your Convex dev deployment, but you can pass in `--
 to read from your production deployment.
 
 This command writes a `convex-spec-{msSinceEpoch}.yaml` file that can be used in external repositories to
-use your Convex functions with type-safety. It includes your internal functions, but you
-can feel free to remove them.
+use your Convex functions with type-safety. See `--help` for more details.
 
 ## Triggers
 

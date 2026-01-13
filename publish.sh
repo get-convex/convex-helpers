@@ -2,6 +2,8 @@
 
 set -e
 
+npm whoami || npm login
+
 rm -rf packages/convex-helpers/node_modules
 npm i
 npm run clean

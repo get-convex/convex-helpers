@@ -1062,14 +1062,69 @@ describe("zodOutputToConvex", () => {
     );
   });
 
-  test("codec", () => {
-    testZodOutputToConvex(
-      z.codec(z.string(), z.number(), {
-        decode: (s: string) => parseInt(s, 10),
+  describe("codec", () => {
+    test("simple case", () => {
+      testZodOutputToConvex(
+        z.codec(z.string(), z.number(), {
+          decode: (s: string) => parseInt(s, 10),
+          encode: (n: number) => n.toString(),
+        }),
+        v.number(), // output type
+      );
+    });
+
+    describe("with optional/nullable", () => {
+      // Codec that transforms Date to milliseconds (number)
+      const dateToMsCodec = z.codec(z.date(), z.int().min(0), {
+        encode: (millis: number) => new Date(millis),
+        decode: (date: Date) => date.getTime(),
+      });
+
+      test("optional codec returns VOptional<VFloat64>", () => {
+        testZodOutputToConvex(dateToMsCodec.optional(), v.optional(v.number()));
+      });
+
+      test("nullable codec returns VUnion with null", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.nullable(),
+          v.union(v.number(), v.null()),
+        );
+      });
+
+      test("optional nullable codec", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.nullable().optional(),
+          v.optional(v.union(v.number(), v.null())),
+        );
+      });
+
+      test("nullable optional codec (swapped order)", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.optional().nullable(),
+          v.optional(v.union(v.number(), v.null())),
+        );
+      });
+
+      // String to number codec
+      const stringToNumberCodec = z.codec(z.string(), z.number(), {
+        decode: (s: string) => parseFloat(s),
         encode: (n: number) => n.toString(),
-      }),
-      v.number(), // output type
-    );
+      });
+
+      test("optional string-to-number codec", () => {
+        testZodOutputToConvex(
+          stringToNumberCodec.optional(),
+          v.optional(v.number()),
+        );
+      });
+
+      test("codec with default", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.default(Date.now()),
+          v.number(), // default means output is always present
+        );
+      });
+    });
   });
 
   test("default", () => {

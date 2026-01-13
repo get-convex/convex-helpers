@@ -1032,20 +1032,51 @@ export type ConvexValidatorFromZodOutput<
   Z extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
 > =
-  // `unknown` / `any`: we can’t infer a precise return type at compile time
+  // `unknown` / `any`: we can't infer a precise return type at compile time
   IsUnknownOrAny<Z> extends true
     ? GenericValidator
     : // z.default()
       Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // output: always there
-      ? VRequired<ConvexValidatorFromZod<Inner, "required">>
-      : // z.pipe()
+      ? VRequired<ConvexValidatorFromZodOutput<Inner, "required">>
+      : // z.pipe() - use output schema for zodOutputToConvex
         Z extends zCore.$ZodPipe<
             infer _Input extends zCore.$ZodType,
             infer Output extends zCore.$ZodType
           >
-        ? ConvexValidatorFromZod<Output, IsOptional>
-        : // All other schemas have the same input/output types
-          ConvexValidatorFromZodCommon<Z, IsOptional>;
+        ? ConvexValidatorFromZodOutput<Output, IsOptional>
+        : // z.optional() - handle here to use output types consistently
+          Z extends zCore.$ZodOptional<infer Inner extends zCore.$ZodType>
+          ? VOptional<ConvexValidatorFromZodOutput<Inner, "optional">>
+          : // z.nullable() - handle here to use output types consistently
+            Z extends zCore.$ZodNullable<infer Inner extends zCore.$ZodType>
+            ? ConvexValidatorFromZodOutput<Inner, IsOptional> extends Validator<
+                any,
+                "optional",
+                any
+              >
+              ? VUnion<
+                  | ConvexValidatorFromZodOutput<Inner, IsOptional>["type"]
+                  | null
+                  | undefined,
+                  [
+                    VRequired<ConvexValidatorFromZodOutput<Inner, IsOptional>>,
+                    VNull,
+                  ],
+                  "optional",
+                  ConvexValidatorFromZodOutput<Inner, IsOptional>["fieldPaths"]
+                >
+              : VUnion<
+                  | ConvexValidatorFromZodOutput<Inner, IsOptional>["type"]
+                  | null,
+                  [
+                    VRequired<ConvexValidatorFromZodOutput<Inner, IsOptional>>,
+                    VNull,
+                  ],
+                  IsOptional,
+                  ConvexValidatorFromZodOutput<Inner, IsOptional>["fieldPaths"]
+                >
+            : // All other schemas have the same input/output types
+              ConvexValidatorFromZodCommon<Z, IsOptional>;
 
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
