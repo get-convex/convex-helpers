@@ -36,60 +36,21 @@ app.get("/hono/with-query", async (c) => {
 
 const http = new HttpRouterWithHono(app);
 
-// Add a debug route before registering other routes
-app.get("/debug/routes", async (c) => {
-  const routes = http.getRoutes();
-  return c.json({
-    totalRoutes: routes.length,
-    routes: routes.map(([path, method]) => ({ path, method })),
-  });
-});
-
 // Example traditional Convex HTTP routes
 // These routes are registered directly on the HttpRouter and will be checked first
 http.route({
   path: "/convex/hello",
   method: "GET",
   handler: httpAction(async () => {
-    return new Response(JSON.stringify({ message: "Hello from Convex HTTP!", source: "convex" }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ message: "Hello from Convex HTTP!", source: "convex" }),
+      { headers: { "Content-Type": "application/json" } },
+    );
   }),
 });
 
 http.route({
-  path: "/convex/data",
-  method: "GET",
-  handler: httpAction(async (ctx) => {
-    const result = await ctx.runQuery(api.http.siteUrl, {});
-    return new Response(JSON.stringify({
-      message: "Data from Convex HTTP",
-      siteUrl: result,
-      source: "convex"
-    }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }),
-});
-
-http.route({
-  pathPrefix: "/convex/users/",
-  method: "GET",
-  handler: httpAction(async (ctx, request) => {
-    const url = new URL(request.url);
-    const userId = url.pathname.split("/").pop();
-    return new Response(JSON.stringify({
-      userId,
-      message: `User ${userId} via Convex HTTP`,
-      source: "convex"
-    }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }),
-});
-
-http.route({
-  path: "/convex/echo",
+  pathPrefix: "/convex/",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const body = await request.json();

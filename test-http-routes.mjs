@@ -46,77 +46,61 @@ async function runTests(baseUrl) {
   const results = [];
 
   // Test root endpoint
-  results.push(await testEndpoint(
-    "Root endpoint (Hono)",
-    `${baseUrl}/`
-  ));
+  results.push(await testEndpoint("Root endpoint (Hono)", `${baseUrl}/`));
 
   console.log(`\n${"─".repeat(60)}`);
   console.log(`HONO ROUTES`);
   console.log(`${"─".repeat(60)}`);
 
   // Test Hono routes
-  results.push(await testEndpoint(
-    "Hono hello",
-    `${baseUrl}/hono/hello`
-  ));
+  results.push(await testEndpoint("Hono hello", `${baseUrl}/hono/hello`));
 
-  results.push(await testEndpoint(
-    "Hono user with ID parameter",
-    `${baseUrl}/hono/user/123`
-  ));
+  results.push(
+    await testEndpoint(
+      "Hono user with ID parameter",
+      `${baseUrl}/hono/user/123`,
+    ),
+  );
 
-  results.push(await testEndpoint(
-    "Hono echo (POST)",
-    `${baseUrl}/hono/echo`,
-    {
+  results.push(
+    await testEndpoint("Hono echo (POST)", `${baseUrl}/hono/echo`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "test from hono", timestamp: Date.now() })
-    }
-  ));
+      body: JSON.stringify({
+        message: "test from hono",
+        timestamp: Date.now(),
+      }),
+    }),
+  );
 
-  results.push(await testEndpoint(
-    "Hono with Convex query",
-    `${baseUrl}/hono/with-query`
-  ));
+  results.push(
+    await testEndpoint("Hono with Convex query", `${baseUrl}/hono/with-query`),
+  );
 
   console.log(`\n${"─".repeat(60)}`);
   console.log(`CONVEX HTTP ROUTES`);
   console.log(`${"─".repeat(60)}`);
 
   // Test Convex HTTP routes
-  results.push(await testEndpoint(
-    "Convex hello",
-    `${baseUrl}/convex/hello`
-  ));
+  results.push(await testEndpoint("Convex hello", `${baseUrl}/convex/hello`));
 
-  results.push(await testEndpoint(
-    "Convex data with query",
-    `${baseUrl}/convex/data`
-  ));
-
-  results.push(await testEndpoint(
-    "Convex users with path parameter",
-    `${baseUrl}/convex/users/456`
-  ));
-
-  results.push(await testEndpoint(
-    "Convex echo (POST)",
-    `${baseUrl}/convex/echo`,
-    {
+  results.push(
+    await testEndpoint("Convex echo (POST)", `${baseUrl}/convex/misc`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "test from convex", timestamp: Date.now() })
-    }
-  ));
+      body: JSON.stringify({
+        message: "test from convex",
+        timestamp: Date.now(),
+      }),
+    }),
+  );
 
   // Summary
   console.log(`\n${"=".repeat(60)}`);
   console.log(`TEST SUMMARY`);
   console.log(`${"=".repeat(60)}`);
 
-  const passed = results.filter(r => r.success).length;
+  const passed = results.filter((r) => r.success).length;
   const failed = results.length - passed;
 
   console.log(`\n✅ Passed: ${passed}`);
@@ -140,7 +124,9 @@ if (!baseUrl) {
   console.error("  node test-http-routes.mjs <base-url>");
   console.error("  CONVEX_SITE_URL=<base-url> node test-http-routes.mjs");
   console.error("\nExample:");
-  console.error("  node test-http-routes.mjs https://happy-animal-123.convex.site");
+  console.error(
+    "  node test-http-routes.mjs https://happy-animal-123.convex.site",
+  );
   process.exit(1);
 }
 
