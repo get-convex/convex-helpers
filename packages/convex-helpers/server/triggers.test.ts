@@ -270,10 +270,13 @@ test("create, update and delete", async () => {
 
 test("triggers.wrapDB preserves `this` binding for RLS-wrapped db", async () => {
   const t = convexTest(schema, modules);
-  const result = await t.mutation(testApi.createUserAndReadBackWithRlsWrappedDb, {
-    firstName: "John",
-    lastName: "Doe",
-  });
+  const result = await t.mutation(
+    testApi.createUserAndReadBackWithRlsWrappedDb,
+    {
+      firstName: "John",
+      lastName: "Doe",
+    },
+  );
   expect(result).toStrictEqual({
     normalizedIsNonNull: true,
     readBackMatches: true,
