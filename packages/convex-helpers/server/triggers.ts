@@ -392,11 +392,9 @@ export function writerWithTriggers<
     replace,
     delete: delete_,
     system: innerDb.system,
-    // Bind methods to preserve `this` when innerDb is a class instance
-    // (e.g. `wrapDatabaseWriter` from row-level security).
-    get: innerDb.get.bind(innerDb),
-    query: innerDb.query.bind(innerDb),
-    normalizeId: innerDb.normalizeId.bind(innerDb),
+    get: innerDb.get,
+    query: innerDb.query,
+    normalizeId: innerDb.normalizeId,
   };
 }
 
