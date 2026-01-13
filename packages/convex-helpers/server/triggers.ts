@@ -392,9 +392,9 @@ export function writerWithTriggers<
     replace,
     delete: delete_,
     system: innerDb.system,
-    get: innerDb.get,
-    query: innerDb.query,
-    normalizeId: innerDb.normalizeId,
+    get: innerDb.get.bind(innerDb),
+    query: innerDb.query.bind(innerDb),
+    normalizeId: innerDb.normalizeId.bind(innerDb),
   };
 }
 
