@@ -14,6 +14,7 @@ export default [
       "packages/convex-helpers/generate-exports.mjs",
       "src/fakeConvexClient/fakeConvexClient.js",
       "backendHarness.js",
+      "test-http-routes.mjs",
       "eslint.config.mjs",
       "convex/vitest.config.mts",
       "setup.cjs",
