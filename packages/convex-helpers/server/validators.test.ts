@@ -156,13 +156,13 @@ const vv = typedV(schema);
 export const getSink = internalQuery({
   args: { docId: vv.id("kitchenSink") },
   returns: nullable(vv.doc("kitchenSink")),
-  handler: (ctx, args) => ctx.db.get(args.docId),
+  handler: (ctx, args) => ctx.db.get("kitchenSink", args.docId),
 });
 
 export const getUnion = internalQuery({
   args: { docId: vv.id("unionTable") },
   returns: nullable(vv.doc("unionTable")),
-  handler: (ctx, args) => ctx.db.get(args.docId),
+  handler: (ctx, args) => ctx.db.get("unionTable", args.docId),
 });
 
 const testApi: ApiFromModules<{
