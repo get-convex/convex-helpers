@@ -160,7 +160,18 @@ export class HttpRouterWithHono<
   }
 
   /**
-   * Lookup a route in the Hono app.
+   * Returns the hono HTTP endpoint and its routed request path and method.
+   *
+   * The path and method returned are used for logging and metrics, and should
+   * match up with one of the routes returned by `getRoutes`.
+   *
+   * For example,
+   *
+   * ```js
+   * http.route({ pathPrefix: "/profile/", method: "GET", handler: getProfile});
+   *
+   * http.lookup("/profile/abc", "GET") // returns [getProfile, "GET", "/profile/*"]
+   *```
    */
   private lookupHonoRoute(
     path: string,
