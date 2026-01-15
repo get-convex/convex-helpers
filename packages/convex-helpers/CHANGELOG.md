@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.110
+
+- Improve db wrapping in Triggers to support using an RLS-wrapped DB
+
 ## 0.1.109
 
 - Triggers/row-level security: fix a type issue with the `ctx.db` APIs with
