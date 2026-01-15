@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.112-alpha.0
+
+- Optimizes triggers, with the tradeoff of not having creationTime
+  match exactly in callbacks for inserts.
+
 ## 0.1.111
 
 - Allow a hono http router register more routes using the standard
