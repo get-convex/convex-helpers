@@ -165,11 +165,15 @@ export type Equals<X, Y> =
  * assert(x);
  * // x is now of type string
  * ```
+ * You can also provide a function, to avoid doing expensive string templating.
  * @param arg A value to assert the truthiness of.
- * @param message An optional message to throw if the value is not truthy.
+ * @param message An optional message to throw if the value is not truthy, or a function to generate the message.
  */
-export function assert(value: unknown, message?: string): asserts value {
+export function assert(
+  value: unknown,
+  message?: string | (() => string),
+): asserts value {
   if (!value) {
-    throw new Error(message);
+    throw new Error(typeof message === "function" ? message() : message);
   }
 }
