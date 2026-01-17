@@ -28,11 +28,13 @@ jobs:
           npm i
           npm run build
 
-      - name: Cache Convex local binary
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+      - name: Restore Convex local binary cache
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4
         with:
           path: ~/.cache/convex
-          key: convex-local-binary-${{ runner.os }}
+          key: convex-local-binary-${{ runner.os }}-
+          restore-keys: |
+            convex-local-binary-${{ runner.os }}-
 
       - name: Publish pkg-pr-new
         run: |
@@ -49,3 +51,18 @@ jobs:
         run: |
           npx convex dev --run-sh 'npx convex codegen' --once
           git diff --exit-code convex/_generated
+
+      - name: Get latest Convex binary and clean up old ones
+        id: convex-binary
+        run: |
+          BINARIES_DIR=~/.cache/convex/binaries
+          LATEST=$(ls -1 "$BINARIES_DIR" | sort | tail -n1)
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          # Delete all binaries except the latest
+          find "$BINARIES_DIR" -type f ! -name "$LATEST" -delete
+
+      - name: Save Convex local binary cache
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: ~/.cache/convex
+          key: convex-local-binary-${{ runner.os }}-${{ steps.convex-binary.outputs.latest }}
