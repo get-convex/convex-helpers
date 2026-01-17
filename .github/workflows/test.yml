@@ -36,3 +36,4 @@ jobs:
         run: |
           npm run lint
           npm run test
+          CONVEX_AGENT_MODE=anonymous npx convex dev --run-sh 'npx convex codegen' --once
