@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.112-alpha.0
+## 0.1.112-alpha.1
 
 - Optimizes triggers, with the tradeoff of not having creationTime
   match exactly in callbacks for inserts.
