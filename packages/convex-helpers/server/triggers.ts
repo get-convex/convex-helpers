@@ -285,12 +285,7 @@ export function writerWithTriggers<
       async () => {
         const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.patch(tableName, id, value);
-        const newDoc = deleteUndefinedFields({
-          ...oldDoc,
-          ...value,
-          _id: oldDoc._id,
-          _creationTime: oldDoc._creationTime,
-        });
+        const newDoc = (await innerDb.get(tableName, id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -331,11 +326,7 @@ export function writerWithTriggers<
       async () => {
         const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.replace(tableName, id, value);
-        const newDoc = deleteUndefinedFields({
-          ...value,
-          _id: oldDoc._id,
-          _creationTime: oldDoc._creationTime,
-        });
+        const newDoc = (await innerDb.get(tableName, id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
