@@ -383,11 +383,19 @@ export function writerWithTriggers<
         isWithinTrigger,
         async () => {
           const id = await innerDb.insert(table, value);
-          const newDoc = deleteUndefinedFields({
-            ...value,
+          const newDoc: DocumentByName<DataModel, TableName> = {
             _id: id,
             _creationTime: Date.now(),
-          });
+          };
+          for (const key in value) {
+            if (
+              key !== "_id" &&
+              key !== "_creationTime" &&
+              value[key] !== undefined
+            ) {
+              newDoc[key] = value[key];
+            }
+          }
           return [id, { operation: "insert", id, oldDoc: null, newDoc }];
         },
       );
@@ -507,13 +515,3 @@ type NonUnion<T> = T extends never // `never` is the bottom type for TypeScript 
 type PatchValue<T> = {
   [P in keyof T]?: undefined extends T[P] ? T[P] | undefined : T[P];
 };
-
-function deleteUndefinedFields<T>(obj: T): T {
-  const result = { ...obj };
-  for (const key in result) {
-    if (result[key] === undefined) {
-      delete result[key];
-    }
-  }
-  return result;
-}
