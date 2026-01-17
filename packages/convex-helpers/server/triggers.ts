@@ -283,9 +283,9 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.patch(tableName, id, value);
-        const newDoc = (await innerDb.get(id))!;
+        const newDoc = (await innerDb.get(tableName, id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -324,9 +324,9 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.replace(tableName, id, value);
-        const newDoc = (await innerDb.get(id))!;
+        const newDoc = (await innerDb.get(tableName, id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -360,7 +360,7 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.delete(tableName, id);
         return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
       },
@@ -383,7 +383,19 @@ export function writerWithTriggers<
         isWithinTrigger,
         async () => {
           const id = await innerDb.insert(table, value);
-          const newDoc = (await innerDb.get(id))!;
+          const newDoc: DocumentByName<DataModel, TableName> = {
+            _id: id,
+            _creationTime: Date.now(),
+          };
+          for (const key in value) {
+            if (
+              key !== "_id" &&
+              key !== "_creationTime" &&
+              value[key] !== undefined
+            ) {
+              newDoc[key] = value[key];
+            }
+          }
           return [id, { operation: "insert", id, oldDoc: null, newDoc }];
         },
       );
