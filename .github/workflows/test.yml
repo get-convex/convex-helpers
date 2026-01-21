@@ -47,5 +47,5 @@ jobs:
         env:
           CONVEX_AGENT_MODE: anonymous
         run: |
-          npx convex dev --run-sh 'npx convex codegen' --once
+          npx convex dev --once
           git diff --exit-code convex/_generated
