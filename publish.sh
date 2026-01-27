@@ -51,28 +51,15 @@ cp package.json dist/
 
 cd dist
 if (echo "$version" | grep alpha >/dev/null); then
-  npm publish --tag alpha --dry-run
+  npm publish --tag alpha
 else
-  npm publish --dry-run
+  npm publish
 fi
 popd >/dev/null
-echo "^^^ DRY RUN ^^^"
-read -r -p "Publish $version to npm? (y/n): " publish
-if [ "$publish" = "y" ]; then
-  npm i
-  pushd packages/convex-helpers/dist >/dev/null
-  if (echo "$version" | grep alpha >/dev/null); then
-    npm publish --tag alpha
-  else
-    npm publish
-  fi
-  popd >/dev/null
-  git add package.json package-lock.json packages/convex-helpers/package.json
-  # If there's nothing to commit, continue
-  git commit -m "npm $version" || true
-  git tag "npm/$version"
-  git push origin "npm/$version"
-  git push
-else
-  echo "Aborted."
-fi
+npm i
+git add package.json package-lock.json packages/convex-helpers/package.json
+# If there's nothing to commit, continue
+git commit -m "npm $version" || true
+git tag "npm/$version"
+git push origin "npm/$version"
+git push

@@ -28,11 +28,24 @@ jobs:
           npm i
           npm run build
 
+      - name: Cache Convex local binary
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: ~/.cache/convex
+          key: convex-local-binary
+
       - name: Publish pkg-pr-new
         run: |
           npx pkg-pr-new publish ./packages/convex-helpers/dist
 
-      - name: Run lint, test, and codegen
+      - name: Run lint and test
         run: |
           npm run lint
           npm run test
+
+      - name: Run codegen
+        env:
+          CONVEX_AGENT_MODE: anonymous
+        run: |
+          npx convex dev --once
+          git diff --exit-code convex/_generated

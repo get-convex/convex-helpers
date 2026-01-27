@@ -54,30 +54,26 @@ export type HonoWithConvex<ActionCtx extends GenericActionCtx<any>> = Hono<{
 
 /**
  * An implementation of the Convex `HttpRouter` that integrates with Hono by
- * overridding `getRoutes` and `lookup`.
+ * overriding getRoutes and lookup.
  *
- * This defers all routing and request handling to the provided Hono app, and
- * passes along the Convex `HttpEndpointCtx` to the Hono handlers as part of
- * `env`.
+ * This allows you to use both Hono routes and traditional Convex HTTP routes together.
+ * Traditional Convex routes (registered via http.route()) are checked first, then
+ * Hono routes are used as a fallback.
  *
- * It will attempt to log each request with the most specific Hono route it can
- * find. For example,
+ * For example:
  *
- * ```
- * app.on("GET", "*", ...)
- * app.on("GET", "/profile/:userId", ...)
- *
- * const http = new HttpRouterWithHono(app);
- * http.lookup("/profile/abc", "GET") // [handler, "GET", "/profile/:userId"]
- * ```
- *
- * An example `convex/http.ts` file would look like this:
  * ```
  * const app: HonoWithConvex = new Hono();
+ * app.get("/hono/hello", (c) => c.json({ message: "from hono" }));
  *
- * // add Hono routes on `app`
+ * const http = new HttpRouterWithHono(app);
+ * http.route({
+ *   path: "/convex/hello",
+ *   method: "GET",
+ *   handler: httpAction(() => new Response("from convex"))
+ * });
  *
- * export default new HttpRouterWithHono(app);
+ * export default http;
  * ```
  */
 export class HttpRouterWithHono<
@@ -96,17 +92,38 @@ export class HttpRouterWithHono<
       return await app.fetch(request, ctx);
     });
     this._handlerInfoCache = new Map();
+
+    // Save reference to parent getRoutes before overriding
+    const parentGetRoutes = this.getRoutes.bind(this);
+    this.getRoutes = () => {
+      const parentRoutes = parentGetRoutes();
+      const honoRoutes = this.getHonoRoutes();
+      return [...parentRoutes, ...honoRoutes];
+    };
+
+    // Save reference to parent lookup before overriding
+    const parentLookup = this.lookup.bind(this);
+    this.lookup = (path: string, method: RoutableMethod | "HEAD") => {
+      // First check parent router for traditional Convex routes
+      const convexMatch = parentLookup(path, method);
+      if (convexMatch !== null) {
+        return convexMatch;
+      }
+      // Fall back to Hono routing
+      return this.lookupHonoRoute(path, method);
+    };
   }
 
   /**
-   * Returns a list of routed HTTP endpoints.
-   *
-   * These are used to populate the list of routes shown in the Functions page of the Convex dashboard.
-   *
-   * @returns - an array of [path, method, endpoint] tuples.
+   * Get routes from the Hono app.
    */
-  override getRoutes = () => {
-    const convexRoutes: [string, RoutableMethod, PublicHttpAction][] = [];
+  private getHonoRoutes(): (readonly [
+    string,
+    RoutableMethod,
+    PublicHttpAction,
+  ])[] {
+    const honoRoutes: (readonly [string, RoutableMethod, PublicHttpAction])[] =
+      [];
 
     // Likely a better way to do this, but hono will have multiple handlers with the same
     // name (i.e. for middleware), so de-duplicate so we don't show multiple routes in the dashboard.
@@ -124,14 +141,14 @@ export class HttpRouterWithHono<
           const name = `${method} ${route.path}`;
           if (!seen.has(name)) {
             seen.add(name);
-            convexRoutes.push([route.path, method, handler]);
+            honoRoutes.push([route.path, method, handler]);
           }
         }
       } else {
         const name = `${route.method} ${route.path}`;
         if (!seen.has(name)) {
           seen.add(name);
-          convexRoutes.push([
+          honoRoutes.push([
             route.path,
             route.method as RoutableMethod,
             handler,
@@ -139,11 +156,11 @@ export class HttpRouterWithHono<
         }
       }
     });
-    return convexRoutes;
-  };
+    return honoRoutes;
+  }
 
   /**
-   * Returns the appropriate HTTP endpoint and its routed request path and method.
+   * Returns the hono HTTP endpoint and its routed request path and method.
    *
    * The path and method returned are used for logging and metrics, and should
    * match up with one of the routes returned by `getRoutes`.
@@ -155,10 +172,11 @@ export class HttpRouterWithHono<
    *
    * http.lookup("/profile/abc", "GET") // returns [getProfile, "GET", "/profile/*"]
    *```
-   *
-   * @returns - a tuple [PublicHttpEndpoint, method, path] or null.
    */
-  override lookup = (path: string, method: RoutableMethod | "HEAD") => {
+  private lookupHonoRoute(
+    path: string,
+    method: RoutableMethod | "HEAD",
+  ): readonly [PublicHttpAction, RoutableMethod, string] | null {
     const match = this._app.router.match(method, path);
     if (match === null) {
       return [this._handler, normalizeMethod(method), path] as const;
@@ -188,7 +206,7 @@ export class HttpRouterWithHono<
     }
 
     return [this._handler, normalizeMethod(method), path] as const;
-  };
+  }
 }
 
 export function normalizeMethod(
