@@ -46,7 +46,7 @@ test("filter", async () => {
   const withLookup = await t.run((ctx) =>
     filter(
       ctx.db.query("tableB"),
-      async (c) => ((await ctx.db.get(c.tableAId))?.count ?? 0) > 5,
+      async (c) => ((await ctx.db.get("tableA", c.tableAId))?.count ?? 0) > 5,
     ).collect(),
   );
   expect(withLookup).toMatchObject([

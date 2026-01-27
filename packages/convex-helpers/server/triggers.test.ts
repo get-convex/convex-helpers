@@ -47,6 +47,7 @@ triggers.register("users", async (ctx, change) => {
   if (change.newDoc) {
     const fullName = `${change.newDoc.firstName} ${change.newDoc.lastName}`;
     if (change.newDoc.fullName !== fullName) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- Testing the old API
       await ctx.db.patch(change.id, { fullName });
     }
   }
@@ -174,7 +175,7 @@ export const createUserAndReadBackWithRlsWrappedDb = mutationRlsThenTriggers({
     // Regression test: when `ctx.db` is wrapped by `wrapDatabaseWriter`, calling
     // `triggers.wrapDB` must not break `this` binding for get/query/normalizeId.
     const normalized = ctx.db.normalizeId("users", id);
-    const doc = await ctx.db.get(id);
+    const doc = await ctx.db.get("users", id);
     const first = await ctx.db.query("users").first();
 
     return {
@@ -202,6 +203,7 @@ test("trigger denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
+    // eslint-disable-next-line @convex-dev/explicit-table-ids -- Testing the old API
     const user = await ctx.db.get(userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
@@ -214,7 +216,7 @@ test("trigger with explicit IDs denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
-    const user = await ctx.db.get(userId);
+    const user = await ctx.db.get("usersExplicit", userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
 });

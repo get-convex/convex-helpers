@@ -274,6 +274,7 @@ export function writerWithTriggers<
     value: Partial<DocumentByName<DataModel, TableName>>,
   ): Promise<void> {
     if (!tableName) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
       return await innerDb.patch(id, value);
     }
     return await _execThenTrigger(
@@ -283,9 +284,9 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.patch(tableName, id, value);
-        const newDoc = (await innerDb.get(id))!;
+        const newDoc = (await innerDb.get(tableName, id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -315,6 +316,7 @@ export function writerWithTriggers<
     value: WithOptionalSystemFields<DocumentByName<DataModel, TableName>>,
   ): Promise<void> {
     if (!tableName) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
       return await innerDb.replace(id, value);
     }
     return await _execThenTrigger(
@@ -324,9 +326,9 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.replace(tableName, id, value);
-        const newDoc = (await innerDb.get(id))!;
+        const newDoc = (await innerDb.get(tableName, id))!;
         return [undefined, { operation: "update", id, oldDoc, newDoc }];
       },
     );
@@ -351,6 +353,7 @@ export function writerWithTriggers<
     id: GenericId<NonUnion<TableNamesInDataModel<DataModel>>>,
   ): Promise<void> {
     if (!tableName) {
+      // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here–
       return await innerDb.delete(id);
     }
     return await _execThenTrigger(
@@ -360,7 +363,7 @@ export function writerWithTriggers<
       tableName,
       isWithinTrigger,
       async () => {
-        const oldDoc = (await innerDb.get(id))!;
+        const oldDoc = (await innerDb.get(tableName, id))!;
         await innerDb.delete(tableName, id);
         return [undefined, { operation: "delete", id, oldDoc, newDoc: null }];
       },
@@ -383,7 +386,7 @@ export function writerWithTriggers<
         isWithinTrigger,
         async () => {
           const id = await innerDb.insert(table, value);
-          const newDoc = (await innerDb.get(id))!;
+          const newDoc = (await innerDb.get(table, id))!;
           return [id, { operation: "insert", id, oldDoc: null, newDoc }];
         },
       );

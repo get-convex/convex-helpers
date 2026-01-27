@@ -139,7 +139,7 @@ export function makeActionRetrier(
           makeFunctionReference<"action">(args.action),
           args.actionArgs,
         ));
-      const status = await ctx.db.system.get(job);
+      const status = await ctx.db.system.get("_scheduled_functions", job);
       if (!status) {
         // There is a chance a job will be deleted - after 7 days.
         // For now, we give up. In the future you could store information about
