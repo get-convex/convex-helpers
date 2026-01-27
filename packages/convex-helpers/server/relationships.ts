@@ -49,7 +49,10 @@ export async function getOrThrow(
 ): Promise<any> {
   const [table, id]: [string | null, GenericId<string>] =
     arg2 !== undefined ? [arg1, arg2] : [null, arg1];
-  const doc = table ? await ctx.db.get(table, id) : await ctx.db.get(id);
+  const doc = table
+    ? await ctx.db.get(table, id)
+    : // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+      await ctx.db.get(id);
   if (!doc) {
     throw new Error(`Could not find id ${id}`);
   }
@@ -442,8 +445,10 @@ export async function getManyVia<
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
         return await db.get(id);
       } catch {
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
         return await db.system.get(id as GenericId<SystemTableNames>);
       }
     },
@@ -503,6 +508,7 @@ export async function getManyViaOrThrow<
       const id = link[toField];
       try {
         return nullThrows(
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
           await db.get(id as GenericId<TargetTableName>),
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
@@ -510,6 +516,7 @@ export async function getManyViaOrThrow<
         );
       } catch {
         return nullThrows(
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
           await db.system.get(id as GenericId<SystemTableNames>),
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index

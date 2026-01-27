@@ -175,7 +175,7 @@ export const createUserAndReadBackWithRlsWrappedDb = mutationRlsThenTriggers({
     // Regression test: when `ctx.db` is wrapped by `wrapDatabaseWriter`, calling
     // `triggers.wrapDB` must not break `this` binding for get/query/normalizeId.
     const normalized = ctx.db.normalizeId("users", id);
-    const doc = await ctx.db.get(id);
+    const doc = await ctx.db.get("users", id);
     const first = await ctx.db.query("users").first();
 
     return {
