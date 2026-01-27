@@ -55,13 +55,17 @@ triggers.register("counter_table", async (ctx, change) => {
   }
   const sumDoc = (await ctx.db.query("sum_table").first())!;
   if (change.operation === "insert") {
-    await ctx.db.patch("sum_table", sumDoc._id, { sum: sumDoc.sum + change.newDoc.counter });
+    await ctx.db.patch("sum_table", sumDoc._id, {
+      sum: sumDoc.sum + change.newDoc.counter,
+    });
   } else if (change.operation === "update") {
     await ctx.db.patch("sum_table", sumDoc._id, {
       sum: sumDoc.sum + change.newDoc.counter - change.oldDoc.counter,
     });
   } else if (change.operation === "delete") {
-    await ctx.db.patch("sum_table", sumDoc._id, { sum: sumDoc.sum - change.oldDoc.counter });
+    await ctx.db.patch("sum_table", sumDoc._id, {
+      sum: sumDoc.sum - change.oldDoc.counter,
+    });
   }
 });
 
@@ -88,9 +92,15 @@ export const incrementCounterRace = mutation({
       throw new Error("No counters");
     }
     await Promise.all([
-      db.patch("counter_table", firstCounter._id, { counter: firstCounter.counter + 1 }),
-      db.patch("counter_table", firstCounter._id, { counter: firstCounter.counter + 2 }),
-      db.patch("counter_table", firstCounter._id, { counter: firstCounter.counter + 3 }),
+      db.patch("counter_table", firstCounter._id, {
+        counter: firstCounter.counter + 1,
+      }),
+      db.patch("counter_table", firstCounter._id, {
+        counter: firstCounter.counter + 2,
+      }),
+      db.patch("counter_table", firstCounter._id, {
+        counter: firstCounter.counter + 3,
+      }),
     ]);
   },
 });

@@ -127,7 +127,9 @@ export const relationshipTest = mutation({
     } catch {
       console.log("Successfully caught missing presenceId");
     }
-    await asyncMap(edges, (edge) => ctx.db.delete("join_table_example", edge._id));
+    await asyncMap(edges, (edge) =>
+      ctx.db.delete("join_table_example", edge._id),
+    );
     await asyncMap(
       await getManyFrom(ctx.db, "join_table_example", "by_userId", user2._id),
       (edge) => ctx.db.delete("join_table_example", edge._id),

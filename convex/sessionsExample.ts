@@ -131,7 +131,9 @@ export const logIn = mutationWithSession({
       .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
       .collect();
     await Promise.all(
-      presenceDocs.map((doc) => ctx.db.patch("presence", doc._id, { user: args.new })),
+      presenceDocs.map((doc) =>
+        ctx.db.patch("presence", doc._id, { user: args.new }),
+      ),
     );
   },
 });
@@ -144,7 +146,9 @@ export const logOut = mutationWithSession({
       .query("presence")
       .withIndex("user_room", (q) => q.eq("user", ctx.sessionId))
       .collect();
-    await Promise.all(presenceDocs.map((doc) => ctx.db.delete("presence", doc._id)));
+    await Promise.all(
+      presenceDocs.map((doc) => ctx.db.delete("presence", doc._id)),
+    );
   },
 });
 
