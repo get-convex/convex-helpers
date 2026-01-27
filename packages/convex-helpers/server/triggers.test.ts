@@ -216,7 +216,7 @@ test("trigger with explicit IDs denormalizes field", async () => {
     lastName: "Doe",
   });
   await t.run(async (ctx) => {
-    const user = await ctx.db.get("users", userId);
+    const user = await ctx.db.get("usersExplicit", userId);
     expect(user!.fullName).toStrictEqual("John Doe");
   });
 });
