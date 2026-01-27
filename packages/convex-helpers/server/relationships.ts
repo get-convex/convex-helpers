@@ -396,11 +396,12 @@ type JoinTables<DataModel extends GenericDataModel> = {
 type DocumentByNameOrSystem<
   DataModel extends GenericDataModel,
   TableName extends TableNamesInDataModel<DataModel> | SystemTableNames,
-> = TableName extends TableNamesInDataModel<DataModel>
-  ? DocumentByName<DataModel, TableName>
-  : TableName extends SystemTableNames
-    ? SystemDataModel[TableName]["document"]
-    : never;
+> =
+  TableName extends TableNamesInDataModel<DataModel>
+    ? DocumentByName<DataModel, TableName>
+    : TableName extends SystemTableNames
+      ? SystemDataModel[TableName]["document"]
+      : never;
 
 // many-to-many via lookup table
 /**
@@ -455,14 +456,12 @@ export async function getManyVia<
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
-        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
         return (await (db as any).get(id)) as DocumentByNameOrSystem<
           DataModel,
           TargetTableName
         > | null;
       } catch {
-        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
-        return (await db.system.get(
+        return (await (db.system as any).get(
           id as GenericId<SystemTableNames>,
         )) as DocumentByNameOrSystem<DataModel, TargetTableName> | null;
       }
@@ -523,7 +522,6 @@ export async function getManyViaOrThrow<
       const id = link[toField];
       try {
         return nullThrows(
-          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
           (await (db as any).get(
             id as GenericId<TargetTableName>,
           )) as DocumentByNameOrSystem<DataModel, TargetTableName> | null,
@@ -533,8 +531,7 @@ export async function getManyViaOrThrow<
         );
       } catch {
         return nullThrows(
-          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
-          (await db.system.get(
+          (await (db.system as any).get(
             id as GenericId<SystemTableNames>,
           )) as DocumentByNameOrSystem<DataModel, TargetTableName> | null,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
