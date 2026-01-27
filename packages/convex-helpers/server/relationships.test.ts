@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { expect, test, describe } from "vitest";
+import { expect, expectTypeOf, test, describe } from "vitest";
 import {
   getOrThrow,
   getAll,
@@ -10,7 +10,7 @@ import {
   getManyVia,
   getManyViaOrThrow,
 } from "./relationships.js";
-import { defineSchema, defineTable } from "convex/server";
+import { defineSchema, defineTable, SystemDataModel } from "convex/server";
 import { v } from "convex/values";
 import { modules } from "./setup.test.js";
 
@@ -703,13 +703,18 @@ describe("getManyVia", () => {
       return await getManyVia(ctx.db, "postFiles", "fileId", "postId", postId);
     });
 
+    expectTypeOf(files).toEqualTypeOf<
+      (SystemDataModel["_storage"]["document"] | null)[]
+    >();
+
     expect(files).toHaveLength(2);
-    expect(files[0]).toBeTruthy();
-    expect(files[1]).toBeTruthy();
-    // Check for _storage document properties
-    // FIXME: currently the implementation of getManyVia returns `unknown[]` for system tables
-    expect((files[0] as any)._id).toBeDefined();
-    expect((files[1] as any)._id).toBeDefined();
+    const file0 = files[0];
+    const file1 = files[1];
+    expect(file0).toBeTruthy();
+    expect(file1).toBeTruthy();
+    if (!file0 || !file1) throw new Error("Expected both files to exist");
+    expect(file0._id).toBeDefined();
+    expect(file1._id).toBeDefined();
   });
 
   test("returns null for missing system table documents", async () => {
@@ -743,11 +748,15 @@ describe("getManyVia", () => {
       return await getManyVia(ctx.db, "postFiles", "fileId", "postId", postId);
     });
 
+    expectTypeOf(files).toEqualTypeOf<
+      (SystemDataModel["_storage"]["document"] | null)[]
+    >();
+
     expect(files).toHaveLength(2);
-    expect(files[0]).toBeTruthy();
-    // Check for _storage document property
-    // FIXME: currently the implementation of getManyVia returns `unknown[]` for system tables
-    expect((files[0] as any)._id).toBeDefined();
+    const file0 = files[0];
+    expect(file0).toBeTruthy();
+    if (!file0) throw new Error("Expected first file to exist");
+    expect(file0._id).toBeDefined();
     expect(files[1]).toBeNull();
   });
 });
