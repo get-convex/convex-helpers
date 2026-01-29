@@ -158,8 +158,6 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     args === "skip" ? "skip" : JSON.stringify(convexToJson(args as Value));
   const queryName = getFunctionName(query);
 
-  // Track whether we're currently fetching to avoid race conditions
-  const isFetchingRef = useRef(false);
   // Track latest args key to avoid stale updates
   const latestArgsKeyRef = useRef(argsKey);
   useEffect(() => {
@@ -174,10 +172,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
 
     try {
       const result = await convex.query(query, args);
-      if (
-        isMountedRef.current &&
-        latestArgsKeyRef.current === argsKey
-      ) {
+      if (isMountedRef.current && latestArgsKeyRef.current === argsKey) {
         setState({
           data: result,
           isRefreshing: false,
@@ -186,10 +181,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
         });
       }
     } catch (e) {
-      if (
-        isMountedRef.current &&
-        latestArgsKeyRef.current === argsKey
-      ) {
+      if (isMountedRef.current && latestArgsKeyRef.current === argsKey) {
         setState((s) => ({
           ...s,
           isRefreshing: false,
