@@ -137,19 +137,6 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
   const interval = Math.max(rawInterval, MIN_INTERVAL_MS);
   const jitter = options?.jitter ?? DEFAULT_JITTER;
 
-  // Warn in development if interval was clamped
-  useEffect(() => {
-    if (
-      process.env.NODE_ENV === "development" &&
-      rawInterval < MIN_INTERVAL_MS
-    ) {
-      console.warn(
-        `usePeriodicQuery: interval ${rawInterval}ms is below minimum ${MIN_INTERVAL_MS}ms. ` +
-          `Using ${MIN_INTERVAL_MS}ms instead. For shorter intervals, use useQuery for real-time subscriptions.`,
-      );
-    }
-  }, [rawInterval]);
-
   const [state, setState] = useState<
     PeriodicQueryState<FunctionReturnType<Query>>
   >({
