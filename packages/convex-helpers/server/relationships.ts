@@ -456,11 +456,11 @@ export async function getManyVia<
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
-        return (await (db as any).get(id)) as any;
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+        return (await db.get(id)) as any;
       } catch {
-        return (await (db.system as any).get(
-          id as GenericId<SystemTableNames>,
-        )) as any;
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+        return (await db.system.get(id as GenericId<SystemTableNames>)) as any;
       }
     },
   );
@@ -519,14 +519,16 @@ export async function getManyViaOrThrow<
       const id = link[toField] as GenericId<TargetTableName>;
       try {
         return nullThrows(
-          (await (db as any).get(id)) as any,
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+          (await db.get(id)) as any,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
           } equal to ${value}`,
         );
       } catch {
         return nullThrows(
-          (await (db.system as any).get(id)) as any,
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+          (await db.system.get(id as GenericId<SystemTableNames>)) as any,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
           } equal to ${value}`,
