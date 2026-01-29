@@ -5,6 +5,7 @@ import type {
   GenericDatabaseReader,
   DocumentByName,
   SystemTableNames,
+  SystemDataModel,
   NamedIndex,
   NamedTableInfo,
   IndexNames,
@@ -392,6 +393,16 @@ type JoinTables<DataModel extends GenericDataModel> = {
     : TableName;
 }[TablesWithLookups<DataModel>];
 
+type DocumentByNameOrSystem<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel> | SystemTableNames,
+> =
+  TableName extends TableNamesInDataModel<DataModel>
+    ? DocumentByName<DataModel, TableName>
+    : TableName extends SystemTableNames
+      ? SystemDataModel[TableName]["document"]
+      : never;
+
 // many-to-many via lookup table
 /**
  * Get related documents by using a join table.
@@ -439,17 +450,17 @@ export async function getManyVia<
   index: IndexName,
   value: TypeOfFirstIndexField<DataModel, JoinTableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
-): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
+): Promise<(DocumentByNameOrSystem<DataModel, TargetTableName> | null)[]> {
   return await asyncMap(
     await getManyFrom(db, table, index, value, ...fieldArg),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
         // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
-        return await db.get(id);
+        return (await db.get(id)) as any;
       } catch {
         // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
-        return await db.system.get(id as GenericId<SystemTableNames>);
+        return (await db.system.get(id as GenericId<SystemTableNames>)) as any;
       }
     },
   );
@@ -501,15 +512,15 @@ export async function getManyViaOrThrow<
   index: IndexName,
   value: TypeOfFirstIndexField<DataModel, JoinTableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
-): Promise<DocumentByName<DataModel, TargetTableName>[]> {
+): Promise<DocumentByNameOrSystem<DataModel, TargetTableName>[]> {
   return await asyncMap(
     await getManyFrom(db, table, index, value, ...fieldArg),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
-      const id = link[toField];
+      const id = link[toField] as GenericId<TargetTableName>;
       try {
         return nullThrows(
           // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
-          await db.get(id as GenericId<TargetTableName>),
+          (await db.get(id)) as any,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
           } equal to ${value}`,
@@ -517,7 +528,7 @@ export async function getManyViaOrThrow<
       } catch {
         return nullThrows(
           // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
-          await db.system.get(id as GenericId<SystemTableNames>),
+          (await db.system.get(id as GenericId<SystemTableNames>)) as any,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
           } equal to ${value}`,
