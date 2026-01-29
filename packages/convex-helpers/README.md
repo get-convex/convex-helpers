@@ -330,6 +330,12 @@ Use `usePeriodicQuery` to fetch data at regular intervals instead of maintaining
 a continuous subscription. This is useful for data that doesn't need real-time
 updates, reducing bandwidth and backend load.
 
+**Warning:** This hook defeats the UI state consistency normally offered by
+Convex's default reactivity. Data may be stale between fetches, and multiple
+components using periodic queries may show inconsistent states. Only use this
+for pages with very expensive queries that get invalidated often, where strong
+consistency and freshness are not required. For most use cases, prefer `useQuery`.
+
 Unlike `useQuery`, this hook does not subscribe to real-time updates. Instead, it
 fetches data at regular intervals with jitter to prevent thundering herd effects
 when many clients start at the same time (e.g., after a server restart).
