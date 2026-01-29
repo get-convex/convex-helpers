@@ -25,6 +25,12 @@ import { useMemo, useState } from "react";
 import type { EmptyObject } from "./index.js";
 import type { Value } from "convex/values";
 
+export {
+  usePeriodicQuery,
+  type UsePeriodicQueryOptions,
+  type UsePeriodicQueryResult,
+} from "./react/usePeriodicQuery.js";
+
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query
  * function but instead returns `{ status, data, error, isSuccess, isPending, isError}`.
