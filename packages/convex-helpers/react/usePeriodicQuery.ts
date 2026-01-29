@@ -258,8 +258,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
         timeoutRef.current = null;
       }
     };
-  }, [queryName, argsKey]);
-
+  }, [queryName, argsKey, fetchData, scheduleNextFetch]);
   return {
     ...state,
     refresh,
