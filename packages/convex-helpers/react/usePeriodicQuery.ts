@@ -195,7 +195,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     const delay = getNextInterval(interval, jitter);
     timeoutRef.current = setTimeout(() => {
       if (isMountedRef.current) {
-        fetchData().then(() => {
+        void fetchData().then(() => {
           if (isMountedRef.current) {
             scheduleNextFetch();
           }
@@ -215,7 +215,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     }
 
     // Fetch immediately, then schedule next
-    fetchData().then(() => {
+    void fetchData().then(() => {
       if (isMountedRef.current) {
         scheduleNextFetch();
       }
@@ -245,7 +245,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     });
 
     // Fetch immediately, then start the interval
-    fetchData().then(() => {
+    void fetchData().then(() => {
       if (isMountedRef.current) {
         scheduleNextFetch();
       }
