@@ -1,4 +1,5 @@
 import Counter from "./components/Counter";
+import PeriodicQueryExample from "./components/PeriodicQueryExample";
 import RelationshipExample from "./components/RelationshipExample";
 import SessionsExample from "./components/SessionsExample";
 import { HonoExample } from "./components/HonoExample";
@@ -19,6 +20,7 @@ export default function App() {
       >
         <ConvexQueryCacheProvider maxIdleEntries={11} expiration={15000}>
           <Counter />
+          <PeriodicQueryExample />
           <RelationshipExample />
           <SessionsExample />
           <HonoExample />
