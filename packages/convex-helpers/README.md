@@ -11,7 +11,7 @@ Table of contents:
 - [Rate limiting](#rate-limiting)
 - [Session tracking via client-side sessionID storage](#session-tracking-via-client-side-sessionid-storage)
 - [Richer useQuery](#richer-usequery)
-- [Periodic Query (Polling)](#periodic-query-polling)
+- [Non-Reactive Query Hook](#non-reactive-query-hook)
 - [Row-level security](#row-level-security)
 - [Zod Validation](#zod-validation)
 - [Hono for advanced HTTP endpoint definitions](#hono-for-advanced-http-endpoint-definitions)
@@ -324,7 +324,7 @@ type ret =
     };
 ```
 
-## Periodic Query (Polling)
+## Non-Reactive Query Hook
 
 Use `usePeriodicQuery` to fetch data at regular intervals instead of maintaining
 a continuous subscription. This is useful for data that doesn't need real-time
@@ -337,8 +337,7 @@ for pages with very expensive queries that get invalidated often, where strong
 consistency and freshness are not required. For most use cases, prefer `useQuery`.
 
 Unlike `useQuery`, this hook does not subscribe to real-time updates. Instead, it
-fetches data at regular intervals with jitter to prevent thundering herd effects
-when many clients start at the same time (e.g., after a server restart).
+fetches data periodically.
 
 ```tsx
 import { usePeriodicQuery } from "convex-helpers/react";
@@ -347,10 +346,6 @@ function Dashboard() {
   const { data, isRefreshing, lastUpdated, error, refresh } = usePeriodicQuery(
     api.dashboard.getStats,
     { teamId: "123" },
-    {
-      interval: 60_000, // Base interval: 60 seconds (default)
-      jitter: 0.5, // ±50% randomness (default), so 30-90 seconds
-    },
   );
 
   if (data === undefined && !error) {
@@ -372,10 +367,15 @@ function Dashboard() {
 
 **Options:**
 
-| Option     | Type     | Default | Description                                                               |
-| ---------- | -------- | ------- | ------------------------------------------------------------------------- |
-| `interval` | `number` | `60000` | Base interval between fetches (ms). Minimum enforced: 30000 (30 seconds). |
-| `jitter`   | `number` | `0.5`   | Randomness factor (0-1). Actual interval is `interval * (1 ± jitter)`.    |
+For advanced configuration, you can pass in options to the hook. By default, it
+fetches approximately every 60 seconds with 50% jitter to prevent thundering
+herd effects when many clients start at the same time (e.g., after a server restart).
+As an example, an interval of 60 seconds with .5 jitter would be 30-90 seconds.
+
+| Option     | Type     | Default | Description                                                      |
+| ---------- | -------- | ------- | ---------------------------------------------------------------- |
+| `interval` | `number` | `60000` | Base interval between fetches (ms). Minimum: 30000 (30 seconds). |
+| `jitter`   | `number` | `0.5`   | Randomness factor as a fraction of `interval` (0-1).             |
 
 **Return value:**
 
