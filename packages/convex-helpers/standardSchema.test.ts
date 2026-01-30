@@ -2,6 +2,7 @@ import { z } from "zod";
 import { toStandardSchema } from "./standardSchema.js";
 import { v } from "convex/values";
 import { expectTypeOf } from "vitest";
+import type { StandardSchemaV1 } from "@standard-schema/spec";
 
 describe("toStandardSchema", () => {
   test("conforms to StandardSchemaV1 for string", () => {
@@ -12,12 +13,16 @@ describe("toStandardSchema", () => {
     expect(typeof schema["~standard"].validate).toBe("function");
   });
 
-  test("types the same as an equivalent zod validator", () => {
+  test("types conform to StandardSchemaV1", () => {
     const ours = toStandardSchema(v.string());
     const value = ours["~standard"].validate("hello");
     const zods = z.string();
     const zodValue = zods["~standard"].validate("hello");
-    expectTypeOf(ours["~standard"]).toEqualTypeOf(zods["~standard"]);
+    // Our implementation conforms to StandardSchemaV1. Zod's extends it with
+    // StandardSchemaWithJSON which adds JSON schema support, so we compare
+    // both to the base StandardSchemaV1.Props type.
+    expectTypeOf(ours["~standard"]).toMatchTypeOf<StandardSchemaV1.Props>();
+    expectTypeOf(zods["~standard"]).toMatchTypeOf<StandardSchemaV1.Props>();
     expectTypeOf(value).toEqualTypeOf(zodValue);
   });
 
