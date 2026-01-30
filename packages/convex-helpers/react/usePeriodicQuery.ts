@@ -29,6 +29,15 @@ const DEFAULT_JITTER = 0.5;
  * @returns The next interval in milliseconds
  */
 function getNextInterval(base: number, jitter: number): number {
+  if (jitter < 0 || jitter > 1) {
+    throw new Error("Jitter must be between 0 and 1");
+  }
+  if (base < MIN_INTERVAL_MS) {
+    console.warn(
+      `Base interval ${base} is less than minimum ${MIN_INTERVAL_MS}, clamping to ${MIN_INTERVAL_MS}`,
+    );
+    base = MIN_INTERVAL_MS;
+  }
   // Math.random() * 2 - 1 gives a value in range [-1, +1]
   const jitterMultiplier = Math.random() * 2 - 1;
   const jitterAmount = base * jitter * jitterMultiplier;
@@ -58,15 +67,34 @@ export type UsePeriodicQueryOptions = {
 /**
  * Return type for usePeriodicQuery.
  */
-export type UsePeriodicQueryResult<T> = {
-  /** Query result, or undefined if never successfully loaded */
-  data: T | undefined;
+export type UsePeriodicQueryResult<T> = (
+  | {
+      /** Status of the query. Success indicates the query loaded successfully. */
+      status: "success";
+      /** Query result, if the query loaded successfully. */
+      data: T;
+      /** Most recent error, or undefined. Clears on successful fetch. */
+      error: undefined;
+    }
+  | {
+      /** Status of the query. Pending indicates the initial load is in progress. */
+      status: "pending";
+      data: undefined;
+      /** Most recent error, or undefined. Clears on successful fetch. */
+      error: undefined;
+    }
+  | {
+      /** Status of the query. Error indicates the query threw an exception. */
+      status: "error";
+      data: undefined;
+      /** Most recent error, or undefined. Clears on successful fetch. */
+      error: Error;
+    }
+) & {
   /** True during any fetch (including initial load) */
   isRefreshing: boolean;
   /** Timestamp of the last successful fetch, or undefined if never loaded */
   lastUpdated: Date | undefined;
-  /** Most recent error, or undefined. Clears on successful fetch. */
-  error: Error | undefined;
   /** Manually trigger a refresh. Resets the interval timer. */
   refresh: () => void;
 };
@@ -133,8 +161,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
   const convex = useConvex();
 
   // Process options with defaults and minimum enforcement
-  const rawInterval = options?.interval ?? DEFAULT_INTERVAL_MS;
-  const interval = Math.max(rawInterval, MIN_INTERVAL_MS);
+  const interval = options?.interval ?? DEFAULT_INTERVAL_MS;
   const jitter = options?.jitter ?? DEFAULT_JITTER;
 
   const [state, setState] = useState<
@@ -160,9 +187,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
 
   // Track latest args key to avoid stale updates
   const latestArgsKeyRef = useRef(argsKey);
-  useEffect(() => {
-    latestArgsKeyRef.current = argsKey;
-  }, [argsKey]);
+  latestArgsKeyRef.current = argsKey;
 
   const fetchData = useCallback(async () => {
     if (args === "skip" || isFetchingRef.current) return;
@@ -191,7 +216,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     } finally {
       isFetchingRef.current = false;
     }
-  }, [convex, query, argsKey]);
+  }, [convex, queryName, argsKey]);
 
   const scheduleNextFetch = useCallback(() => {
     if (timeoutRef.current) {
@@ -265,8 +290,25 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
       }
     };
   }, [queryName, argsKey, fetchData, scheduleNextFetch]);
-  return {
-    ...state,
-    refresh,
-  };
+  return state.error
+    ? {
+        ...state,
+        status: "error",
+        error: state.error,
+        refresh,
+      }
+    : state.data
+      ? {
+          ...state,
+          status: "success",
+          data: state.data,
+          error: undefined,
+          refresh,
+        }
+      : {
+          ...state,
+          status: "pending",
+          error: undefined,
+          refresh,
+        };
 }
