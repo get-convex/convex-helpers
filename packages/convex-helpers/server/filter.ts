@@ -34,9 +34,9 @@ async function asyncFilter<T>(
   return arr.filter((_v, index) => results[index]);
 }
 
-class QueryWithFilter<T extends GenericTableInfo>
-  implements QueryInitializer<T>
-{
+class QueryWithFilter<
+  T extends GenericTableInfo,
+> implements QueryInitializer<T> {
   // q actually is only guaranteed to implement OrderedQuery<T>,
   // but we forward all QueryInitializer methods to it and if they fail they fail.
   q: QueryInitializer<T>;

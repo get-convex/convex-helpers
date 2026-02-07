@@ -269,8 +269,9 @@ type SessionMutation<Mutation extends FunctionReference<"mutation">> = (
 ) => Promise<FunctionReturnType<Mutation>>;
 
 // Similar to ReactMutation, but with a sessionId parameter.
-interface ReactSessionMutation<Mutation extends FunctionReference<"mutation">>
-  extends SessionMutation<Mutation> {
+interface ReactSessionMutation<
+  Mutation extends FunctionReference<"mutation">,
+> extends SessionMutation<Mutation> {
   withOptimisticUpdate(
     optimisticUpdate: OptimisticUpdate<FunctionArgs<Mutation>>,
   ): SessionMutation<Mutation>;

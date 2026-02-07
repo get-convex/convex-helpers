@@ -156,8 +156,7 @@ export class DatabaseWriterWithTriggers<
   Ctx extends {
     db: GenericDatabaseWriter<DataModel>;
   } = GenericMutationCtx<DataModel>,
-> implements GenericDatabaseWriter<DataModel>
-{
+> implements GenericDatabaseWriter<DataModel> {
   writer: GenericDatabaseWriter<DataModel>;
 
   constructor(
