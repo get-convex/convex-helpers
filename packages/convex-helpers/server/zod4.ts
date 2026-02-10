@@ -1544,12 +1544,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   validator: Z,
   toConvex: (x: zCore.$ZodType) => GenericValidator,
 ): GenericValidator {
-  // Check for zid (Convex ID) validators
-  const idTableName = _zidRegistry.get(validator);
-  if (idTableName !== undefined) {
-    return v.id(idTableName.tableName);
-  }
-
   if (validator instanceof zCore.$ZodString) {
     return v.string();
   }
@@ -1700,10 +1694,25 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     return v.string();
   }
 
-  if (
-    validator instanceof zCore.$ZodCustom ||
-    validator instanceof zCore.$ZodIntersection
-  ) {
+  if (validator instanceof zCore.$ZodCustom) {
+    // Check for zid (Convex ID) validators.
+    // This must be inside the $ZodCustom branch (not at the top of the
+    // function) because Zod 4's registry.get() walks the _zod.parent chain,
+    // so schemas derived via clone() can inherit zid metadata even if they
+    // are a completely different type (e.g. $ZodString with _zod.parent
+    // pointing to a zid). Checking the registry only for $ZodCustom
+    // (which is the type zid() produces) avoids those false positives.
+    const idTableName = _zidRegistry.get(validator);
+    if (
+      idTableName !== undefined &&
+      typeof idTableName.tableName === "string"
+    ) {
+      return v.id(idTableName.tableName);
+    }
+    return v.any();
+  }
+
+  if (validator instanceof zCore.$ZodIntersection) {
     return v.any();
   }
 
