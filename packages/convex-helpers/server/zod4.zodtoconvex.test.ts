@@ -1370,6 +1370,27 @@ describe("zid registry parent inheritance", () => {
     expect(zodToConvex(clone)).toEqual(v.id("users"));
     expect(zodOutputToConvex(clone)).toEqual(v.id("users"));
   });
+
+  test("zid().describe() still resolves to v.id() via real Zod clone()", () => {
+    // .describe() internally calls clone(), which sets _zod.parent on the
+    // new schema. The cloned schema is still a $ZodCustom, so the registry
+    // check inside the $ZodCustom branch should find the zid metadata
+    // through the parent chain and correctly return v.id().
+    const described = zid("users").describe("The user's ID");
+
+    expect(zodToConvex(described)).toEqual(v.id("users"));
+    expect(zodOutputToConvex(described)).toEqual(v.id("users"));
+  });
+
+  test("z.string().describe() does not false-positive as zid via real Zod clone()", () => {
+    // .describe() calls clone(), but z.string() produces a $ZodString, not
+    // a $ZodCustom. Even if the parent chain somehow includes zid metadata,
+    // the $ZodString instanceof check should take priority.
+    const described = z.string().describe("A plain string");
+
+    expect(zodToConvex(described)).toEqual(v.string());
+    expect(zodOutputToConvex(described)).toEqual(v.string());
+  });
 });
 
 export function testZodToConvex<

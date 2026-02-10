@@ -310,8 +310,8 @@ export function zCustomAction<
  */
 export const zid = <
   DataModel extends GenericDataModel,
-  TableName extends
-    TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
+  TableName extends TableNamesInDataModel<DataModel> =
+    TableNamesInDataModel<DataModel>,
 >(
   tableName: TableName,
 ): Zid<TableName> => {
