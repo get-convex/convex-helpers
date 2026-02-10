@@ -214,9 +214,9 @@ type GenericStreamItem = NonNullable<unknown>;
 /**
  * A "QueryStream" is an async iterable of query results, ordered by indexed fields.
  */
-export abstract class QueryStream<
-  T extends GenericStreamItem,
-> implements GenericOrderedQuery<T> {
+export abstract class QueryStream<T extends GenericStreamItem>
+  implements GenericOrderedQuery<T>
+{
   // Methods that subclasses must implement so OrderedQuery can be implemented.
   abstract iterWithKeys(): AsyncIterable<[T | null, IndexKey]>;
   abstract narrow(indexBounds: IndexBounds): QueryStream<T>;
@@ -514,9 +514,9 @@ export interface GenericOrderedQuery<T> extends AsyncIterable<T> {
   filter(predicate: any): this;
 }
 
-export class StreamDatabaseReader<
-  Schema extends SchemaDefinition<any, boolean>,
-> implements GenericDatabaseReader<DM<Schema>> {
+export class StreamDatabaseReader<Schema extends SchemaDefinition<any, boolean>>
+  implements GenericDatabaseReader<DM<Schema>>
+{
   // TODO: support system tables
   public system: GenericDatabaseReader<SystemDataModel>["system"];
 
@@ -571,10 +571,10 @@ export type QueryReflection<
 };
 
 export abstract class StreamableQuery<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
->
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+    IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  >
   extends QueryStream<DocumentByInfo<NamedTableInfo<DM<Schema>, T>>>
   // this "implements" is redundant, since QueryStream implies it, but it acts as a type-time assertion.
   implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>
@@ -583,9 +583,9 @@ export abstract class StreamableQuery<
 }
 
 export class StreamQueryInitializer<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
->
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+  >
   extends StreamableQuery<Schema, T, "by_creation_time">
   implements QueryInitializer<NamedTableInfo<DM<Schema>, T>>
 {
@@ -651,10 +651,10 @@ export class StreamQueryInitializer<
 
 // Not to be confused with QueryStream or StreamableQuery.
 export class StreamQuery<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
->
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+    IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  >
   extends StreamableQuery<Schema, T, IndexName>
   implements Query<NamedTableInfo<DM<Schema>, T>>
 {
@@ -700,10 +700,10 @@ export class StreamQuery<
 }
 
 export class OrderedStreamQuery<
-  Schema extends SchemaDefinition<any, boolean>,
-  T extends TableNamesInDataModel<DM<Schema>>,
-  IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
->
+    Schema extends SchemaDefinition<any, boolean>,
+    T extends TableNamesInDataModel<DM<Schema>>,
+    IndexName extends IndexNames<NamedTableInfo<DM<Schema>, T>>,
+  >
   extends StreamableQuery<Schema, T, IndexName>
   implements OrderedQuery<NamedTableInfo<DM<Schema>, T>>
 {
@@ -1226,7 +1226,8 @@ class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
 class FlatMapStreamIterator<
   T extends GenericStreamItem,
   U extends GenericStreamItem,
-> implements AsyncIterator<[U | null, IndexKey]> {
+> implements AsyncIterator<[U | null, IndexKey]>
+{
   #outerStream: QueryStream<T>;
   #outerIterator: AsyncIterator<[T | null, IndexKey]>;
   #currentOuterItem: {
