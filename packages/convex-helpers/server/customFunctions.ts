@@ -588,8 +588,8 @@ export type CustomBuilder<
     ArgsValidator extends PropertyValidators | void | Validator<any, any, any>,
     ReturnsValidator extends PropertyValidators | GenericValidator | void,
     ReturnValue extends ReturnValueForOptionalValidator<ReturnsValidator> = any,
-    OneOrZeroArgs extends
-      ArgsArrayForOptionalValidator<ArgsValidator> = DefaultArgsForOptionalValidator<ArgsValidator>,
+    OneOrZeroArgs extends ArgsArrayForOptionalValidator<ArgsValidator> =
+      DefaultArgsForOptionalValidator<ArgsValidator>,
   >(
     func:
       | ({
