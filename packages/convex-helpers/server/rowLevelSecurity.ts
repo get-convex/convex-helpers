@@ -186,9 +186,10 @@ type Handler<Ctx, Args extends ArgsArray, Output> = (
   ...args: Args
 ) => Output;
 
-class WrapReader<Ctx, DataModel extends GenericDataModel>
-  implements GenericDatabaseReader<DataModel>
-{
+class WrapReader<
+  Ctx,
+  DataModel extends GenericDataModel,
+> implements GenericDatabaseReader<DataModel> {
   ctx: Ctx;
   db: GenericDatabaseReader<DataModel>;
   system: GenericDatabaseReader<DataModel>["system"];
@@ -268,9 +269,10 @@ class WrapReader<Ctx, DataModel extends GenericDataModel>
   }
 }
 
-class WrapWriter<Ctx, DataModel extends GenericDataModel>
-  implements GenericDatabaseWriter<DataModel>
-{
+class WrapWriter<
+  Ctx,
+  DataModel extends GenericDataModel,
+> implements GenericDatabaseWriter<DataModel> {
   ctx: Ctx;
   db: GenericDatabaseWriter<DataModel>;
   system: GenericDatabaseWriter<DataModel>["system"];
