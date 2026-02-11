@@ -43,6 +43,10 @@
       "types": "./react/sessions.d.ts",
       "default": "./react/sessions.js"
     },
+    "./react/usePeriodicQuery": {
+      "types": "./react/usePeriodicQuery.d.ts",
+      "default": "./react/usePeriodicQuery.js"
+    },
     "./react/cache/hooks": {
       "types": "./react/cache/hooks.d.ts",
       "default": "./react/cache/hooks.js"

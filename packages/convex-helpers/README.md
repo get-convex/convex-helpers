@@ -11,6 +11,7 @@ Table of contents:
 - [Rate limiting](#rate-limiting)
 - [Session tracking via client-side sessionID storage](#session-tracking-via-client-side-sessionid-storage)
 - [Richer useQuery](#richer-usequery)
+- [Periodic Query (Polling)](#periodic-query-polling)
 - [Row-level security](#row-level-security)
 - [Zod Validation](#zod-validation)
 - [Hono for advanced HTTP endpoint definitions](#hono-for-advanced-http-endpoint-definitions)
@@ -322,6 +323,71 @@ type ret =
       isError: true;
     };
 ```
+
+## Periodic Query (Polling)
+
+Use `usePeriodicQuery` to fetch data at regular intervals instead of maintaining
+a continuous subscription. This is useful for data that doesn't need real-time
+updates, reducing bandwidth and backend load.
+
+**Warning:** This hook defeats the UI state consistency normally offered by
+Convex's default reactivity. Data may be stale between fetches, and multiple
+components using periodic queries may show inconsistent states. Only use this
+for pages with very expensive queries that get invalidated often, where strong
+consistency and freshness are not required. For most use cases, prefer `useQuery`.
+
+Unlike `useQuery`, this hook does not subscribe to real-time updates. Instead, it
+fetches data at regular intervals with jitter to prevent thundering herd effects
+when many clients start at the same time (e.g., after a server restart).
+
+```tsx
+import { usePeriodicQuery } from "convex-helpers/react";
+
+function Dashboard() {
+  const { data, isRefreshing, lastUpdated, error, refresh } = usePeriodicQuery(
+    api.dashboard.getStats,
+    { teamId: "123" },
+    {
+      interval: 60_000, // Base interval: 60 seconds (default)
+      jitter: 0.5, // ±50% randomness (default), so 30-90 seconds
+    },
+  );
+
+  if (data === undefined && !error) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div>
+      {error && <div className="error">Error: {error.message}</div>}
+      <div>Stats: {JSON.stringify(data)}</div>
+      <div>Last updated: {lastUpdated?.toLocaleTimeString()}</div>
+      <button onClick={refresh} disabled={isRefreshing}>
+        {isRefreshing ? "Refreshing..." : "Refresh now"}
+      </button>
+    </div>
+  );
+}
+```
+
+**Options:**
+
+| Option     | Type     | Default | Description                                                               |
+| ---------- | -------- | ------- | ------------------------------------------------------------------------- |
+| `interval` | `number` | `60000` | Base interval between fetches (ms). Minimum enforced: 30000 (30 seconds). |
+| `jitter`   | `number` | `0.5`   | Randomness factor (0-1). Actual interval is `interval * (1 ± jitter)`.    |
+
+**Return value:**
+
+| Field          | Type                 | Description                                      |
+| -------------- | -------------------- | ------------------------------------------------ |
+| `data`         | `T \| undefined`     | Query result, or `undefined` if never loaded     |
+| `isRefreshing` | `boolean`            | `true` during any fetch (including initial load) |
+| `lastUpdated`  | `Date \| undefined`  | Timestamp of last successful fetch               |
+| `error`        | `Error \| undefined` | Most recent error (clears on success)            |
+| `refresh`      | `() => void`         | Manually trigger a refresh and reset the timer   |
+
+The hook supports `"skip"` as the args parameter to disable fetching, just like `useQuery`.
 
 ## Row-level security
 
