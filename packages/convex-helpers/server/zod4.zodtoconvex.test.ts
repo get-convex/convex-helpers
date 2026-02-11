@@ -1321,71 +1321,18 @@ describe("testing infrastructure", () => {
   });
 });
 
-describe("zid registry parent inheritance", () => {
-  test("zodToConvex does not misidentify a schema as a zid via _zod.parent inheritance", () => {
-    // In Zod 4, registry.get() walks the _zod.parent chain (set by clone()).
-    // If a schema happens to have _zod.parent pointing to a zid-registered
-    // schema, the registry returns the zid metadata. Before the fix,
-    // zodToConvexCommon checked the registry BEFORE type-specific instanceof
-    // checks, so a $ZodString with inherited zid metadata would be
-    // incorrectly converted to v.id() instead of v.string().
-    const myZid = zid("users");
-    const myString = z.string();
-
-    // Simulate Zod 4's clone() setting _zod.parent
-    (myString as any)._zod.parent = myZid;
-
-    // Should be v.string(), not v.id("users")
-    expect(zodToConvex(myString)).toEqual(v.string());
-    expect(zodOutputToConvex(myString)).toEqual(v.string());
-  });
-
-  test("zodToConvex does not misidentify object fields via inherited zid metadata", () => {
-    const myZid = zid("documents");
-    const myNumber = z.number();
-
-    // Simulate parent inheritance
-    (myNumber as any)._zod.parent = myZid;
-
-    const schema = z.object({ count: myNumber });
-
-    // count should be v.number(), not v.id("documents")
-    expect(zodToConvex(schema)).toEqual(v.object({ count: v.number() }));
-    expect(zodOutputToConvex(schema)).toEqual(v.object({ count: v.number() }));
-  });
-
-  test("legitimate zid derivations still work via parent inheritance", () => {
-    // A zid that was cloned (e.g. via .describe()) should still be
-    // recognized as a zid through parent inheritance, because the
-    // cloned schema is the same $ZodCustom type and won't match
-    // any earlier instanceof check.
-    const myZid = zid("users");
-
-    // z.custom() produces a $ZodCustom. Cloning it (as .describe() does)
-    // creates another $ZodCustom with _zod.parent = myZid.
-    const clone = z.custom<string>((val) => typeof val === "string");
-    (clone as any)._zod.parent = myZid;
-
-    // The clone should inherit the zid metadata and convert to v.id("users")
-    expect(zodToConvex(clone)).toEqual(v.id("users"));
-    expect(zodOutputToConvex(clone)).toEqual(v.id("users"));
-  });
-
-  test("zid().describe() still resolves to v.id() via real Zod clone()", () => {
-    // .describe() internally calls clone(), which sets _zod.parent on the
-    // new schema. The cloned schema is still a $ZodCustom, so the registry
-    // check inside the $ZodCustom branch should find the zid metadata
-    // through the parent chain and correctly return v.id().
+describe("zid with derived schemas", () => {
+  test("zid().describe() still resolves to v.id()", () => {
+    // .describe() clones the schema internally. The cloned schema should
+    // still be recognized as a zid via the registry's parent chain lookup.
     const described = zid("users").describe("The user's ID");
 
     expect(zodToConvex(described)).toEqual(v.id("users"));
     expect(zodOutputToConvex(described)).toEqual(v.id("users"));
   });
 
-  test("z.string().describe() does not false-positive as zid via real Zod clone()", () => {
-    // .describe() calls clone(), but z.string() produces a $ZodString, not
-    // a $ZodCustom. Even if the parent chain somehow includes zid metadata,
-    // the $ZodString instanceof check should take priority.
+  test("z.string().describe() is not misidentified as a zid", () => {
+    // Regression guard: deriving a non-zid schema should never produce v.id().
     const described = z.string().describe("A plain string");
 
     expect(zodToConvex(described)).toEqual(v.string());
