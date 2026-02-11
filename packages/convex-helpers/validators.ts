@@ -755,7 +755,10 @@ export function validate<T extends Validator<any, any, any>>(
             break;
           }
         }
-        if (!opts?.allowUnknownFields) {
+        if (
+          !opts?.allowUnknownFields &&
+          (validator as any).unknownKeys !== "strip"
+        ) {
           for (const k of Object.keys(value)) {
             if (
               validator.fields[k] === undefined &&
@@ -850,6 +853,32 @@ export function parse<T extends Validator<any, any, any>>(
   return stripUnknownFields(validator, value);
 }
 
+function isStripObjectValidator(
+  validator: Validator<any, any, any>,
+): validator is VObject<any, any, any> {
+  return (
+    validator.kind === "object" && (validator as any).unknownKeys === "strip"
+  );
+}
+
+function firstMatchingUnionMember(
+  members: Validator<any, any, any>[],
+  value: unknown,
+  opts: { allowUnknownFields: boolean; includeStripObjects: boolean },
+): Validator<any, any, any> | undefined {
+  for (const member of members) {
+    if (isStripObjectValidator(member) !== opts.includeStripObjects) {
+      continue;
+    }
+    if (
+      validate(member, value, { allowUnknownFields: opts.allowUnknownFields })
+    ) {
+      return member;
+    }
+  }
+  return undefined;
+}
+
 function stripUnknownFields<T extends Validator<any, any, any>>(
   validator: T,
   value: Infer<T>,
@@ -883,18 +912,22 @@ function stripUnknownFields<T extends Validator<any, any, any>>(
       );
     }
     case "union": {
-      // First try a strict match
-      for (const member of validator.members) {
-        if (validate(member, value, { allowUnknownFields: false })) {
-          return stripUnknownFields(member, value);
-        }
+      const strictMember = firstMatchingUnionMember(validator.members, value, {
+        allowUnknownFields: false,
+        includeStripObjects: false,
+      });
+      if (strictMember) {
+        return stripUnknownFields(strictMember, value);
       }
-      // Then try a permissive match
-      for (const member of validator.members) {
-        if (validate(member, value, { allowUnknownFields: true })) {
-          return stripUnknownFields(member, value);
-        }
+
+      const stripMember = firstMatchingUnionMember(validator.members, value, {
+        allowUnknownFields: true,
+        includeStripObjects: true,
+      });
+      if (stripMember) {
+        return stripUnknownFields(stripMember, value);
       }
+
       throw new Error("No matching member in union");
     }
     default: {

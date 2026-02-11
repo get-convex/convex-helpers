@@ -342,6 +342,11 @@ test("validators disallow things when they're wrong", async () => {
 });
 
 describe("validate", () => {
+  function withStripUnknownKeys(validator: ReturnType<typeof v.object>) {
+    (validator as any).unknownKeys = "strip";
+    return validator;
+  }
+
   test("validates primitive validators", () => {
     // String
     expect(validate(v.string(), "hello")).toBe(true);
@@ -604,10 +609,10 @@ describe("validate", () => {
     expect(result).toEqual({ name: "Alice", age: 30 });
   });
 
-  test("parse strips unknown fields from unions", () => {
+  test("parse strips unknown fields from strip-mode unions", () => {
     const validator = v.union(
-      v.object({ name: v.string() }),
-      v.object({ age: v.number() }),
+      withStripUnknownKeys(v.object({ name: v.string() })),
+      withStripUnknownKeys(v.object({ age: v.number() })),
     );
     const result = parse(validator, {
       name: "Alice",
@@ -645,8 +650,8 @@ describe("validate", () => {
         age: v.number(),
       }),
       union: v.union(
-        v.object({ name: v.string() }),
-        v.object({ age: v.number() }),
+        withStripUnknownKeys(v.object({ name: v.string() })),
+        withStripUnknownKeys(v.object({ age: v.number() })),
       ),
       array: v.array(v.object({ name: v.string() })),
       record: vv.record(v.string(), v.object({ name: v.string() })),
@@ -691,10 +696,10 @@ describe("validate", () => {
     expect(result4).toEqual({});
   });
 
-  test("union matches first member with unknown fields", () => {
+  test("union with strip members matches first member with unknown fields", () => {
     const validator = v.union(
-      v.object({ name: v.string() }),
-      v.object({ name: v.string(), age: v.number() }),
+      withStripUnknownKeys(v.object({ name: v.string() })),
+      withStripUnknownKeys(v.object({ name: v.string(), age: v.number() })),
     );
     const result = parse(validator, {
       name: "Alice",
