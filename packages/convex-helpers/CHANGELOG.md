@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.112
+
+- Zod 4 support: fix an issue where `zodToConvex` would incorrectly
+  identify some types as `v.id()` when using Zod schema inheritance.
+- Relationships: fix the return type of `getManyVia`
+  and `getManyViaOrThrow` when using system tables.
+
 ## 0.1.111
 
 - Allow a hono http router register more routes using the standard
