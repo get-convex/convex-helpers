@@ -1544,12 +1544,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   validator: Z,
   toConvex: (x: zCore.$ZodType) => GenericValidator,
 ): GenericValidator {
-  // Check for zid (Convex ID) validators
-  const idTableName = _zidRegistry.get(validator);
-  if (idTableName !== undefined) {
-    return v.id(idTableName.tableName);
-  }
-
   if (validator instanceof zCore.$ZodString) {
     return v.string();
   }
@@ -1700,10 +1694,22 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     return v.string();
   }
 
-  if (
-    validator instanceof zCore.$ZodCustom ||
-    validator instanceof zCore.$ZodIntersection
-  ) {
+  if (validator instanceof zCore.$ZodCustom) {
+    // Check for zid (Convex ID) validators inside the $ZodCustom branch
+    // since zid() produces a $ZodCustom. Keeping this check here (rather
+    // than at the top of the function) ensures type-specific instanceof
+    // handlers always take priority.
+    const idTableName = _zidRegistry.get(validator);
+    if (
+      idTableName !== undefined &&
+      typeof idTableName.tableName === "string"
+    ) {
+      return v.id(idTableName.tableName);
+    }
+    return v.any();
+  }
+
+  if (validator instanceof zCore.$ZodIntersection) {
     return v.any();
   }
 
