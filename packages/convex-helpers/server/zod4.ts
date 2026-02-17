@@ -310,8 +310,8 @@ export function zCustomAction<
  */
 export const zid = <
   DataModel extends GenericDataModel,
-  TableName extends
-    TableNamesInDataModel<DataModel> = TableNamesInDataModel<DataModel>,
+  TableName extends TableNamesInDataModel<DataModel> =
+    TableNamesInDataModel<DataModel>,
 >(
   tableName: TableName,
 ): Zid<TableName> => {
@@ -849,7 +849,13 @@ function customFnBuilder(
     customization.input ?? NoOp.input;
   const inputArgs = customization.args ?? NoOp.args;
   return function customBuilder(fn: any): any {
-    const { args, handler = fn, returns: maybeObject, ...extra } = fn;
+    const {
+      args,
+      handler = fn,
+      skipConvexValidation = false,
+      returns: maybeObject,
+      ...extra
+    } = fn;
 
     const returns =
       maybeObject && !(maybeObject instanceof zCore.$ZodType)
@@ -857,11 +863,11 @@ function customFnBuilder(
         : maybeObject;
 
     const returnValidator =
-      returns && !fn.skipConvexValidation
+      returns && !skipConvexValidation
         ? { returns: zodOutputToConvex(returns) }
         : null;
 
-    if (args && !fn.skipConvexValidation) {
+    if (args) {
       let argsValidator = args;
       if (argsValidator instanceof zCore.$ZodType) {
         if (argsValidator instanceof zCore.$ZodObject) {
@@ -875,7 +881,9 @@ function customFnBuilder(
       }
       const convexValidator = zodToConvexFields(argsValidator);
       return builder({
-        args: addFieldsToValidator(convexValidator, inputArgs),
+        args: skipConvexValidation
+          ? undefined
+          : addFieldsToValidator(convexValidator, inputArgs),
         ...returnValidator,
         handler: async (ctx: any, allArgs: any) => {
           const added = await customInput(
@@ -908,10 +916,10 @@ function customFnBuilder(
         },
       });
     }
-    if (Object.keys(inputArgs).length > 0 && !fn.skipConvexValidation) {
+    if (skipConvexValidation && Object.keys(inputArgs).length > 0) {
       throw new Error(
         "If you're using a custom function with arguments for the input " +
-          "customization, you must declare the arguments for the function too.",
+          "customization, you cannot skip convex validation.",
       );
     }
     return builder({
@@ -1024,20 +1032,51 @@ export type ConvexValidatorFromZodOutput<
   Z extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
 > =
-  // `unknown` / `any`: we can’t infer a precise return type at compile time
+  // `unknown` / `any`: we can't infer a precise return type at compile time
   IsUnknownOrAny<Z> extends true
     ? GenericValidator
     : // z.default()
       Z extends zCore.$ZodDefault<infer Inner extends zCore.$ZodType> // output: always there
-      ? VRequired<ConvexValidatorFromZod<Inner, "required">>
-      : // z.pipe()
+      ? VRequired<ConvexValidatorFromZodOutput<Inner, "required">>
+      : // z.pipe() - use output schema for zodOutputToConvex
         Z extends zCore.$ZodPipe<
             infer _Input extends zCore.$ZodType,
             infer Output extends zCore.$ZodType
           >
-        ? ConvexValidatorFromZod<Output, IsOptional>
-        : // All other schemas have the same input/output types
-          ConvexValidatorFromZodCommon<Z, IsOptional>;
+        ? ConvexValidatorFromZodOutput<Output, IsOptional>
+        : // z.optional() - handle here to use output types consistently
+          Z extends zCore.$ZodOptional<infer Inner extends zCore.$ZodType>
+          ? VOptional<ConvexValidatorFromZodOutput<Inner, "optional">>
+          : // z.nullable() - handle here to use output types consistently
+            Z extends zCore.$ZodNullable<infer Inner extends zCore.$ZodType>
+            ? ConvexValidatorFromZodOutput<Inner, IsOptional> extends Validator<
+                any,
+                "optional",
+                any
+              >
+              ? VUnion<
+                  | ConvexValidatorFromZodOutput<Inner, IsOptional>["type"]
+                  | null
+                  | undefined,
+                  [
+                    VRequired<ConvexValidatorFromZodOutput<Inner, IsOptional>>,
+                    VNull,
+                  ],
+                  "optional",
+                  ConvexValidatorFromZodOutput<Inner, IsOptional>["fieldPaths"]
+                >
+              : VUnion<
+                  | ConvexValidatorFromZodOutput<Inner, IsOptional>["type"]
+                  | null,
+                  [
+                    VRequired<ConvexValidatorFromZodOutput<Inner, IsOptional>>,
+                    VNull,
+                  ],
+                  IsOptional,
+                  ConvexValidatorFromZodOutput<Inner, IsOptional>["fieldPaths"]
+                >
+            : // All other schemas have the same input/output types
+              ConvexValidatorFromZodCommon<Z, IsOptional>;
 
 // Conversions used for both zodToConvex and zodOutputToConvex
 type ConvexValidatorFromZodCommon<
@@ -1505,12 +1544,6 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   validator: Z,
   toConvex: (x: zCore.$ZodType) => GenericValidator,
 ): GenericValidator {
-  // Check for zid (Convex ID) validators
-  const idTableName = _zidRegistry.get(validator);
-  if (idTableName !== undefined) {
-    return v.id(idTableName.tableName);
-  }
-
   if (validator instanceof zCore.$ZodString) {
     return v.string();
   }
@@ -1661,10 +1694,22 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
     return v.string();
   }
 
-  if (
-    validator instanceof zCore.$ZodCustom ||
-    validator instanceof zCore.$ZodIntersection
-  ) {
+  if (validator instanceof zCore.$ZodCustom) {
+    // Check for zid (Convex ID) validators inside the $ZodCustom branch
+    // since zid() produces a $ZodCustom. Keeping this check here (rather
+    // than at the top of the function) ensures type-specific instanceof
+    // handlers always take priority.
+    const idTableName = _zidRegistry.get(validator);
+    if (
+      idTableName !== undefined &&
+      typeof idTableName.tableName === "string"
+    ) {
+      return v.id(idTableName.tableName);
+    }
+    return v.any();
+  }
+
+  if (validator instanceof zCore.$ZodIntersection) {
     return v.any();
   }
 

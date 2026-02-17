@@ -139,7 +139,7 @@ export function makeUseQueryWithStatus(useQueriesHook: typeof useQueries) {
           args,
         },
       };
-    }, [getFunctionName(query), JSON.stringify(args)]);
+    }, [getFunctionName(query), JSON.stringify(convexToJson(args))]);
     const result = useQueriesHook(queries);
     if (args === "skip") {
       return {

@@ -1,6 +1,6 @@
 {
   "name": "convex-helpers",
-  "version": "0.1.106",
+  "version": "0.1.112",
   "description": "A collection of useful code to complement the official convex package.",
   "type": "module",
   "bin": {
@@ -141,7 +141,7 @@
     "build": "node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && cd dist/ && rm **/*.test.* && rm -r server/_generated && tsc",
     "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -i '**/*.test.ts' -c 'cd ../.. && npm run build' --initial",
     "typecheck": "tsc --noEmit",
-    "version": "pbcopy <<<$npm_package_version; vim CHANGELOG.md && prettier --write CHANGELOG.md && git add CHANGELOG.md"
+    "version": "pbcopy <<<$npm_package_version; $(git config core.editor || echo vim) CHANGELOG.md && prettier --write CHANGELOG.md && git add CHANGELOG.md"
   },
   "repository": {
     "type": "git",

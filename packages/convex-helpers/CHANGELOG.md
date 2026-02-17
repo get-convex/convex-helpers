@@ -1,8 +1,43 @@
 # Changelog
 
-## Unreleased
+## 0.1.112
 
-- Zod support: branded object types are now supported (credit: gari-ix)
+- Zod 4 support: fix an issue where `zodToConvex` would incorrectly
+  identify some types as `v.id()` when using Zod schema inheritance.
+- Relationships: fix the return type of `getManyVia`
+  and `getManyViaOrThrow` when using system tables.
+
+## 0.1.111
+
+- Allow a hono http router register more routes using the standard
+  Convex HttpRouter API
+
+## 0.1.110
+
+- Improve db wrapping in Triggers to support using an RLS-wrapped DB
+
+## 0.1.109
+
+- Triggers/row-level security: fix a type issue with the `ctx.db` APIs with
+  table name arguments (see the changelog of
+  [`convex@1.31.2`](https://github.com/get-convex/convex-js/blob/main/CHANGELOG.md#1312))
+- Zod 4: fix handling of optional in the type of `zodOutputToConvex` (credit: ksinghal)
+- Fixes validation of records with undefined values. `validate` will now skip entries
+  with undefined values for record and object validators, and `parse` will drop
+  entries from records that have undefined values.
+- The openapi and ts generator commands will now avoid adding .yaml if the filename
+  already includes it.
+
+## 0.1.108
+
+- `makeUseQueryWithStatus`: fix handling of some argument values
+  (credit: RhysSullivan)
+- Triggers: fix handling of `ctx.db` calls with a table name parameter
+
+## 0.1.107
+
+- Zod support: branded object types are now supported (credit: gary-ix)
+- Fixes `skipConvexValidation` for zod custom functions to still do zod validation.
 
 ## 0.1.106
 

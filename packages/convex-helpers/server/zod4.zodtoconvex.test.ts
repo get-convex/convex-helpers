@@ -1062,14 +1062,69 @@ describe("zodOutputToConvex", () => {
     );
   });
 
-  test("codec", () => {
-    testZodOutputToConvex(
-      z.codec(z.string(), z.number(), {
-        decode: (s: string) => parseInt(s, 10),
+  describe("codec", () => {
+    test("simple case", () => {
+      testZodOutputToConvex(
+        z.codec(z.string(), z.number(), {
+          decode: (s: string) => parseInt(s, 10),
+          encode: (n: number) => n.toString(),
+        }),
+        v.number(), // output type
+      );
+    });
+
+    describe("with optional/nullable", () => {
+      // Codec that transforms Date to milliseconds (number)
+      const dateToMsCodec = z.codec(z.date(), z.int().min(0), {
+        encode: (millis: number) => new Date(millis),
+        decode: (date: Date) => date.getTime(),
+      });
+
+      test("optional codec returns VOptional<VFloat64>", () => {
+        testZodOutputToConvex(dateToMsCodec.optional(), v.optional(v.number()));
+      });
+
+      test("nullable codec returns VUnion with null", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.nullable(),
+          v.union(v.number(), v.null()),
+        );
+      });
+
+      test("optional nullable codec", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.nullable().optional(),
+          v.optional(v.union(v.number(), v.null())),
+        );
+      });
+
+      test("nullable optional codec (swapped order)", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.optional().nullable(),
+          v.optional(v.union(v.number(), v.null())),
+        );
+      });
+
+      // String to number codec
+      const stringToNumberCodec = z.codec(z.string(), z.number(), {
+        decode: (s: string) => parseFloat(s),
         encode: (n: number) => n.toString(),
-      }),
-      v.number(), // output type
-    );
+      });
+
+      test("optional string-to-number codec", () => {
+        testZodOutputToConvex(
+          stringToNumberCodec.optional(),
+          v.optional(v.number()),
+        );
+      });
+
+      test("codec with default", () => {
+        testZodOutputToConvex(
+          dateToMsCodec.default(Date.now()),
+          v.number(), // default means output is always present
+        );
+      });
+    });
   });
 
   test("default", () => {
@@ -1263,6 +1318,143 @@ describe("testing infrastructure", () => {
     expect(() => {
       assertUnrepresentableType(z.string());
     }).toThrowError();
+  });
+});
+
+describe("zid with derived schemas", () => {
+  test("zid().describe() still resolves to v.id()", () => {
+    // .describe() clones the schema internally. The cloned schema should
+    // still be recognized as a zid via the registry's parent chain lookup.
+    const described = zid("users").describe("The user's ID");
+
+    expect(zodToConvex(described)).toEqual(v.id("users"));
+    expect(zodOutputToConvex(described)).toEqual(v.id("users"));
+  });
+
+  test("z.string().describe() is not misidentified as a zid", () => {
+    // Regression guard: deriving a non-zid schema should never produce v.id().
+    const described = z.string().describe("A plain string");
+
+    expect(zodToConvex(described)).toEqual(v.string());
+    expect(zodOutputToConvex(described)).toEqual(v.string());
+  });
+});
+
+describe("zid registry parent-chain inheritance bug", () => {
+  // These tests reproduce the bug described in:
+  //   v.id(tableName) requires a string
+  //
+  // The root cause: Zod 4's registry.get() traverses _zod.parent to inherit
+  // metadata from parent schemas. When the _zidRegistry lookup ran BEFORE
+  // type-specific instanceof checks (the old code), a non-$ZodCustom schema
+  // whose _zod.parent chain led to a zid would inherit { tableName: "..." }
+  // and be misidentified as a zid — or worse, inherit { tableName: undefined }
+  // and crash with "v.id(tableName) requires a string".
+  //
+  // The fix moves the _zidRegistry lookup into the $ZodCustom branch so that
+  // instanceof checks for $ZodString, $ZodNumber, etc. always take priority.
+
+  test("z.string() with _zod.parent pointing to a zid resolves to v.string(), not v.id()", () => {
+    // Create a zid — this registers { tableName: "users" } in _zidRegistry
+    const userIdSchema = zid("users");
+
+    // Create a plain z.string() and manually set its _zod.parent to point
+    // at the zid. This simulates what can happen in cross-module scenarios
+    // where Zod's internal cloning/derivation creates parent chains that
+    // reach a zid ancestor.
+    const stringSchema = z.string();
+    const originalParent = stringSchema._zod.parent;
+    stringSchema._zod.parent = userIdSchema;
+
+    try {
+      // With the old code (registry check at top of zodToConvexCommon):
+      //   _zidRegistry.get(stringSchema) returns { tableName: "users" }
+      //   → calls v.id("users") → WRONG: this is a string, not an ID!
+      //
+      // With the fix (registry check inside $ZodCustom branch):
+      //   instanceof $ZodString fires first → returns v.string() ✓
+      expect(zodToConvex(stringSchema)).toEqual(v.string());
+      expect(zodOutputToConvex(stringSchema)).toEqual(v.string());
+    } finally {
+      stringSchema._zod.parent = originalParent;
+    }
+  });
+
+  test("z.number() with _zod.parent pointing to a zid resolves to v.number(), not v.id()", () => {
+    const userIdSchema = zid("users");
+
+    const numberSchema = z.number();
+    const originalParent = numberSchema._zod.parent;
+    numberSchema._zod.parent = userIdSchema;
+
+    try {
+      // With old code: _zidRegistry.get(numberSchema) → { tableName: "users" }
+      //   → v.id("users") → WRONG
+      // With fix: instanceof $ZodNumber fires first → v.number() ✓
+      expect(zodToConvex(numberSchema)).toEqual(v.number());
+      expect(zodOutputToConvex(numberSchema)).toEqual(v.number());
+    } finally {
+      numberSchema._zod.parent = originalParent;
+    }
+  });
+
+  test("z.boolean() with _zod.parent pointing to a zid resolves to v.boolean(), not v.id()", () => {
+    const userIdSchema = zid("documents");
+
+    const boolSchema = z.boolean();
+    const originalParent = boolSchema._zod.parent;
+    boolSchema._zod.parent = userIdSchema;
+
+    try {
+      expect(zodToConvex(boolSchema)).toEqual(v.boolean());
+      expect(zodOutputToConvex(boolSchema)).toEqual(v.boolean());
+    } finally {
+      boolSchema._zod.parent = originalParent;
+    }
+  });
+
+  test("z.object() fields with inherited zid parent resolve correctly", () => {
+    const userIdSchema = zid("users");
+
+    // Create an object schema where a field's _zod.parent points to a zid
+    const nameField = z.string();
+    const originalParent = nameField._zod.parent;
+    nameField._zod.parent = userIdSchema;
+
+    try {
+      const objectSchema = z.object({ name: nameField, age: z.number() });
+      const result = zodToConvex(objectSchema);
+
+      // The "name" field should be v.string(), NOT v.id("users")
+      expect(result).toEqual(v.object({ name: v.string(), age: v.number() }));
+    } finally {
+      nameField._zod.parent = originalParent;
+    }
+  });
+
+  test("parent chain with undefined tableName would crash with old code", () => {
+    // This reproduces the exact "v.id(tableName) requires a string" crash.
+    // If a registry entry has { tableName: undefined } (which can happen when
+    // metadata is inherited/merged), the old code would call v.id(undefined).
+
+    // Create a $ZodCustom registered WITHOUT a proper tableName.
+    // In production, this scenario arises from registry inheritance merging
+    // metadata where tableName ends up undefined.
+    const customSchema = z.custom<string>((val) => typeof val === "string");
+
+    // Manually simulate a corrupted/incomplete registry entry by setting
+    // parent to a custom schema that itself has inherited partial metadata
+    const stringSchema = z.string();
+    const originalParent = stringSchema._zod.parent;
+    stringSchema._zod.parent = customSchema;
+
+    try {
+      // With the fix: instanceof $ZodString fires first → v.string()
+      // The registry is never even consulted for non-$ZodCustom schemas.
+      expect(zodToConvex(stringSchema)).toEqual(v.string());
+    } finally {
+      stringSchema._zod.parent = originalParent;
+    }
   });
 });
 

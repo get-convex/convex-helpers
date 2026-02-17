@@ -5,6 +5,7 @@ import type {
   GenericDatabaseReader,
   DocumentByName,
   SystemTableNames,
+  SystemDataModel,
   NamedIndex,
   NamedTableInfo,
   IndexNames,
@@ -13,6 +14,22 @@ import type {
 import type { GenericId } from "convex/values";
 import { asyncMap, nullThrows } from "../index.js";
 
+/**
+ * Gets a document by its ID. Throws if not found.
+ *
+ * @param ctx The database reader to use to get the document.
+ * @param table The table name.
+ * @param id The id of the document to get.
+ * @returns The document with the given ID.
+ */
+export async function getOrThrow<
+  DataModel extends GenericDataModel,
+  Table extends TableNamesInDataModel<DataModel>,
+>(
+  ctx: { db: GenericDatabaseReader<DataModel> },
+  table: Table,
+  id: GenericId<NonUnion<Table>>,
+): Promise<DocumentByName<DataModel, Table>>;
 /**
  * Gets a document by its ID. Throws if not found.
  * @param ctx The database reader to use to get the document.
@@ -25,14 +42,43 @@ export async function getOrThrow<
 >(
   ctx: { db: GenericDatabaseReader<DataModel> },
   id: GenericId<Table>,
-): Promise<DocumentByName<DataModel, Table>> {
-  const doc = await ctx.db.get(id);
+): Promise<DocumentByName<DataModel, Table>>;
+export async function getOrThrow(
+  ctx: any,
+  arg1: any,
+  arg2?: any,
+): Promise<any> {
+  const [table, id]: [string | null, GenericId<string>] =
+    arg2 !== undefined ? [arg1, arg2] : [null, arg1];
+  const doc = table
+    ? await ctx.db.get(table, id)
+    : // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+      await ctx.db.get(id);
   if (!doc) {
     throw new Error(`Could not find id ${id}`);
   }
   return doc;
 }
 
+/**
+ * getAll returns a list of Documents (or null) for the `Id`s passed in.
+ *
+ * Nulls are returned for documents not found.
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param table The table name.
+ * @param ids An list (or other iterable) of Ids pointing to a table.
+ * @returns The Documents referenced by the Ids, in order. `null` if not found.
+ */
+export async function getAll<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: TableName,
+  ids:
+    | Iterable<GenericId<NonUnion<TableName>>>
+    | Promise<Iterable<GenericId<NonUnion<TableName>>>>,
+): Promise<(DocumentByName<DataModel, TableName> | null)[]>;
 /**
  * getAll returns a list of Documents (or null) for the `Id`s passed in.
  *
@@ -47,8 +93,13 @@ export async function getAll<
 >(
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
-): Promise<(DocumentByName<DataModel, TableName> | null)[]> {
-  return asyncMap(ids, (id) => db.get(id));
+): Promise<(DocumentByName<DataModel, TableName> | null)[]>;
+export async function getAll(db: any, arg1: any, arg2?: any): Promise<any> {
+  const [table, ids]: [string | null, any] =
+    arg2 !== undefined ? [arg1, arg2] : [null, arg1];
+  return table
+    ? asyncMap(ids, (id) => db.get(table, id))
+    : asyncMap(ids, (id) => db.get(id));
 }
 
 /**
@@ -56,8 +107,27 @@ export async function getAll<
  *
  * It throws if any documents are not found (null).
  * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param table The table name.
  * @param ids An list (or other iterable) of Ids pointing to a table.
- * @returns The Documents referenced by the Ids, in order. `null` if not found.
+ * @returns The Documents referenced by the Ids, in order.
+ */
+export async function getAllOrThrow<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel>,
+>(
+  db: GenericDatabaseReader<DataModel>,
+  table: TableName,
+  ids:
+    | Iterable<GenericId<NonUnion<TableName>>>
+    | Promise<Iterable<GenericId<NonUnion<TableName>>>>,
+): Promise<DocumentByName<DataModel, TableName>[]>;
+/**
+ * getAllOrThrow returns a list of Documents for the `Id`s passed in.
+ *
+ * It throws if any documents are not found (null).
+ * @param db A DatabaseReader, usually passed from a mutation or query ctx.
+ * @param ids An list (or other iterable) of Ids pointing to a table.
+ * @returns The Documents referenced by the Ids, in order.
  */
 export async function getAllOrThrow<
   DataModel extends GenericDataModel,
@@ -65,8 +135,21 @@ export async function getAllOrThrow<
 >(
   db: GenericDatabaseReader<DataModel>,
   ids: Iterable<GenericId<TableName>> | Promise<Iterable<GenericId<TableName>>>,
-): Promise<DocumentByName<DataModel, TableName>[]> {
-  return await asyncMap(ids, (id) => getOrThrow({ db }, id));
+): Promise<DocumentByName<DataModel, TableName>[]>;
+export async function getAllOrThrow(
+  db: any,
+  arg1: any,
+  arg2?: any,
+): Promise<any> {
+  const [table, ids]: [string | null, any] =
+    arg2 !== undefined ? [arg1, arg2] : [null, arg1];
+  if (table) {
+    return await asyncMap(ids, (id: any) =>
+      getOrThrow({ db }, table as any, id),
+    );
+  } else {
+    return await asyncMap(ids, (id: any) => getOrThrow({ db }, id));
+  }
 }
 
 type UserIndexes<
@@ -310,6 +393,16 @@ type JoinTables<DataModel extends GenericDataModel> = {
     : TableName;
 }[TablesWithLookups<DataModel>];
 
+type DocumentByNameOrSystem<
+  DataModel extends GenericDataModel,
+  TableName extends TableNamesInDataModel<DataModel> | SystemTableNames,
+> =
+  TableName extends TableNamesInDataModel<DataModel>
+    ? DocumentByName<DataModel, TableName>
+    : TableName extends SystemTableNames
+      ? SystemDataModel[TableName]["document"]
+      : never;
+
 // many-to-many via lookup table
 /**
  * Get related documents by using a join table.
@@ -357,15 +450,17 @@ export async function getManyVia<
   index: IndexName,
   value: TypeOfFirstIndexField<DataModel, JoinTableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
-): Promise<(DocumentByName<DataModel, TargetTableName> | null)[]> {
+): Promise<(DocumentByNameOrSystem<DataModel, TargetTableName> | null)[]> {
   return await asyncMap(
     await getManyFrom(db, table, index, value, ...fieldArg),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
       const id = link[toField] as GenericId<TargetTableName>;
       try {
-        return await db.get(id);
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+        return (await db.get(id)) as any;
       } catch {
-        return await db.system.get(id as GenericId<SystemTableNames>);
+        // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+        return (await db.system.get(id as GenericId<SystemTableNames>)) as any;
       }
     },
   );
@@ -417,21 +512,23 @@ export async function getManyViaOrThrow<
   index: IndexName,
   value: TypeOfFirstIndexField<DataModel, JoinTableName, IndexName>,
   ...fieldArg: FieldIfDoesntMatchIndex<DataModel, JoinTableName, IndexName>
-): Promise<DocumentByName<DataModel, TargetTableName>[]> {
+): Promise<DocumentByNameOrSystem<DataModel, TargetTableName>[]> {
   return await asyncMap(
     await getManyFrom(db, table, index, value, ...fieldArg),
     async (link: DocumentByName<DataModel, JoinTableName>) => {
-      const id = link[toField];
+      const id = link[toField] as GenericId<TargetTableName>;
       try {
         return nullThrows(
-          await db.get(id as GenericId<TargetTableName>),
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+          (await db.get(id)) as any,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
           } equal to ${value}`,
         );
       } catch {
         return nullThrows(
-          await db.system.get(id as GenericId<SystemTableNames>),
+          // eslint-disable-next-line @convex-dev/explicit-table-ids -- table not available here
+          (await db.system.get(id as GenericId<SystemTableNames>)) as any,
           `Can't find document ${id} referenced in ${table}'s field ${toField} for ${
             fieldArg[0] ?? index
           } equal to ${value}`,
@@ -440,3 +537,11 @@ export async function getManyViaOrThrow<
     },
   );
 }
+
+/**
+ * This prevents TypeScript from inferring that the generic `TableName` type is
+ * a union type when `table` and `id` disagree.
+ */
+type NonUnion<T> = T extends never // `never` is the bottom type for TypeScript unions
+  ? never
+  : T;

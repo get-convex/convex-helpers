@@ -78,6 +78,6 @@ export const updateName = mutationWithRLS({
   // will prevent you from modifying other users.
   args: { name: v.string(), userId: v.id("users") },
   handler: async (ctx, { name, userId }) => {
-    await ctx.db.patch(userId, { name });
+    await ctx.db.patch("users", userId, { name });
   },
 });

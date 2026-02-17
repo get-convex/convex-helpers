@@ -25,7 +25,7 @@ triggers.register("counter_table", async (ctx, change) => {
     // Round up to the nearest multiple of 10, one at a time.
     // This demonstrates that triggers can trigger themselves.
     console.log("Incrementing counter to", change.newDoc.counter + 1);
-    await ctx.db.patch(change.newDoc._id, {
+    await ctx.db.patch("counter_table", change.newDoc._id, {
       counter: change.newDoc.counter + 1,
     });
   }
@@ -55,13 +55,17 @@ triggers.register("counter_table", async (ctx, change) => {
   }
   const sumDoc = (await ctx.db.query("sum_table").first())!;
   if (change.operation === "insert") {
-    await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum + change.newDoc.counter });
+    await ctx.db.patch("sum_table", sumDoc._id, {
+      sum: sumDoc.sum + change.newDoc.counter,
+    });
   } else if (change.operation === "update") {
-    await ctx.db.patch(sumDoc._id, {
+    await ctx.db.patch("sum_table", sumDoc._id, {
       sum: sumDoc.sum + change.newDoc.counter - change.oldDoc.counter,
     });
   } else if (change.operation === "delete") {
-    await ctx.db.patch(sumDoc._id, { sum: sumDoc.sum - change.oldDoc.counter });
+    await ctx.db.patch("sum_table", sumDoc._id, {
+      sum: sumDoc.sum - change.oldDoc.counter,
+    });
   }
 });
 
@@ -88,9 +92,15 @@ export const incrementCounterRace = mutation({
       throw new Error("No counters");
     }
     await Promise.all([
-      db.patch(firstCounter._id, { counter: firstCounter.counter + 1 }),
-      db.patch(firstCounter._id, { counter: firstCounter.counter + 2 }),
-      db.patch(firstCounter._id, { counter: firstCounter.counter + 3 }),
+      db.patch("counter_table", firstCounter._id, {
+        counter: firstCounter.counter + 1,
+      }),
+      db.patch("counter_table", firstCounter._id, {
+        counter: firstCounter.counter + 2,
+      }),
+      db.patch("counter_table", firstCounter._id, {
+        counter: firstCounter.counter + 3,
+      }),
     ]);
   },
 });
@@ -140,6 +150,6 @@ export const updateName = mutationWithRLS({
   handler: async (ctx, { name, userId }) => {
     // The extra type from above still comes through
     console.log(ctx.foo);
-    await ctx.db.patch(userId, { name });
+    await ctx.db.patch("users", userId, { name });
   },
 });

@@ -378,7 +378,11 @@ export function makeMigration<
             try {
               const next = await migrateOne(ctx, doc);
               if (next && Object.keys(next).length > 0) {
-                await ctx.db.patch(doc._id as GenericId<TableName>, next);
+                await ctx.db.patch(
+                  table,
+                  doc._id as GenericId<TableName>,
+                  next,
+                );
               }
             } catch (error) {
               console.error(`Document failed: ${doc._id}`);
@@ -395,7 +399,7 @@ export function makeMigration<
           if (args.dryRun) {
             // Throwing an error rolls back the transaction
             for (const before of page) {
-              const after = await ctx.db.get(page[0]!._id as any);
+              const after = await ctx.db.get(table, page[0]!._id as any);
               if (JSON.stringify(before) === JSON.stringify(after)) {
                 continue;
               }
@@ -414,7 +418,8 @@ export function makeMigration<
           // 2. The migration is being resumed at a different cursor.
           // 3. There are two instances of the same migration racing.
           const worker =
-            state.workerId && (await ctx.db.system.get(state.workerId));
+            state.workerId &&
+            (await ctx.db.system.get("_scheduled_functions", state.workerId));
           if (
             worker &&
             (worker.state.kind === "pending" ||
@@ -480,7 +485,11 @@ export function makeMigration<
 
         // Step 4: Update the state
         if (state._id) {
-          await db.patch(state._id, state);
+          if (!migrationTableName) {
+            throw new Error("Unexpected state: migrationTableName is not set");
+          }
+
+          await db.patch(migrationTableName, state._id, state);
         }
         if (args.dryRun) {
           // By throwing an error, the transaction will be rolled back.
@@ -631,7 +640,8 @@ export async function getStatus<
     docs.reverse().map(async (migration) => {
       const { workerId, isDone } = migration;
       if (isDone) return migration;
-      const worker = workerId && (await ctx.db.system.get(workerId));
+      const worker =
+        workerId && (await ctx.db.system.get("_scheduled_functions", workerId));
       return {
         ...migration,
         workerStatus: worker?.state.kind,
@@ -669,7 +679,9 @@ export async function cancelMigration<DataModel extends GenericDataModel>(
   if (state.isDone) {
     return state;
   }
-  const worker = state.workerId && (await ctx.db.system.get(state.workerId));
+  const worker =
+    state.workerId &&
+    (await ctx.db.system.get("_scheduled_functions", state.workerId));
   if (
     worker &&
     (worker.state.kind === "pending" || worker.state.kind === "inProgress")
