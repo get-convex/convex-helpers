@@ -325,6 +325,7 @@ export abstract class QueryStream<
     opts: PaginationOptions & {
       endCursor?: string | null;
       maximumRowsRead?: number;
+      maximumBytesRead?: number;
     },
   ): Promise<PaginationResult<T>> {
     if (opts.numItems === 0) {

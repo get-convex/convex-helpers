@@ -543,8 +543,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
                 args: {
                   ...prevState.args,
                   paginationOpts: {
-                    ...(queries[lastPageKey]!.args
-                      .paginationOpts as unknown as PaginationOptions),
+                    ...queries[lastPageKey]!.args.paginationOpts,
                     endCursor: continueCursor,
                   },
                 },

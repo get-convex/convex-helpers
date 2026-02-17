@@ -43,7 +43,8 @@ export type PageRequest<
   /** Absolute maximum number of rows to return, even if endIndexKey is
    * provided. Use this to prevent a single page from growing too large, but
    * watch out because gaps can form between pages.
-   * Default is unlimited.
+   * Default is the transaction limit.
+   * (https://docs.convex.dev/production/state/limits).
    */
   absoluteMaxRows?: number;
   /** Whether the index is walked in ascending or descending order. Default is
