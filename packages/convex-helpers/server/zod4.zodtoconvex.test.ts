@@ -1,7 +1,8 @@
 import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
-import { describe, expect, test } from "vitest";
+import { describe, expect, expectTypeOf, test } from "vitest";
 import {
+  GenericId,
   GenericValidator,
   OptionalProperty,
   v,
@@ -1455,6 +1456,26 @@ describe("zid registry parent-chain inheritance bug", () => {
     } finally {
       stringSchema._zod.parent = originalParent;
     }
+  });
+});
+
+describe("zid typing", () => {
+  test("zid keeps string input and GenericId output", () => {
+    const _userObjSchema = z.object({
+      userId: zid("users"),
+    });
+
+    expectTypeOf<z.input<typeof _userObjSchema>>().toEqualTypeOf<{
+      userId: string;
+    }>();
+
+    expectTypeOf<z.output<typeof _userObjSchema>>().toEqualTypeOf<{
+      userId: GenericId<"users">;
+    }>();
+
+    // if input widens to unknown, this stops erroring.
+    // @ts-expect-error id input must be string
+    const _bad: z.input<typeof _userObjSchema> = { userId: 123 };
   });
 });
 
