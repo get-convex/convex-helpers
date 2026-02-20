@@ -55,6 +55,7 @@ describe("validate with undefined values", () => {
 
 describe("validate with unknownKeys strip mode", () => {
   function withStripUnknownKeys(validator: ReturnType<typeof v.object>) {
+    // TODO: Remove once the Convex SDK exposes unknownKeys in validator JSON.
     (validator as any).unknownKeys = "strip";
     return validator;
   }
@@ -137,15 +138,13 @@ describe("validate with unknownKeys strip mode", () => {
     expect(result).toEqual({ a: 1, b: 2 });
   });
 
-  test("parse union without strip members rejects extra fields", () => {
+  test("parse union without strip members strips extra fields in permissive pass", () => {
     const validator = v.union(
       v.object({ a: v.number() }),
       v.object({ b: v.number() }),
     );
 
-    expect(() => parse(validator, { a: 1, extra: true } as any)).toThrow(
-      "No matching member in union",
-    );
+    expect(parse(validator, { a: 1, extra: true } as any)).toEqual({ a: 1 });
   });
 });
 

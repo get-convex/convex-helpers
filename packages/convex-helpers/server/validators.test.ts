@@ -343,6 +343,7 @@ test("validators disallow things when they're wrong", async () => {
 
 describe("validate", () => {
   function withStripUnknownKeys(validator: ReturnType<typeof v.object>) {
+    // TODO: Remove once the Convex SDK exposes unknownKeys in validator JSON.
     (validator as any).unknownKeys = "strip";
     return validator;
   }
@@ -609,6 +610,19 @@ describe("validate", () => {
     expect(result).toEqual({ name: "Alice", age: 30 });
   });
 
+  test("parse strips unknown fields from unions", () => {
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ age: v.number() }),
+    );
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      unknown: "field",
+    });
+    expect(result).toEqual({ name: "Alice" });
+  });
+
   test("parse strips unknown fields from strip-mode unions", () => {
     const validator = v.union(
       withStripUnknownKeys(v.object({ name: v.string() })),
@@ -642,6 +656,39 @@ describe("validate", () => {
   });
 
   test("parse strips unknown fields from nested objects", () => {
+    const validator = v.object({
+      name: v.string(),
+      age: v.number(),
+      details: v.object({
+        name: v.string(),
+        age: v.number(),
+      }),
+      union: v.union(
+        v.object({ name: v.string() }),
+        v.object({ age: v.number() }),
+      ),
+      array: v.array(v.object({ name: v.string() })),
+      record: vv.record(v.string(), v.object({ name: v.string() })),
+    });
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      details: { name: "Alice", age: 30 },
+      union: { name: "Alice", foo: "bar" },
+      array: [{ name: "Alice", foo: "bar" }],
+      record: { a: { name: "Alice", foo: "bar" } },
+    });
+    expect(result).toEqual({
+      name: "Alice",
+      age: 30,
+      details: { name: "Alice", age: 30 },
+      union: { name: "Alice" },
+      array: [{ name: "Alice" }],
+      record: { a: { name: "Alice" } },
+    });
+  });
+
+  test("parse strips unknown fields from nested objects with strip-mode union members", () => {
     const validator = v.object({
       name: v.string(),
       age: v.number(),
@@ -694,6 +741,19 @@ describe("validate", () => {
     expect(result3).toEqual(undefined);
     const result4 = parse(validator, {});
     expect(result4).toEqual({});
+  });
+
+  test("union matches first member with unknown fields", () => {
+    const validator = v.union(
+      v.object({ name: v.string() }),
+      v.object({ name: v.string(), age: v.number() }),
+    );
+    const result = parse(validator, {
+      name: "Alice",
+      age: 30,
+      unknown: "field",
+    });
+    expect(result).toEqual({ name: "Alice" });
   });
 
   test("union with strip members matches first member with unknown fields", () => {

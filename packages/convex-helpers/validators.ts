@@ -853,6 +853,12 @@ export function parse<T extends Validator<any, any, any>>(
   return stripUnknownFields(validator, value);
 }
 
+/**
+ * Runtime check for strip-mode object validators.
+ *
+ * Note: `unknownKeys` is not surfaced in the public `VObject` type yet,
+ * so this constraint is enforced at runtime.
+ */
 function isStripObjectValidator(
   validator: Validator<any, any, any>,
 ): validator is VObject<any, any, any> {
@@ -867,7 +873,7 @@ function firstMatchingUnionMember(
   opts: { allowUnknownFields: boolean; includeStripObjects: boolean },
 ): Validator<any, any, any> | undefined {
   for (const member of members) {
-    if (isStripObjectValidator(member) !== opts.includeStripObjects) {
+    if (isStripObjectValidator(member) && !opts.includeStripObjects) {
       continue;
     }
     if (
@@ -920,12 +926,16 @@ function stripUnknownFields<T extends Validator<any, any, any>>(
         return stripUnknownFields(strictMember, value);
       }
 
-      const stripMember = firstMatchingUnionMember(validator.members, value, {
-        allowUnknownFields: true,
-        includeStripObjects: true,
-      });
-      if (stripMember) {
-        return stripUnknownFields(stripMember, value);
+      const permissiveMember = firstMatchingUnionMember(
+        validator.members,
+        value,
+        {
+          allowUnknownFields: true,
+          includeStripObjects: true,
+        },
+      );
+      if (permissiveMember) {
+        return stripUnknownFields(permissiveMember, value);
       }
 
       throw new Error("No matching member in union");
