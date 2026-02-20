@@ -323,9 +323,9 @@ export const zid = <
 };
 
 /** The type of Convex validators in Zod */
-export type Zid<TableName extends string> = z.ZodCustom<
+export type Zid<TableName extends string> = z.ZodType<
   GenericId<TableName>,
-  string
+  GenericId<TableName>
 > &
   zCore.$ZodRecordKey;
 
