@@ -32,7 +32,7 @@ function dropSystemFields(indexKey: IndexKey) {
   return indexKey.slice(0, -2);
 }
 function dropAndStripSystemFields(
-  item: IteratorResult<[GenericDocument | null, IndexKey]>,
+  item: IteratorResult<[GenericDocument | null, IndexKey, number]>,
 ) {
   return {
     done: item.done,
