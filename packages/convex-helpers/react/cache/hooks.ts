@@ -15,7 +15,6 @@ import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
-  PaginationOptions,
   paginationOptsValidator,
   PaginationResult,
 } from "convex/server";
