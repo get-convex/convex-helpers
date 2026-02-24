@@ -267,6 +267,28 @@ class WrapReader<
       this.predicate(tableName, d),
     );
   }
+
+  /**
+   * Get the consumption of the database reader.
+   * @deprecated - Currently an internal API. Do not use.
+   */
+  getConsumption(): Promise<{
+    reads: {
+      bytes: number;
+      documents: number;
+      ranges: number;
+    };
+    writes: {
+      bytes: number;
+      documents: number;
+    };
+    scheduledFunctions: {
+      bytes: number;
+      count: number;
+    };
+  }> {
+    return (this.db as any).getConsumption();
+  }
 }
 
 class WrapWriter<
@@ -426,6 +448,28 @@ class WrapWriter<
   }
   query<TableName extends string>(tableName: TableName): QueryInitializer<any> {
     return this.reader.query(tableName);
+  }
+
+  /**
+   * Get the consumption of the database reader.
+   * @deprecated - Currently an internal API. Do not use.
+   */
+  getConsumption(): Promise<{
+    reads: {
+      bytes: number;
+      documents: number;
+      ranges: number;
+    };
+    writes: {
+      bytes: number;
+      documents: number;
+    };
+    scheduledFunctions: {
+      bytes: number;
+      count: number;
+    };
+  }> {
+    return (this.db as any).getConsumption();
   }
 }
 
