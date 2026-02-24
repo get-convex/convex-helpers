@@ -820,7 +820,11 @@ describe("bandwidth tracking", () => {
   async function collectBandwidth<T extends NonNullable<unknown>>(
     iterable: AsyncIterable<[T | null, IndexKey, number]>,
     maxItems?: number,
-  ): Promise<{ items: (T | null)[]; totalBandwidth: number; bandwidths: number[] }> {
+  ): Promise<{
+    items: (T | null)[];
+    totalBandwidth: number;
+    bandwidths: number[];
+  }> {
     const items: (T | null)[] = [];
     const bandwidths: number[] = [];
     let totalBandwidth = 0;
@@ -1070,7 +1074,11 @@ describe("bandwidth tracking", () => {
       // Third yield: outer foo[1] + inner bar[2]
       expect(bw.bandwidths[2]).toBe(fooSizes[1]! + barSizes[2]!);
       const expectedTotal =
-        fooSizes[0]! + fooSizes[1]! + barSizes[0]! + barSizes[1]! + barSizes[2]!;
+        fooSizes[0]! +
+        fooSizes[1]! +
+        barSizes[0]! +
+        barSizes[1]! +
+        barSizes[2]!;
       expect(bw.totalBandwidth).toBe(expectedTotal);
 
       const oneDocSize = fooSizes[0]!;
@@ -1175,9 +1183,7 @@ describe("bandwidth tracking", () => {
         cursor: null,
         maximumBytesRead: oneDocSize,
       });
-      expect(page1.page.map(stripSystemFields)).toEqual([
-        { a: 1, b: 1, c: 0 },
-      ]);
+      expect(page1.page.map(stripSystemFields)).toEqual([{ a: 1, b: 1, c: 0 }]);
       expect(page1.isDone).toBe(false);
 
       // Page 2: continue from cursor, read 1 doc, hit byte limit
@@ -1186,9 +1192,7 @@ describe("bandwidth tracking", () => {
         cursor: page1.continueCursor,
         maximumBytesRead: oneDocSize,
       });
-      expect(page2.page.map(stripSystemFields)).toEqual([
-        { a: 1, b: 2, c: 0 },
-      ]);
+      expect(page2.page.map(stripSystemFields)).toEqual([{ a: 1, b: 2, c: 0 }]);
       expect(page2.isDone).toBe(false);
 
       // Page 3: continue, allow plenty of bytes to read remaining docs
