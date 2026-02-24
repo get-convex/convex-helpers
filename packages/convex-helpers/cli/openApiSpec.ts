@@ -283,6 +283,7 @@ components:
 ${reindent(
   functionSpec.functions
     .filter((f) => f.functionType !== "HttpAction")
+    .filter((f) => includeInternal || f.visibility.kind === "public")
     .map((f) => generateEndpointSchemas(f))
     .join("\n"),
   1,
