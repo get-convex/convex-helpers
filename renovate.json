@@ -3,7 +3,6 @@
   "extends": ["config:best-practices"],
   "schedule": ["* 0-4 * * 1"],
   "timezone": "America/Los_Angeles",
-  "prConcurrentLimit": 1,
   "packageRules": [
     {
       "groupName": "Routine updates",
@@ -11,7 +10,6 @@
       "automerge": true
     },
     {
-      "groupName": "Major updates",
       "matchUpdateTypes": ["major"],
       "automerge": false
     },
