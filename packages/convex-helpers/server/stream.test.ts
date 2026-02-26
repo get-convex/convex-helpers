@@ -7,7 +7,7 @@ import { mergedStream, stream, streamIndexRange } from "./stream.js";
 import { modules } from "./setup.test.js";
 import { v } from "convex/values";
 
-import { convexToJson } from "convex/values";
+import { convexToJson, getDocumentSize } from "convex/values";
 
 const schema = defineSchema({
   foo: defineTable({
@@ -32,7 +32,7 @@ function dropSystemFields(indexKey: IndexKey) {
   return indexKey.slice(0, -2);
 }
 function dropAndStripSystemFields(
-  item: IteratorResult<[GenericDocument | null, IndexKey]>,
+  item: IteratorResult<[GenericDocument | null, IndexKey, number]>,
 ) {
   return {
     done: item.done,
@@ -811,6 +811,401 @@ describe("stream", () => {
       expect(page1.page.map(stripSystemFields)).toEqual([
         { a: "undefined", b: 2 },
       ]);
+    });
+  });
+});
+
+describe("bandwidth tracking", () => {
+  // Helper: get total bandwidth from iterWithKeys(true) for N items
+  async function collectBandwidth<T extends NonNullable<unknown>>(
+    iterable: AsyncIterable<[T | null, IndexKey, number]>,
+    maxItems?: number,
+  ): Promise<{
+    items: (T | null)[];
+    totalBandwidth: number;
+    bandwidths: number[];
+  }> {
+    const items: (T | null)[] = [];
+    const bandwidths: number[] = [];
+    let totalBandwidth = 0;
+    let count = 0;
+    for await (const [doc, _, bandwidth] of iterable) {
+      items.push(doc);
+      bandwidths.push(bandwidth);
+      totalBandwidth += bandwidth;
+      count++;
+      if (maxItems !== undefined && count >= maxItems) break;
+    }
+    return { items, totalBandwidth, bandwidths };
+  }
+
+  test("iterWithKeys tracks bandwidth when enabled", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+
+      // With tracking enabled, bandwidth should match getDocumentSize per doc
+      const allDocs = await ctx.db.query("foo").collect();
+      const expectedSizes = allDocs.map((doc) => getDocumentSize(doc));
+      const expectedTotal = expectedSizes.reduce((a, b) => a + b, 0);
+
+      const withTracking = await collectBandwidth(query.iterWithKeys(true));
+      expect(withTracking.items.length).toBe(2);
+      expect(withTracking.totalBandwidth).toBe(expectedTotal);
+      expect(withTracking.bandwidths).toEqual(expectedSizes);
+
+      // With tracking disabled, bandwidth should be 0
+      const withoutTracking = await collectBandwidth(query.iterWithKeys(false));
+      expect(withoutTracking.items.length).toBe(2);
+      expect(withoutTracking.totalBandwidth).toBe(0);
+      for (const bw of withoutTracking.bandwidths) {
+        expect(bw).toBe(0);
+      }
+    });
+  });
+
+  test("basic stream paginate respects maximumBytesRead", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 0 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+
+      // Get size of one document
+      const firstDoc = await query.first();
+      const oneDocSize = getDocumentSize(firstDoc!);
+
+      // With limit of one doc's size, should return exactly 1 doc
+      const page1 = await query.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize,
+      });
+      expect(page1.page.length).toBe(1);
+      expect(page1.isDone).toBe(false);
+      expect(page1.pageStatus).toBe("SplitRequired");
+
+      // With limit of two docs' size, should return exactly 2 docs
+      const page2 = await query.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize * 2,
+      });
+      expect(page2.page.length).toBe(2);
+      expect(page2.isDone).toBe(false);
+
+      // With very large limit, should return all docs
+      const pageAll = await query.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize * 100,
+      });
+      expect(pageAll.page.length).toBe(3);
+      expect(pageAll.isDone).toBe(true);
+    });
+  });
+
+  test("filterWith tracks bandwidth for filtered-out docs", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 0 }); // will be filtered out
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 0 }); // will be filtered out
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 1 }); // passes filter
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 }); // passes filter
+      const baseQuery = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const filtered = baseQuery.filterWith(async (doc) => doc.c === 1);
+
+      // Verify bandwidth is tracked for ALL docs (including filtered ones)
+      const allDocs = await ctx.db.query("foo").collect();
+      const expectedSizes = allDocs.map((doc) => getDocumentSize(doc));
+
+      const bw = await collectBandwidth(filtered.iterWithKeys(true));
+      // Should have 4 iterations (2 nulls + 2 docs)
+      expect(bw.items.length).toBe(4);
+      // Each iteration's bandwidth should match the original doc's size
+      expect(bw.bandwidths).toEqual(expectedSizes);
+
+      const oneDocSize = expectedSizes[0]!;
+
+      // With limit barely above 2 docs, should stop after 2 reads
+      // (which means 0 results since first 2 are filtered)
+      const page = await filtered.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize * 2,
+      });
+      // The first two docs are filtered out but still count towards bytes,
+      // so we should have read 2 docs (both filtered) and stopped
+      expect(page.page.length).toBeLessThanOrEqual(1);
+      expect(page.isDone).toBe(false);
+      expect(page.pageStatus).toBe("SplitRequired");
+    });
+  });
+
+  test("mergedStream tracks bandwidth for pre-fetched docs", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 0 });
+      await ctx.db.insert("foo", { a: 2, b: 2, c: 0 });
+      await ctx.db.insert("foo", { a: 3, b: 3, c: 0 });
+      const query1 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const query2 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 2));
+      const query3 = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 3));
+      const merged = mergedStream([query1, query2, query3], ["a", "b", "c"]);
+
+      const allDocs = await ctx.db.query("foo").collect();
+      const docSizes = allDocs.map((doc) => getDocumentSize(doc));
+      const expectedTotal = docSizes.reduce((a, b) => a + b, 0);
+
+      // First iteration reads from all 3 streams for comparison,
+      // so bandwidth should reflect all 3 docs
+      const bw = await collectBandwidth(merged.iterWithKeys(true), 1);
+      expect(bw.items.length).toBe(1);
+      // First yield includes bandwidth from all 3 pre-fetched docs
+      expect(bw.bandwidths[0]).toBe(expectedTotal);
+
+      // Collect all bandwidth - subsequent yields have 0 since docs were
+      // already pre-fetched (and their "done" sentinels read next iteration)
+      const bwAll = await collectBandwidth(merged.iterWithKeys(true));
+      expect(bwAll.items.length).toBe(3);
+      expect(bwAll.totalBandwidth).toBe(expectedTotal);
+      // First yield gets all 3 pre-fetched bandwidths; subsequent yields
+      // read 1 new doc + get "done" from exhausted streams
+      expect(bwAll.bandwidths[0]).toBe(expectedTotal);
+
+      // Paginate: with a low byte limit, the first iteration pre-fetches
+      // all 3 docs so it should hit the limit immediately
+      const oneDocSize = docSizes[0]!;
+      const page = await merged.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize,
+      });
+      // Pre-fetched 3 docs but only yielded 1
+      expect(page.page.length).toBe(1);
+      expect(page.isDone).toBe(false);
+      expect(page.pageStatus).toBe("SplitRequired");
+    });
+  });
+
+  test("map stream tracks bandwidth of original docs", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 0 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      // Map to strings - these are NOT documents, but we should still
+      // track bandwidth from the original docs that were read
+      const mapped = query.map(async (doc) => `val: ${doc.b}`);
+
+      const allDocs = await ctx.db.query("foo").collect();
+      const expectedSizes = allDocs.map((doc) => getDocumentSize(doc));
+      const expectedTotal = expectedSizes.reduce((a, b) => a + b, 0);
+
+      const bw = await collectBandwidth(mapped.iterWithKeys(true));
+      expect(bw.items).toEqual(["val: 1", "val: 2", "val: 3"]);
+      // Bandwidth should reflect original document sizes, not mapped values
+      expect(bw.totalBandwidth).toBe(expectedTotal);
+      expect(bw.bandwidths).toEqual(expectedSizes);
+
+      const oneDocSize = expectedSizes[0]!;
+      const page = await mapped.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize,
+      });
+      expect(page.page.length).toBe(1);
+      expect(page.isDone).toBe(false);
+    });
+  });
+
+  test("flatMap tracks bandwidth for outer and inner docs", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      // Join table
+      await ctx.db.insert("bar", { c: 3, d: 1, e: 1 });
+      await ctx.db.insert("bar", { c: 3, d: 2, e: 2 });
+      await ctx.db.insert("bar", { c: 4, d: 1, e: 1 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const flatMapped = query.flatMap(
+        async (doc) =>
+          stream(ctx.db, schema)
+            .query("bar")
+            .withIndex("cde", (q) => q.eq("c", doc.c)),
+        ["c", "d", "e"],
+      );
+
+      const foos = await ctx.db.query("foo").collect();
+      const bars = await ctx.db.query("bar").collect();
+      const fooSizes = foos.map((doc) => getDocumentSize(doc));
+      const barSizes = bars.map((doc) => getDocumentSize(doc));
+      // bars are ordered by (c, d, e): c=3,d=1,e=1 | c=3,d=2,e=2 | c=4,d=1,e=1
+      // foos are ordered by (a, b, c): a=1,b=2,c=3 | a=1,b=3,c=4
+
+      const bw = await collectBandwidth(flatMapped.iterWithKeys(true));
+      // Should yield 3 results: 2 bars for c=3, 1 bar for c=4
+      expect(bw.items.length).toBe(3);
+      // First yield: outer foo[0] + inner bar[0]
+      expect(bw.bandwidths[0]).toBe(fooSizes[0]! + barSizes[0]!);
+      // Second yield: only inner bar[1] (outer already charged)
+      expect(bw.bandwidths[1]).toBe(barSizes[1]!);
+      // Third yield: outer foo[1] + inner bar[2]
+      expect(bw.bandwidths[2]).toBe(fooSizes[1]! + barSizes[2]!);
+      const expectedTotal =
+        fooSizes[0]! +
+        fooSizes[1]! +
+        barSizes[0]! +
+        barSizes[1]! +
+        barSizes[2]!;
+      expect(bw.totalBandwidth).toBe(expectedTotal);
+
+      const oneDocSize = fooSizes[0]!;
+      const page = await flatMapped.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize,
+      });
+      // Should stop after reading first outer doc (and maybe first inner doc)
+      expect(page.page.length).toBeLessThanOrEqual(2);
+      expect(page.isDone).toBe(false);
+    });
+  });
+
+  test("distinct stream tracks bandwidth", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 3 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 5 }); // skipped by distinct
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 4 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 1 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+      const distinct = query.distinct(["b"]);
+
+      // Docs ordered by (a, b, c): b=2,c=3 | b=2,c=5 | b=3,c=4 | b=4,c=1
+      // Distinct on b yields first of each: b=2 (c=3), b=3 (c=4), b=4 (c=1)
+      const allDocs = await ctx.db.query("foo").collect();
+      const docSizes = allDocs.map((doc) => getDocumentSize(doc));
+
+      const bw = await collectBandwidth(distinct.iterWithKeys(true));
+      // Should yield 3 results (distinct b values: 2, 3, 4)
+      expect(bw.items.length).toBe(3);
+      // Each distinct yield reads exactly one doc from the narrowed stream
+      expect(bw.bandwidths[0]).toBe(docSizes[0]!); // b=2,c=3
+      expect(bw.bandwidths[1]).toBe(docSizes[2]!); // b=3,c=4
+      expect(bw.bandwidths[2]).toBe(docSizes[3]!); // b=4,c=1
+
+      const oneDocSize = docSizes[0]!;
+      const page = await distinct.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize,
+      });
+      expect(page.page.length).toBe(1);
+      expect(page.isDone).toBe(false);
+      expect(page.pageStatus).toBe("SplitRequired");
+    });
+  });
+
+  test("streamIndexRange tracks bandwidth", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 5, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 6, c: 0 });
+      const bounds = {
+        lowerBound: [1, 4],
+        lowerBoundInclusive: true,
+        upperBound: [1, 6],
+        upperBoundInclusive: true,
+      };
+      const rangeStream = streamIndexRange(
+        ctx.db,
+        schema,
+        "foo",
+        "abc",
+        bounds,
+        "asc",
+      );
+
+      const allDocs = await ctx.db.query("foo").collect();
+      const expectedTotal = allDocs.reduce(
+        (sum, doc) => sum + getDocumentSize(doc),
+        0,
+      );
+
+      const bw = await collectBandwidth(rangeStream.iterWithKeys(true));
+      expect(bw.items.length).toBe(3);
+      expect(bw.totalBandwidth).toBe(expectedTotal);
+    });
+  });
+
+  test("pagination continues correctly after maximumBytesRead", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("foo", { a: 1, b: 1, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 2, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 3, c: 0 });
+      await ctx.db.insert("foo", { a: 1, b: 4, c: 0 });
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1));
+
+      const firstDoc = await query.first();
+      const oneDocSize = getDocumentSize(firstDoc!);
+
+      // Page 1: read 1 doc, hit byte limit
+      const page1 = await query.paginate({
+        numItems: 10,
+        cursor: null,
+        maximumBytesRead: oneDocSize,
+      });
+      expect(page1.page.map(stripSystemFields)).toEqual([{ a: 1, b: 1, c: 0 }]);
+      expect(page1.isDone).toBe(false);
+
+      // Page 2: continue from cursor, read 1 doc, hit byte limit
+      const page2 = await query.paginate({
+        numItems: 10,
+        cursor: page1.continueCursor,
+        maximumBytesRead: oneDocSize,
+      });
+      expect(page2.page.map(stripSystemFields)).toEqual([{ a: 1, b: 2, c: 0 }]);
+      expect(page2.isDone).toBe(false);
+
+      // Page 3: continue, allow plenty of bytes to read remaining docs
+      const page3 = await query.paginate({
+        numItems: 10,
+        cursor: page2.continueCursor,
+        maximumBytesRead: oneDocSize * 100,
+      });
+      expect(page3.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 3, c: 0 },
+        { a: 1, b: 4, c: 0 },
+      ]);
+      expect(page3.isDone).toBe(true);
     });
   });
 });
