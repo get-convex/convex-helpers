@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.114
+
+- Adds support for maximumBytesRead option for PaginationOptions on the
+  stream / paginator helpers.
+
 ## 0.1.113
 
 - Zod 4 support: fix the input type of `zid` (thanks @danth3b0t!)
