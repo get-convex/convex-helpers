@@ -58,7 +58,7 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
     "globals": "17.3.0",
-    "jsdom": "26.1.0",
+    "jsdom": "28.1.0",
     "npm-run-all2": "8.0.4",
     "pkg-pr-new": "0.0.63",
     "prettier": "3.8.1",
