@@ -53,6 +53,101 @@ describe("validate with undefined values", () => {
   });
 });
 
+describe("validate with unknownKeys strip mode", () => {
+  function withStripUnknownKeys(validator: ReturnType<typeof v.object>) {
+    // TODO: Remove once the Convex SDK exposes unknownKeys in validator JSON.
+    (validator as any).unknownKeys = "strip";
+    return validator;
+  }
+
+  test("allows unknown fields when unknownKeys is strip", () => {
+    const validator = withStripUnknownKeys(
+      v.object({ name: v.string(), age: v.number() }),
+    );
+    expect(validate(validator, { name: "Alice", age: 30, extra: true })).toBe(
+      true,
+    );
+  });
+
+  test("allows unknown fields with throw option", () => {
+    const validator = withStripUnknownKeys(
+      v.object({ name: v.string(), age: v.number() }),
+    );
+    expect(
+      validate(
+        validator,
+        { name: "Alice", age: 30, extra: true },
+        { throw: true },
+      ),
+    ).toBe(true);
+  });
+
+  test("still rejects type mismatches", () => {
+    const validator = withStripUnknownKeys(v.object({ name: v.string() }));
+    expect(validate(validator, { name: 123, extra: true })).toBe(false);
+  });
+
+  test("still rejects missing required fields", () => {
+    const validator = withStripUnknownKeys(
+      v.object({ name: v.string(), age: v.number() }),
+    );
+    expect(validate(validator, { name: "Alice", extra: true })).toBe(false);
+  });
+
+  test("strict mode still rejects unknown fields", () => {
+    const validator = v.object({ name: v.string() });
+    expect(validate(validator, { name: "Alice", extra: true })).toBe(false);
+  });
+
+  test("parse still strips unknown fields from strip-mode objects", () => {
+    const validator = withStripUnknownKeys(
+      v.object({ name: v.string(), age: v.number() }),
+    );
+    const result = parse(validator, { name: "Alice", age: 30, extra: true });
+    expect(result).toEqual({ name: "Alice", age: 30 });
+  });
+
+  test("parse union prefers strict members over strip members", () => {
+    const stripMember = withStripUnknownKeys(v.object({ a: v.number() }));
+    const strictMember = v.object({ a: v.number(), b: v.number() });
+    const validator = v.union(stripMember, strictMember);
+
+    const result = parse(validator, { a: 1, b: 2 });
+    expect(result).toEqual({ a: 1, b: 2 });
+  });
+
+  test("parse union uses declaration order for strip members", () => {
+    const stripA = withStripUnknownKeys(v.object({ a: v.number() }));
+    const stripAB = withStripUnknownKeys(
+      v.object({ a: v.number(), b: v.number() }),
+    );
+    const validator = v.union(stripA, stripAB);
+
+    const result = parse(validator, { a: 1, b: 2 });
+    expect(result).toEqual({ a: 1 });
+  });
+
+  test("parse union can preserve more fields when strip members are reordered", () => {
+    const stripAB = withStripUnknownKeys(
+      v.object({ a: v.number(), b: v.number() }),
+    );
+    const stripA = withStripUnknownKeys(v.object({ a: v.number() }));
+    const validator = v.union(stripAB, stripA);
+
+    const result = parse(validator, { a: 1, b: 2 });
+    expect(result).toEqual({ a: 1, b: 2 });
+  });
+
+  test("parse union without strip members strips extra fields in permissive pass", () => {
+    const validator = v.union(
+      v.object({ a: v.number() }),
+      v.object({ b: v.number() }),
+    );
+
+    expect(parse(validator, { a: 1, extra: true } as any)).toEqual({ a: 1 });
+  });
+});
+
 describe("vRequired", () => {
   test("returns required validator unchanged", () => {
     testVRequired(v.string(), v.string());
