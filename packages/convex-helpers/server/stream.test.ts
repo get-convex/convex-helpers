@@ -5,9 +5,7 @@ import { expect, test } from "vitest";
 import type { IndexKey } from "./stream.js";
 import { mergedStream, stream, streamIndexRange } from "./stream.js";
 import { modules } from "./setup.test.js";
-import { v } from "convex/values";
-
-import { convexToJson, getDocumentSize } from "convex/values";
+import { convexToJson, getDocumentSize, v } from "convex/values";
 
 const schema = defineSchema({
   foo: defineTable({
@@ -24,7 +22,8 @@ const schema = defineSchema({
   }).index("cde", ["c", "d", "e"]),
 });
 
-function stripSystemFields(doc: GenericDocument) {
+function stripSystemFields(doc: GenericDocument | null) {
+  if (doc === null) return doc;
   const { _id, _creationTime, ...rest } = doc;
   return rest;
 }
@@ -32,7 +31,7 @@ function dropSystemFields(indexKey: IndexKey) {
   return indexKey.slice(0, -2);
 }
 function dropAndStripSystemFields(
-  item: IteratorResult<[GenericDocument | null, IndexKey, number]>,
+  item: IteratorResult<[GenericDocument | null, IndexKey, number], undefined>,
 ) {
   return {
     done: item.done,
@@ -945,7 +944,7 @@ describe("bandwidth tracking", () => {
       });
       // The first two docs are filtered out but still count towards bytes,
       // so we should have read 2 docs (both filtered) and stopped
-      expect(page.page.length).toBeLessThanOrEqual(1);
+      expect(page.page.length).toEqual(0);
       expect(page.isDone).toBe(false);
       expect(page.pageStatus).toBe("SplitRequired");
     });

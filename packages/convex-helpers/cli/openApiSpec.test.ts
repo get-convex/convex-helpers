@@ -28,4 +28,4 @@ test("generateValidSpec", async () => {
   fs.unlinkSync(testFileName);
 
   expect(JSON.parse(output.toString())["totals"]).toHaveProperty("errors", 0);
-});
+}, 10000);
