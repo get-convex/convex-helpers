@@ -28,7 +28,7 @@ import {
   Zid,
 } from "./zod4";
 import { Equals } from "..";
-import { isSameType } from "zod-compare/zod4";
+import { isSameType } from "zod-compare";
 
 describe("zodToConvex + zodOutputToConvex", () => {
   test("id", () => {
