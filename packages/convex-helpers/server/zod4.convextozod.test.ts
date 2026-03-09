@@ -7,10 +7,14 @@ import {
   Infer,
   v,
   VFloat64,
+  VLiteral,
   VString,
+  VUnion,
 } from "convex/values";
 import { convexToZod, Zid, zid, ZodValidatorFromConvex } from "./zod4";
 import { isSameType } from "zod-compare/zod4";
+import { literals } from "../validators";
+import { ignoreUnionOrder } from "./zod4.zodtoconvex.test";
 
 test("Zid is a record key", () => {
   const myZid = zid("users");
@@ -204,6 +208,40 @@ describe("convexToZod", () => {
         );
       });
     });
+  });
+
+  // https://github.com/get-convex/convex-helpers/issues/861
+  test("regression: literals helper", () => {
+    testConvexToZod(
+      v.object({
+        firstName: v.string(),
+        lastName: v.string(),
+        gender: literals("male", "female", "other"),
+      }),
+      z.object({
+        firstName: z.string(),
+        lastName: z.string(),
+        gender: z.union([
+          z.literal("male"),
+          z.literal("female"),
+          z.literal("other"),
+        ]),
+      }),
+    );
+  });
+
+  // https://github.com/get-convex/convex-helpers/issues/861#issuecomment-3593231904
+  test("regression: spreading an enum into v.union", () => {
+    enum Gender {
+      Male = "male",
+      Female = "female",
+      Other = "other",
+    }
+
+    testConvexToZod(
+      v.union(...Object.values(Gender).map(v.literal)),
+      z.literal([Gender.Male, Gender.Female, Gender.Other]),
+    );
   });
 });
 
