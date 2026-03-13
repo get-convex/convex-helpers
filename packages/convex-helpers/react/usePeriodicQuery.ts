@@ -188,8 +188,8 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
   const latestGenerationRef = useRef(generation);
   latestGenerationRef.current = generation;
 
-  const fetchData = useCallback(async () => {
-    if (args === "skip" || isFetchingRef.current) return;
+  const fetchData = useCallback(async (): Promise<boolean> => {
+    if (args === "skip" || isFetchingRef.current) return false;
 
     isFetchingRef.current = true;
     setState((s) => ({ ...s, isRefreshing: true }));
@@ -208,7 +208,9 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
           lastUpdated: new Date(),
           error: undefined,
         });
+        return true;
       }
+      return false;
     } catch (e) {
       if (
         isMountedRef.current &&
@@ -219,7 +221,9 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
           isRefreshing: false,
           error: e instanceof Error ? e : new Error(String(e)),
         }));
+        return true;
       }
+      return false;
     } finally {
       isFetchingRef.current = false;
     }
@@ -233,8 +237,8 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     const delay = getNextInterval(interval, jitter);
     timeoutRef.current = setTimeout(() => {
       if (isMountedRef.current) {
-        void fetchData().then(() => {
-          if (isMountedRef.current) {
+        void fetchData().then((shouldContinue) => {
+          if (shouldContinue && isMountedRef.current) {
             scheduleNextFetch();
           }
         });
@@ -253,8 +257,8 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     }
 
     // Fetch immediately, then schedule next
-    void fetchData().then(() => {
-      if (isMountedRef.current) {
+    void fetchData().then((shouldContinue) => {
+      if (shouldContinue && isMountedRef.current) {
         scheduleNextFetch();
       }
     });
