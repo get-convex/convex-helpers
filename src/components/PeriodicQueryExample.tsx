@@ -2,22 +2,20 @@ import { api } from "../../convex/_generated/api";
 import { usePeriodicQuery } from "convex-helpers/react/usePeriodicQuery";
 
 const PeriodicQueryExample = () => {
-  const { data, isRefreshing, lastUpdated, error, refresh } = usePeriodicQuery(
-    api.counter.getCounter,
-    { counterName: "clicks" },
-    { interval: 30_000, jitter: 0.5 }, // 30s average (15-45s range)
-  );
+  const { status, data, isRefreshing, lastUpdated, error, refresh } =
+    usePeriodicQuery(api.counter.getCounter, { counterName: "clicks" });
 
   return (
     <div>
       <h3>Periodic Query Example</h3>
-      <p>This counter updates every ~30 seconds (with ±50% jitter).</p>
+      <p>This counter updates every ~60 seconds (with jitter).</p>
       <p>Compare with the real-time counter above to see the drift.</p>
 
       {error && <p style={{ color: "red" }}>Error: {error.message}</p>}
 
       <p>
-        Counter value: {data ?? "Loading..."}
+        Counter value:{" "}
+        {status === "pending" ? "Loading..." : (data ?? "No data")}
         {isRefreshing && " (refreshing...)"}
       </p>
 

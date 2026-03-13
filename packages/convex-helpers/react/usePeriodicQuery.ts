@@ -29,10 +29,19 @@ const DEFAULT_JITTER = 0.5;
  * @returns The next interval in milliseconds
  */
 function getNextInterval(base: number, jitter: number): number {
+  if (jitter < 0 || jitter > 1) {
+    throw new Error("Jitter must be between 0 and 1");
+  }
+  if (base < MIN_INTERVAL_MS) {
+    console.warn(
+      `usePeriodicQuery: interval ${base}ms is less than minimum ${MIN_INTERVAL_MS}ms, clamping`,
+    );
+    base = MIN_INTERVAL_MS;
+  }
   // Math.random() * 2 - 1 gives a value in range [-1, +1]
   const jitterMultiplier = Math.random() * 2 - 1;
   const jitterAmount = base * jitter * jitterMultiplier;
-  return base + jitterAmount;
+  return Math.max(MIN_INTERVAL_MS, base + jitterAmount);
 }
 
 /**
@@ -58,15 +67,34 @@ export type UsePeriodicQueryOptions = {
 /**
  * Return type for usePeriodicQuery.
  */
-export type UsePeriodicQueryResult<T> = {
-  /** Query result, or undefined if never successfully loaded */
-  data: T | undefined;
+export type UsePeriodicQueryResult<T> = (
+  | {
+      /** Status of the query. Success indicates the query loaded successfully. */
+      status: "success";
+      /** Query result, if the query loaded successfully. */
+      data: T;
+      /** Most recent error, or undefined. Clears on successful fetch. */
+      error: undefined;
+    }
+  | {
+      /** Status of the query. Pending indicates the initial load is in progress. */
+      status: "pending";
+      data: undefined;
+      /** Most recent error, or undefined. Clears on successful fetch. */
+      error: undefined;
+    }
+  | {
+      /** Status of the query. Error indicates the query threw an exception. */
+      status: "error";
+      data: undefined;
+      /** Most recent error, or undefined. Clears on successful fetch. */
+      error: Error;
+    }
+) & {
   /** True during any fetch (including initial load) */
   isRefreshing: boolean;
   /** Timestamp of the last successful fetch, or undefined if never loaded */
   lastUpdated: Date | undefined;
-  /** Most recent error, or undefined. Clears on successful fetch. */
-  error: Error | undefined;
   /** Manually trigger a refresh. Resets the interval timer. */
   refresh: () => void;
 };
@@ -88,9 +116,7 @@ type PeriodicQueryState<T> = {
  * consistency and freshness are not required. For most use cases, prefer `useQuery`.
  *
  * Unlike `useQuery`, this hook does not subscribe to real-time updates. Instead, it
- * fetches data at regular intervals with jitter to prevent thundering herd effects.
- * This is useful for data that doesn't need real-time updates, reducing bandwidth
- * and backend load.
+ * fetches data periodically.
  *
  * @example
  * ```tsx
@@ -100,7 +126,6 @@ type PeriodicQueryState<T> = {
  *   const { data, isRefreshing, lastUpdated, error, refresh } = usePeriodicQuery(
  *     api.dashboard.getStats,
  *     { teamId: "123" },
- *     { interval: 60_000, jitter: 0.5 }
  *   );
  *
  *   if (data === undefined && !error) {
@@ -132,9 +157,8 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
 ): UsePeriodicQueryResult<FunctionReturnType<Query>> {
   const convex = useConvex();
 
-  // Process options with defaults and minimum enforcement
-  const rawInterval = options?.interval ?? DEFAULT_INTERVAL_MS;
-  const interval = Math.max(rawInterval, MIN_INTERVAL_MS);
+  // Process options with defaults
+  const interval = options?.interval ?? DEFAULT_INTERVAL_MS;
   const jitter = options?.jitter ?? DEFAULT_JITTER;
 
   const [state, setState] = useState<
@@ -158,11 +182,9 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     args === "skip" ? "skip" : JSON.stringify(convexToJson(args as Value));
   const queryName = getFunctionName(query);
 
-  // Track latest args key to avoid stale updates
+  // Track latest args key to avoid stale updates from in-flight queries
   const latestArgsKeyRef = useRef(argsKey);
-  useEffect(() => {
-    latestArgsKeyRef.current = argsKey;
-  }, [argsKey]);
+  latestArgsKeyRef.current = argsKey;
 
   const fetchData = useCallback(async () => {
     if (args === "skip" || isFetchingRef.current) return;
@@ -170,9 +192,14 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     isFetchingRef.current = true;
     setState((s) => ({ ...s, isRefreshing: true }));
 
+    const capturedArgsKey = argsKey;
+
     try {
       const result = await convex.query(query, args);
-      if (isMountedRef.current && latestArgsKeyRef.current === argsKey) {
+      if (
+        isMountedRef.current &&
+        capturedArgsKey === latestArgsKeyRef.current
+      ) {
         setState({
           data: result,
           isRefreshing: false,
@@ -181,7 +208,10 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
         });
       }
     } catch (e) {
-      if (isMountedRef.current && latestArgsKeyRef.current === argsKey) {
+      if (
+        isMountedRef.current &&
+        capturedArgsKey === latestArgsKeyRef.current
+      ) {
         setState((s) => ({
           ...s,
           isRefreshing: false,
@@ -191,7 +221,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     } finally {
       isFetchingRef.current = false;
     }
-  }, [convex, query, argsKey]);
+  }, [convex, queryName, argsKey]);
 
   const scheduleNextFetch = useCallback(() => {
     if (timeoutRef.current) {
@@ -265,8 +295,31 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
       }
     };
   }, [queryName, argsKey, fetchData, scheduleNextFetch]);
-  return {
-    ...state,
-    refresh,
-  };
+
+  return state.error
+    ? {
+        status: "error",
+        data: undefined,
+        error: state.error,
+        isRefreshing: state.isRefreshing,
+        lastUpdated: state.lastUpdated,
+        refresh,
+      }
+    : state.data !== undefined
+      ? {
+          status: "success",
+          data: state.data,
+          error: undefined,
+          isRefreshing: state.isRefreshing,
+          lastUpdated: state.lastUpdated,
+          refresh,
+        }
+      : {
+          status: "pending",
+          data: undefined,
+          error: undefined,
+          isRefreshing: state.isRefreshing,
+          lastUpdated: state.lastUpdated,
+          refresh,
+        };
 }
