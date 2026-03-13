@@ -41,7 +41,7 @@ function getNextInterval(base: number, jitter: number): number {
   // Math.random() * 2 - 1 gives a value in range [-1, +1]
   const jitterMultiplier = Math.random() * 2 - 1;
   const jitterAmount = base * jitter * jitterMultiplier;
-  return Math.max(MIN_INTERVAL_MS, base + jitterAmount);
+  return base + jitterAmount;
 }
 
 /**
@@ -182,9 +182,11 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     args === "skip" ? "skip" : JSON.stringify(convexToJson(args as Value));
   const queryName = getFunctionName(query);
 
-  // Track latest args key to avoid stale updates from in-flight queries
-  const latestArgsKeyRef = useRef(argsKey);
-  latestArgsKeyRef.current = argsKey;
+  // Track latest generation (queryName + argsKey) to avoid stale updates
+  // from in-flight queries, including query swaps with identical args
+  const generation = `${queryName}:${argsKey}`;
+  const latestGenerationRef = useRef(generation);
+  latestGenerationRef.current = generation;
 
   const fetchData = useCallback(async () => {
     if (args === "skip" || isFetchingRef.current) return;
@@ -192,13 +194,13 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     isFetchingRef.current = true;
     setState((s) => ({ ...s, isRefreshing: true }));
 
-    const capturedArgsKey = argsKey;
+    const capturedGeneration = generation;
 
     try {
       const result = await convex.query(query, args);
       if (
         isMountedRef.current &&
-        capturedArgsKey === latestArgsKeyRef.current
+        capturedGeneration === latestGenerationRef.current
       ) {
         setState({
           data: result,
@@ -210,7 +212,7 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
     } catch (e) {
       if (
         isMountedRef.current &&
-        capturedArgsKey === latestArgsKeyRef.current
+        capturedGeneration === latestGenerationRef.current
       ) {
         setState((s) => ({
           ...s,
@@ -268,7 +270,12 @@ export function usePeriodicQuery<Query extends FunctionReference<"query">>(
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
       }
-      setState((s) => ({ ...s, isRefreshing: false }));
+      setState({
+        data: undefined,
+        isRefreshing: false,
+        lastUpdated: undefined,
+        error: undefined,
+      });
       return;
     }
 

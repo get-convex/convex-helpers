@@ -1,5 +1,5 @@
 import { api } from "../../convex/_generated/api";
-import { usePeriodicQuery } from "convex-helpers/react/usePeriodicQuery";
+import { usePeriodicQuery } from "convex-helpers/react";
 
 const PeriodicQueryExample = () => {
   const { status, data, isRefreshing, lastUpdated, error, refresh } =
