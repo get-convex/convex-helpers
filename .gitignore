@@ -1,5 +1,3 @@
-.npmrc
-
 # Or our local env
 .env.local
 
