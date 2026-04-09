@@ -168,7 +168,7 @@ cors.route({
 });
 
 /**
- * Test that allow credentials works with *.
+ * Test that allow credentials does not work with *.
  */
 cors.route({
   path: "/allowCredentials",
@@ -185,6 +185,16 @@ cors.route({
   method: "GET",
   handler: everythingHandler,
   allowCredentials: true,
+  allowedOrigins: ["http://localhost:3000"],
+});
+
+/**
+ * Test that allow origin header is set to the specific origin.
+ */
+cors.route({
+  path: "/allowOriginWithSpecificOrigin",
+  method: "GET",
+  handler: everythingHandler,
   allowedOrigins: ["http://localhost:3000"],
 });
 

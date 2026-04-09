@@ -170,7 +170,7 @@ describe("corsRouter fetch routes", () => {
     return {
       "access-control-allow-headers": "Content-Type",
       "access-control-allow-methods": `${method}`,
-      "access-control-allow-origin": "http://localhost:3000",
+      "access-control-allow-origin": "*",
       "access-control-max-age": "86400",
       "content-type": "application/json",
     };
@@ -279,9 +279,7 @@ describe("corsRouter fetch routes", () => {
       },
     });
     expect(response.status).toBe(204);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "http://localhost:3000",
-    );
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
       "GET",
     );
@@ -328,7 +326,7 @@ describe("corsRouter fetch routes", () => {
     expect(body).toEqual({ message: "Dynamic allowed origins! Wow!" });
   });
 
-  test("Sets allow origin header to request origin if allowed", async () => {
+  test("Sets allow origin header to * if allowed", async () => {
     const t = testWithHttp();
     const response = await t.fetch("/fact", {
       method: "GET",
@@ -337,9 +335,7 @@ describe("corsRouter fetch routes", () => {
       },
     });
     expect(response.status).toBe(200);
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "http://localhost:3000",
-    );
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
     await verifyFactResponse(response);
   });
 
@@ -423,12 +419,9 @@ describe("corsRouter fetch routes", () => {
       },
     });
     expect(response.status).toBe(200);
-    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe(
-      "true",
-    );
-    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
-      "http://localhost:3000",
-    );
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBeNull();
+    // Since we're using *, the allow origin header should be null
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
 
   test("Route with allowCredentials with specific origin", async () => {
@@ -448,5 +441,36 @@ describe("corsRouter fetch routes", () => {
     });
     expect(badResponse.status).toBe(200);
     expect(badResponse.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  test("Route with allow origin header set to specific origin", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/allowOriginWithSpecificOrigin", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  test("Route with allow credentials and specific origin", async () => {
+    const t = testWithHttp();
+    const response = await t.fetch("/allowCredentialsWithOrigin", {
+      method: "GET",
+      headers: {
+        origin: "http://localhost:3000",
+      },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      "http://localhost:3000",
+    );
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe(
+      "true",
+    );
   });
 });
