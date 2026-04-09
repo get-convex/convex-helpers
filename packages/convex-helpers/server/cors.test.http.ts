@@ -198,4 +198,21 @@ cors.route({
   allowedOrigins: ["http://localhost:3000"],
 });
 
+/**
+ * Test that Vary: Origin is appended to existing Vary headers.
+ */
+cors.route({
+  path: "/existingVaryHeader",
+  method: "GET",
+  handler: httpActionGeneric(async () => {
+    return new Response(JSON.stringify({ message: "has vary" }), {
+      headers: {
+        "Content-Type": "application/json",
+        Vary: "Accept-Encoding",
+      },
+    });
+  }),
+  allowedOrigins: ["http://localhost:3000"],
+});
+
 export default http;

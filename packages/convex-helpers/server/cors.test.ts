@@ -280,6 +280,7 @@ describe("corsRouter fetch routes", () => {
     });
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Vary")).toBeNull();
     expect(response.headers.get("Access-Control-Allow-Methods")).toContain(
       "GET",
     );
@@ -306,6 +307,7 @@ describe("corsRouter fetch routes", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
       "http://localhost:3000",
     );
+    expect(response.headers.get("Vary")).toContain("Origin");
     const body = await response.json();
     expect(body).toEqual({ message: "Custom allowed origins! Wow!" });
   });
@@ -336,6 +338,7 @@ describe("corsRouter fetch routes", () => {
     });
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Vary")).toBeNull();
     await verifyFactResponse(response);
   });
 
@@ -365,6 +368,7 @@ describe("corsRouter fetch routes", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
       "http://localhost:3000",
     );
+    expect(response.headers.get("Vary")).toContain("Origin");
     expect(response.headers.get("Access-Control-Allow-Methods")).toBe("GET");
   });
 
@@ -436,6 +440,9 @@ describe("corsRouter fetch routes", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
       "http://localhost:3000",
     );
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe(
+      "true",
+    );
     const badResponse = await t.fetch("/allowCredentialsWithOrigin", {
       method: "GET",
     });
@@ -457,9 +464,9 @@ describe("corsRouter fetch routes", () => {
     );
   });
 
-  test("Route with allow credentials and specific origin", async () => {
+  test("Appends Vary: Origin to existing Vary headers", async () => {
     const t = testWithHttp();
-    const response = await t.fetch("/allowCredentialsWithOrigin", {
+    const response = await t.fetch("/existingVaryHeader", {
       method: "GET",
       headers: {
         origin: "http://localhost:3000",
@@ -469,8 +476,8 @@ describe("corsRouter fetch routes", () => {
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
       "http://localhost:3000",
     );
-    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe(
-      "true",
-    );
+    const vary = response.headers.get("Vary");
+    expect(vary).toContain("Accept-Encoding");
+    expect(vary).toContain("Origin");
   });
 });
