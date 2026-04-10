@@ -9,7 +9,7 @@ Common migration patterns, zero-downtime strategies, and verification techniques
 users: defineTable({
   name: v.string(),
   role: v.optional(v.union(v.literal("user"), v.literal("admin"))),
-})
+});
 
 // Migration: backfill the field
 export const addDefaultRole = migrations.define({
@@ -25,7 +25,7 @@ export const addDefaultRole = migrations.define({
 users: defineTable({
   name: v.string(),
   role: v.union(v.literal("user"), v.literal("admin")),
-})
+});
 ```
 
 ## Deleting a Field

@@ -10,17 +10,17 @@ Convex functions run inside transactions with budgets for time, reads, and write
 
 These are the current values from the [Convex limits docs](https://docs.convex.dev/production/state/limits). Check that page for the latest numbers.
 
-| Resource | Limit |
-|---|---|
-| Query/mutation execution time | 1 second (user code only, excludes DB operations) |
-| Action execution time | 10 minutes |
-| Data read per transaction | 16 MiB |
-| Data written per transaction | 16 MiB |
+| Resource                          | Limit                                                 |
+| --------------------------------- | ----------------------------------------------------- |
+| Query/mutation execution time     | 1 second (user code only, excludes DB operations)     |
+| Action execution time             | 10 minutes                                            |
+| Data read per transaction         | 16 MiB                                                |
+| Data written per transaction      | 16 MiB                                                |
 | Documents scanned per transaction | 32,000 (includes documents filtered out by `.filter`) |
-| Index ranges read per transaction | 4,096 (each `db.get` and `db.query` call) |
-| Documents written per transaction | 16,000 |
-| Individual document size | 1 MiB |
-| Function return value size | 16 MiB |
+| Index ranges read per transaction | 4,096 (each `db.get` and `db.query` call)             |
+| Documents written per transaction | 16,000                                                |
+| Individual document size          | 1 MiB                                                 |
+| Function return value size        | 16 MiB                                                |
 
 ## Symptoms
 

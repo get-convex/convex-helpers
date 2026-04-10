@@ -43,13 +43,13 @@ Start with the strongest signal available:
 
 After gathering signals, identify the problem class and read the matching reference file.
 
-| Signal | Reference |
-|---|---|
-| High bytes or documents read, JS filtering, unnecessary joins | `references/hot-path-rules.md` |
-| OCC conflict errors, write contention, mutation retries | `references/occ-conflicts.md` |
-| High subscription count, slow UI updates, excessive re-renders | `references/subscription-cost.md` |
-| Function timeouts, transaction size errors, large payloads | `references/function-budget.md` |
-| General "it's slow" with no specific signal | Start with `references/hot-path-rules.md` |
+| Signal                                                         | Reference                                 |
+| -------------------------------------------------------------- | ----------------------------------------- |
+| High bytes or documents read, JS filtering, unnecessary joins  | `references/hot-path-rules.md`            |
+| OCC conflict errors, write contention, mutation retries        | `references/occ-conflicts.md`             |
+| High subscription count, slow UI updates, excessive re-renders | `references/subscription-cost.md`         |
+| Function timeouts, transaction size errors, large payloads     | `references/function-budget.md`           |
+| General "it's slow" with no specific signal                    | Start with `references/hot-path-rules.md` |
 
 Multiple problem classes can overlap. Read the most relevant reference first, then check the others if symptoms remain.
 
