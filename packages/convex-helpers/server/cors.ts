@@ -286,12 +286,8 @@ const handleCors = ({
   /**
    * Build up the set of CORS headers
    */
-  const commonHeaders: Record<string, string> = {
-    Vary: "Origin",
-  };
-  if (allowCredentials) {
-    commonHeaders["Access-Control-Allow-Credentials"] = "true";
-  }
+  const commonHeaders: Record<string, string> = {};
+
   if (exposedHeaders.length > 0) {
     commonHeaders["Access-Control-Expose-Headers"] = exposedHeaders.join(", ");
   }
@@ -302,11 +298,17 @@ const handleCors = ({
       : await allowedOrigins(request);
   }
 
-  // Helper function to check if origin is allowed (including wildcard subdomain matching)
-  async function isAllowedOrigin(request: Request): Promise<boolean> {
-    const requestOrigin = request.headers.get("origin");
-    if (!requestOrigin) return false;
-    return (await parseAllowedOrigins(request)).some((allowed) => {
+  /**
+   * Check if a request origin is allowed given already-parsed allowed origins.
+   * Includes wildcard subdomain matching (e.g. "*.example.com").
+   */
+  function isAllowedOrigin(
+    requestOrigin: string,
+    parsedOrigins: string[],
+  ): boolean {
+    if (parsedOrigins.includes("*") && allowCredentials) return false;
+
+    return parsedOrigins.some((allowed) => {
       if (allowed === "*") return true;
       if (allowed === requestOrigin) return true;
       if (allowed.startsWith("*.")) {
@@ -355,11 +357,11 @@ const handleCors = ({
         requestOrigin &&
         !allowCredentials
       ) {
-        allowOrigins = requestOrigin;
+        allowOrigins = "*";
       } else if (requestOrigin) {
         // Check if the request origin matches any of the allowed origins
         // (including wildcard subdomain matching if configured)
-        if (await isAllowedOrigin(request)) {
+        if (isAllowedOrigin(requestOrigin, parsedAllowedOrigins)) {
           allowOrigins = requestOrigin;
         }
       }
@@ -377,6 +379,10 @@ const handleCors = ({
       if (request.method === "OPTIONS") {
         const responseHeaders = new Headers({
           ...commonHeaders,
+          ...(allowOrigins === "*" ? {} : { Vary: "Origin" }),
+          ...(allowOrigins !== null && allowCredentials
+            ? { "Access-Control-Allow-Credentials": "true" }
+            : {}),
           ...(allowOrigins
             ? { "Access-Control-Allow-Origin": allowOrigins }
             : {}),
@@ -426,6 +432,14 @@ const handleCors = ({
       Object.entries(commonHeaders).forEach(([key, value]) => {
         newHeaders.set(key, value);
       });
+
+      if (allowOrigins !== "*") {
+        newHeaders.append("Vary", "Origin");
+      }
+
+      if (allowOrigins !== null && allowCredentials) {
+        newHeaders.set("Access-Control-Allow-Credentials", "true");
+      }
 
       if (debug) {
         console.log("CORS response headers", newHeaders);

@@ -168,7 +168,7 @@ cors.route({
 });
 
 /**
- * Test that allow credentials works with *.
+ * Test that allow credentials does not work with *.
  */
 cors.route({
   path: "/allowCredentials",
@@ -185,6 +185,33 @@ cors.route({
   method: "GET",
   handler: everythingHandler,
   allowCredentials: true,
+  allowedOrigins: ["http://localhost:3000"],
+});
+
+/**
+ * Test that allow origin header is set to the specific origin.
+ */
+cors.route({
+  path: "/allowOriginWithSpecificOrigin",
+  method: "GET",
+  handler: everythingHandler,
+  allowedOrigins: ["http://localhost:3000"],
+});
+
+/**
+ * Test that Vary: Origin is appended to existing Vary headers.
+ */
+cors.route({
+  path: "/existingVaryHeader",
+  method: "GET",
+  handler: httpActionGeneric(async () => {
+    return new Response(JSON.stringify({ message: "has vary" }), {
+      headers: {
+        "Content-Type": "application/json",
+        Vary: "Accept-Encoding",
+      },
+    });
+  }),
   allowedOrigins: ["http://localhost:3000"],
 });
 
