@@ -8,7 +8,7 @@
     "dev:backend": "convex dev",
     "dev:frontend": "vite",
     "dev:helpers": "cd packages/convex-helpers && npm run dev",
-    "predev": "npm run build",
+    "predev": "convex init && npm run build",
     "format": "prettier --write .",
     "lint": "eslint . && npm run typecheck && prettier --check .",
     "typecheck": "tsc --noEmit && cd packages/convex-helpers && npm run typecheck",
