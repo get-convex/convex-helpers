@@ -107,7 +107,7 @@ After finding one problem, inspect both sibling readers and sibling writers for 
 Examples:
 
 - If one list query switches from full docs to a digest table, inspect the other list queries for that table
-- If one mutation needs no-op write protection, inspect the other writers to the same table
+- If one mutation isolates a frequently-updated field or splits a hot document, inspect the other writers to the same table
 - If one read path needs a migration-safe rollout for an unbackfilled field, inspect sibling reads for the same rollout risk
 
 Do not leave one path fixed and another path on the old pattern unless there is a clear product reason.
@@ -119,7 +119,7 @@ Confirm all of these:
 1. Results are the same as before, no dropped records
 2. Eliminated reads or writes are no longer in the path where expected
 3. Fallback behavior works when denormalized or indexed fields are missing
-4. New writes avoid unnecessary invalidation when data is unchanged
+4. Frequently-updated fields are isolated from widely-read documents where needed
 5. Every relevant sibling reader and writer was inspected, not just the original function
 
 ## Reference Files

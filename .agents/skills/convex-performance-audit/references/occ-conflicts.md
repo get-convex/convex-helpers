@@ -73,42 +73,30 @@ await ctx.db.patch(shardId, { count: shard!.count + 1 });
 
 Aggregate the shards in a query or scheduled job when you need the total.
 
-### 3. Skip no-op writes
+### 3. Move non-critical work to scheduled functions
 
-Writes that do not change data still participate in conflict detection and trigger invalidation.
-
-```ts
-// Bad: patches even when nothing changed
-await ctx.db.patch(doc._id, { status: args.status });
-```
+If a mutation does primary work plus secondary bookkeeping (analytics, non-critical notifications, cache warming), the bookkeeping extends the transaction's lifetime and read/write set.
 
 ```ts
-// Good: only write when the value actually differs
-if (doc.status !== args.status) {
-  await ctx.db.patch(doc._id, { status: args.status });
-}
-```
-
-### 4. Move non-critical work to scheduled functions
-
-If a mutation does primary work plus secondary bookkeeping (analytics, notifications, cache warming), the bookkeeping extends the transaction's lifetime and read/write set.
-
-```ts
-// Bad: analytics update in the same transaction as the user action
-await ctx.db.patch(userId, { lastActiveAt: Date.now() });
-await ctx.db.insert("analytics", { event: "action", userId, ts: Date.now() });
-```
-
-```ts
-// Good: schedule the bookkeeping so the primary transaction is smaller
-await ctx.db.patch(userId, { lastActiveAt: Date.now() });
-await ctx.scheduler.runAfter(0, internal.analytics.recordEvent, {
-  event: "action",
+// Bad: canonical write and derived work happen in the same transaction
+await ctx.db.patch(userId, { name: args.name });
+await ctx.db.insert("userUpdateAnalytics", {
   userId,
+  kind: "name_changed",
+  name: args.name,
 });
 ```
 
-### 5. Combine competing writes
+```ts
+// Good: keep the primary write small, defer the analytics work
+await ctx.db.patch(userId, { name: args.name });
+await ctx.scheduler.runAfter(0, internal.users.recordNameChangeAnalytics, {
+  userId,
+  name: args.name,
+});
+```
+
+### 4. Combine competing writes
 
 If two mutations must update the same document atomically, consider whether they can be combined into a single mutation call from the client, reducing round trips and conflict windows.
 
