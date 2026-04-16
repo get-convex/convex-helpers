@@ -102,6 +102,19 @@ export const corsRouter = (
 ): CorsHttpRouter => {
   const allowedExactMethodsByPath: Map<string, Set<string>> = new Map();
   const allowedPrefixMethodsByPath: Map<string, Set<string>> = new Map();
+
+  // Eagerly throw on invalid configuration
+  if (
+    corsConfig &&
+    Array.isArray(corsConfig.allowedOrigins) &&
+    corsConfig.allowedOrigins.includes("*") &&
+    corsConfig.allowCredentials
+  ) {
+    throw new Error(
+      "Cannot use wildcard origin and allow credentials together",
+    );
+  }
+
   return {
     http,
     route: (routeSpec: RouteSpecWithCors): void => {

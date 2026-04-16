@@ -163,6 +163,35 @@ describe("corsRouter internals", () => {
     const corsHandler = routeMap?.get("GET");
     expect(corsHandler).toBeDefined();
   });
+
+  test("throws when wildcard origin is used with allowCredentials", () => {
+    const http = new HttpRouter();
+    expect(() =>
+      corsRouter(http, {
+        allowedOrigins: ["*"],
+        allowCredentials: true,
+      }),
+    ).toThrow("Cannot use wildcard origin and allow credentials together");
+  });
+
+  test("does not throw for wildcard origin without allowCredentials", () => {
+    const http = new HttpRouter();
+    expect(() =>
+      corsRouter(http, {
+        allowedOrigins: ["*"],
+      }),
+    ).not.toThrow();
+  });
+
+  test("does not throw for specific origins with allowCredentials", () => {
+    const http = new HttpRouter();
+    expect(() =>
+      corsRouter(http, {
+        allowedOrigins: ["https://example.com"],
+        allowCredentials: true,
+      }),
+    ).not.toThrow();
+  });
 });
 
 describe("corsRouter fetch routes", () => {
