@@ -548,10 +548,14 @@ export class ConvexReactSessionClient extends ConvexReactClient {
       MutationOptions<FunctionArgs<Mutation>>
     >
   ): Promise<FunctionReturnType<Mutation>> {
-    return this.mutation(mutation, {
-      ...args[0],
-      sessionId: this.sessionId,
-    } as FunctionArgs<Mutation>, args[1]);
+    return this.mutation(
+      mutation,
+      {
+        ...args[0],
+        sessionId: this.sessionId,
+      } as FunctionArgs<Mutation>,
+      args[1],
+    );
   }
 
   /**
