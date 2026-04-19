@@ -608,6 +608,8 @@ const zQueryCustom = zCustomQuery(query, {
       auth: undefined,
       db: "custom db!" as const,
       runQuery: undefined,
+      runSnapshotQuery: undefined,
+      meta: undefined,
       ...args,
     },
     args: {
