@@ -13,8 +13,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["node", "vitest/globals"],
+    "types": ["node", "vitest/globals"]
   },
   "include": ["./src", "./convex", "./packages/convex-helpers/**/*.test.ts"],
-  "exclude": ["**/dist/**"],
+  "exclude": ["**/dist/**"]
 }
