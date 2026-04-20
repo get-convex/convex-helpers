@@ -10,7 +10,7 @@ export const getCounter = query({
   handler: async (ctx, { counterName }) => {
     const counterDoc = await ctx.db
       .query("counter_table")
-      .filter((q) => q.eq(q.field("name"), counterName))
+      .withIndex("name", (q) => q.eq("name", counterName))
       .first();
     return counterDoc === null ? 0 : counterDoc.counter;
   },
@@ -37,7 +37,7 @@ export const getCounterOrThrow = query({
   handler: async (ctx, { counterName }): Promise<number> => {
     const counterDoc = await ctx.db
       .query("counter_table")
-      .filter((q) => q.eq(q.field("name"), counterName))
+      .withIndex("name", (q) => q.eq("name", counterName))
       .first();
     if (counterDoc === null) {
       throw new Error("Counter not found");
@@ -63,7 +63,7 @@ export const incrementCounter = mutation({
   ) => {
     const counterDoc = await ctx.db
       .query("counter_table")
-      .filter((q) => q.eq(q.field("name"), counterName))
+      .withIndex("name", (q) => q.eq("name", counterName))
       .first();
     if (counterDoc === null) {
       await ctx.db.insert("counter_table", {

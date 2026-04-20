@@ -27,7 +27,6 @@ import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
-  OptionalRestArgs,
   PaginationOptions,
   PaginationResult,
 } from "convex/server";
