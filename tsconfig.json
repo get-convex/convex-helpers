@@ -4,7 +4,6 @@
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "allowJs": false,
     "skipLibCheck": true,
-    "esModuleInterop": false,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
@@ -13,7 +12,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["node", "vitest/globals"],
   },
-  "include": ["./src", "./convex", "./packages/convex-helpers/**/*.test.ts"]
+  "include": ["./src", "./convex", "./packages/convex-helpers/**/*.test.ts"],
+  "exclude": ["**/dist/**"],
 }
