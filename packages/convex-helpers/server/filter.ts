@@ -48,6 +48,7 @@ class QueryWithFilter<
     this.p = p;
   }
   filter(predicate: (q: FilterBuilder<T>) => Expression<boolean>): this {
+    // eslint-disable-next-line @convex-dev/no-filter-in-query
     return new QueryWithFilter(this.q.filter(predicate), this.p) as this;
   }
   order(order: "asc" | "desc"): QueryWithFilter<T> {
