@@ -124,9 +124,11 @@ function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
         (v) => v.type !== "null",
       );
       if (nonNullMembers.length === 1 && nullMember !== undefined) {
-        return `${generateSchemaFromValidator(
-          nonNullMembers[0]!,
-        )}\nnullable: true`;
+        const innerSchema = generateSchemaFromValidator(nonNullMembers[0]!);
+        if (innerSchema === "{}") {
+          return "{}";
+        }
+        return `${innerSchema}\nnullable: true`;
       }
       const members: string[] = nonNullMembers.map((v) =>
         generateSchemaFromValidator(v),
