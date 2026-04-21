@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.115
+
+- Supports typescript ^6.0.0
+
 ## 0.1.114
 
 - Adds support for maximumBytesRead option for PaginationOptions on the
