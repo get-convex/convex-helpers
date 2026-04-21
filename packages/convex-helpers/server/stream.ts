@@ -428,8 +428,15 @@ export abstract class QueryStream<
       pageStatus = "SplitRequired";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
     } else if (indexKeys.length >= softMaxRowsToRead) {
-      pageStatus = "SplitRecommended";
-      splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
+      // When the scan-to-match ratio is high (sparse filter), splitting the
+      // range won't improve density — it just doubles subscriptions and can
+      // cause exponential split cascades on the client.
+      const scanRatio =
+        page.length > 0 ? indexKeys.length / page.length : Infinity;
+      if (scanRatio <= 2) {
+        pageStatus = "SplitRecommended";
+        splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
+      }
     }
     return {
       page,
