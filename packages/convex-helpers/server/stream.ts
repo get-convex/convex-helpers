@@ -1,6 +1,11 @@
 /* eslint-disable no-unexpected-multiline */
 import type { Value } from "convex/values";
-import { convexToJson, compareValues, jsonToConvex } from "convex/values";
+import {
+  convexToJson,
+  compareValues,
+  jsonToConvex,
+  getDocumentSize,
+} from "convex/values";
 import type {
   DataModelFromSchemaDefinition,
   DocumentByInfo,
@@ -211,6 +216,9 @@ export function stream<Schema extends SchemaDefinition<any, boolean>>(
 
 type GenericStreamItem = NonNullable<unknown>;
 
+type StreamIterable<T> = AsyncIterable<[T | null, IndexKey, number], undefined>;
+type StreamResult<T> = IteratorResult<[T | null, IndexKey, number], undefined>;
+
 /**
  * A "QueryStream" is an async iterable of query results, ordered by indexed fields.
  */
@@ -218,7 +226,15 @@ export abstract class QueryStream<
   T extends GenericStreamItem,
 > implements GenericOrderedQuery<T> {
   // Methods that subclasses must implement so OrderedQuery can be implemented.
-  abstract iterWithKeys(): AsyncIterable<[T | null, IndexKey]>;
+  /**
+   * Iterate over documents with their index keys and bandwidth consumed.
+   * @param trackBandwidth - If true, tracks bytes read using getDocumentSize. Defaults to false for efficiency.
+   * @returns AsyncIterable of [document | null, indexKey, bytesRead]
+   *   - document: The document or null if filtered out
+   *   - indexKey: The index key for cursor positioning
+   *   - bytesRead: Bytes consumed to produce this result (0 if trackBandwidth is false)
+   */
+  abstract iterWithKeys(trackBandwidth?: boolean): StreamIterable<T>;
   abstract narrow(indexBounds: IndexBounds): QueryStream<T>;
 
   // Methods so subclasses can make sure streams are combined correctly.
@@ -325,6 +341,7 @@ export abstract class QueryStream<
     opts: PaginationOptions & {
       endCursor?: string | null;
       maximumRowsRead?: number;
+      maximumBytesRead?: number;
     },
   ): Promise<PaginationResult<T>> {
     if (opts.numItems === 0) {
@@ -380,15 +397,25 @@ export abstract class QueryStream<
     const indexKeys: IndexKey[] = [];
     let hasMore = opts.endCursor && opts.endCursor !== "[]";
     let continueCursor = opts.endCursor ?? "[]";
-    for await (const [doc, indexKey] of narrowStream.iterWithKeys()) {
+    const maxBytesToRead = opts.maximumBytesRead;
+    const trackBandwidth = maxBytesToRead !== undefined;
+    let totalBytesRead = 0;
+    let hitLimit = false;
+    for await (const [doc, indexKey, bandwidth] of narrowStream.iterWithKeys(
+      trackBandwidth,
+    )) {
       if (doc !== null) {
         page.push(doc);
       }
       indexKeys.push(indexKey);
+      totalBytesRead += bandwidth;
       if (
-        (maxRows !== undefined && page.length >= maxRows) ||
+        (maxBytesToRead !== undefined && totalBytesRead >= maxBytesToRead) ||
         (maxRowsToRead !== undefined && indexKeys.length >= maxRowsToRead)
       ) {
+        hitLimit = true;
+      }
+      if (hitLimit || (maxRows !== undefined && page.length >= maxRows)) {
         hasMore = true;
         continueCursor = serializeCursor(indexKey);
         break;
@@ -397,7 +424,7 @@ export abstract class QueryStream<
     let pageStatus: "SplitRecommended" | "SplitRequired" | undefined =
       undefined;
     let splitCursor: IndexKey | undefined = undefined;
-    if (indexKeys.length === maxRowsToRead) {
+    if (hitLimit) {
       pageStatus = "SplitRequired";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
     } else if (indexKeys.length >= softMaxRowsToRead) {
@@ -417,7 +444,7 @@ export abstract class QueryStream<
   }
   async take(n: number) {
     const results: T[] = [];
-    for await (const [doc, _] of this.iterWithKeys()) {
+    for await (const [doc] of this.iterWithKeys()) {
       if (doc === null) {
         continue;
       }
@@ -439,13 +466,13 @@ export abstract class QueryStream<
     const docs = await this.take(1);
     return docs[0] ?? null;
   }
-  [Symbol.asyncIterator]() {
+  [Symbol.asyncIterator](): AsyncIterator<T, undefined> {
     const iterator = this.iterWithKeys()[Symbol.asyncIterator]();
     return {
       async next() {
         const result = await iterator.next();
         if (result.done) {
-          return { done: true as const, value: undefined };
+          return { done: true, value: undefined };
         }
         return { done: false, value: result.value[0]! };
       },
@@ -632,8 +659,8 @@ export class StreamQueryInitializer<
   reflect() {
     return this.inner().reflect();
   }
-  iterWithKeys() {
-    return this.inner().iterWithKeys();
+  iterWithKeys(trackBandwidth = false) {
+    return this.inner().iterWithKeys(trackBandwidth);
   }
   getOrder(): "asc" | "desc" {
     return this.inner().getOrder();
@@ -682,8 +709,8 @@ export class StreamQuery<
   reflect() {
     return this.inner().reflect();
   }
-  iterWithKeys() {
-    return this.inner().iterWithKeys();
+  iterWithKeys(trackBandwidth = false) {
+    return this.inner().iterWithKeys(trackBandwidth);
   }
   getOrder(): "asc" | "desc" {
     return this.inner().getOrder();
@@ -737,9 +764,9 @@ export class OrderedStreamQuery<
     const { db, table, index, order, indexRange } = this.reflect();
     return db.query(table).withIndex(index, indexRange).order(order);
   }
-  iterWithKeys(): AsyncIterable<
-    [DocumentByName<DM<Schema>, T> | null, IndexKey]
-  > {
+  iterWithKeys(
+    trackBandwidth = false,
+  ): StreamIterable<DocumentByName<DM<Schema>, T>> {
     const { indexFields } = this.reflect();
     const iterable = this.inner();
     return {
@@ -751,9 +778,11 @@ export class OrderedStreamQuery<
             if (result.done) {
               return { done: true, value: undefined };
             }
+            const doc = result.value;
+            const bandwidth = trackBandwidth ? getDocumentSize(doc) : 0;
             return {
               done: false,
-              value: [result.value, getIndexKey(result.value, indexFields)],
+              value: [doc, getIndexKey(doc, indexFields), bandwidth],
             };
           },
         };
@@ -1017,32 +1046,44 @@ export class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
       this.#streams.map((stream) => stream.getEqualityIndexFilter()),
     );
   }
-  iterWithKeys() {
-    const iterables = this.#streams.map((stream) => stream.iterWithKeys());
+  iterWithKeys(trackBandwidth = false): StreamIterable<T> {
+    const iterables = this.#streams.map((stream) =>
+      stream.iterWithKeys(trackBandwidth),
+    );
     const comparisonInversion = this.#order === "asc" ? 1 : -1;
     return {
       [Symbol.asyncIterator]() {
         const iterators = iterables.map((iterable) =>
           iterable[Symbol.asyncIterator](),
         );
-        const results = Array.from(
-          { length: iterators.length },
-          (): IteratorResult<[T | null, IndexKey] | undefined> => ({
-            done: false,
-            value: undefined,
-          }),
+        const results: (StreamResult<T> | undefined)[] = Array(
+          iterators.length,
         );
+        // Track bandwidth from pre-fetched documents not yet yielded
+        const pendingBandwidth = Array(iterators.length).fill(0);
         return {
           async next() {
+            let bandwidthThisIteration = 0;
             // Fill results from iterators with no value yet.
             await Promise.all(
               iterators.map(async (iterator, i) => {
-                if (!results[i]!.done && !results[i]!.value) {
+                if (!results[i]) {
                   const result = await iterator.next();
                   results[i] = result;
+                  // Track bandwidth from pre-fetched documents
+                  if (trackBandwidth && !result.done && result.value) {
+                    pendingBandwidth[i] = result.value[2];
+                  }
                 }
               }),
             );
+            // Sum all pending bandwidth (pre-fetched docs) for this iteration
+            if (trackBandwidth) {
+              for (let i = 0; i < pendingBandwidth.length; i++) {
+                bandwidthThisIteration += pendingBandwidth[i]!;
+                pendingBandwidth[i] = 0;
+              }
+            }
             // Find index for the value with the lowest index key.
             let minIndexKeyAndIndex: [IndexKey, number] | undefined = undefined;
             for (let i = 0; i < results.length; i++) {
@@ -1055,7 +1096,7 @@ export class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
                 minIndexKeyAndIndex = [resultIndexKey, i];
                 continue;
               }
-              const [prevMin, _prevMinIndex] = minIndexKeyAndIndex;
+              const [prevMin] = minIndexKeyAndIndex;
               if (
                 compareKeys(
                   { value: resultIndexKey, kind: "exact" },
@@ -1071,10 +1112,13 @@ export class MergedStream<T extends GenericStreamItem> extends QueryStream<T> {
               return { done: true, value: undefined };
             }
             const [_, minIndex] = minIndexKeyAndIndex;
-            const result = results[minIndex]!.value;
+            const [doc, indexKey] = results[minIndex]!.value!;
             // indicate that we've used this result
-            results[minIndex]!.value = undefined;
-            return { done: false, value: result };
+            results[minIndex] = undefined;
+            return {
+              done: false,
+              value: [doc, indexKey, bandwidthThisIteration],
+            };
           },
         };
       },
@@ -1161,8 +1205,10 @@ class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
       streams.map((stream) => stream.getEqualityIndexFilter()),
     );
   }
-  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
-    const iterables = this.#streams.map((stream) => stream.iterWithKeys());
+  iterWithKeys(trackBandwidth = false): StreamIterable<T> {
+    const iterables = this.#streams.map((stream) =>
+      stream.iterWithKeys(trackBandwidth),
+    );
     const comparisonInversion = this.#order === "asc" ? 1 : -1;
     let previousIndexKey: IndexKey | undefined = undefined;
     return {
@@ -1226,27 +1272,33 @@ class ConcatStreams<T extends GenericStreamItem> extends QueryStream<T> {
 class FlatMapStreamIterator<
   T extends GenericStreamItem,
   U extends GenericStreamItem,
-> implements AsyncIterator<[U | null, IndexKey]> {
+> implements AsyncIterator<[U | null, IndexKey, number], undefined> {
   #outerStream: QueryStream<T>;
-  #outerIterator: AsyncIterator<[T | null, IndexKey]>;
+  #outerIterator: AsyncIterator<[T | null, IndexKey, number], undefined>;
   #currentOuterItem: {
     t: T | null;
     indexKey: IndexKey;
-    innerIterator: AsyncIterator<[U | null, IndexKey]>;
+    innerIterator: AsyncIterator<[U | null, IndexKey, number], undefined>;
     count: number;
+    bandwidth: number; // bandwidth from reading outer doc
   } | null = null;
   #mapper: (doc: T) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
+  #trackBandwidth: boolean;
 
   constructor(
     outerStream: QueryStream<T>,
     mapper: (doc: T) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
+    trackBandwidth: boolean,
   ) {
-    this.#outerIterator = outerStream.iterWithKeys()[Symbol.asyncIterator]();
+    this.#outerIterator = outerStream
+      .iterWithKeys(trackBandwidth)
+      [Symbol.asyncIterator]();
     this.#outerStream = outerStream;
     this.#mapper = mapper;
     this.#mappedIndexFields = mappedIndexFields;
+    this.#trackBandwidth = trackBandwidth;
   }
   singletonSkipInnerStream(): QueryStream<U> {
     // If the outer stream is a filtered value, yield a singleton
@@ -1260,8 +1312,8 @@ class FlatMapStreamIterator<
       indexKey,
     );
   }
-  async setCurrentOuterItem(item: [T | null, IndexKey]) {
-    const [t, indexKey] = item;
+  async setCurrentOuterItem(item: [T | null, IndexKey, number]) {
+    const [t, indexKey, bandwidth] = item;
     let innerStream: QueryStream<U>;
     if (t === null) {
       innerStream = this.singletonSkipInnerStream();
@@ -1283,11 +1335,14 @@ class FlatMapStreamIterator<
     this.#currentOuterItem = {
       t,
       indexKey,
-      innerIterator: innerStream.iterWithKeys()[Symbol.asyncIterator](),
+      innerIterator: innerStream
+        .iterWithKeys(this.#trackBandwidth)
+        [Symbol.asyncIterator](),
       count: 0,
+      bandwidth,
     };
   }
-  async next(): Promise<IteratorResult<[U | null, IndexKey]>> {
+  async next(): Promise<StreamResult<U>> {
     if (this.#currentOuterItem === null) {
       const result = await this.#outerIterator.next();
       if (result.done) {
@@ -1305,15 +1360,20 @@ class FlatMapStreamIterator<
         // (which will be skipped by everything except the maximumRowsRead count)
         // to account for the cost of the outer stream.
         this.#currentOuterItem.innerIterator = this.singletonSkipInnerStream()
-          .iterWithKeys()
+          .iterWithKeys(this.#trackBandwidth)
           [Symbol.asyncIterator]();
       }
       return await this.next();
     }
-    const [u, indexKey] = result.value;
+    const [u, indexKey, innerBandwidth] = result.value;
     this.#currentOuterItem.count++;
     const fullIndexKey = [...this.#currentOuterItem.indexKey, ...indexKey];
-    return { done: false, value: [u, fullIndexKey] };
+    // On first yield for this outer item, include outer bandwidth
+    const bandwidth =
+      (this.#currentOuterItem.count === 1
+        ? this.#currentOuterItem.bandwidth
+        : 0) + innerBandwidth;
+    return { done: false, value: [u, fullIndexKey, bandwidth] };
   }
 }
 
@@ -1334,7 +1394,7 @@ class FlatMapStream<
     this.#mapper = mapper;
     this.#mappedIndexFields = mappedIndexFields;
   }
-  iterWithKeys(): AsyncIterable<[U | null, IndexKey]> {
+  iterWithKeys(trackBandwidth = false): StreamIterable<U> {
     const outerStream = this.#stream;
     const mapper = this.#mapper;
     const mappedIndexFields = this.#mappedIndexFields;
@@ -1344,6 +1404,7 @@ class FlatMapStream<
           outerStream,
           mapper,
           mappedIndexFields,
+          trackBandwidth,
         );
       },
     };
@@ -1398,12 +1459,14 @@ export class SingletonStream<
   #indexFields: string[];
   #indexKey: IndexKey;
   #equalityIndexFilter: Value[];
+  #bandwidth: number;
   constructor(
     value: T | null,
     order: "asc" | "desc" = "asc",
     indexFields: string[],
     indexKey: IndexKey,
     equalityIndexFilter: Value[],
+    bandwidth = 0,
   ) {
     super();
     this.#value = value;
@@ -1411,6 +1474,7 @@ export class SingletonStream<
     this.#indexFields = indexFields;
     this.#indexKey = indexKey;
     this.#equalityIndexFilter = equalityIndexFilter;
+    this.#bandwidth = bandwidth;
     if (indexKey.length !== indexFields.length) {
       throw new Error(
         `indexKey must have the same length as indexFields: ${JSON.stringify(
@@ -1419,9 +1483,10 @@ export class SingletonStream<
       );
     }
   }
-  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
+  iterWithKeys(_trackBandwidth = false): StreamIterable<T> {
     const value = this.#value;
     const indexKey = this.#indexKey;
+    const bandwidth = this.#bandwidth;
     return {
       [Symbol.asyncIterator]() {
         let sent = false;
@@ -1431,7 +1496,10 @@ export class SingletonStream<
               return { done: true, value: undefined };
             }
             sent = true;
-            return { done: false, value: [value, indexKey] };
+            return {
+              done: false,
+              value: [value, indexKey, bandwidth],
+            };
           },
         };
       },
@@ -1495,7 +1563,7 @@ export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
     this.#order = order;
     this.#indexFields = indexFields;
   }
-  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
+  iterWithKeys(_trackBandwidth = false): StreamIterable<T> {
     return {
       [Symbol.asyncIterator]() {
         return {
@@ -1587,8 +1655,8 @@ class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
   getIndexFields(): string[] {
     return this.#indexFields;
   }
-  iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
-    const iterable = this.#stream.iterWithKeys();
+  iterWithKeys(trackBandwidth = false): StreamIterable<T> {
+    const iterable = this.#stream.iterWithKeys(trackBandwidth);
     const staticFilter = this.#staticFilter;
     return {
       [Symbol.asyncIterator]() {
@@ -1599,10 +1667,10 @@ class OrderByStream<T extends GenericStreamItem> extends QueryStream<T> {
             if (result.done) {
               return result;
             }
-            const [doc, indexKey] = result.value;
+            const [doc, indexKey, bandwidth] = result.value;
             return {
               done: false,
-              value: [doc, indexKey.slice(staticFilter.length)],
+              value: [doc, indexKey.slice(staticFilter.length), bandwidth],
             };
           },
         };
@@ -1651,14 +1719,14 @@ class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
     }
     this.#distinctIndexFieldsLength = distinctIndexFieldsLength;
   }
-  override iterWithKeys(): AsyncIterable<[T | null, IndexKey]> {
+  override iterWithKeys(trackBandwidth = false): StreamIterable<T> {
     const stream = this.#stream;
     const distinctIndexFieldsLength = this.#distinctIndexFieldsLength;
     return {
       [Symbol.asyncIterator]() {
         let currentStream = stream;
         let currentIterator = currentStream
-          .iterWithKeys()
+          .iterWithKeys(trackBandwidth)
           [Symbol.asyncIterator]();
         return {
           async next() {
@@ -1666,14 +1734,17 @@ class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
             if (result.done) {
               return { done: true, value: undefined };
             }
-            const [doc, indexKey] = result.value;
+            const [doc, indexKey, bandwidth] = result.value;
             if (doc === null) {
               // If the original stream has a post-filter `.filterWith`, we will
               // iterate over filtered items -- possibly many with the same set of
               // distinct index fields -- before finding the first item for the set
               // of distinct index fields.
               // So it's recommended to put `.filterWith` after `.distinct`.
-              return { done: false, value: [null, indexKey] };
+              return {
+                done: false,
+                value: [null, indexKey, bandwidth],
+              };
             }
             const distinctIndexKey = indexKey.slice(
               0,
@@ -1695,7 +1766,7 @@ class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
               });
             }
             currentIterator = currentStream
-              .iterWithKeys()
+              .iterWithKeys(trackBandwidth)
               [Symbol.asyncIterator]();
             return result;
           },

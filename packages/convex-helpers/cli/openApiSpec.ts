@@ -124,9 +124,11 @@ function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
         (v) => v.type !== "null",
       );
       if (nonNullMembers.length === 1 && nullMember !== undefined) {
-        return `${generateSchemaFromValidator(
-          nonNullMembers[0]!,
-        )}\nnullable: true`;
+        const innerSchema = generateSchemaFromValidator(nonNullMembers[0]!);
+        if (innerSchema === "{}") {
+          return "{}";
+        }
+        return `${innerSchema}\nnullable: true`;
       }
       const members: string[] = nonNullMembers.map((v) =>
         generateSchemaFromValidator(v),
@@ -283,6 +285,7 @@ components:
 ${reindent(
   functionSpec.functions
     .filter((f) => f.functionType !== "HttpAction")
+    .filter((f) => includeInternal || f.visibility.kind === "public")
     .map((f) => generateEndpointSchemas(f))
     .join("\n"),
   1,

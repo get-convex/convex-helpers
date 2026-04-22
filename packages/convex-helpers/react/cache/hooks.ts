@@ -15,7 +15,6 @@ import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
-  PaginationOptions,
   paginationOptsValidator,
   PaginationResult,
 } from "convex/server";
@@ -543,8 +542,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
                 args: {
                   ...prevState.args,
                   paginationOpts: {
-                    ...(queries[lastPageKey]!.args
-                      .paginationOpts as unknown as PaginationOptions),
+                    ...queries[lastPageKey]!.args.paginationOpts,
                     endCursor: continueCursor,
                   },
                 },

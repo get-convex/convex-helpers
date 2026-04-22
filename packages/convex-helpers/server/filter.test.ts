@@ -38,6 +38,7 @@ test("filter", async () => {
   const evensBuiltin = await t.run((ctx) =>
     ctx.db
       .query("tableA")
+      // eslint-disable-next-line @convex-dev/no-filter-in-query
       .filter((q) => q.eq(q.mod(q.field("count"), 2), 0))
       .collect(),
   );

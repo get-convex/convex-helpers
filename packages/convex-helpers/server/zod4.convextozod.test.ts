@@ -12,9 +12,9 @@ import {
   VUnion,
 } from "convex/values";
 import { convexToZod, Zid, zid, ZodValidatorFromConvex } from "./zod4";
-import { isSameType } from "zod-compare/zod4";
 import { literals } from "../validators";
 import { ignoreUnionOrder } from "./zod4.zodtoconvex.test";
+import { isSameType } from "zod-compare";
 
 test("Zid is a record key", () => {
   const myZid = zid("users");

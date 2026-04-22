@@ -28,4 +28,44 @@ test("generateValidSpec", async () => {
   fs.unlinkSync(testFileName);
 
   expect(JSON.parse(output.toString())["totals"]).toHaveProperty("errors", 0);
-});
+}, 10000);
+
+// Regression test: nullable fields with "any" type (empty schema {}) should produce valid YAML.
+test("nullable any field generates valid spec", async () => {
+  const functionsJson = JSON.stringify({
+    url: "https://test-convex-url.convex.cloud",
+    functions: [
+      {
+        args: {
+          type: "object",
+          value: {
+            claimedAt: {
+              fieldType: {
+                type: "union",
+                value: [{ type: "any" }, { type: "null" }],
+              },
+              optional: false,
+            },
+          },
+        },
+        functionType: "Query",
+        identifier: "example.js:get",
+        returns: { type: "any" },
+        visibility: { kind: "public" },
+      },
+    ],
+  });
+
+  const apiSpec = generateOpenApiSpec(JSON.parse(functionsJson), true);
+
+  const testFileName = "openApiSpec.nullable-any.test.yaml";
+  fs.writeFileSync(testFileName, apiSpec, "utf-8");
+
+  const output = execSync(`npx redocly lint ${testFileName} --format='json'`);
+
+  fs.unlinkSync(testFileName);
+
+  expect(JSON.parse(output.toString())["totals"]).toHaveProperty("errors", 0);
+  // nullable any should produce {} (any schema already permits null)
+  expect(apiSpec).toMatch(/claimedAt:\s*\n\s*\{\}/);
+}, 10000);

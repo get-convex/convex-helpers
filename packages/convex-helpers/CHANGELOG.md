@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.115
+
+- Supports typescript ^6.0.0
+
+## 0.1.114
+
+- Adds support for maximumBytesRead option for PaginationOptions on the
+  stream / paginator helpers.
+
+## 0.1.113
+
+- Zod 4 support: fix the input type of `zid` (thanks @danth3b0t!)
+
 ## 0.1.112
 
 - Zod 4 support: fix an issue where `zodToConvex` would incorrectly

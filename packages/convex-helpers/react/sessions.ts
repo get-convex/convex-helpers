@@ -27,7 +27,6 @@ import type {
   FunctionArgs,
   FunctionReference,
   FunctionReturnType,
-  OptionalRestArgs,
   PaginationOptions,
   PaginationResult,
 } from "convex/server";
@@ -225,12 +224,11 @@ export function useSessionQuery<Query extends SessionFunction<"query">>(
   ...args: SessionQueryArgsArray<Query>
 ): FunctionReturnType<Query> | undefined {
   const [sessionId] = useSessionId();
-  const skip = args[0] === "skip" || !sessionId;
-  const originalArgs = args[0] === "skip" ? {} : (args[0] ?? {});
-
-  const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
-
-  return useQuery(query, ...([newArgs] as OptionalRestArgs<Query>));
+  const argsObject =
+    args[0] === "skip" || !sessionId
+      ? ("skip" as const)
+      : ({ ...args[0], sessionId } as FunctionArgs<Query>);
+  return useQuery(query, argsObject);
 }
 
 /**
@@ -252,16 +250,12 @@ export function useSessionPaginatedQuery<
   options: { initialNumItems: number },
 ): UsePaginatedQueryReturnType<Query> | undefined {
   const [sessionId] = useSessionId();
-  const skip = args === "skip" || !sessionId;
-  const originalArgs = args === "skip" ? {} : (args ?? {});
+  const argsObject =
+    args === "skip" || !sessionId
+      ? ("skip" as const)
+      : ({ ...args, sessionId } as PaginatedQueryArgs<Query>);
 
-  const newArgs = skip ? "skip" : { ...originalArgs, sessionId };
-
-  return usePaginatedQuery(
-    query,
-    newArgs as PaginatedQueryArgs<Query> | "skip",
-    options,
-  );
+  return usePaginatedQuery(query, argsObject, options);
 }
 
 type SessionMutation<Mutation extends FunctionReference<"mutation">> = (
@@ -297,11 +291,11 @@ export function useSessionMutation<
       originalMutation: ReactMutation<Mutation>,
     ): SessionMutation<Mutation> {
       return async (...args) => {
-        const newArgs: FunctionArgs<Mutation> = {
-          ...(args[0] ?? {}),
+        const argsObject = {
+          ...args[0],
           sessionId: sessionId || (await sessionIdPromise),
-        };
-        return originalMutation(...[newArgs]);
+        } as FunctionArgs<Mutation>;
+        return originalMutation(argsObject);
       };
     }
     const mutation = createMutation(
@@ -335,12 +329,12 @@ export function useSessionAction<Action extends SessionFunction<"action">>(
     async (
       ...args: SessionArgsArray<Action>
     ): Promise<FunctionReturnType<Action>> => {
-      const newArgs = {
-        ...(args[0] ?? {}),
+      const argsObject = {
+        ...args[0],
         sessionId: sessionId || (await sessionIdPromise),
       } as FunctionArgs<Action>;
 
-      return originalAction(...([newArgs] as OptionalRestArgs<Action>));
+      return originalAction(argsObject);
     },
     [sessionId, originalAction],
   );
@@ -533,12 +527,10 @@ export class ConvexReactSessionClient extends ConvexReactClient {
     query: Query,
     ...args: SessionArgsArray<Query>
   ): Promise<FunctionReturnType<Query>> {
-    const newArgs = {
-      ...(args[0] ?? {}),
+    return this.query(query, {
+      ...args[0],
       sessionId: this.sessionId,
-    } as FunctionArgs<Query>;
-
-    return this.query(query, newArgs);
+    } as FunctionArgs<Query>);
   }
 
   /**
@@ -555,12 +547,14 @@ export class ConvexReactSessionClient extends ConvexReactClient {
       MutationOptions<FunctionArgs<Mutation>>
     >
   ): Promise<FunctionReturnType<Mutation>> {
-    const newArgs = {
-      ...(args[0] ?? {}),
-      sessionId: this.sessionId,
-    } as FunctionArgs<Mutation>;
-
-    return this.mutation(mutation, newArgs, args[1]);
+    return this.mutation(
+      mutation,
+      {
+        ...args[0],
+        sessionId: this.sessionId,
+      } as FunctionArgs<Mutation>,
+      args[1],
+    );
   }
 
   /**
@@ -574,11 +568,9 @@ export class ConvexReactSessionClient extends ConvexReactClient {
     action: Action,
     ...args: SessionArgsArray<Action>
   ): Promise<FunctionReturnType<Action>> {
-    const newArgs = {
-      ...(args[0] ?? {}),
+    return this.action(action, {
+      ...args[0],
       sessionId: this.sessionId,
-    } as FunctionArgs<Action>;
-
-    return this.action(action, newArgs);
+    } as FunctionArgs<Action>);
   }
 }
