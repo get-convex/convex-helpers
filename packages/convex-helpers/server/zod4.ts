@@ -1880,14 +1880,35 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                              : // Fallback for widened member arrays, e.g.
+                                // v.union(...Object.values(MyEnum).map(v.literal))
+                                // where members become VLiteral<MyEnum>[].
+                                V extends VUnion<
+                                    any,
+                                    infer Elements extends GenericValidator[],
+                                    OptionalProperty,
+                                    any
+                                  >
+                                ? ZodFromWidenedUnionMembers<Elements[number]>
+                                : V extends VAny<any, OptionalProperty, any>
+                                  ? z.ZodAny
+                                  : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
     ? zCore.$ZodBranded<Validator, Brand>
     : Validator;
+
+type ZodFromWidenedUnionMembers<Member extends GenericValidator> =
+  IsExactly<Member, GenericValidator> extends true
+    ? z.ZodTypeAny
+    : ZodValidatorFromConvex<Member>;
+
+type IsExactly<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
 
 type StringValidator = Validator<string, "required", any>;
 type ZodFromStringValidator<V extends StringValidator> =
