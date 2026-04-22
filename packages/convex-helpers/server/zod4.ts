@@ -1852,42 +1852,55 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                           //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
                           //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                           // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
-                                any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
-                                any
-                              >
-                            ? ZodValidatorFromConvex<I>
+                          ZodFromWidenedLiteralUnion<V> extends never
+                          ? V extends VUnion<any, [], OptionalProperty, any>
+                            ? z.ZodNever
                             : V extends VUnion<
                                   any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
+                                  [infer I extends GenericValidator],
                                   OptionalProperty,
                                   any
                                 >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                              ? ZodValidatorFromConvex<I>
+                              : V extends VUnion<
+                                    any,
+                                    [
+                                      infer A extends GenericValidator,
+                                      ...infer Rest extends GenericValidator[],
+                                    ],
+                                    OptionalProperty,
+                                    any
+                                  >
+                                ? z.ZodUnion<
+                                    readonly [
+                                      ZodValidatorFromConvex<A>,
+                                      ...{
+                                        [K in keyof Rest]: ZodValidatorFromConvex<
+                                          Rest[K]
+                                        >;
+                                      },
+                                    ]
+                                  >
+                                : V extends VAny<any, OptionalProperty, any>
+                                  ? z.ZodAny
+                                  : never
+                          : ZodFromWidenedLiteralUnion<V>;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
     ? zCore.$ZodBranded<Validator, Brand>
     : Validator;
+
+type ZodFromWidenedLiteralUnion<V extends GenericValidator> =
+  V extends VUnion<any, infer Members extends GenericValidator[], any, any>
+    ? number extends Members["length"]
+      ? [Members[number]] extends [
+          VLiteral<infer Literal extends zCore.util.Literal, any>,
+        ]
+        ? z.ZodLiteral<NotUndefined<Literal>>
+        : never
+      : never
+    : never;
 
 type StringValidator = Validator<string, "required", any>;
 type ZodFromStringValidator<V extends StringValidator> =
