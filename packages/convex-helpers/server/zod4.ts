@@ -1845,44 +1845,43 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                             ZodFromStringValidator<Key>,
                             ZodFromValidatorBase<Value>
                           >
-                        : // Union: must handle separately cases for 0/1/2+ elements
-                          // instead of simply writing it as
-                          // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                          //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                          //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
-                                any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
-                                any
-                              >
-                            ? ZodValidatorFromConvex<I>
-                            : V extends VUnion<
-                                  any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
-                                  OptionalProperty,
-                                  any
-                                >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
+                        : // Union: preserve tuple unions (for precise ZodUnion types),
+                          // but gracefully degrade to the member schema when TS only
+                          // infers a generic array (e.g. v.union(...array.map(v.literal))).
+                          V extends VUnion<
+                              any,
+                              infer Members extends GenericValidator[],
+                              OptionalProperty,
+                              any
+                            >
+                          ? number extends Members["length"]
+                            ? [GenericValidator] extends [Members[number]]
+                              ? zCore.$ZodType
+                              : ZodValidatorFromConvex<Members[number]>
+                            : Members extends []
+                              ? z.ZodNever
+                              : Members extends [
+                                    infer I extends GenericValidator,
                                   ]
-                                >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                                ? ZodValidatorFromConvex<I>
+                                : Members extends [
+                                      infer A extends GenericValidator,
+                                      ...infer Rest extends GenericValidator[],
+                                    ]
+                                  ? z.ZodUnion<
+                                      readonly [
+                                        ZodValidatorFromConvex<A>,
+                                        ...{
+                                          [K in keyof Rest]: ZodValidatorFromConvex<
+                                            Rest[K]
+                                          >;
+                                        },
+                                      ]
+                                    >
+                                  : never
+                          : V extends VAny<any, OptionalProperty, any>
+                            ? z.ZodAny
+                            : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
