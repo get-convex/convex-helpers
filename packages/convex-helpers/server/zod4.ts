@@ -1880,9 +1880,18 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                              : V extends VUnion<
+                                    any,
+                                    infer Members extends GenericValidator[],
+                                    OptionalProperty,
+                                    any
+                                  >
+                                ? [GenericValidator] extends [Members[number]]
+                                  ? z.ZodTypeAny
+                                  : ZodValidatorFromConvex<Members[number]>
+                                : V extends VAny<any, OptionalProperty, any>
+                                  ? z.ZodAny
+                                  : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
