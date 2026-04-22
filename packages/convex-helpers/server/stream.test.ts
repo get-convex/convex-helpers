@@ -367,6 +367,88 @@ describe("stream", () => {
     });
   });
 
+  test("sparse filterWith does not produce SplitRecommended", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      // Insert 20 documents where only every 5th one matches the filter.
+      // Requesting numItems: 3 means softMaxRowsToRead = 4, but we'll scan
+      // ~15 rows to find 3 matches — a ratio of 5:1. Without the fix this
+      // triggers SplitRecommended on every page, causing exponential splits.
+      for (let i = 1; i <= 20; i++) {
+        await ctx.db.insert("foo", { a: 1, b: i, c: i % 5 === 0 ? 1 : 0 });
+      }
+      const filteredQuery = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page1 = await filteredQuery.paginate({
+        numItems: 3,
+        cursor: null,
+      });
+      expect(page1.page).toHaveLength(3);
+      expect(page1.page.map(stripSystemFields)).toEqual([
+        { a: 1, b: 5, c: 1 },
+        { a: 1, b: 10, c: 1 },
+        { a: 1, b: 15, c: 1 },
+      ]);
+      // The key assertion: sparse filterWith should NOT recommend splitting.
+      // The scan-to-match ratio is 5:1, well above the 2x threshold.
+      expect(page1.pageStatus).toBeUndefined();
+    });
+  });
+
+  test("mildly sparse filterWith still produces SplitRecommended", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      // 6 docs, every other one matches. With numItems: 2, softMaxRowsToRead = 3.
+      // We scan 4 rows to find 2 matches → ratio = 4/2 = 2.0, at the threshold.
+      await ctx.db.insert("foo", { a: 2, b: 1, c: 0 }); // filtered out
+      await ctx.db.insert("foo", { a: 2, b: 2, c: 1 }); // match 1
+      await ctx.db.insert("foo", { a: 2, b: 3, c: 0 }); // filtered out
+      await ctx.db.insert("foo", { a: 2, b: 4, c: 1 }); // match 2 → break
+      await ctx.db.insert("foo", { a: 2, b: 5, c: 0 });
+      await ctx.db.insert("foo", { a: 2, b: 6, c: 1 });
+
+      const filteredQuery = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 2))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page1 = await filteredQuery.paginate({
+        numItems: 2,
+        cursor: null,
+      });
+      expect(page1.page).toHaveLength(2);
+      // Scanned 4 rows, got 2 matches → ratio = 2.0, at the threshold.
+      expect(page1.pageStatus).toBe("SplitRecommended");
+    });
+  });
+
+  test("SplitRequired still fires with filterWith when maximumRowsRead is hit", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      for (let i = 1; i <= 20; i++) {
+        await ctx.db.insert("foo", { a: 3, b: i, c: i % 5 === 0 ? 1 : 0 });
+      }
+      const filteredQuery = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 3))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page1 = await filteredQuery.paginate({
+        numItems: 3,
+        cursor: null,
+        maximumRowsRead: 8,
+      });
+      // Hit the hard row limit before finding 3 matches.
+      // Only 1 match in first 8 rows (b=5).
+      expect(page1.page).toHaveLength(1);
+      expect(page1.pageStatus).toBe("SplitRequired");
+      expect(page1.splitCursor).toBeDefined();
+    });
+  });
+
   test("merge orderBy streams", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
