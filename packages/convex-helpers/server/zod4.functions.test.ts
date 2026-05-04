@@ -456,9 +456,15 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
         } as any),
       ).rejects.toThrowError(
         expect.objectContaining({
-          data: expect.stringMatching(
-            /(?=.*"ZodError")(?=.*"name")(?=.*"invalid_type")(?=.*"expected")(?=.*"string")/s,
-          ),
+          data: {
+            ZodError: expect.arrayContaining([
+              expect.objectContaining({
+                code: "invalid_type",
+                expected: "string",
+                path: ["name"],
+              }),
+            ]),
+          },
         }),
       );
     });
@@ -545,9 +551,15 @@ describe("zCustomQuery, zCustomMutation, zCustomAction", () => {
         }),
       ).rejects.toThrowError(
         expect.objectContaining({
-          data: expect.stringMatching(
-            /(?=.*"ZodError")(?=.*"encodedNumber")(?=.*"invalid_type")(?=.*"expected")(?=.*"number")/s,
-          ),
+          data: {
+            ZodError: expect.arrayContaining([
+              expect.objectContaining({
+                code: "invalid_type",
+                expected: "number",
+                path: ["encodedNumber"],
+              }),
+            ]),
+          },
         }),
       );
     });
