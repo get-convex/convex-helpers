@@ -420,6 +420,11 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   // For lazy split strategy: track result references when SplitRecommended is
   // first seen. A new reference from the backend (even with identical content)
   // means the underlying query was re-evaluated, signaling active data.
+  // TODO: On warm-cache remounts, the client re-delivers cached data as a
+  // new reference, which we can't distinguish from a genuine backend update.
+  // This triggers a previously deferred split despite no update from the
+  // backend. Needs a client-side signal (e.g. a delivery version) to
+  // differentiate cache re-delivery from fresh data.
   const deferredSplitRefs = useRef<
     Record<QueryPageKey, PaginationResult<Value>>
   >({});
