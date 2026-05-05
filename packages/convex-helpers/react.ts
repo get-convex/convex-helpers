@@ -21,9 +21,12 @@ import type {
 } from "convex/server";
 import type { Infer } from "convex/values";
 import { getFunctionName } from "convex/server";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { EmptyObject } from "./index.js";
 import type { Value } from "convex/values";
+import { decideSplitAction } from "./react/splitStrategy.js";
+import type { SplitStrategy } from "./react/splitStrategy.js";
+export type { SplitStrategy };
 
 /**
  * Use in place of `useQuery` from "convex/react" to fetch data from a query
@@ -198,6 +201,13 @@ export function makeUseQueryWithStatus(useQueriesHook: typeof useQueries) {
  * To use the cached query helpers, you can use those directly and pass
  * `customPagination: true` in the options.
  *
+ * If your paginated query produces sparse results (many documents read, few
+ * returned — e.g. when using `filterWith` on a stream), consider setting
+ * `splitStrategy: "lazy"`. This prevents the client from eagerly splitting
+ * pages in response to server recommendations, which can recurse and lead to
+ * exponential queries on inactive data ranges. With `"lazy"`, splits only
+ * happen after the backend sends updated data for the page.
+ *
  * Docs copied from {@link usePaginatedQueryOriginal} until `returns` block:
  *
  * @param query - a {@link server.FunctionReference} for the public query to run
@@ -208,7 +218,16 @@ export function makeUseQueryWithStatus(useQueriesHook: typeof useQueries) {
 export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   query: Query,
   args: PaginatedQueryArgs<Query> | "skip",
-  options: { initialNumItems: number },
+  options: {
+    initialNumItems: number;
+    /**
+     * Controls when pages are split in response to "SplitRecommended" from the
+     * server. "eager" (default) splits immediately. "lazy" waits until updated
+     * data arrives for the page before splitting, avoiding splits on inactive
+     * data ranges.
+     */
+    splitStrategy?: SplitStrategy;
+  },
 ): UsePaginatedQueryReturnType<Query> {
   if (
     typeof options?.initialNumItems !== "number" ||
@@ -272,6 +291,14 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
   }
   const convexClient = useConvex();
   const logger = convexClient.logger;
+  const splitStrategy = options.splitStrategy ?? "eager";
+
+  // For lazy split strategy: track result references when SplitRecommended is
+  // first seen. A new reference from the backend (even with identical content)
+  // means the underlying query was re-evaluated, signaling active data.
+  const deferredSplitRefs = useRef<
+    Record<QueryPageKey, PaginationResult<Value>>
+  >({});
 
   const resultsObject = useQueries(currState.queries);
 
@@ -307,6 +334,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
             "usePaginatedQuery hit error, resetting pagination state: " +
               currResult.message,
           );
+          deferredSplitRefs.current = {};
           setState(createInitialState);
           return [[], undefined];
         } else {
@@ -319,23 +347,37 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
           resultsObject[ongoingSplit[0]] !== undefined &&
           resultsObject[ongoingSplit[1]] !== undefined
         ) {
-          // Both pages of the split have results now. Swap them in.
+          delete deferredSplitRefs.current[pageKey];
           setState(completeSplitQuery(pageKey));
         }
-      } else if (
-        currResult.splitCursor &&
-        (currResult.pageStatus === "SplitRecommended" ||
-          currResult.pageStatus === "SplitRequired" ||
-          // For custom pagination, we eagerly split the page when it grows.
-          currResult.page.length > options.initialNumItems)
-      ) {
-        setState(
-          splitQuery(
-            pageKey,
-            currResult.splitCursor,
-            currResult.continueCursor,
-          ),
-        );
+      } else {
+        const prevResult = deferredSplitRefs.current[pageKey];
+        const action = decideSplitAction({
+          result: currResult,
+          splitStrategy,
+          initialNumItems: options.initialNumItems,
+          hasPendingLazySplit: prevResult !== undefined,
+          hasNewData: prevResult !== undefined && prevResult !== currResult,
+          customPagination: true,
+        });
+        switch (action.type) {
+          case "split":
+            delete deferredSplitRefs.current[pageKey];
+            setState(
+              splitQuery(pageKey, action.splitCursor, action.continueCursor),
+            );
+            break;
+          case "defer":
+            deferredSplitRefs.current[pageKey] = currResult;
+            break;
+          case "none":
+            // The page no longer has a splitCursor (e.g. the server stopped
+            // recommending a split after data changed), so clean up the ref.
+            if (prevResult !== undefined && !currResult.splitCursor) {
+              delete deferredSplitRefs.current[pageKey];
+            }
+            break;
+        }
       }
       if (currResult.pageStatus === "SplitRequired") {
         // If pageStatus is 'SplitRequired', it means the server was not able to
@@ -353,6 +395,7 @@ export function usePaginatedQuery<Query extends PaginatedQueryReference>(
     options.initialNumItems,
     createInitialState,
     logger,
+    splitStrategy,
   ]);
 
   const statusObject = useMemo(() => {
