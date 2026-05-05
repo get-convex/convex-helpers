@@ -60,12 +60,12 @@
     "globals": "17.6.0",
     "jsdom": "29.1.1",
     "npm-run-all2": "8.0.4",
-    "pkg-pr-new": "0.0.69",
+    "pkg-pr-new": "0.0.70",
     "prettier": "3.8.3",
     "typescript": "6.0.3",
     "typescript-eslint": "8.59.1",
     "vitest": "4.1.5",
-    "yaml": "2.8.3",
+    "yaml": "2.8.4",
     "zod-compare": "3.0.0"
   }
 }
