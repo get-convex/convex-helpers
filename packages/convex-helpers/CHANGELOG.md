@@ -1,5 +1,11 @@
 # Changelog
 
+## next
+
+- `HonoWithConvex` and `HttpRouterWithHono` now accept an optional `Variables`
+  type parameter, so consumers using middleware-driven typed context state
+  (`c.var` / `c.set` / `c.get`) no longer need to cast their `Hono` app.
+
 ## 0.1.115
 
 - Supports typescript ^6.0.0

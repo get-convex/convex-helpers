@@ -45,11 +45,19 @@ declare global {
 /**
  * A type representing a Hono app with `c.env` containing Convex's
  * `HttpEndpointCtx` (e.g. `c.env.runQuery` is valid).
+ *
+ * Optionally accepts a `Variables` type parameter so consumers can use
+ * middleware-driven typed context state (`c.var` / `c.set` / `c.get`) without
+ * casting when passing the app to `HttpRouterWithHono`.
  */
-export type HonoWithConvex<ActionCtx extends GenericActionCtx<any>> = Hono<{
+export type HonoWithConvex<
+  ActionCtx extends GenericActionCtx<any>,
+  Variables extends Record<string, unknown> = Record<string, never>,
+> = Hono<{
   Bindings: {
     [Name in keyof ActionCtx]: ActionCtx[Name];
   };
+  Variables: Variables;
 }>;
 
 /**
@@ -78,12 +86,13 @@ export type HonoWithConvex<ActionCtx extends GenericActionCtx<any>> = Hono<{
  */
 export class HttpRouterWithHono<
   ActionCtx extends GenericActionCtx<any>,
+  Variables extends Record<string, unknown> = Record<string, never>,
 > extends HttpRouter {
-  private _app: HonoWithConvex<ActionCtx>;
+  private _app: HonoWithConvex<ActionCtx, Variables>;
   private _handler: PublicHttpAction;
   private _handlerInfoCache: Map<any, { method: RoutableMethod; path: string }>;
 
-  constructor(app: HonoWithConvex<ActionCtx>) {
+  constructor(app: HonoWithConvex<ActionCtx, Variables>) {
     super();
     this._app = app;
     // Single Convex httpEndpoint handler that just forwards the request to the
