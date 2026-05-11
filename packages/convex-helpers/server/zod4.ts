@@ -1845,44 +1845,46 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                             ZodFromStringValidator<Key>,
                             ZodFromValidatorBase<Value>
                           >
-                        : // Union: must handle separately cases for 0/1/2+ elements
-                          // instead of simply writing it as
-                          // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                          //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                          //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
+                        : V extends VUnion<
+                              any,
+                              infer Members extends Validator<
                                 any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
+                                "required",
                                 any
-                              >
-                            ? ZodValidatorFromConvex<I>
-                            : V extends VUnion<
-                                  any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
-                                  OptionalProperty,
-                                  any
-                                >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                              >[],
+                              OptionalProperty,
+                              any
+                            >
+                          ? ZodUnionFromConvexMembers<Members>
+                          : V extends VAny<any, OptionalProperty, any>
+                            ? z.ZodAny
+                            : never;
+
+// Union: must handle tuple cases separately instead of simply mapping over
+// VUnion's members inline, otherwise the TypeScript compiler complains about
+// infinite type instantiation. The final branch handles unions built from a
+// regular array of validators, such as Object.values(enum).map(v.literal).
+// That branch intentionally widens the member schemas to avoid another deep
+// recursive instantiation path for generic validators.
+type ZodUnionFromConvexMembers<
+  Members extends Validator<any, "required", any>[],
+> = Members extends []
+  ? z.ZodNever
+  : Members extends [infer I extends GenericValidator]
+    ? ZodValidatorFromConvex<I>
+    : Members extends [
+          infer A extends GenericValidator,
+          ...infer Rest extends GenericValidator[],
+        ]
+      ? z.ZodUnion<
+          readonly [
+            ZodValidatorFromConvex<A>,
+            ...{
+              [K in keyof Rest]: ZodValidatorFromConvex<Rest[K]>;
+            },
+          ]
+        >
+      : z.ZodUnion<readonly zCore.SomeType[]>;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
