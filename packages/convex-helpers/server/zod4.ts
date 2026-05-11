@@ -46,6 +46,13 @@ import {
   type VRequired,
 } from "../validators.js";
 
+declare module "zod/v4" {
+  export function union(
+    options: z.ZodLiteral<zCore.util.Literal>,
+    params?: string | zCore.$ZodUnionParams,
+  ): z.ZodUnion<readonly zCore.SomeType[]>;
+}
+
 // #region Convex function definition with Zod
 
 /**
@@ -1822,9 +1829,7 @@ type ZodUnionFromConvexMembers<Members extends GenericValidator[]> =
               },
             ]
           >
-        : GenericValidator extends Members[number]
-          ? z.ZodUnion<readonly zCore.SomeType[]>
-          : z.ZodUnion<readonly ZodValidatorFromConvex<Members[number]>[]>;
+        : z.ZodUnion<readonly zCore.SomeType[]>;
 
 export type ZodFromValidatorBase<V extends GenericValidator> =
   V extends VId<infer Type>
