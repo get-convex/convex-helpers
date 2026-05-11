@@ -46,6 +46,13 @@ import {
   type VRequired,
 } from "../validators.js";
 
+declare module "zod/v4" {
+  function union<const T extends zCore.SomeType>(
+    option: T,
+    params?: string | zCore.$ZodUnionParams,
+  ): z.ZodUnion<T[]>;
+}
+
 // #region Convex function definition with Zod
 
 /**
@@ -1884,8 +1891,8 @@ type ZodFromUnionMembers<Members extends GenericValidator[]> =
             ]
           >
         : GenericValidator extends Members[number]
-          ? z.ZodUnion<readonly zCore.SomeType[]>
-          : z.ZodUnion<readonly ZodValidatorFromConvex<Members[number]>[]>;
+          ? z.ZodUnion<zCore.SomeType[]>
+          : z.ZodUnion<ZodValidatorFromConvex<Members[number]>[]>;
 
 type StringValidator = Validator<string, "required", any>;
 type ZodFromStringValidator<V extends StringValidator> =
@@ -1925,8 +1932,8 @@ type ZodFromStringUnionMembers<Members extends StringValidator[]> =
             ]
           >
         : StringValidator extends Members[number]
-          ? z.ZodUnion<readonly zCore.$ZodRecordKey[]>
-          : z.ZodUnion<readonly ZodFromStringValidator<Members[number]>[]>;
+          ? z.ZodUnion<zCore.$ZodRecordKey[]>
+          : z.ZodUnion<ZodFromStringValidator<Members[number]>[]>;
 
 type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
   Fields extends infer F // dark magic to get the TypeScript compiler happy about circular types
