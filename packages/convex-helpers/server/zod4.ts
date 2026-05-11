@@ -1870,16 +1870,21 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                   OptionalProperty,
                                   any
                                 >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
+                              ? number extends Rest["length"]
+                                ? // For unions built from plain arrays (e.g. enum spreads),
+                                  // TypeScript loses tuple information. Fall back to the
+                                  // same broad shape Zod exposes for those unions.
+                                  z.ZodUnion<readonly zCore.SomeType[]>
+                                : z.ZodUnion<
+                                    readonly [
+                                      ZodValidatorFromConvex<A>,
+                                      ...{
+                                        [K in keyof Rest]: ZodValidatorFromConvex<
+                                          Rest[K]
+                                        >;
+                                      },
+                                    ]
+                                  >
                               : V extends VAny<any, OptionalProperty, any>
                                 ? z.ZodAny
                                 : never;
@@ -1912,14 +1917,16 @@ type ZodFromStringValidator<V extends StringValidator> =
                   any,
                   any
                 >
-              ? z.ZodUnion<
-                  readonly [
-                    ZodFromStringValidator<A>,
-                    ...{
-                      [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
-                    },
-                  ]
-                >
+              ? number extends Rest["length"]
+                ? z.ZodUnion<readonly zCore.SomeType[]>
+                : z.ZodUnion<
+                    readonly [
+                      ZodFromStringValidator<A>,
+                      ...{
+                        [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
+                      },
+                    ]
+                  >
               : never;
 
 type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
