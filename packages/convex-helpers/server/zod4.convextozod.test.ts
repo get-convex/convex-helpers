@@ -240,7 +240,7 @@ describe("convexToZod", () => {
 
     testConvexToZod(
       v.union(...Object.values(Gender).map(v.literal)),
-      z.literal([Gender.Male, Gender.Female, Gender.Other]),
+      z.union(z.literal([Gender.Male, Gender.Female, Gender.Other])),
     );
   });
 });
