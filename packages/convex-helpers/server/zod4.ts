@@ -1845,49 +1845,45 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                             ZodFromStringValidator<Key>,
                             ZodFromValidatorBase<Value>
                           >
-                        : // Union: must handle separately cases for 0/1/2+ elements
-                          // instead of simply writing it as
-                          // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                          //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                          //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
-                                any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
-                                any
-                              >
-                            ? ZodValidatorFromConvex<I>
-                            : V extends VUnion<
-                                  any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
-                                  OptionalProperty,
-                                  any
-                                >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                        : V extends VUnion<
+                              any,
+                              infer Members extends GenericValidator[],
+                              OptionalProperty,
+                              any
+                            >
+                          ? ZodFromUnionMembers<Members>
+                          : V extends VAny<any, OptionalProperty, any>
+                            ? z.ZodAny
+                            : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
     ? zCore.$ZodBranded<Validator, Brand>
     : Validator;
+
+// Union: must handle separately cases for 0/1/2+ elements instead of simply
+// mapping over every member inline because the TypeScript compiler would
+// complain about infinite type instantiation otherwise.
+type ZodFromUnionMembers<Members extends GenericValidator[]> =
+  Members extends []
+    ? z.ZodNever
+    : Members extends [infer I extends GenericValidator]
+      ? ZodValidatorFromConvex<I>
+      : Members extends [
+            infer A extends GenericValidator,
+            infer B extends GenericValidator,
+            ...infer Rest extends GenericValidator[],
+          ]
+        ? z.ZodUnion<
+            readonly [
+              ZodValidatorFromConvex<A>,
+              ZodValidatorFromConvex<B>,
+              ...{
+                [K in keyof Rest]: ZodValidatorFromConvex<Rest[K]>;
+              },
+            ]
+          >
+        : z.ZodUnion<readonly ZodValidatorFromConvex<Members[number]>[]>;
 
 type StringValidator = Validator<string, "required", any>;
 type ZodFromStringValidator<V extends StringValidator> =
@@ -1898,29 +1894,35 @@ type ZodFromStringValidator<V extends StringValidator> =
       : // Literals
         V extends VLiteral<infer Literal extends string>
         ? z.ZodLiteral<Literal>
-        : // Union (see below)
-          V extends VUnion<any, [], any, any>
-          ? z.ZodNever
-          : V extends VUnion<any, [infer I extends GenericValidator], any, any>
-            ? ZodFromStringValidator<I>
-            : V extends VUnion<
-                  any,
-                  [
-                    infer A extends GenericValidator,
-                    ...infer Rest extends GenericValidator[],
-                  ],
-                  any,
-                  any
-                >
-              ? z.ZodUnion<
-                  readonly [
-                    ZodFromStringValidator<A>,
-                    ...{
-                      [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
-                    },
-                  ]
-                >
-              : never;
+        : V extends VUnion<
+              any,
+              infer Members extends StringValidator[],
+              any,
+              any
+            >
+          ? ZodFromStringUnionMembers<Members>
+          : never;
+
+type ZodFromStringUnionMembers<Members extends StringValidator[]> =
+  Members extends []
+    ? z.ZodNever
+    : Members extends [infer I extends StringValidator]
+      ? ZodFromStringValidator<I>
+      : Members extends [
+            infer A extends StringValidator,
+            infer B extends StringValidator,
+            ...infer Rest extends StringValidator[],
+          ]
+        ? z.ZodUnion<
+            readonly [
+              ZodFromStringValidator<A>,
+              ZodFromStringValidator<B>,
+              ...{
+                [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
+              },
+            ]
+          >
+        : z.ZodUnion<readonly ZodFromStringValidator<Members[number]>[]>;
 
 type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
   Fields extends infer F // dark magic to get the TypeScript compiler happy about circular types
