@@ -1805,6 +1805,27 @@ export type ZodValidatorFromConvex<V extends GenericValidator> =
     ? z.ZodOptional<ZodFromValidatorBase<VRequired<V>>>
     : ZodFromValidatorBase<V>;
 
+type ZodUnionFromConvexMembers<Members extends GenericValidator[]> =
+  Members extends []
+    ? z.ZodNever
+    : Members extends [infer I extends GenericValidator]
+      ? ZodValidatorFromConvex<I>
+      : Members extends [
+            infer A extends GenericValidator,
+            ...infer Rest extends GenericValidator[],
+          ]
+        ? z.ZodUnion<
+            readonly [
+              ZodValidatorFromConvex<A>,
+              ...{
+                [K in keyof Rest]: ZodValidatorFromConvex<Rest[K]>;
+              },
+            ]
+          >
+        : GenericValidator extends Members[number]
+          ? z.ZodUnion<readonly zCore.SomeType[]>
+          : z.ZodUnion<readonly ZodValidatorFromConvex<Members[number]>[]>;
+
 export type ZodFromValidatorBase<V extends GenericValidator> =
   V extends VId<infer Type>
     ? Zid<TableNameFromType<NotUndefined<Type>>>
@@ -1845,44 +1866,16 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                             ZodFromStringValidator<Key>,
                             ZodFromValidatorBase<Value>
                           >
-                        : // Union: must handle separately cases for 0/1/2+ elements
-                          // instead of simply writing it as
-                          // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                          //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                          //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
-                                any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
-                                any
-                              >
-                            ? ZodValidatorFromConvex<I>
-                            : V extends VUnion<
-                                  any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
-                                  OptionalProperty,
-                                  any
-                                >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                        : V extends VUnion<
+                              any,
+                              infer Members extends GenericValidator[],
+                              OptionalProperty,
+                              any
+                            >
+                          ? ZodUnionFromConvexMembers<Members>
+                          : V extends VAny<any, OptionalProperty, any>
+                            ? z.ZodAny
+                            : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
