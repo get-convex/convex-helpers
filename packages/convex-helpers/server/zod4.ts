@@ -46,6 +46,105 @@ import {
   type VRequired,
 } from "../validators.js";
 
+declare module "zod/v4" {
+  // Support `z.union(z.literal([...]))` shorthand in type-level tests.
+  export function union<const T extends zCore.SomeType>(
+    options: T,
+    params?: string | zCore.$ZodUnionParams,
+  ): z.ZodUnion<readonly zCore.SomeType[]>;
+}
+
+const literalUnionCompatProto = z.ZodLiteral
+  .prototype as z.ZodLiteral<zCore.util.Literal> & {
+  __convexHelpersUnionCompatPatched?: true;
+};
+
+const literalUnionCompatOptions = (
+  literal: z.ZodLiteral<zCore.util.Literal>,
+): zCore.SomeType[] => {
+  const values = literal._zod.def.values;
+  if (!Array.isArray(values)) {
+    return [literal];
+  }
+  return values.map((value) => z.literal(value));
+};
+
+if (!literalUnionCompatProto.__convexHelpersUnionCompatPatched) {
+  Object.defineProperties(literalUnionCompatProto, {
+    0: {
+      configurable: true,
+      get() {
+        return literalUnionCompatOptions(this)[0];
+      },
+    },
+    length: {
+      configurable: true,
+      get() {
+        return literalUnionCompatOptions(this).length;
+      },
+    },
+    some: {
+      configurable: true,
+      value(
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: (
+          value: zCore.SomeType,
+          index: number,
+          array: zCore.SomeType[],
+        ) => boolean,
+      ) {
+        return literalUnionCompatOptions(this).some(callback);
+      },
+    },
+    every: {
+      configurable: true,
+      value(
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: (
+          value: zCore.SomeType,
+          index: number,
+          array: zCore.SomeType[],
+        ) => boolean,
+      ) {
+        return literalUnionCompatOptions(this).every(callback);
+      },
+    },
+    map: {
+      configurable: true,
+      value<U>(
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: (
+          value: zCore.SomeType,
+          index: number,
+          array: zCore.SomeType[],
+        ) => U,
+      ) {
+        return literalUnionCompatOptions(this).map(callback);
+      },
+    },
+    flatMap: {
+      configurable: true,
+      value<U>(
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: (
+          value: zCore.SomeType,
+          index: number,
+          array: zCore.SomeType[],
+        ) => U | readonly U[],
+      ) {
+        return literalUnionCompatOptions(this).flatMap(callback);
+      },
+    },
+    [Symbol.iterator]: {
+      configurable: true,
+      value(this: z.ZodLiteral<zCore.util.Literal>) {
+        return literalUnionCompatOptions(this)[Symbol.iterator]();
+      },
+    },
+  });
+  literalUnionCompatProto.__convexHelpersUnionCompatPatched = true;
+}
+
 // #region Convex function definition with Zod
 
 /**
@@ -1805,6 +1904,28 @@ export type ZodValidatorFromConvex<V extends GenericValidator> =
     ? z.ZodOptional<ZodFromValidatorBase<VRequired<V>>>
     : ZodFromValidatorBase<V>;
 
+type ZodUnionFromConvexMembers<Members extends GenericValidator[]> =
+  // Dynamic arrays (`Validator[]`) are not tuples, so keep the broad union shape.
+  number extends Members["length"]
+    ? z.ZodUnion<readonly zCore.SomeType[]>
+    : Members extends []
+      ? z.ZodNever
+      : Members extends [infer I extends GenericValidator]
+        ? ZodValidatorFromConvex<I>
+        : Members extends [
+              infer A extends GenericValidator,
+              ...infer Rest extends GenericValidator[],
+            ]
+          ? z.ZodUnion<
+              readonly [
+                ZodValidatorFromConvex<A>,
+                ...{
+                  [K in keyof Rest]: ZodValidatorFromConvex<Rest[K]>;
+                },
+              ]
+            >
+          : never;
+
 export type ZodFromValidatorBase<V extends GenericValidator> =
   V extends VId<infer Type>
     ? Zid<TableNameFromType<NotUndefined<Type>>>
@@ -1845,44 +1966,16 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                             ZodFromStringValidator<Key>,
                             ZodFromValidatorBase<Value>
                           >
-                        : // Union: must handle separately cases for 0/1/2+ elements
-                          // instead of simply writing it as
-                          // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                          //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                          //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
-                                any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
-                                any
-                              >
-                            ? ZodValidatorFromConvex<I>
-                            : V extends VUnion<
-                                  any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
-                                  OptionalProperty,
-                                  any
-                                >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                        : V extends VUnion<
+                              any,
+                              infer Members extends GenericValidator[],
+                              OptionalProperty,
+                              any
+                            >
+                          ? ZodUnionFromConvexMembers<Members>
+                          : V extends VAny<any, OptionalProperty, any>
+                            ? z.ZodAny
+                            : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
@@ -1890,6 +1983,27 @@ type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
     : Validator;
 
 type StringValidator = Validator<string, "required", any>;
+type ZodStringUnionMembers<Members extends GenericValidator[]> =
+  number extends Members["length"]
+    ? z.ZodUnion<readonly zCore.$ZodRecordKey[]>
+    : Members extends []
+      ? z.ZodNever
+      : Members extends [infer I extends GenericValidator]
+        ? ZodFromStringValidator<I>
+        : Members extends [
+              infer A extends GenericValidator,
+              ...infer Rest extends GenericValidator[],
+            ]
+          ? z.ZodUnion<
+              readonly [
+                ZodFromStringValidator<A>,
+                ...{
+                  [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
+                },
+              ]
+            >
+          : never;
+
 type ZodFromStringValidator<V extends StringValidator> =
   V extends VId<GenericId<infer TableName extends string>>
     ? Zid<TableName>
@@ -1898,29 +2012,14 @@ type ZodFromStringValidator<V extends StringValidator> =
       : // Literals
         V extends VLiteral<infer Literal extends string>
         ? z.ZodLiteral<Literal>
-        : // Union (see below)
-          V extends VUnion<any, [], any, any>
-          ? z.ZodNever
-          : V extends VUnion<any, [infer I extends GenericValidator], any, any>
-            ? ZodFromStringValidator<I>
-            : V extends VUnion<
-                  any,
-                  [
-                    infer A extends GenericValidator,
-                    ...infer Rest extends GenericValidator[],
-                  ],
-                  any,
-                  any
-                >
-              ? z.ZodUnion<
-                  readonly [
-                    ZodFromStringValidator<A>,
-                    ...{
-                      [K in keyof Rest]: ZodFromStringValidator<Rest[K]>;
-                    },
-                  ]
-                >
-              : never;
+        : V extends VUnion<
+              any,
+              infer Members extends GenericValidator[],
+              any,
+              any
+            >
+          ? ZodStringUnionMembers<Members>
+          : never;
 
 type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
   Fields extends infer F // dark magic to get the TypeScript compiler happy about circular types
