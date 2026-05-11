@@ -53,6 +53,70 @@ declare module "zod/v4" {
   ): z.ZodUnion<readonly zCore.SomeType[]>;
 }
 
+const zodLiteralPrototype = z.ZodLiteral
+  .prototype as z.ZodLiteral<zCore.util.Literal> & {
+  __convexHelpersUnionLiteralOptions?: true;
+};
+
+if (!zodLiteralPrototype.__convexHelpersUnionLiteralOptions) {
+  const literalOptions = (literal: z.ZodLiteral<zCore.util.Literal>) =>
+    ((literal as any)._zod.def.values as zCore.util.Literal[]).map((value) =>
+      z.literal(value),
+    );
+
+  Object.defineProperties(zodLiteralPrototype, {
+    __convexHelpersUnionLiteralOptions: { value: true },
+    0: {
+      configurable: true,
+      get() {
+        return literalOptions(this)[0];
+      },
+    },
+    length: {
+      configurable: true,
+      get() {
+        return ((this as any)._zod.def.values as zCore.util.Literal[]).length;
+      },
+    },
+    every: {
+      configurable: true,
+      value: function (
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: Parameters<Array<zCore.SomeType>["every"]>[0],
+        thisArg?: unknown,
+      ) {
+        return literalOptions(this).every(callback, thisArg);
+      },
+    },
+    flatMap: {
+      configurable: true,
+      value: function (
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: Parameters<Array<zCore.SomeType>["flatMap"]>[0],
+        thisArg?: unknown,
+      ) {
+        return literalOptions(this).flatMap(callback, thisArg);
+      },
+    },
+    some: {
+      configurable: true,
+      value: function (
+        this: z.ZodLiteral<zCore.util.Literal>,
+        callback: Parameters<Array<zCore.SomeType>["some"]>[0],
+        thisArg?: unknown,
+      ) {
+        return literalOptions(this).some(callback, thisArg);
+      },
+    },
+    [Symbol.iterator]: {
+      configurable: true,
+      value: function* (this: z.ZodLiteral<zCore.util.Literal>) {
+        yield* literalOptions(this);
+      },
+    },
+  });
+}
+
 // #region Convex function definition with Zod
 
 /**
