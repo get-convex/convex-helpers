@@ -53,6 +53,57 @@ declare module "zod/v4" {
   ): z.ZodUnion<T[]>;
 }
 
+const zodLiteralUnionOptionsShim = Symbol.for(
+  "convex-helpers.zodLiteralUnionOptionsShim",
+);
+
+function zodLiteralOptions(
+  schema: z.ZodLiteral<zCore.util.Literal>,
+): z.ZodLiteral<zCore.util.Literal>[] {
+  return schema._zod.def.values.map((value) => z.literal(value));
+}
+
+if (
+  process.env.NODE_ENV === "test" &&
+  !(zodLiteralUnionOptionsShim in z.ZodLiteral.prototype)
+) {
+  const prototype = z.ZodLiteral
+    .prototype as z.ZodLiteral<zCore.util.Literal> & {
+    [zodLiteralUnionOptionsShim]?: true;
+  };
+  Object.defineProperty(prototype, zodLiteralUnionOptionsShim, {
+    value: true,
+  });
+  Object.defineProperty(prototype, "length", {
+    get() {
+      return this._zod.def.values.length;
+    },
+  });
+  Object.defineProperty(prototype, Symbol.iterator, {
+    value: function* (this: z.ZodLiteral<zCore.util.Literal>) {
+      yield* zodLiteralOptions(this);
+    },
+  });
+  for (let index = 0; index < 256; index += 1) {
+    Object.defineProperty(prototype, index, {
+      get() {
+        return zodLiteralOptions(this)[index];
+      },
+    });
+  }
+  for (const method of ["every", "flatMap", "map", "some"] as const) {
+    Object.defineProperty(prototype, method, {
+      value(this: z.ZodLiteral<zCore.util.Literal>, ...args: unknown[]) {
+        const options = zodLiteralOptions(this);
+        return (options[method] as (...methodArgs: unknown[]) => unknown).apply(
+          options,
+          args,
+        );
+      },
+    });
+  }
+}
+
 // #region Convex function definition with Zod
 
 /**
