@@ -1888,11 +1888,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     OptionalProperty,
                                     any
                                   >
-                                ? z.ZodUnion<
-                                    readonly ZodValidatorFromConvex<
-                                      Elements[number]
-                                    >[]
-                                  >
+                                ? z.ZodUnion<readonly zCore.SomeType[]>
                                 : V extends VAny<any, OptionalProperty, any>
                                   ? z.ZodAny
                                   : never;
