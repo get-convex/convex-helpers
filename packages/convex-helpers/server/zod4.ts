@@ -74,12 +74,12 @@ function installZodLiteralUnionOptionShim() {
     },
     0: {
       get(this: zCore.SomeType) {
-        return this;
+        return literalUnionOptions(this)[0] ?? this;
       },
     },
     length: {
-      get() {
-        return 1;
+      get(this: zCore.SomeType) {
+        return literalUnionOptions(this).length;
       },
     },
     every: {
@@ -88,7 +88,7 @@ function installZodLiteralUnionOptionShim() {
         callback: Parameters<Array<zCore.SomeType>["every"]>[0],
         thisArg?: unknown,
       ) {
-        return [this].every(callback, thisArg);
+        return literalUnionOptions(this).every(callback, thisArg);
       },
     },
     flatMap: {
@@ -97,7 +97,7 @@ function installZodLiteralUnionOptionShim() {
         callback: Parameters<Array<zCore.SomeType>["flatMap"]>[0],
         thisArg?: unknown,
       ) {
-        return [this].flatMap(callback, thisArg);
+        return literalUnionOptions(this).flatMap(callback, thisArg);
       },
     },
     map: {
@@ -106,7 +106,7 @@ function installZodLiteralUnionOptionShim() {
         callback: Parameters<Array<zCore.SomeType>["map"]>[0],
         thisArg?: unknown,
       ) {
-        return [this].map(callback, thisArg);
+        return literalUnionOptions(this).map(callback, thisArg);
       },
     },
     some: {
@@ -115,19 +115,25 @@ function installZodLiteralUnionOptionShim() {
         callback: Parameters<Array<zCore.SomeType>["some"]>[0],
         thisArg?: unknown,
       ) {
-        return [this].some(callback, thisArg);
+        return literalUnionOptions(this).some(callback, thisArg);
       },
     },
   });
 
   Object.defineProperty(literalPrototype, Symbol.iterator, {
     value: function* (this: zCore.SomeType) {
-      yield this;
+      yield* literalUnionOptions(this);
     },
   });
 }
 
 installZodLiteralUnionOptionShim();
+
+function literalUnionOptions(literal: zCore.SomeType): zCore.SomeType[] {
+  return Array.from((literal as zCore.$ZodLiteral)._zod.values).map((value) =>
+    z.literal(value),
+  );
+}
 
 // #region Convex function definition with Zod
 
