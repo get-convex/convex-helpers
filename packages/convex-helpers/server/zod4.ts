@@ -1865,6 +1865,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                   any,
                                   [
                                     infer A extends GenericValidator,
+                                    infer B extends GenericValidator,
                                     ...infer Rest extends GenericValidator[],
                                   ],
                                   OptionalProperty,
@@ -1873,6 +1874,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                               ? z.ZodUnion<
                                   readonly [
                                     ZodValidatorFromConvex<A>,
+                                    ZodValidatorFromConvex<B>,
                                     ...{
                                       [K in keyof Rest]: ZodValidatorFromConvex<
                                         Rest[K]
@@ -1880,9 +1882,20 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                              : V extends VUnion<
+                                    any,
+                                    infer Elements extends GenericValidator[],
+                                    OptionalProperty,
+                                    any
+                                  >
+                                ? z.ZodUnion<
+                                    readonly ZodValidatorFromConvex<
+                                      Elements[number]
+                                    >[]
+                                  >
+                                : V extends VAny<any, OptionalProperty, any>
+                                  ? z.ZodAny
+                                  : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
