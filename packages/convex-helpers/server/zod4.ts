@@ -1883,7 +1883,9 @@ type ZodFromUnionMembers<Members extends GenericValidator[]> =
               },
             ]
           >
-        : z.ZodUnion<readonly ZodValidatorFromConvex<Members[number]>[]>;
+        : GenericValidator extends Members[number]
+          ? z.ZodUnion<readonly zCore.SomeType[]>
+          : z.ZodUnion<readonly ZodValidatorFromConvex<Members[number]>[]>;
 
 type StringValidator = Validator<string, "required", any>;
 type ZodFromStringValidator<V extends StringValidator> =
@@ -1922,7 +1924,9 @@ type ZodFromStringUnionMembers<Members extends StringValidator[]> =
               },
             ]
           >
-        : z.ZodUnion<readonly ZodFromStringValidator<Members[number]>[]>;
+        : StringValidator extends Members[number]
+          ? z.ZodUnion<readonly zCore.$ZodRecordKey[]>
+          : z.ZodUnion<readonly ZodFromStringValidator<Members[number]>[]>;
 
 type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
   Fields extends infer F // dark magic to get the TypeScript compiler happy about circular types
