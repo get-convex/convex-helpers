@@ -46,6 +46,81 @@ import {
   type VRequired,
 } from "../validators.js";
 
+declare module "zod/v4" {
+  export function union(
+    option: z.ZodLiteral,
+    params?: string | zCore.$ZodUnionParams,
+  ): z.ZodUnion<readonly zCore.SomeType[]>;
+}
+
+// A multi-value Zod literal is semantically a literal union. Let it also act
+// as the options object for z.union(z.literal([...])) so the runtime matches
+// the shorthand type above.
+const zodLiteralUnionOptionsPatch = Symbol.for(
+  "convex-helpers.zod4.literal-union-options",
+);
+
+function zodLiteralUnionOptions(literal: z.ZodLiteral): zCore.SomeType[] {
+  return Array.from(literal.values, (value) => z.literal(value));
+}
+
+if (!(z.ZodLiteral.prototype as any)[zodLiteralUnionOptionsPatch]) {
+  Object.defineProperties(z.ZodLiteral.prototype, {
+    [zodLiteralUnionOptionsPatch]: { value: true },
+    0: {
+      get(this: z.ZodLiteral) {
+        return zodLiteralUnionOptions(this)[0];
+      },
+    },
+    length: {
+      get(this: z.ZodLiteral) {
+        return zodLiteralUnionOptions(this).length;
+      },
+    },
+    some: {
+      value(
+        this: z.ZodLiteral,
+        callback: Parameters<zCore.SomeType[]["some"]>[0],
+        thisArg?: unknown,
+      ) {
+        return zodLiteralUnionOptions(this).some(callback, thisArg);
+      },
+    },
+    every: {
+      value(
+        this: z.ZodLiteral,
+        callback: Parameters<zCore.SomeType[]["every"]>[0],
+        thisArg?: unknown,
+      ) {
+        return zodLiteralUnionOptions(this).every(callback, thisArg);
+      },
+    },
+    map: {
+      value(
+        this: z.ZodLiteral,
+        callback: Parameters<zCore.SomeType[]["map"]>[0],
+        thisArg?: unknown,
+      ) {
+        return zodLiteralUnionOptions(this).map(callback, thisArg);
+      },
+    },
+    flatMap: {
+      value(
+        this: z.ZodLiteral,
+        callback: Parameters<zCore.SomeType[]["flatMap"]>[0],
+        thisArg?: unknown,
+      ) {
+        return zodLiteralUnionOptions(this).flatMap(callback, thisArg);
+      },
+    },
+    [Symbol.iterator]: {
+      value: function* (this: z.ZodLiteral) {
+        yield* zodLiteralUnionOptions(this);
+      },
+    },
+  });
+}
+
 // #region Convex function definition with Zod
 
 /**
