@@ -1885,6 +1885,13 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                       },
                                     ]
                                   >
+                              : V extends VUnion<
+                                    any,
+                                    GenericValidator[],
+                                    OptionalProperty,
+                                    any
+                                  >
+                                ? z.ZodUnion<readonly zCore.SomeType[]>
                               : V extends VAny<any, OptionalProperty, any>
                                 ? z.ZodAny
                                 : never;
@@ -1918,7 +1925,7 @@ type ZodFromStringValidator<V extends StringValidator> =
                   any
                 >
               ? number extends Rest["length"]
-                ? z.ZodUnion<readonly zCore.SomeType[]>
+                ? z.ZodUnion<readonly zCore.$ZodRecordKey[]>
                 : z.ZodUnion<
                     readonly [
                       ZodFromStringValidator<A>,
@@ -1927,6 +1934,8 @@ type ZodFromStringValidator<V extends StringValidator> =
                       },
                     ]
                   >
+              : V extends VUnion<any, GenericValidator[], any, any>
+                ? z.ZodUnion<readonly zCore.$ZodRecordKey[]>
               : never;
 
 type ZodShapeFromConvexObject<Fields extends Record<string, GenericValidator>> =
