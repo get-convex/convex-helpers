@@ -46,6 +46,89 @@ import {
   type VRequired,
 } from "../validators.js";
 
+declare module "zod/v4" {
+  export function union(
+    option: zCore.SomeType,
+    params?: string | zCore.$ZodUnionParams,
+  ): z.ZodUnion<readonly zCore.SomeType[]>;
+}
+
+const zodLiteralUnionOptionShim = Symbol.for(
+  "convex-helpers.zodLiteralUnionOptionShim",
+);
+
+function installZodLiteralUnionOptionShim() {
+  const literalPrototype = Object.getPrototypeOf(
+    z.literal(null),
+  ) as zCore.SomeType & {
+    [zodLiteralUnionOptionShim]?: true;
+  };
+
+  if (literalPrototype[zodLiteralUnionOptionShim]) {
+    return;
+  }
+
+  Object.defineProperties(literalPrototype, {
+    [zodLiteralUnionOptionShim]: {
+      value: true,
+    },
+    0: {
+      get(this: zCore.SomeType) {
+        return this;
+      },
+    },
+    length: {
+      get() {
+        return 1;
+      },
+    },
+    every: {
+      value(
+        this: zCore.SomeType,
+        callback: Parameters<Array<zCore.SomeType>["every"]>[0],
+        thisArg?: unknown,
+      ) {
+        return [this].every(callback, thisArg);
+      },
+    },
+    flatMap: {
+      value(
+        this: zCore.SomeType,
+        callback: Parameters<Array<zCore.SomeType>["flatMap"]>[0],
+        thisArg?: unknown,
+      ) {
+        return [this].flatMap(callback, thisArg);
+      },
+    },
+    map: {
+      value(
+        this: zCore.SomeType,
+        callback: Parameters<Array<zCore.SomeType>["map"]>[0],
+        thisArg?: unknown,
+      ) {
+        return [this].map(callback, thisArg);
+      },
+    },
+    some: {
+      value(
+        this: zCore.SomeType,
+        callback: Parameters<Array<zCore.SomeType>["some"]>[0],
+        thisArg?: unknown,
+      ) {
+        return [this].some(callback, thisArg);
+      },
+    },
+  });
+
+  Object.defineProperty(literalPrototype, Symbol.iterator, {
+    value: function* (this: zCore.SomeType) {
+      yield this;
+    },
+  });
+}
+
+installZodLiteralUnionOptionShim();
+
 // #region Convex function definition with Zod
 
 /**
