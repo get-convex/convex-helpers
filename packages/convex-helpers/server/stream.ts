@@ -29,6 +29,11 @@ import type {
 
 export type IndexKey = (Value | undefined)[];
 
+// From https://docs.convex.dev/production/state/limits#documents
+const MAX_ARRAY_LEN = 8192;
+// Value used to trigger page split suggestions (nearing the max).
+const SOFT_MAX_PAGE_LEN = (MAX_ARRAY_LEN * 3) / 4;
+
 //
 // Helper functions
 //
@@ -374,7 +379,6 @@ export abstract class QueryStream<
       inclusive: true,
     };
     const maxRowsToRead = opts.maximumRowsRead;
-    const softMaxRowsToRead = opts.numItems + 1;
     let maxRows: number | undefined = opts.numItems;
     if (opts.endCursor) {
       newEndKey = {
@@ -427,16 +431,16 @@ export abstract class QueryStream<
     if (hitLimit) {
       pageStatus = "SplitRequired";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
-    } else if (indexKeys.length >= softMaxRowsToRead) {
-      // When the scan-to-match ratio is high (sparse filter), splitting the
-      // range won't improve density — it just doubles subscriptions and can
-      // cause exponential split cascades on the client.
-      const scanRatio =
-        page.length > 0 ? indexKeys.length / page.length : Infinity;
-      if (scanRatio <= 2) {
-        pageStatus = "SplitRecommended";
-        splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
-      }
+    } else if (
+      (indexKeys.length >= SOFT_MAX_PAGE_LEN ||
+        page.length >= opts.numItems * 2) &&
+      opts.endCursor
+    ) {
+      // Recommend a split when an end cursor is set and either of the following is true of the page:
+      // 1. It is approaching transaction limits (the "soft max" check).
+      // 2. It contains at least twice the number of documents that the client initially requested.
+      pageStatus = "SplitRecommended";
+      splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
     }
     return {
       page,
