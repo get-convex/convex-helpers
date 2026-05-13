@@ -27,7 +27,7 @@ import {
   withSystemFields,
   Zid,
 } from "./zod4";
-import { Equals } from "..";
+import type { Equals } from "../index.js";
 import { isSameType } from "zod-compare";
 
 describe("zodToConvex + zodOutputToConvex", () => {

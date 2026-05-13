@@ -19,7 +19,7 @@ import {
   zodToConvexFields,
   zodOutputToConvexFields,
 } from "./zod4";
-import { Equals } from "..";
+import type { Equals } from "../index.js";
 import {
   assert,
   assertUnrepresentableType,

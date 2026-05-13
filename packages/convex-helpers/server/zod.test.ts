@@ -4,7 +4,7 @@ import * as z4 from "zod/v4";
 import * as z4Mini from "zod/v4/mini";
 import { describe, expect, expectTypeOf, test } from "vitest";
 import { v, type Infer } from "convex/values";
-import { Equals } from "..";
+import type { Equals } from "../index.js";
 import {
   zodToConvex,
   zodOutputToConvex,
