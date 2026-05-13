@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.117
+
+- Zod 4 support: fixed an issue with the return type of `convexToZod`
+  when the input type is a non-tuple array type.
+
 ## 0.1.116
 
 - `HonoWithConvex` and `HttpRouterWithHono` now accept an optional `Variables`
