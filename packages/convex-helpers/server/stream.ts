@@ -29,6 +29,15 @@ import type {
 
 export type IndexKey = (Value | undefined)[];
 
+// From https://docs.convex.dev/production/state/limits#transactions
+const MAX_DOCUMENT_SCAN_LEN = 32000;
+// Value used to trigger page split suggestions. This is kind of
+// a backstop value to mitigate additional scans over the full
+// original range if documents change later. Making it smaller
+// would result in more splits (equal to the divisor) as the
+// number of documents scanned approaches the max.
+const SOFT_MAX_SCAN_LEN = MAX_DOCUMENT_SCAN_LEN / 2;
+
 //
 // Helper functions
 //
@@ -374,7 +383,6 @@ export abstract class QueryStream<
       inclusive: true,
     };
     const maxRowsToRead = opts.maximumRowsRead;
-    const softMaxRowsToRead = opts.numItems + 1;
     let maxRows: number | undefined = opts.numItems;
     if (opts.endCursor) {
       newEndKey = {
@@ -427,7 +435,10 @@ export abstract class QueryStream<
     if (hitLimit) {
       pageStatus = "SplitRequired";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
-    } else if (indexKeys.length >= softMaxRowsToRead) {
+    } else if (
+      indexKeys.length >= SOFT_MAX_SCAN_LEN ||
+      page.length > opts.numItems + 1
+    ) {
       pageStatus = "SplitRecommended";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
     }

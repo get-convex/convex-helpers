@@ -367,6 +367,100 @@ describe("stream", () => {
     });
   });
 
+  test("no SplitRecommended without endCursor", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      for (let i = 1; i <= 20; i++) {
+        await ctx.db.insert("foo", { a: 1, b: i, c: i % 2 === 0 ? 1 : 0 });
+      }
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page1 = await query.paginate({
+        numItems: 3,
+        cursor: null,
+      });
+      expect(page1.page).toHaveLength(3);
+      expect(page1.pageStatus).toBeUndefined();
+    });
+  });
+
+  test("SplitRecommended when endCursor set and page exceeds numItems + 1", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      for (let i = 1; i <= 10; i++) {
+        await ctx.db.insert("foo", { a: 1, b: i, c: i % 2 === 0 ? 1 : 0 });
+      }
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 1))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const endCursor = JSON.stringify(convexToJson([1, 100, 0]));
+      const page = await query.paginate({
+        numItems: 3,
+        cursor: null,
+        endCursor,
+      });
+      // 5 matches out of 10 docs. 5 >= numItems + 1 (4) → SplitRecommended.
+      expect(page.page).toHaveLength(5);
+      expect(page.pageStatus).toBe("SplitRecommended");
+      expect(page.splitCursor).toBeDefined();
+    });
+  });
+
+  test("SplitRecommended when scan approaches scan limit regardless of endCursor", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      // SOFT_MAX_SCAN_LEN = 32000 / 2 = 16000. Insert that many docs where
+      // only a handful match the filter, so indexKeys hits the soft max while
+      // page.length stays below numItems + 1.
+      for (let i = 1; i <= 16000; i++) {
+        await ctx.db.insert("foo", { a: 4, b: i, c: i % 3000 === 0 ? 1 : 0 });
+      }
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 4))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page = await query.paginate({
+        numItems: 10,
+        cursor: null,
+        endCursor: null,
+      });
+      // a few matches, but many index keys scanned.
+      expect(page.page).toHaveLength(5);
+      expect(page.pageStatus).toBe("SplitRecommended");
+      expect(page.splitCursor).toBeDefined();
+    });
+  });
+
+  test("SplitRequired fires with filterWith when maximumRowsRead is hit", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      for (let i = 1; i <= 20; i++) {
+        await ctx.db.insert("foo", { a: 3, b: i, c: i % 5 === 0 ? 1 : 0 });
+      }
+      const filteredQuery = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 3))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page1 = await filteredQuery.paginate({
+        numItems: 3,
+        cursor: null,
+        maximumRowsRead: 8,
+      });
+      // Hit the hard row limit before finding 3 matches.
+      // Only 1 match in first 8 rows (b=5).
+      expect(page1.page).toHaveLength(1);
+      expect(page1.pageStatus).toBe("SplitRequired");
+      expect(page1.splitCursor).toBeDefined();
+    });
+  });
+
   test("merge orderBy streams", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
