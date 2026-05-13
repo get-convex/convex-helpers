@@ -1833,7 +1833,17 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                           infer T extends zCore.util.Literal,
                           OptionalProperty
                         >
-                      ? z.ZodLiteral<NotUndefined<T>>
+                      ? // Distribute over `T` so that a `VLiteral<"a" | "b">`
+                        // — typical when `.map(v.literal)` widens individual
+                        // values into a union — maps to `z.ZodLiteral<"a"> |
+                        // z.ZodLiteral<"b">` rather than a single
+                        // `z.ZodLiteral<"a" | "b">`. The distributed form
+                        // matches the actual runtime structure (one
+                        // single-value Zod literal per Convex member) and
+                        // composes cleanly with `ignoreZodUnionOrder`.
+                        T extends T
+                        ? z.ZodLiteral<NotUndefined<T>>
+                        : never
                       : V extends VRecord<
                             any,
                             infer Key,
@@ -1882,15 +1892,19 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                 >
                               : // Fallback for unions whose members are a
                                 // generic array (e.g. `VLiteral<X>[]`) rather
-                                // than a tuple, which happens when callers
-                                // spread an array into `v.union(...)` —
-                                // TypeScript cannot recover the tuple shape, so
-                                // we collapse to a single-member union of the
-                                // element validator. The `[GenericValidator]
-                                // extends [E]` guard avoids infinite recursion
-                                // when `E` is the maximally-generic validator
-                                // type — that happens during recursive type
-                                // evaluation of `convexToZod` itself.
+                                // than a tuple. That happens when callers
+                                // spread an array into `v.union(...)` and
+                                // TypeScript cannot recover the tuple shape;
+                                // the order is unknown, so we widen to a
+                                // generic-array union of the element
+                                // validator. Tests can match this shape by
+                                // wrapping the expected with
+                                // `ignoreZodUnionOrder`. The
+                                // `[GenericValidator] extends [E]` guard
+                                // avoids infinite recursion when `E` is the
+                                // maximally-generic validator type — that
+                                // happens during recursive type evaluation of
+                                // `convexToZod` itself.
                                 V extends VUnion<
                                     any,
                                     (infer E extends GenericValidator)[],
@@ -1898,9 +1912,9 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     any
                                   >
                                 ? [GenericValidator] extends [E]
-                                  ? z.ZodUnion<readonly [zCore.SomeType]>
+                                  ? z.ZodUnion<readonly zCore.SomeType[]>
                                   : z.ZodUnion<
-                                      readonly [ZodValidatorFromConvex<E>]
+                                      readonly ZodValidatorFromConvex<E>[]
                                     >
                                 : V extends VAny<any, OptionalProperty, any>
                                   ? z.ZodAny

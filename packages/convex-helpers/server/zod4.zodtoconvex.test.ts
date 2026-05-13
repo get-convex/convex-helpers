@@ -1315,6 +1315,68 @@ describe("testing infrastructure", () => {
     >();
   });
 
+  describe("ignoreZodUnionOrder", () => {
+    test("widens a tuple-typed ZodUnion to an array-typed one", () => {
+      const unionWithOrder = z.union([
+        z.literal(1),
+        z.literal(2),
+        z.literal(3),
+      ]);
+      assert<
+        Equals<
+          typeof unionWithOrder,
+          z.ZodUnion<
+            readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>]
+          >
+        >
+      >();
+
+      const _unionWithoutOrder = ignoreZodUnionOrder(unionWithOrder);
+      assert<
+        Equals<
+          typeof _unionWithoutOrder,
+          z.ZodUnion<
+            readonly (z.ZodLiteral<1> | z.ZodLiteral<2> | z.ZodLiteral<3>)[]
+          >
+        >
+      >();
+    });
+
+    test("returns the same runtime schema (identity at runtime)", () => {
+      const ordered = z.union([z.literal("a"), z.literal("b")]);
+      const widened = ignoreZodUnionOrder(ordered);
+      expect(widened).toBe(ordered);
+      // The widened schema still parses values as before.
+      expect(widened.parse("a")).toBe("a");
+      expect(widened.parse("b")).toBe("b");
+      expect(widened.safeParse("c").success).toBe(false);
+    });
+
+    test("works for unions of heterogeneous schemas", () => {
+      const heterogeneous = z.union([z.string(), z.number(), z.boolean()]);
+      const _widened = ignoreZodUnionOrder(heterogeneous);
+      assert<
+        Equals<
+          typeof _widened,
+          z.ZodUnion<
+            readonly (z.ZodString | z.ZodNumber | z.ZodBoolean)[]
+          >
+        >
+      >();
+    });
+
+    test("widens a single-member tuple union to a single-member array union", () => {
+      const single = z.union([z.literal("only")]);
+      const _widened = ignoreZodUnionOrder(single);
+      assert<
+        Equals<
+          typeof _widened,
+          z.ZodUnion<readonly z.ZodLiteral<"only">[]>
+        >
+      >();
+    });
+  });
+
   test("assertUnrepresentableType", () => {
     expect(() => {
       assertUnrepresentableType(z.string());
@@ -1611,6 +1673,37 @@ export function ignoreUnionOrder<
   FieldPaths
 > {
   return union;
+}
+
+/**
+ * The Zod analog of {@link ignoreUnionOrder}: widens a `z.ZodUnion` whose
+ * members are typed as a tuple into one whose members are typed as a
+ * generic array of the union of element types.
+ *
+ * `convexToZod` produces this widened shape when the Convex union it
+ * receives has its members typed as a generic array (e.g. when callers
+ * write `v.union(...Object.values(SomeEnum).map(v.literal))` and the
+ * `.map` widens away the tuple shape). Tests written in tuple form can
+ * wrap their expected schema with this helper to match.
+ *
+ * ```ts
+ * const ordered: z.ZodUnion<readonly [
+ *   z.ZodLiteral<1>,
+ *   z.ZodLiteral<2>,
+ *   z.ZodLiteral<3>,
+ * ]> = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+ *
+ * const widened: z.ZodUnion<
+ *   readonly (z.ZodLiteral<1> | z.ZodLiteral<2> | z.ZodLiteral<3>)[]
+ * > = ignoreZodUnionOrder(ordered);
+ * ```
+ */
+export function ignoreZodUnionOrder<
+  Members extends readonly zCore.SomeType[],
+>(
+  union: z.ZodUnion<Members>,
+): z.ZodUnion<readonly Members[number][]> {
+  return union as z.ZodUnion<readonly Members[number][]>;
 }
 
 export function assert<_T extends true>() {}
