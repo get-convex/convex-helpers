@@ -1315,64 +1315,6 @@ describe("testing infrastructure", () => {
     >();
   });
 
-  describe("ignoreZodUnionOrder", () => {
-    test("collapses a tuple of literals into a generic-array multi-value literal union", () => {
-      const unionWithOrder = z.union([
-        z.literal(1),
-        z.literal(2),
-        z.literal(3),
-      ]);
-      assert<
-        Equals<
-          typeof unionWithOrder,
-          z.ZodUnion<
-            readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>]
-          >
-        >
-      >();
-
-      const _unionWithoutOrder = ignoreZodUnionOrder(unionWithOrder);
-      assert<
-        Equals<
-          typeof _unionWithoutOrder,
-          z.ZodUnion<readonly z.ZodLiteral<1 | 2 | 3>[]>
-        >
-      >();
-    });
-
-    test("returns the same runtime schema (identity at runtime)", () => {
-      const ordered = z.union([z.literal("a"), z.literal("b")]);
-      const widened = ignoreZodUnionOrder(ordered);
-      expect(widened).toBe(ordered);
-      // The widened schema still parses values as before.
-      expect(widened.parse("a")).toBe("a");
-      expect(widened.parse("b")).toBe("b");
-      expect(widened.safeParse("c").success).toBe(false);
-    });
-
-    test("widens a single-literal tuple union to an array of that literal", () => {
-      const single = z.union([z.literal("only")]);
-      const _widened = ignoreZodUnionOrder(single);
-      assert<
-        Equals<
-          typeof _widened,
-          z.ZodUnion<readonly z.ZodLiteral<"only">[]>
-        >
-      >();
-    });
-
-    test("handles literals of mixed primitive types", () => {
-      const mixed = z.union([z.literal("a"), z.literal(1), z.literal(true)]);
-      const _widened = ignoreZodUnionOrder(mixed);
-      assert<
-        Equals<
-          typeof _widened,
-          z.ZodUnion<readonly z.ZodLiteral<"a" | 1 | true>[]>
-        >
-      >();
-    });
-  });
-
   test("assertUnrepresentableType", () => {
     expect(() => {
       assertUnrepresentableType(z.string());
@@ -1669,45 +1611,6 @@ export function ignoreUnionOrder<
   FieldPaths
 > {
   return union;
-}
-
-/**
- * The Zod analog of {@link ignoreUnionOrder}, for unions whose members
- * are all Zod literals (i.e. Zod "enums").
- *
- * Widens a `z.ZodUnion<readonly [z.ZodLiteral<a>, z.ZodLiteral<b>,
- * z.ZodLiteral<c>]>` (tuple, ordered) into a `z.ZodUnion<readonly
- * z.ZodLiteral<a | b | c>[]>` (generic array, no order, literal values
- * collapsed into a single multi-value Zod literal type).
- *
- * That's the shape `convexToZod` produces when the Convex union it
- * receives has its members typed as a generic array (e.g. when callers
- * write `v.union(...Object.values(SomeEnum).map(v.literal))` and the
- * `.map` widens away the tuple shape). Tests written in tuple form can
- * wrap their expected schema with this helper to match.
- *
- * ```ts
- * const ordered: z.ZodUnion<readonly [
- *   z.ZodLiteral<1>,
- *   z.ZodLiteral<2>,
- *   z.ZodLiteral<3>,
- * ]> = z.union([z.literal(1), z.literal(2), z.literal(3)]);
- *
- * const widened: z.ZodUnion<readonly z.ZodLiteral<1 | 2 | 3>[]> =
- *   ignoreZodUnionOrder(ordered);
- * ```
- */
-export function ignoreZodUnionOrder<
-  Members extends readonly z.ZodLiteral<zCore.util.Literal>[],
->(
-  union: z.ZodUnion<Members>,
-): Members extends readonly z.ZodLiteral<infer V>[]
-  ? // ↓ tuple of single-value literals → array of one multi-value literal
-    z.ZodUnion<readonly z.ZodLiteral<V>[]>
-  : never {
-  return union as unknown as Members extends readonly z.ZodLiteral<infer V>[]
-    ? z.ZodUnion<readonly z.ZodLiteral<V>[]>
-    : never;
 }
 
 export function assert<_T extends true>() {}
