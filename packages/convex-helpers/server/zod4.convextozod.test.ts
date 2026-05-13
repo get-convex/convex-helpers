@@ -299,9 +299,7 @@ function ignoreZodUnionOrder<
   ? // ↓ tuple of single-value literals → array of one multi-value literal
     z.ZodUnion<readonly z.ZodLiteral<V>[]>
   : never {
-  return union as unknown as Members extends readonly z.ZodLiteral<infer V>[]
-    ? z.ZodUnion<readonly z.ZodLiteral<V>[]>
-    : never;
+  return union as any;
 }
 
 describe("ignoreZodUnionOrder", () => {
