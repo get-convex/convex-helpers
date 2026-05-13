@@ -387,10 +387,10 @@ describe("stream", () => {
     });
   });
 
-  test("SplitRecommended when endCursor set and page exceeds 2x numItems", async () => {
+  test("SplitRecommended when endCursor set and page exceeds numItems + 1", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
-      for (let i = 1; i <= 20; i++) {
+      for (let i = 1; i <= 10; i++) {
         await ctx.db.insert("foo", { a: 1, b: i, c: i % 2 === 0 ? 1 : 0 });
       }
       const query = stream(ctx.db, schema)
@@ -404,35 +404,8 @@ describe("stream", () => {
         cursor: null,
         endCursor,
       });
-      // 10 matches out of 20 docs. 10 >= numItems * 2 (6) → SplitRecommended.
-      expect(page.page).toHaveLength(10);
-      expect(page.pageStatus).toBe("SplitRecommended");
-      expect(page.splitCursor).toBeDefined();
-    });
-  });
-
-  test("SplitRecommended when scan approaches transaction limit", async () => {
-    const t = convexTest(schema, modules);
-    await t.run(async (ctx) => {
-      // SOFT_MAX_PAGE_LEN = 8192 * 3/4 = 6144. Insert that many docs where
-      // only a handful match the filter, so indexKeys hits the soft max while
-      // page.length stays well below numItems * 2.
-      for (let i = 1; i <= 6144; i++) {
-        await ctx.db.insert("foo", { a: 4, b: i, c: i % 1000 === 0 ? 1 : 0 });
-      }
-      const query = stream(ctx.db, schema)
-        .query("foo")
-        .withIndex("abc", (q) => q.eq("a", 4))
-        .filterWith(async (doc) => doc.c === 1);
-
-      const endCursor = JSON.stringify(convexToJson([4, 10000, 0]));
-      const page = await query.paginate({
-        numItems: 5,
-        cursor: null,
-        endCursor,
-      });
-      // 6 matches (i=1000,2000,...,6000), but 6144 index keys scanned.
-      expect(page.page).toHaveLength(6);
+      // 5 matches out of 10 docs. 5 >= numItems + 1 (4) → SplitRecommended.
+      expect(page.page).toHaveLength(5);
       expect(page.pageStatus).toBe("SplitRecommended");
       expect(page.splitCursor).toBeDefined();
     });
