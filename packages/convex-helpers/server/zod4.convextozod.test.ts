@@ -7,13 +7,10 @@ import {
   Infer,
   v,
   VFloat64,
-  VLiteral,
   VString,
-  VUnion,
 } from "convex/values";
 import { convexToZod, Zid, zid, ZodValidatorFromConvex } from "./zod4";
 import { literals } from "../validators";
-import { ignoreUnionOrder } from "./zod4.zodtoconvex.test";
 import { isSameType } from "zod-compare";
 
 test("Zid is a record key", () => {
@@ -240,7 +237,11 @@ describe("convexToZod", () => {
 
     testConvexToZod(
       v.union(...Object.values(Gender).map(v.literal)),
-      z.union([z.literal([Gender.Male, Gender.Female, Gender.Other])]),
+      z.union([
+        z.literal(Gender.Male),
+        z.literal(Gender.Female),
+        z.literal(Gender.Other),
+      ]),
     );
   });
 });
