@@ -1887,11 +1887,8 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                 // TypeScript cannot recover the tuple shape;
                                 // the order is unknown, so we widen to a
                                 // generic-array union of the element
-                                // validator. Tests can match this shape by
-                                // wrapping the expected with
-                                // `ignoreZodUnionOrder`. The
-                                // `[GenericValidator] extends [E]` guard
-                                // avoids infinite recursion when `E` is the
+                                // validator. The `[GenericValidator] extends [E]`
+                                // guard avoids infinite recursion when `E` is the
                                 // maximally-generic validator type — that
                                 // happens during recursive type evaluation of
                                 // `convexToZod` itself.
