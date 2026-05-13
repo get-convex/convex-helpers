@@ -1833,17 +1833,7 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                           infer T extends zCore.util.Literal,
                           OptionalProperty
                         >
-                      ? // Distribute over `T` so that a `VLiteral<"a" | "b">`
-                        // — typical when `.map(v.literal)` widens individual
-                        // values into a union — maps to `z.ZodLiteral<"a"> |
-                        // z.ZodLiteral<"b">` rather than a single
-                        // `z.ZodLiteral<"a" | "b">`. The distributed form
-                        // matches the actual runtime structure (one
-                        // single-value Zod literal per Convex member) and
-                        // composes cleanly with `ignoreZodUnionOrder`.
-                        T extends T
-                        ? z.ZodLiteral<NotUndefined<T>>
-                        : never
+                      ? z.ZodLiteral<NotUndefined<T>>
                       : V extends VRecord<
                             any,
                             infer Key,
