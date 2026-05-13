@@ -1279,7 +1279,7 @@ describe("testing infrastructure", () => {
     testZodToConvexInputAndOutput(z.string(), v.string());
   });
 
-  test("removeUnionOrder", () => {
+  test("ignoreUnionOrder", () => {
     const unionWithOrder = v.union(v.literal(1), v.literal(2), v.literal(3));
     assert<
       Equals<
