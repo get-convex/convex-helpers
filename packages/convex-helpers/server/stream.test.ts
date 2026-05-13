@@ -411,6 +411,32 @@ describe("stream", () => {
     });
   });
 
+  test("SplitRecommended when scan approaches scan limit regardless of endCursor", async () => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      // SOFT_MAX_SCAN_LEN = 32000 * 3/4 = 24000. Insert that many docs where
+      // only a handful match the filter, so indexKeys hits the soft max while
+      // page.length stays below numItems + 1.
+      for (let i = 1; i <= 24000; i++) {
+        await ctx.db.insert("foo", { a: 4, b: i, c: i % 3000 === 0 ? 1 : 0 });
+      }
+      const query = stream(ctx.db, schema)
+        .query("foo")
+        .withIndex("abc", (q) => q.eq("a", 4))
+        .filterWith(async (doc) => doc.c === 1);
+
+      const page = await query.paginate({
+        numItems: 10,
+        cursor: null,
+        endCursor: null,
+      });
+      // a few matches, but many index keys scanned.
+      expect(page.page).toHaveLength(8);
+      expect(page.pageStatus).toBe("SplitRecommended");
+      expect(page.splitCursor).toBeDefined();
+    });
+  });
+
   test("SplitRequired fires with filterWith when maximumRowsRead is hit", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {

@@ -29,6 +29,11 @@ import type {
 
 export type IndexKey = (Value | undefined)[];
 
+// From https://docs.convex.dev/production/state/limits#transactions
+const MAX_DOCUMENTS_TO_SCAN = 32000;
+// Value used to trigger page split suggestions (nearing the max).
+const SOFT_MAX_SCAN_LEN = (MAX_DOCUMENTS_TO_SCAN * 3) / 4;
+
 //
 // Helper functions
 //
@@ -426,7 +431,10 @@ export abstract class QueryStream<
     if (hitLimit) {
       pageStatus = "SplitRequired";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
-    } else if (page.length > opts.numItems + 1) {
+    } else if (
+      indexKeys.length >= SOFT_MAX_SCAN_LEN ||
+      page.length > opts.numItems + 1
+    ) {
       pageStatus = "SplitRecommended";
       splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
     }
