@@ -1880,9 +1880,32 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     },
                                   ]
                                 >
-                              : V extends VAny<any, OptionalProperty, any>
-                                ? z.ZodAny
-                                : never;
+                              : // Fallback for unions whose members are a
+                                // generic array (e.g. `VLiteral<X>[]`) rather
+                                // than a tuple. That happens when callers
+                                // spread an array into `v.union(...)` and
+                                // TypeScript cannot recover the tuple shape;
+                                // the order is unknown, so we widen to a
+                                // generic-array union of the element
+                                // validator. The `[GenericValidator] extends [E]`
+                                // guard avoids infinite recursion when `E` is the
+                                // maximally-generic validator type — that
+                                // happens during recursive type evaluation of
+                                // `convexToZod` itself.
+                                V extends VUnion<
+                                    any,
+                                    (infer E extends GenericValidator)[],
+                                    OptionalProperty,
+                                    any
+                                  >
+                                ? [GenericValidator] extends [E]
+                                  ? z.ZodUnion<readonly zCore.SomeType[]>
+                                  : z.ZodUnion<
+                                      readonly ZodValidatorFromConvex<E>[]
+                                    >
+                                : V extends VAny<any, OptionalProperty, any>
+                                  ? z.ZodAny
+                                  : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>
