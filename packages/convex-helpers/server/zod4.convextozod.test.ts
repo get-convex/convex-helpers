@@ -310,15 +310,9 @@ function ignoreZodUnionOrder<
 
 describe("ignoreZodUnionOrder", () => {
   test("collapses a tuple of literals into a generic-array multi-value literal union", () => {
-    const unionWithOrder = z.union([
-      z.literal(1),
-      z.literal(2),
-      z.literal(3),
-    ]);
+    const unionWithOrder = z.union([z.literal(1), z.literal(2), z.literal(3)]);
     expectTypeOf(unionWithOrder).toEqualTypeOf<
-      z.ZodUnion<
-        readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>]
-      >
+      z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>]>
     >();
 
     const unionWithoutOrder = ignoreZodUnionOrder(unionWithOrder);
