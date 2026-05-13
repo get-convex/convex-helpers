@@ -30,9 +30,13 @@ import type {
 export type IndexKey = (Value | undefined)[];
 
 // From https://docs.convex.dev/production/state/limits#transactions
-const MAX_DOCUMENTS_TO_SCAN = 32000;
-// Value used to trigger page split suggestions (nearing the max).
-const SOFT_MAX_SCAN_LEN = (MAX_DOCUMENTS_TO_SCAN * 3) / 4;
+const MAX_DOCUMENT_SCAN_LEN = 32000;
+// Value used to trigger page split suggestions. This is kind of
+// a backstop value to mitigate additional scans over the full
+// original range if documents change later. Making it smaller
+// would result in more splits (equal to the divisor) as the
+// number of documents scanned approaches the max.
+const SOFT_MAX_SCAN_LEN = MAX_DOCUMENT_SCAN_LEN / 2;
 
 //
 // Helper functions
