@@ -213,35 +213,31 @@ describe("convexToZod", () => {
       v.object({
         firstName: v.string(),
         lastName: v.string(),
-        gender: literals("male", "female", "other"),
+        role: literals("user", "admin"),
       }),
       z.object({
         firstName: z.string(),
         lastName: z.string(),
-        gender: z.union([
-          z.literal("male"),
-          z.literal("female"),
-          z.literal("other"),
-        ]),
+        role: z.union([z.literal("user"), z.literal("admin")]),
       }),
     );
   });
 
   // https://github.com/get-convex/convex-helpers/issues/861#issuecomment-3593231904
   test("regression: spreading an enum into v.union", () => {
-    enum Gender {
-      Male = "male",
-      Female = "female",
-      Other = "other",
+    enum Role {
+      Guest = "guest",
+      User = "user",
+      Admin = "admin",
     }
 
     testConvexToZod(
-      v.union(...Object.values(Gender).map(v.literal)),
+      v.union(...Object.values(Role).map(v.literal)),
       ignoreZodUnionOrder(
         z.union([
-          z.literal(Gender.Male),
-          z.literal(Gender.Female),
-          z.literal(Gender.Other),
+          z.literal(Role.Guest),
+          z.literal(Role.User),
+          z.literal(Role.Admin),
         ]),
       ),
     );
