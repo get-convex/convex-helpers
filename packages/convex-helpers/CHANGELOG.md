@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.118
+
+- Fixes the helpers custom pagination page splitting logic when used
+  with filters. Previously it would aggressively split pages whenever
+  more items were _scanned_ than requested. Now it only splits when
+  the page grows to be larger than the number of requested items or
+  so many documents are being scanned that the limits are close to being
+  hit.
+
 ## 0.1.117
 
 - Zod 4 support: fixed an issue with the return type of `convexToZod`
