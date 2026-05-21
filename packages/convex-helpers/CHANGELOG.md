@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Zod 4 → Convex bridge: `ConvexValidatorFromZod<z.object({ k: z.X().optional() })>`
+  now produces a Type slot of `{ k?: X }` instead of `{ k?: X | undefined }`,
+  matching what `v.object(...)` itself produces via `ObjectType<F>`. This
+  unblocks downstream projects compiled with TypeScript's
+  `exactOptionalPropertyTypes: true`, where the previous shape was not
+  assignable to `Record<string, Value>`. The change is observable only under
+  `exactOptionalPropertyTypes`; non-strict consumers see structurally
+  equivalent types.
+
 ## 0.1.118
 
 - Fixes the helpers custom pagination page splitting logic when used

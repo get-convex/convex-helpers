@@ -781,6 +781,11 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("recursive types", () => {
+    // These tests bypass the `Equals<>`-constrained helpers because the
+    // self-referential Zod schema would force the bridge type to expand
+    // forever through `ObjectType<F>`. Compile-time shape verification is
+    // already covered by the non-recursive tests above; here we only assert
+    // the runtime conversion produces the expected validator structure.
     test("recursive type", () => {
       const category = z.object({
         name: z.string(),
@@ -789,9 +794,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
         },
       });
 
-      testZodToConvexInputAndOutput(
-        category,
-        // @ts-expect-error The type of zodToConvex(linkedList) is recursive so we can’t check it
+      expect(zodToConvex(category as zCore.$ZodType)).to.deep.equal(
+        v.object({
+          name: v.string(),
+          subcategories: v.array(v.any()),
+        }),
+      );
+      expect(zodOutputToConvex(category as zCore.$ZodType)).to.deep.equal(
         v.object({
           name: v.string(),
           subcategories: v.array(v.any()),
@@ -807,9 +816,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
         },
       });
 
-      testZodToConvexInputAndOutput(
-        linkedList,
-        // @ts-expect-error The type of zodToConvex(linkedList) is recursive so we can’t check it
+      expect(zodToConvex(linkedList as zCore.$ZodType)).to.deep.equal(
+        v.object({
+          value: v.string(),
+          next: v.optional(v.any()), // not `v.any()`!
+        }),
+      );
+      expect(zodOutputToConvex(linkedList as zCore.$ZodType)).to.deep.equal(
         v.object({
           value: v.string(),
           next: v.optional(v.any()), // not `v.any()`!
@@ -1456,6 +1469,185 @@ describe("zid registry parent-chain inheritance bug", () => {
     } finally {
       stringSchema._zod.parent = originalParent;
     }
+  });
+});
+
+// Regression suite for `exactOptionalPropertyTypes: true` consumers:
+// `ConvexValidatorFromZod` must produce `VObject<ObjectType<F>, F, ...>`
+// at every nesting depth — same shape `v.object(...)` produces. The earlier
+// implementation passed `zCore.infer<Z>` into the Type slot, which leaks
+// `| undefined` into value position for optional fields and breaks downstream
+// code compiled with `exactOptionalPropertyTypes`. The strict `Equals<>` constraint inside
+// `testZodToConvexInputAndOutput` is the actual lock: without the fix the
+// expected `v.object(...)` literal (which derives via `ObjectType<F>`) no
+// longer structurally equals the bridge's output and the call fails to
+// type-check under the root `tsc --noEmit` that CI runs.
+describe("nested optional object Type derives via ObjectType<F>", () => {
+  test("one-level: optional object field with mixed required + record inside", () => {
+    testZodToConvexInputAndOutput(
+      z.object({
+        label: z.string(),
+        metricsBlock: z
+          .object({
+            total: z.number(),
+            breakdown: z.record(z.string(), z.number()),
+          })
+          .optional(),
+      }),
+      v.object({
+        label: v.string(),
+        metricsBlock: v.optional(
+          v.object({
+            total: v.number(),
+            breakdown: v.record(v.string(), v.number()),
+          }),
+        ),
+      }),
+    );
+  });
+
+  test("two-level: parent of optional children that themselves carry optional grandchildren", () => {
+    // Without recursion through `ObjectType<F>` at every level, a one-level
+    // fix would still leak `T | undefined` at deeper nesting.
+    const stageStateSchema = z.object({
+      status: z.string(),
+      score: z
+        .object({
+          value: z.number(),
+          tier: z.string().optional(),
+        })
+        .optional(),
+    });
+
+    testZodToConvexInputAndOutput(
+      z.object({
+        stage_a: stageStateSchema.optional(),
+        stage_b: stageStateSchema.optional(),
+      }),
+      v.object({
+        stage_a: v.optional(
+          v.object({
+            status: v.string(),
+            score: v.optional(
+              v.object({
+                value: v.number(),
+                tier: v.optional(v.string()),
+              }),
+            ),
+          }),
+        ),
+        stage_b: v.optional(
+          v.object({
+            status: v.string(),
+            score: v.optional(
+              v.object({
+                value: v.number(),
+                tier: v.optional(v.string()),
+              }),
+            ),
+          }),
+        ),
+      }),
+    );
+  });
+
+  test("branded object with optional field: brand reattached to stripped Type", () => {
+    // Locks the brand-reattach behavior of Site 1's nested `infer Brand` check.
+    // `$ZodBranded<$ZodObject>` is structurally `$ZodObject & {marker}`, so it
+    // hits the `$ZodObject` branch first — the nested check then produces
+    // `VObject<ObjectType<F> & $brand<Brand>, F, ...>`. If a future change
+    // reorders Site 1 so branded objects fall through, this test will fail
+    // (the cast target uses the stripped `{ tag?: string }` shape, not the
+    // pre-fix `{ tag?: string | undefined }` shape).
+    testZodToConvexInputAndOutput(
+      z.object({ id: z.string(), tag: z.string().optional() }).brand("widget"),
+      v.object({ id: v.string(), tag: v.optional(v.string()) }) as VObject<
+        { id: string; tag?: string } & zCore.$brand<"widget">,
+        {
+          id: VString<string, "required">;
+          tag: VString<string | undefined, "optional">;
+        },
+        "required",
+        "id" | "tag"
+      >,
+    );
+  });
+
+  test("Site 3: literal-keyed record routes through ConvexObjectValidatorFromRecord", () => {
+    // Literal-key records route through `ConvexObjectValidatorFromRecord`
+    // (the other site that needed `ObjectType<F>`), not the `VRecord` path
+    // used by string-keyed records — without the fix the inner
+    // `note?: string | undefined` leaks.
+    testZodToConvexInputAndOutput(
+      z.record(
+        z.literal(["a", "b"]),
+        z.object({
+          note: z.string().optional(),
+          weight: z.number(),
+        }),
+      ),
+      v.object({
+        a: v.object({ note: v.optional(v.string()), weight: v.number() }),
+        b: v.object({ note: v.optional(v.string()), weight: v.number() }),
+      }),
+    );
+  });
+
+  test("four-level deep nesting: ObjectType<F> recurses at every level", () => {
+    // Non-recursive deep schema — recovers compile-time Equals<>-lock coverage
+    // that the self-referential `category` / linked-list tests had to drop
+    // (they cast through `as zCore.$ZodType` to dodge eager type expansion).
+    testZodToConvexInputAndOutput(
+      z.object({
+        l1: z
+          .object({
+            l2: z
+              .object({
+                l3: z
+                  .object({
+                    leaf: z.string().optional(),
+                    keep: z.number(),
+                  })
+                  .optional(),
+              })
+              .optional(),
+          })
+          .optional(),
+      }),
+      v.object({
+        l1: v.optional(
+          v.object({
+            l2: v.optional(
+              v.object({
+                l3: v.optional(
+                  v.object({
+                    leaf: v.optional(v.string()),
+                    keep: v.number(),
+                  }),
+                ),
+              }),
+            ),
+          }),
+        ),
+      }),
+    );
+  });
+
+  test("partial(): every field optional, no `| undefined` in value position", () => {
+    testZodToConvexInputAndOutput(
+      z
+        .object({
+          alpha: z.string(),
+          beta: z.number(),
+          gamma: z.object({ inner: z.string() }),
+        })
+        .partial(),
+      v.object({
+        alpha: v.optional(v.string()),
+        beta: v.optional(v.number()),
+        gamma: v.optional(v.object({ inner: v.string() })),
+      }),
+    );
   });
 });
 
