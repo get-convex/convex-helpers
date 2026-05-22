@@ -5,6 +5,8 @@ on:
     # Run when PRs are opened, reopened, edited or updated with new commits
     types: [opened, reopened, synchronize, edited]
 
+permissions: {}
+
 jobs:
   check-cla:
     name: Check CLA in PR description
