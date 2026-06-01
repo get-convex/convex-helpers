@@ -1014,7 +1014,7 @@ This provider takes three optional props:
 - **expiration** (number) -- Milliseconds to preserve unmounted subscriptions
   in the cache. After this, the subscriptions will be dropped, and the value
   will have to be re-fetched from the server. (Default: 300000, aka 5 minutes)
-- **maxIdleEntires** (number) -- Maximum number of unused subscriptions
+- **maxIdleEntries** (number) -- Maximum number of unused subscriptions
   kept in the cache. (Default: 250).
 - **debug** (boolean) -- Dump console logs every 3s to debug the state of
   the cache (Default: false).
