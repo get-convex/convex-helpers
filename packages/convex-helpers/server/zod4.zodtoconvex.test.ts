@@ -781,11 +781,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("recursive types", () => {
-    // These tests bypass the `Equals<>`-constrained helpers because the
-    // self-referential Zod schema would force the bridge type to expand
-    // forever through `ObjectType<F>`. Compile-time shape verification is
-    // already covered by the non-recursive tests above; here we only assert
-    // the runtime conversion produces the expected validator structure.
+    // These tests cast through `as zCore.$ZodType` to keep the bridge's Type
+    // slot opaque: a self-referential schema makes `ConvexValidatorFromZod`
+    // circularly reference itself, a recoverable TS2615 — Convex validators
+    // can't represent cycles, so the runtime collapses them to `v.any()` via
+    // its visited set. Compile-time shape verification is already covered by
+    // the non-recursive tests above; here we only assert the runtime
+    // conversion produces the expected validator structure.
     test("recursive type", () => {
       const category = z.object({
         name: z.string(),

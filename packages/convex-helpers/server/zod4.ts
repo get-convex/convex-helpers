@@ -1122,18 +1122,38 @@ type ConvexValidatorFromZodCommon<
                         Z extends zCore.$ZodObject<
                             infer Fields extends Readonly<zCore.$ZodShape>
                           >
-                        ? ConvexObjectFromZodShape<Fields> extends infer F extends
-                            Record<string, GenericValidator>
-                          ? // `$ZodBranded<$ZodObject>` is structurally
-                            // `$ZodObject & ...` so this branch matches both
-                            // unbranded and branded objects; see `BridgedObject`.
-                            Z extends zCore.$ZodBranded<
-                              zCore.$ZodType,
-                              infer Brand
+                        ? // The Type slot comes from Zod's own (recursion-safe)
+                          // inferred type, with `| undefined` stripped from
+                          // optional props so it stays assignable to
+                          // `Record<string, Value>` under
+                          // `exactOptionalPropertyTypes`. We deliberately do NOT
+                          // map `ObjectType<F>` over the validator record here, and
+                          // we pass `ConvexObjectFromZodShape<Fields>` straight
+                          // through rather than binding it via
+                          // `extends infer F extends Record<string, GenericValidator>`:
+                          // both force the self-referential record to expand
+                          // eagerly, which makes tsc emit — and on TS 5.5–6.0 crash
+                          // while emitting — the TS2615 circular-reference
+                          // diagnostic. Keeping the record lazy lets recursive
+                          // schemas degrade to a recoverable error instead.
+                          // `$ZodBranded<$ZodObject>` is structurally
+                          // `$ZodObject & ...`, so this branch also matches branded
+                          // objects; reattach the brand.
+                          Z extends zCore.$ZodBranded<
+                            infer Inner extends zCore.$ZodType,
+                            infer Brand
+                          >
+                          ? VObject<
+                              EOPTInfer<zCore.infer<Inner>> &
+                                zCore.$brand<Brand>,
+                              ConvexObjectFromZodShape<Fields>,
+                              IsOptional
                             >
-                            ? BridgedObject<F, IsOptional, Brand>
-                            : BridgedObject<F, IsOptional>
-                          : never
+                          : VObject<
+                              EOPTInfer<zCore.infer<Z>>,
+                              ConvexObjectFromZodShape<Fields>,
+                              IsOptional
+                            >
                         : // z.never() (→ z.union() with no elements)
                           Z extends zCore.$ZodNever
                           ? VUnion<never, [], IsOptional, never>
@@ -1388,19 +1408,37 @@ type ConvexObjectFromZodShape<Fields extends Readonly<zCore.$ZodShape>> =
       }
     : never;
 
-// Shared shape for both `z.object()` (Site 1) and literal-keyed `z.record()`
-// (Site 3, via ConvexObjectValidatorFromRecord). The Type slot uses Convex's
-// own `ObjectType<F>`, which strips `| undefined` from optional value
+// `{ k?: X | undefined }` → `{ k?: X }`. Strips `| undefined` from the value of
+// optional properties so an object's Type slot stays assignable to
+// `Record<string, Value>` under `exactOptionalPropertyTypes: true` (Convex's
+// `Value` excludes `undefined`). The strip is intentionally shallow: nested
+// `| undefined` is left intact and is harmless, since only the outer
+// `Record<string, Value>` boundary is checked strictly. Keeping the strip
+// shallow is also what keeps recursive schemas safe — a deep, self-mapping
+// variant would re-enter the same circular-reference trap as `ObjectType<F>`.
+type EOPTInfer<T> = T extends object
+  ? Expand<
+      {
+        [K in keyof T as undefined extends T[K] ? never : K]: T[K];
+      } & {
+        [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<
+          T[K],
+          undefined
+        >;
+      }
+    >
+  : T;
+
+// Shape for the literal-keyed `z.record()` path (via
+// `ConvexObjectValidatorFromRecord`). The keys are fixed string literals, so the
+// validator record is never self-referential here and Convex's own
+// `ObjectType<F>` is safe to use; it strips `| undefined` from optional value
 // positions so the result is assignable to `Record<string, Value>` under
-// `exactOptionalPropertyTypes: true`. Pass `Brand = never` (default) for
-// unbranded objects; pass the inferred brand for `$ZodBranded<$ZodObject>`.
+// `exactOptionalPropertyTypes: true`.
 type BridgedObject<
   F extends Record<string, GenericValidator>,
   IsOptional extends "required" | "optional",
-  Brand extends string | number | symbol = never,
-> = [Brand] extends [never]
-  ? VObject<ObjectType<F>, F, IsOptional>
-  : VObject<ObjectType<F> & zCore.$brand<Brand>, F, IsOptional>;
+> = VObject<ObjectType<F>, F, IsOptional>;
 
 type ConvexObjectValidatorFromRecord<
   Key extends string,
