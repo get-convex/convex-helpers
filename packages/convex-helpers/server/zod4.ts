@@ -1400,26 +1400,23 @@ type ConvexObjectFromZodShape<Fields extends Readonly<zCore.$ZodShape>> =
       }
     : never;
 
-// `{ k?: X | undefined }` → `{ k?: X }`. Strips `| undefined` from the value of
-// optional properties so an object's Type slot stays assignable to
-// `Record<string, Value>` under `exactOptionalPropertyTypes: true` (Convex's
-// `Value` excludes `undefined`). The strip is intentionally shallow: nested
-// `| undefined` is left intact and is harmless, since only the outer
-// `Record<string, Value>` boundary is checked strictly. Keeping the strip
-// shallow is also what keeps recursive schemas safe — a deep, self-mapping
-// variant would re-enter the same circular-reference trap as `ObjectType<F>`.
-type EOPTInfer<T> = T extends object
-  ? Expand<
-      {
-        [K in keyof T as undefined extends T[K] ? never : K]: T[K];
-      } & {
-        [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<
-          T[K],
-          undefined
-        >;
-      }
-    >
-  : T;
+// EOPTInfer<{ a?: string | undefined }> = { a?: string }
+// Recursively drops `| undefined` from optional properties so the Type slot
+// matches `ObjectType<F>` and stays assignable to Convex's `Value` (which
+// excludes `undefined`) under `exactOptionalPropertyTypes: true`.
+type EOPTInfer<T> = T extends readonly unknown[]
+  ? { [K in keyof T]: EOPTInfer<T[K]> }
+  : T extends object
+    ? Expand<
+        {
+          [K in keyof T as undefined extends T[K] ? never : K]: EOPTInfer<T[K]>;
+        } & {
+          [K in keyof T as undefined extends T[K] ? K : never]?: EOPTInfer<
+            Exclude<T[K], undefined>
+          >;
+        }
+      >
+    : T;
 
 // Shape for the literal-keyed `z.record()` path (via
 // `ConvexObjectValidatorFromRecord`). The keys are fixed string literals, so the
