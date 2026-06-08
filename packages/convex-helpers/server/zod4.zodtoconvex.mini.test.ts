@@ -726,6 +726,11 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   test("recursive type", () => {
+    // Cast through `as zCore.$ZodType` to keep the Type slot opaque: a
+    // self-referential schema makes `ConvexValidatorFromZod` circularly
+    // reference itself, a recoverable TS2615. Compile-time shape verification
+    // is covered by the non-recursive tests; this only asserts the runtime
+    // conversion produces the right validator.
     const category = z.object({
       name: z.string(),
       get subcategories() {
@@ -735,7 +740,8 @@ describe("zodToConvex + zodOutputToConvex", () => {
 
     testZodToConvexInputAndOutput(
       category,
-      // @ts-expect-error -- TypeScript can’t compute the full type and uses `unknown`
+      // @ts-expect-error -- the TypeScript type is recursive, while the
+      // runtime time uses `v.any()` since Convex validators can’t be recursive
       v.object({
         name: v.string(),
         subcategories: v.array(v.any()),

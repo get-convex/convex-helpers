@@ -1122,11 +1122,39 @@ type ConvexValidatorFromZodCommon<
                         Z extends zCore.$ZodObject<
                             infer Fields extends Readonly<zCore.$ZodShape>
                           >
-                        ? VObject<
-                            zCore.infer<Z>,
-                            ConvexObjectFromZodShape<Fields>,
-                            IsOptional
+                        ? // z.brand()
+                          // The Type slot comes from Zod's own (recursion-safe)
+                          // inferred type, with `| undefined` stripped from
+                          // optional props so it stays assignable to
+                          // `Record<string, Value>` under
+                          // `exactOptionalPropertyTypes`. We deliberately do NOT
+                          // map `ObjectType<F>` over the validator record here, and
+                          // we pass `ConvexObjectFromZodShape<Fields>` straight
+                          // through rather than binding it via
+                          // `extends infer F extends Record<string, GenericValidator>`:
+                          // both force the self-referential record to expand
+                          // eagerly, which makes tsc emit — and on TS 5.5–6.0 crash
+                          // while emitting — the TS2615 circular-reference
+                          // diagnostic. Keeping the record lazy lets recursive
+                          // schemas degrade to a recoverable error instead.
+                          // `$ZodBranded<$ZodObject>` is structurally
+                          // `$ZodObject & ...`, so this branch also matches branded
+                          // objects; reattach the brand.
+                          Z extends zCore.$ZodBranded<
+                            infer Inner extends zCore.$ZodType,
+                            infer Brand
                           >
+                          ? VObject<
+                              EOPTInfer<zCore.infer<Inner>> &
+                                zCore.$brand<Brand>,
+                              ConvexObjectFromZodShape<Fields>,
+                              IsOptional
+                            >
+                          : VObject<
+                              EOPTInfer<zCore.infer<Z>>,
+                              ConvexObjectFromZodShape<Fields>,
+                              IsOptional
+                            >
                         : // z.never() (→ z.union() with no elements)
                           Z extends zCore.$ZodNever
                           ? VUnion<never, [], IsOptional, never>
@@ -1264,56 +1292,28 @@ type ConvexValidatorFromZodCommon<
                                                 IsOptional
                                               >["fieldPaths"]
                                             >
-                                        : // z.brand()
-                                          Z extends zCore.$ZodBranded<
-                                              infer Inner extends
-                                                zCore.$ZodType,
-                                              infer Brand
+                                        : // z.record()
+                                          Z extends zCore.$ZodRecord<
+                                              infer Key extends
+                                                zCore.$ZodRecordKey,
+                                              infer Value extends zCore.$ZodType
                                             >
-                                          ? Inner extends zCore.$ZodString
-                                            ? VString<
-                                                string & zCore.$brand<Brand>,
-                                                IsOptional
-                                              >
-                                            : Inner extends zCore.$ZodNumber
-                                              ? VFloat64<
-                                                  number & zCore.$brand<Brand>,
-                                                  IsOptional
-                                                >
-                                              : Inner extends zCore.$ZodBigInt
-                                                ? VInt64<
-                                                    bigint &
-                                                      zCore.$brand<Brand>,
-                                                    IsOptional
-                                                  >
-                                                : Inner extends zCore.$ZodObject<
-                                                      infer Fields extends
-                                                        Readonly<zCore.$ZodShape>
-                                                    >
-                                                  ? VObject<
-                                                      zCore.infer<Inner> &
-                                                        zCore.$brand<Brand>,
-                                                      ConvexObjectFromZodShape<Fields>,
-                                                      IsOptional
-                                                    >
-                                                  : ConvexValidatorFromZod<
-                                                      Inner,
-                                                      IsOptional
-                                                    >
-                                          : // z.record()
-                                            Z extends zCore.$ZodRecord<
-                                                infer Key extends
-                                                  zCore.$ZodRecordKey,
-                                                infer Value extends
+                                          ? ConvexValidatorFromZodRecord<
+                                              Key,
+                                              Value,
+                                              IsOptional
+                                            >
+                                          : // z.readonly()
+                                            Z extends zCore.$ZodReadonly<
+                                                infer Inner extends
                                                   zCore.$ZodType
                                               >
-                                            ? ConvexValidatorFromZodRecord<
-                                                Key,
-                                                Value,
+                                            ? ConvexValidatorFromZod<
+                                                Inner,
                                                 IsOptional
                                               >
-                                            : // z.readonly()
-                                              Z extends zCore.$ZodReadonly<
+                                            : // z.lazy()
+                                              Z extends zCore.$ZodLazy<
                                                   infer Inner extends
                                                     zCore.$ZodType
                                                 >
@@ -1321,60 +1321,45 @@ type ConvexValidatorFromZodCommon<
                                                   Inner,
                                                   IsOptional
                                                 >
-                                              : // z.lazy()
-                                                Z extends zCore.$ZodLazy<
-                                                    infer Inner extends
-                                                      zCore.$ZodType
+                                              : // z.templateLiteral()
+                                                Z extends zCore.$ZodTemplateLiteral<
+                                                    infer Template extends
+                                                      string
                                                   >
-                                                ? ConvexValidatorFromZod<
-                                                    Inner,
-                                                    IsOptional
-                                                  >
-                                                : // z.templateLiteral()
-                                                  Z extends zCore.$ZodTemplateLiteral<
-                                                      infer Template extends
-                                                        string
+                                                ? VString<Template, IsOptional>
+                                                : // z.catch()
+                                                  Z extends zCore.$ZodCatch<
+                                                      infer T extends
+                                                        zCore.$ZodType
                                                     >
-                                                  ? VString<
-                                                      Template,
+                                                  ? ConvexValidatorFromZod<
+                                                      T,
                                                       IsOptional
                                                     >
-                                                  : // z.catch()
-                                                    Z extends zCore.$ZodCatch<
-                                                        infer T extends
-                                                          zCore.$ZodType
+                                                  : // z.transform()
+                                                    Z extends zCore.$ZodTransform<
+                                                        any,
+                                                        any
                                                       >
-                                                    ? ConvexValidatorFromZod<
-                                                        T,
-                                                        IsOptional
-                                                      >
-                                                    : // z.transform()
-                                                      Z extends zCore.$ZodTransform<
-                                                          any,
-                                                          any
-                                                        >
-                                                      ? VAny<any, "required"> // No runtime info about types so we use v.any()
-                                                      : // z.custom()
-                                                        Z extends zCore.$ZodCustom<any>
+                                                    ? VAny<any, "required"> // No runtime info about types so we use v.any()
+                                                    : // z.custom()
+                                                      Z extends zCore.$ZodCustom<any>
+                                                      ? VAny<any, "required">
+                                                      : // z.intersection()
+                                                        // We could do some more advanced logic here where we compute
+                                                        // the Convex validator that results from the intersection.
+                                                        // For now, we simply use v.any()
+                                                        Z extends zCore.$ZodIntersection<any>
                                                         ? VAny<any, "required">
-                                                        : // z.intersection()
-                                                          // We could do some more advanced logic here where we compute
-                                                          // the Convex validator that results from the intersection.
-                                                          // For now, we simply use v.any()
-                                                          Z extends zCore.$ZodIntersection<any>
-                                                          ? VAny<
-                                                              any,
-                                                              "required"
-                                                            >
-                                                          : // unencodable types
-                                                            IsConvexUnencodableType<Z> extends true
-                                                            ? never
-                                                            : // Other validators: we don’t return VAny
-                                                              // because it might be a type that is
-                                                              // recognized at runtime but is not
-                                                              // recognized at typecheck time
-                                                              // (e.g. zCore.$ZodType<string>)
-                                                              GenericValidator;
+                                                        : // unencodable types
+                                                          IsConvexUnencodableType<Z> extends true
+                                                          ? never
+                                                          : // Other validators: we don’t return VAny
+                                                            // because it might be a type that is
+                                                            // recognized at runtime but is not
+                                                            // recognized at typecheck time
+                                                            // (e.g. zCore.$ZodType<string>)
+                                                            GenericValidator;
 
 type ConvexUnionValidatorFromZod<T extends readonly zCore.$ZodType[]> = VUnion<
   ConvexValidatorFromZod<T[number], "required">["type"],
@@ -1415,38 +1400,51 @@ type ConvexObjectFromZodShape<Fields extends Readonly<zCore.$ZodShape>> =
       }
     : never;
 
+// EOPTInfer<{ a?: string | undefined }> = { a?: string }
+// Recursively drops `| undefined` from optional properties so the Type slot
+// matches `ObjectType<F>` and stays assignable to Convex's `Value` (which
+// excludes `undefined`) under `exactOptionalPropertyTypes: true`.
+type EOPTInfer<T> = T extends readonly unknown[]
+  ? { [K in keyof T]: EOPTInfer<T[K]> }
+  : T extends object
+    ? Expand<
+        {
+          [K in keyof T as undefined extends T[K] ? never : K]: EOPTInfer<T[K]>;
+        } & {
+          [K in keyof T as undefined extends T[K] ? K : never]?: EOPTInfer<
+            Exclude<T[K], undefined>
+          >;
+        }
+      >
+    : T;
+
+// Shape for the literal-keyed `z.record()` path (via
+// `ConvexObjectValidatorFromRecord`). The keys are fixed string literals, so the
+// validator record is never self-referential here and Convex's own
+// `ObjectType<F>` is safe to use; it strips `| undefined` from optional value
+// positions so the result is assignable to `Record<string, Value>` under
+// `exactOptionalPropertyTypes: true`.
+type BridgedObject<
+  F extends Record<string, GenericValidator>,
+  IsOptional extends "required" | "optional",
+> = VObject<ObjectType<F>, F, IsOptional>;
+
 type ConvexObjectValidatorFromRecord<
   Key extends string,
   Value extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
   IsPartial extends "partial" | "full",
-> = VObject<
-  IsPartial extends "partial"
-    ? {
-        [K in Key]?: zCore.infer<Value>;
-      }
-    : MakeUndefinedPropertiesOptional<{
-        [K in Key]: zCore.infer<Value>;
-      }>,
+> = (
   IsPartial extends "partial"
     ? {
         [K in Key]: VOptional<ConvexValidatorFromZod<Value, "required">>;
       }
     : {
         [K in Key]: ConvexValidatorFromZod<Value, "required">;
-      },
-  IsOptional
->;
-
-// MakeUndefinedPropertiesOptional<{ a: string | undefined; b: string }> = { a?: string | undefined; b: string }
-//                                                                            ^
-type MakeUndefinedPropertiesOptional<Obj extends object> = Expand<
-  {
-    [K in keyof Obj as undefined extends Obj[K] ? never : K]: Obj[K];
-  } & {
-    [K in keyof Obj as undefined extends Obj[K] ? K : never]?: Obj[K];
-  }
->;
+      }
+) extends infer F extends Record<string, GenericValidator>
+  ? BridgedObject<F, IsOptional>
+  : never;
 
 type ConvexValidatorFromZodRecord<
   Key extends zCore.$ZodRecordKey,
