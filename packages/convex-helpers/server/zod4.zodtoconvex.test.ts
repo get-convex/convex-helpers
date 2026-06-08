@@ -781,13 +781,6 @@ describe("zodToConvex + zodOutputToConvex", () => {
   });
 
   describe("recursive types", () => {
-    // These tests cast through `as zCore.$ZodType` to keep the bridge's Type
-    // slot opaque: a self-referential schema makes `ConvexValidatorFromZod`
-    // circularly reference itself, a recoverable TS2615 — Convex validators
-    // can't represent cycles, so the runtime collapses them to `v.any()` via
-    // its visited set. Compile-time shape verification is already covered by
-    // the non-recursive tests above; here we only assert the runtime
-    // conversion produces the expected validator structure.
     test("recursive type", () => {
       const category = z.object({
         name: z.string(),
@@ -796,13 +789,10 @@ describe("zodToConvex + zodOutputToConvex", () => {
         },
       });
 
-      expect(zodToConvex(category as zCore.$ZodType)).to.deep.equal(
-        v.object({
-          name: v.string(),
-          subcategories: v.array(v.any()),
-        }),
-      );
-      expect(zodOutputToConvex(category as zCore.$ZodType)).to.deep.equal(
+      testZodToConvexInputAndOutput(
+        category,
+        // @ts-expect-error -- the TypeScript type is recursive, while the
+        // runtime time uses `v.any()` since Convex validators can’t be recursive
         v.object({
           name: v.string(),
           subcategories: v.array(v.any()),
@@ -818,16 +808,13 @@ describe("zodToConvex + zodOutputToConvex", () => {
         },
       });
 
-      expect(zodToConvex(linkedList as zCore.$ZodType)).to.deep.equal(
+      testZodToConvexInputAndOutput(
+        linkedList,
+        // @ts-expect-error -- the TypeScript type is recursive, while the
+        // runtime time uses `v.any()` since Convex validators can’t be recursive
         v.object({
           value: v.string(),
-          next: v.optional(v.any()), // not `v.any()`!
-        }),
-      );
-      expect(zodOutputToConvex(linkedList as zCore.$ZodType)).to.deep.equal(
-        v.object({
-          value: v.string(),
-          next: v.optional(v.any()), // not `v.any()`!
+          next: v.optional(v.any()),
         }),
       );
     });

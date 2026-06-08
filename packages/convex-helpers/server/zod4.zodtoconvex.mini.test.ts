@@ -738,7 +738,10 @@ describe("zodToConvex + zodOutputToConvex", () => {
       },
     });
 
-    expect(zodToConvex(category as zCore.$ZodType)).to.deep.equal(
+    testZodToConvexInputAndOutput(
+      category,
+      // @ts-expect-error -- the TypeScript type is recursive, while the
+      // runtime time uses `v.any()` since Convex validators can’t be recursive
       v.object({
         name: v.string(),
         subcategories: v.array(v.any()),

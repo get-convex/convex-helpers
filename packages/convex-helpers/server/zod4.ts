@@ -1122,7 +1122,8 @@ type ConvexValidatorFromZodCommon<
                         Z extends zCore.$ZodObject<
                             infer Fields extends Readonly<zCore.$ZodShape>
                           >
-                        ? // The Type slot comes from Zod's own (recursion-safe)
+                        ? // z.brand()
+                          // The Type slot comes from Zod's own (recursion-safe)
                           // inferred type, with `| undefined` stripped from
                           // optional props so it stays assignable to
                           // `Record<string, Value>` under
@@ -1291,16 +1292,7 @@ type ConvexValidatorFromZodCommon<
                                                 IsOptional
                                               >["fieldPaths"]
                                             >
-                                        : // z.brand() — handled structurally
-                                          // by earlier branches. Zod 4's
-                                          // `$ZodBranded<T, B>` is structurally
-                                          // `T & {marker}`, so `z.string().brand()`
-                                          // matches `$ZodString` at the string
-                                          // arm, `z.number().brand()` matches
-                                          // `$ZodNumber`, etc. Branded objects
-                                          // match `$ZodObject` and reattach the
-                                          // brand in that branch's nested check.
-                                          // z.record()
+                                        : // z.record()
                                           Z extends zCore.$ZodRecord<
                                               infer Key extends
                                                 zCore.$ZodRecordKey,
