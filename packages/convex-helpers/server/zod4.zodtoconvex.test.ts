@@ -29,6 +29,12 @@ import {
 } from "./zod4";
 import type { Equals } from "../index.js";
 import { isSameType } from "zod-compare";
+import {
+  defineSchema,
+  defineTable,
+  type DataModelFromSchemaDefinition,
+  type DocumentByName,
+} from "convex/server";
 
 describe("zodToConvex + zodOutputToConvex", () => {
   test("id", () => {
@@ -1657,6 +1663,61 @@ describe("zid typing", () => {
     // if input widens to unknown, this stops erroring.
     // @ts-expect-error id input must be string
     const _bad: z.input<typeof _userObjSchema> = { userId: 123 };
+  });
+});
+
+// Regression suite for convex-helpers issue: after 0.1.119, using `zid` inside
+// a Zod object passed to `defineTable(zodOutputToConvex(...))` inflated the id
+// field's TypeScript type. The Type slot of the generated `VObject` derived via
+// `EOPTInfer<zCore.infer<Z>>`, and `EOPTInfer` recursed into `GenericId<T>`
+// (which is `string & { __tableName: T }`) as if it were a plain object. That
+// mapped over every `string` prototype member, turning `Doc<"projects">.userId`
+// into `{ readonly [x: number]: string; toString: {}; charAt: {}; … 39 more …;
+// __tableName: "users" }` instead of a proper `GenericId<"users">` — so it was
+// no longer assignable to `Id<"users">`. The fix must keep branded primitives
+// like `GenericId<T>` intact in the Type slot.
+describe("zid inside defineTable keeps GenericId in the Doc type (issue: type inflation)", () => {
+  test("Doc field for a zid resolves to GenericId, not an inflated string object", () => {
+    const projectSchema = z.object({
+      userId: zid("users"),
+    });
+    const usersSchema = z.object({
+      name: z.string(),
+    });
+
+    const schema = defineSchema({
+      projects: defineTable(zodOutputToConvex(projectSchema)).index(
+        "by_userId",
+        ["userId"],
+      ),
+      users: defineTable(zodOutputToConvex(usersSchema)),
+    });
+
+    type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+    type ProjectDoc = DocumentByName<DataModel, "projects">;
+
+    // Before the fix, ProjectDoc["userId"] was a structural object containing
+    // all string prototype methods plus `__tableName`, which is the exact
+    // failure reported. It must be exactly GenericId<"users">.
+    expectTypeOf<ProjectDoc["userId"]>().toEqualTypeOf<GenericId<"users">>();
+
+    // And it must remain assignable to GenericId<"users"> (i.e. Id<"users">),
+    // which is the assignment that broke in the original report.
+    const _userId: GenericId<"users"> = (null as unknown as ProjectDoc).userId;
+    void _userId;
+  });
+
+  test("the VObject Type slot itself keeps GenericId for zid fields", () => {
+    const validator = zodOutputToConvex(z.object({ userId: zid("users") }));
+    expectTypeOf<(typeof validator)["type"]>().toEqualTypeOf<{
+      userId: GenericId<"users">;
+    }>();
+
+    // Same expectation for the input-side bridge.
+    const inputValidator = zodToConvex(z.object({ userId: zid("users") }));
+    expectTypeOf<(typeof inputValidator)["type"]>().toEqualTypeOf<{
+      userId: GenericId<"users">;
+    }>();
   });
 });
 
