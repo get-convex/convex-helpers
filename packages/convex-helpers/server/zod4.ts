@@ -1404,19 +1404,30 @@ type ConvexObjectFromZodShape<Fields extends Readonly<zCore.$ZodShape>> =
 // Recursively drops `| undefined` from optional properties so the Type slot
 // matches `ObjectType<F>` and stays assignable to Convex's `Value` (which
 // excludes `undefined`) under `exactOptionalPropertyTypes: true`.
+//
+// Branded primitives must short-circuit before the `extends object` branch:
+// `GenericId<T>` is `string & { __tableName: T }`, which satisfies
+// `extends object`. Without this guard, the mapped type below would enumerate
+// every `string` prototype member, inflating a `zid` field into
+// `{ [x: number]: string; toString: {}; …; __tableName: T }` instead of leaving
+// it as `GenericId<T>`.
 type EOPTInfer<T> = T extends readonly unknown[]
   ? { [K in keyof T]: EOPTInfer<T[K]> }
-  : T extends object
-    ? Expand<
-        {
-          [K in keyof T as undefined extends T[K] ? never : K]: EOPTInfer<T[K]>;
-        } & {
-          [K in keyof T as undefined extends T[K] ? K : never]?: EOPTInfer<
-            Exclude<T[K], undefined>
-          >;
-        }
-      >
-    : T;
+  : T extends string | number | boolean | bigint | symbol | null | undefined
+    ? T
+    : T extends object
+      ? Expand<
+          {
+            [K in keyof T as undefined extends T[K] ? never : K]: EOPTInfer<
+              T[K]
+            >;
+          } & {
+            [K in keyof T as undefined extends T[K] ? K : never]?: EOPTInfer<
+              Exclude<T[K], undefined>
+            >;
+          }
+        >
+      : T;
 
 // Shape for the literal-keyed `z.record()` path (via
 // `ConvexObjectValidatorFromRecord`). The keys are fixed string literals, so the

@@ -1698,13 +1698,9 @@ describe("zid inside defineTable keeps GenericId in the Doc type (issue: type in
 
     // Before the fix, ProjectDoc["userId"] was a structural object containing
     // all string prototype methods plus `__tableName`, which is the exact
-    // failure reported. It must be exactly GenericId<"users">.
+    // failure reported. It must be exactly GenericId<"users">, which is also
+    // the type that broke the `Id<"users">` assignment in the original report.
     expectTypeOf<ProjectDoc["userId"]>().toEqualTypeOf<GenericId<"users">>();
-
-    // And it must remain assignable to GenericId<"users"> (i.e. Id<"users">),
-    // which is the assignment that broke in the original report.
-    const _userId: GenericId<"users"> = (null as unknown as ProjectDoc).userId;
-    void _userId;
   });
 
   test("the VObject Type slot itself keeps GenericId for zid fields", () => {
