@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.120
+
+- Zod 4 support: fix a regression introduced in 0.1.119 in the return types of
+  `zodToConvex`/`zodOutputToConvex` when using branded types (including `zid`)
+
 ## 0.1.119
 
 - Zod 4 support: the return types of `zodToConvex` and `zodOutputToConvex`
