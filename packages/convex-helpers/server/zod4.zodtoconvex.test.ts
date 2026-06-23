@@ -1685,7 +1685,7 @@ describe("zid inside defineTable keeps GenericId in the Doc type (issue: type in
       name: z.string(),
     });
 
-    const schema = defineSchema({
+    const _schema = defineSchema({
       projects: defineTable(zodOutputToConvex(projectSchema)).index(
         "by_userId",
         ["userId"],
@@ -1693,7 +1693,7 @@ describe("zid inside defineTable keeps GenericId in the Doc type (issue: type in
       users: defineTable(zodOutputToConvex(usersSchema)),
     });
 
-    type DataModel = DataModelFromSchemaDefinition<typeof schema>;
+    type DataModel = DataModelFromSchemaDefinition<typeof _schema>;
     type ProjectDoc = DocumentByName<DataModel, "projects">;
 
     // Before the fix, ProjectDoc["userId"] was a structural object containing
@@ -1704,14 +1704,14 @@ describe("zid inside defineTable keeps GenericId in the Doc type (issue: type in
   });
 
   test("the VObject Type slot itself keeps GenericId for zid fields", () => {
-    const validator = zodOutputToConvex(z.object({ userId: zid("users") }));
-    expectTypeOf<(typeof validator)["type"]>().toEqualTypeOf<{
+    const _validator = zodOutputToConvex(z.object({ userId: zid("users") }));
+    expectTypeOf<(typeof _validator)["type"]>().toEqualTypeOf<{
       userId: GenericId<"users">;
     }>();
 
     // Same expectation for the input-side bridge.
-    const inputValidator = zodToConvex(z.object({ userId: zid("users") }));
-    expectTypeOf<(typeof inputValidator)["type"]>().toEqualTypeOf<{
+    const _inputValidator = zodToConvex(z.object({ userId: zid("users") }));
+    expectTypeOf<(typeof _inputValidator)["type"]>().toEqualTypeOf<{
       userId: GenericId<"users">;
     }>();
   });
