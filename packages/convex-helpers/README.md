@@ -1,5 +1,7 @@
 # convex-helpers
 
+**[NPM](https://www.npmjs.com/package/convex-helpers)**&nbsp;&nbsp;•&nbsp;&nbsp;**[Changelog](./CHANGELOG.md)**
+
 A collection of useful code to complement the official packages.
 
 Table of contents:

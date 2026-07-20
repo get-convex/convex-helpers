@@ -47,7 +47,7 @@ directory. To use it in your own project:
  npm install convex-helpers@latest
 ```
 
-See the [README](./packages/convex-helpers/README.md) for more details.
+See also: **[`convex-helpers` package README](./packages/convex-helpers/README.md)**&nbsp;&nbsp;•&nbsp;&nbsp;**[Changelog](./packages/convex-helpers/CHANGELOG.md)**
 
 The sections that follow are examples from which you can copy code.
 
