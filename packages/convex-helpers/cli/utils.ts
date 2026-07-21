@@ -27,6 +27,14 @@ export function getFunctionSpec(
   filePath?: string,
   timeoutSeconds: number = 120,
 ) {
+  if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0) {
+    console.error(
+      chalk.red(
+        `Invalid --timeout value: expected a positive number of seconds.`,
+      ),
+    );
+    process.exit(1);
+  }
   if (filePath && prod) {
     console.error(`To use the prod flag, you can't provide a file path`);
     process.exit(1);
