@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `convex-helpers/server/compare` is deprecated and now re-exports
+  `compareValues` from `convex/values`. There may be small differences in behavior in
+  uncommon cases (NaNs, negative zero, etc.) compared with the previous implementation.
+
 ## 0.1.120
 
 - Zod 4 support: fix a regression introduced in 0.1.119 in the return types of
