@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.121
 
 - Support the new `db.vars.commitTs` variable and `v.commitTs()` validator added in
   convex 1.43.0.
