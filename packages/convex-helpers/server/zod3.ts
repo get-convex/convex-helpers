@@ -13,6 +13,7 @@ import type {
   VUnion,
   VFloat64,
   VInt64,
+  VCommitTs,
   VBoolean,
   VNull,
   VLiteral,
@@ -22,7 +23,7 @@ import type {
   Validator,
   VRecord,
 } from "convex/values";
-import { ConvexError, v } from "convex/values";
+import { CommitTsPlaceholder, ConvexError, v } from "convex/values";
 import type {
   FunctionVisibility,
   GenericDataModel,
@@ -1610,50 +1611,57 @@ type ZodFromValidatorBase<V extends GenericValidator> =
         ? z.ZodNumber
         : V extends VInt64<any, any>
           ? z.ZodBigInt
-          : V extends VBoolean<any, any>
-            ? z.ZodBoolean
-            : V extends VNull<any, any>
-              ? z.ZodNull
-              : V extends VLiteral<infer T, any>
-                ? z.ZodLiteral<T>
-                : V extends VObject<any, infer Fields, any, any>
-                  ? z.ZodObject<
-                      {
-                        [K in keyof Fields]: ZodValidatorFromConvex<Fields[K]>;
-                      },
-                      "strip"
-                    >
-                  : V extends VRecord<any, infer Key, infer Value, any, any>
-                    ? Key extends VId<GenericId<infer TableName>>
-                      ? z.ZodRecord<
-                          Zid<TableName>,
-                          ZodValidatorFromConvex<Value>
-                        >
-                      : z.ZodRecord<z.ZodString, ZodValidatorFromConvex<Value>>
-                    : V extends VArray<any, any>
-                      ? z.ZodArray<ZodValidatorFromConvex<V["element"]>>
-                      : V extends VUnion<
-                            any,
-                            [
-                              infer A extends GenericValidator,
-                              infer B extends GenericValidator,
-                              ...infer Rest extends GenericValidator[],
-                            ],
-                            any,
-                            any
+          : V extends VCommitTs<any, any>
+            ? z.ZodUnion<[z.ZodBigInt, z.ZodType<CommitTsPlaceholder>]>
+            : V extends VBoolean<any, any>
+              ? z.ZodBoolean
+              : V extends VNull<any, any>
+                ? z.ZodNull
+                : V extends VLiteral<infer T, any>
+                  ? z.ZodLiteral<T>
+                  : V extends VObject<any, infer Fields, any, any>
+                    ? z.ZodObject<
+                        {
+                          [K in keyof Fields]: ZodValidatorFromConvex<
+                            Fields[K]
+                          >;
+                        },
+                        "strip"
+                      >
+                    : V extends VRecord<any, infer Key, infer Value, any, any>
+                      ? Key extends VId<GenericId<infer TableName>>
+                        ? z.ZodRecord<
+                            Zid<TableName>,
+                            ZodValidatorFromConvex<Value>
                           >
-                        ? z.ZodUnion<
-                            [
-                              ZodValidatorFromConvex<A>,
-                              ZodValidatorFromConvex<B>,
-                              ...{
-                                [K in keyof Rest]: ZodValidatorFromConvex<
-                                  Rest[K]
-                                >;
-                              },
-                            ]
+                        : z.ZodRecord<
+                            z.ZodString,
+                            ZodValidatorFromConvex<Value>
                           >
-                        : z.ZodTypeAny; // fallback for unknown validators
+                      : V extends VArray<any, any>
+                        ? z.ZodArray<ZodValidatorFromConvex<V["element"]>>
+                        : V extends VUnion<
+                              any,
+                              [
+                                infer A extends GenericValidator,
+                                infer B extends GenericValidator,
+                                ...infer Rest extends GenericValidator[],
+                              ],
+                              any,
+                              any
+                            >
+                          ? z.ZodUnion<
+                              [
+                                ZodValidatorFromConvex<A>,
+                                ZodValidatorFromConvex<B>,
+                                ...{
+                                  [K in keyof Rest]: ZodValidatorFromConvex<
+                                    Rest[K]
+                                  >;
+                                },
+                              ]
+                            >
+                          : z.ZodTypeAny; // fallback for unknown validators
 
 /**
  * Better type conversion from a Convex validator to a Zod validator
@@ -1703,6 +1711,9 @@ export function convexToZod<V extends GenericValidator>(
       break;
     case "int64":
       zodValidator = z.bigint();
+      break;
+    case "commitTs":
+      zodValidator = z.union([z.bigint(), z.instanceof(CommitTsPlaceholder)]);
       break;
     case "boolean":
       zodValidator = z.boolean();

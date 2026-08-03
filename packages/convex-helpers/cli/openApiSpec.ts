@@ -66,6 +66,7 @@ function generateSchemaFromValidator(validatorJson: ValidatorJSON): string {
     case "number":
       return "type: number";
     case "bigint":
+    case "commitTs":
       return "type: integer\nformat: int64";
     case "boolean":
       return "type: boolean";

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Support the new `db.vars.commitTs` variable and `v.commitTs()` validator added in
+  convex 1.43.0.
 - `convex-helpers/server/compare` is deprecated and now re-exports
   `compareValues` from `convex/values`. There may be small differences in behavior in
   uncommon cases (NaNs, negative zero, etc.) compared with the previous implementation.

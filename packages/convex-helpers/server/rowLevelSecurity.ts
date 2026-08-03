@@ -276,6 +276,7 @@ class WrapWriter<
   ctx: Ctx;
   db: GenericDatabaseWriter<DataModel>;
   system: GenericDatabaseWriter<DataModel>["system"];
+  vars: GenericDatabaseWriter<DataModel>["vars"];
   reader: GenericDatabaseReader<DataModel>;
   rules: Rules<Ctx, DataModel>;
   config: RLSConfig;
@@ -299,6 +300,7 @@ class WrapWriter<
     this.ctx = ctx;
     this.db = db;
     this.system = db.system;
+    this.vars = db.vars;
     this.reader = new WrapReader(ctx, db, rules, config);
     this.rules = rules;
     this.config = config ?? { defaultPolicy: "allow" };

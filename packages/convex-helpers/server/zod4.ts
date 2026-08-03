@@ -1,4 +1,4 @@
-import { ConvexError, v } from "convex/values";
+import { CommitTsPlaceholder, ConvexError, v } from "convex/values";
 import type {
   GenericId,
   GenericValidator,
@@ -11,6 +11,7 @@ import type {
   VArray,
   VBoolean,
   VBytes,
+  VCommitTs,
   VFloat64,
   VId,
   VInt64,
@@ -641,6 +642,9 @@ export function convexToZod<V extends GenericValidator>(
       break;
     case "int64":
       zodValidator = z.bigint();
+      break;
+    case "commitTs":
+      zodValidator = z.union([z.bigint(), z.instanceof(CommitTsPlaceholder)]);
       break;
     case "boolean":
       zodValidator = z.boolean();
@@ -1823,98 +1827,108 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
         ? BrandIfBranded<T, z.ZodNumber>
         : V extends VInt64<any>
           ? z.ZodBigInt
-          : V extends VBoolean<any>
-            ? z.ZodBoolean
-            : V extends VNull<any>
-              ? z.ZodNull
-              : V extends VArray<any, infer Element>
-                ? Element extends VArray<any, any> // This check is used to avoid TypeScript complaining about infinite type instantiation
-                  ? z.ZodArray<zCore.SomeType>
-                  : z.ZodArray<ZodFromValidatorBase<Element>>
-                : V extends VObject<
-                      any,
-                      infer Fields extends Record<string, GenericValidator>
-                    >
-                  ? z.ZodObject<ZodShapeFromConvexObject<Fields>, zCore.$strict>
-                  : V extends VBytes<any, any>
-                    ? never
-                    : V extends VLiteral<
-                          infer T extends zCore.util.Literal,
-                          OptionalProperty
-                        >
-                      ? z.ZodLiteral<NotUndefined<T>>
-                      : V extends VRecord<
-                            any,
-                            infer Key,
-                            infer Value,
-                            OptionalProperty,
-                            any
+          : V extends VCommitTs<any>
+            ? z.ZodUnion<
+                readonly [
+                  z.ZodBigInt,
+                  z.ZodCustom<CommitTsPlaceholder, CommitTsPlaceholder>,
+                ]
+              >
+            : V extends VBoolean<any>
+              ? z.ZodBoolean
+              : V extends VNull<any>
+                ? z.ZodNull
+                : V extends VArray<any, infer Element>
+                  ? Element extends VArray<any, any> // This check is used to avoid TypeScript complaining about infinite type instantiation
+                    ? z.ZodArray<zCore.SomeType>
+                    : z.ZodArray<ZodFromValidatorBase<Element>>
+                  : V extends VObject<
+                        any,
+                        infer Fields extends Record<string, GenericValidator>
+                      >
+                    ? z.ZodObject<
+                        ZodShapeFromConvexObject<Fields>,
+                        zCore.$strict
+                      >
+                    : V extends VBytes<any, any>
+                      ? never
+                      : V extends VLiteral<
+                            infer T extends zCore.util.Literal,
+                            OptionalProperty
                           >
-                        ? z.ZodRecord<
-                            ZodFromStringValidator<Key>,
-                            ZodFromValidatorBase<Value>
-                          >
-                        : // Union: must handle separately cases for 0/1/2+ elements
-                          // instead of simply writing it as
-                          // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
-                          //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
-                          //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                          // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
-                          V extends VUnion<any, [], OptionalProperty, any>
-                          ? z.ZodNever
-                          : V extends VUnion<
-                                any,
-                                [infer I extends GenericValidator],
-                                OptionalProperty,
-                                any
-                              >
-                            ? ZodValidatorFromConvex<I>
+                        ? z.ZodLiteral<NotUndefined<T>>
+                        : V extends VRecord<
+                              any,
+                              infer Key,
+                              infer Value,
+                              OptionalProperty,
+                              any
+                            >
+                          ? z.ZodRecord<
+                              ZodFromStringValidator<Key>,
+                              ZodFromValidatorBase<Value>
+                            >
+                          : // Union: must handle separately cases for 0/1/2+ elements
+                            // instead of simply writing it as
+                            // V extends VUnion<any, infer Elements extends GenericValidator[], any, any>
+                            //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                            //   ? z.ZodUnion<{ [k in keyof Elements]: ZodValidatorFromConvex<Elements[k]> }>
+                            //                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                            // because the TypeScript compiler would complain about infinite type instantiation otherwise :(
+                            V extends VUnion<any, [], OptionalProperty, any>
+                            ? z.ZodNever
                             : V extends VUnion<
                                   any,
-                                  [
-                                    infer A extends GenericValidator,
-                                    ...infer Rest extends GenericValidator[],
-                                  ],
+                                  [infer I extends GenericValidator],
                                   OptionalProperty,
                                   any
                                 >
-                              ? z.ZodUnion<
-                                  readonly [
-                                    ZodValidatorFromConvex<A>,
-                                    ...{
-                                      [K in keyof Rest]: ZodValidatorFromConvex<
-                                        Rest[K]
-                                      >;
-                                    },
-                                  ]
-                                >
-                              : // Fallback for unions whose members are a
-                                // generic array (e.g. `VLiteral<X>[]`) rather
-                                // than a tuple. That happens when callers
-                                // spread an array into `v.union(...)` and
-                                // TypeScript cannot recover the tuple shape;
-                                // the order is unknown, so we widen to a
-                                // generic-array union of the element
-                                // validator. The `[GenericValidator] extends [E]`
-                                // guard avoids infinite recursion when `E` is the
-                                // maximally-generic validator type — that
-                                // happens during recursive type evaluation of
-                                // `convexToZod` itself.
-                                V extends VUnion<
+                              ? ZodValidatorFromConvex<I>
+                              : V extends VUnion<
                                     any,
-                                    (infer E extends GenericValidator)[],
+                                    [
+                                      infer A extends GenericValidator,
+                                      ...infer Rest extends GenericValidator[],
+                                    ],
                                     OptionalProperty,
                                     any
                                   >
-                                ? [GenericValidator] extends [E]
-                                  ? z.ZodUnion<readonly zCore.SomeType[]>
-                                  : z.ZodUnion<
-                                      readonly ZodValidatorFromConvex<E>[]
+                                ? z.ZodUnion<
+                                    readonly [
+                                      ZodValidatorFromConvex<A>,
+                                      ...{
+                                        [K in keyof Rest]: ZodValidatorFromConvex<
+                                          Rest[K]
+                                        >;
+                                      },
+                                    ]
+                                  >
+                                : // Fallback for unions whose members are a
+                                  // generic array (e.g. `VLiteral<X>[]`) rather
+                                  // than a tuple. That happens when callers
+                                  // spread an array into `v.union(...)` and
+                                  // TypeScript cannot recover the tuple shape;
+                                  // the order is unknown, so we widen to a
+                                  // generic-array union of the element
+                                  // validator. The `[GenericValidator] extends [E]`
+                                  // guard avoids infinite recursion when `E` is the
+                                  // maximally-generic validator type — that
+                                  // happens during recursive type evaluation of
+                                  // `convexToZod` itself.
+                                  V extends VUnion<
+                                      any,
+                                      (infer E extends GenericValidator)[],
+                                      OptionalProperty,
+                                      any
                                     >
-                                : V extends VAny<any, OptionalProperty, any>
-                                  ? z.ZodAny
-                                  : never;
+                                  ? [GenericValidator] extends [E]
+                                    ? z.ZodUnion<readonly zCore.SomeType[]>
+                                    : z.ZodUnion<
+                                        readonly ZodValidatorFromConvex<E>[]
+                                      >
+                                  : V extends VAny<any, OptionalProperty, any>
+                                    ? z.ZodAny
+                                    : never;
 
 type BrandIfBranded<InnerType, Validator extends zCore.SomeType> =
   InnerType extends zCore.$brand<infer Brand>

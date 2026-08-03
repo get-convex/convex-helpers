@@ -74,6 +74,10 @@ describe("vRequired", () => {
     testVRequired(v.optional(v.int64()), v.int64());
   });
 
+  test("converts optional commitTs to required", () => {
+    testVRequired(v.optional(v.commitTs()), v.commitTs());
+  });
+
   test("converts optional null to required", () => {
     testVRequired(v.optional(v.null()), v.null());
   });

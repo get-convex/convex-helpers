@@ -2,6 +2,7 @@ import * as zCore from "zod/v4/core";
 import * as z from "zod/v4";
 import { assertType, describe, expect, expectTypeOf, test } from "vitest";
 import {
+  CommitTsPlaceholder,
   GenericId,
   GenericValidator,
   Infer,
@@ -25,6 +26,13 @@ describe("convexToZod", () => {
   test("string", () => testConvexToZod(v.string(), z.string()));
   test("number", () => testConvexToZod(v.number(), z.number()));
   test("int64", () => testConvexToZod(v.int64(), z.bigint()));
+  test("commitTs", () => {
+    const _expected = z.union([z.bigint(), z.instanceof(CommitTsPlaceholder)]);
+    const actual = convexToZod(v.commitTs());
+    expectTypeOf(actual).toEqualTypeOf<typeof _expected>();
+    expect(actual.safeParse(1n).success).toBe(true);
+    expect(actual.safeParse(new CommitTsPlaceholder()).success).toBe(true);
+  });
   test("boolean", () => testConvexToZod(v.boolean(), z.boolean()));
   test("null", () => testConvexToZod(v.null(), z.null()));
   test("any", () => testConvexToZod(v.any(), z.any()));
