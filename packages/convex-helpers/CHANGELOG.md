@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Support TypeScript 7.
+
 ## 0.1.121
 
 - Support the new `db.vars.commitTs` variable and `v.commitTs()` validator added in
