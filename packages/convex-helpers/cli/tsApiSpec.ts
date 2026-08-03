@@ -68,6 +68,7 @@ function generateArgsType(argsJson: ValidatorJSON): string {
     case "number":
       return "number";
     case "bigint":
+    case "commitTs":
       return "bigint";
     case "boolean":
       return "boolean";

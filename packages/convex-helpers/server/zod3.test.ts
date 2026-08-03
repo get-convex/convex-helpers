@@ -25,7 +25,7 @@ import {
 } from "./zod3.js";
 import { customCtx } from "./customFunctions.js";
 import type { VString, VFloat64, VObject, VId, Infer } from "convex/values";
-import { v } from "convex/values";
+import { CommitTsPlaceholder, v } from "convex/values";
 import { z } from "zod/v3";
 
 // This is an example of how to make a version of `zid` that
@@ -1010,6 +1010,14 @@ test("convexToZod basic types", () => {
   expect(convexToZod(v.null()).constructor.name).toBe("ZodNull");
   expect(convexToZod(v.any()).constructor.name).toBe("ZodAny");
   expect(convexToZod(v.id("users")).constructor.name).toBe("Zid");
+});
+
+test("convexToZod commitTs", () => {
+  const _expected = z.union([z.bigint(), z.instanceof(CommitTsPlaceholder)]);
+  const validator = convexToZod(v.commitTs());
+  expectTypeOf(validator).toEqualTypeOf<typeof _expected>();
+  expect(validator.safeParse(1n).success).toBe(true);
+  expect(validator.safeParse(new CommitTsPlaceholder()).success).toBe(true);
 });
 
 test("convexToZod complex types", () => {

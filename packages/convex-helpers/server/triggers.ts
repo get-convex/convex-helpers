@@ -166,6 +166,7 @@ export class DatabaseWriterWithTriggers<
     isWithinTrigger: boolean = false,
   ) {
     this.system = innerDb.system;
+    this.vars = innerDb.vars;
     this.writer = writerWithTriggers(ctx, innerDb, triggers, isWithinTrigger);
   }
 
@@ -236,6 +237,8 @@ export class DatabaseWriterWithTriggers<
   }
 
   system: GenericDatabaseWriter<DataModel>["system"];
+
+  vars: GenericDatabaseWriter<DataModel>["vars"];
 }
 
 export function writerWithTriggers<
@@ -397,6 +400,7 @@ export function writerWithTriggers<
     get: innerDb.get.bind(innerDb),
     query: innerDb.query.bind(innerDb),
     normalizeId: innerDb.normalizeId.bind(innerDb),
+    vars: innerDb.vars,
   };
 }
 
