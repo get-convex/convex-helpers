@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
-    "@convex-dev/eslint-plugin": "2.0.0",
+    "@convex-dev/eslint-plugin": "3.0.0",
     "@edge-runtime/vm": "5.0.0",
     "@eslint/js": "9.39.5",
     "@redocly/cli": "2.43.3",
