@@ -60,6 +60,7 @@ export const literals = <T extends Array<string | number | boolean | bigint>>(
 };
 
 /**
+ * @deprecated Use `v.nullable` instead. (convex@1.30+)
  * nullable define a validator that can be the value or null more consisely.
  *
  * @param x The validator to make nullable. As in, it can be the value or null.
@@ -83,6 +84,7 @@ export function partial<T extends PropertyValidators>(
   [K in keyof T]: VOptional<T[K]>;
 };
 /**
+ * @deprecated use `v.object(...).partial()` instead. (convex@1.30+)
  * partial helps you define an object of optional validators more concisely.
  *
  * `partial(v.object({a: v.string(), b: v.number()}))` is equivalent to
@@ -249,29 +251,6 @@ type PartialVUnion<
   Optional extends OptionalProperty,
 > = VUnion<Partial<T>, PartialUnionMembers<Members>, Optional>;
 
-// Shorthand for defining validators that look like types.
-
-/** @deprecated Use `v.string()` instead. Any string value. */
-export const string = v.string();
-/** @deprecated Use `v.float64()` instead. JavaScript number, represented as a float64 in the database. */
-export const number = v.float64();
-/** @deprecated Use `v.float64()` instead. JavaScript number, represented as a float64 in the database. */
-export const float64 = v.float64();
-/** @deprecated Use `v.boolean()` instead. boolean value. For typing it only as true, use `l(true)` */
-export const boolean = v.boolean();
-/** @deprecated Use `v.int64()` instead. bigint, though stored as an int64 in the database. */
-export const biging = v.int64();
-/** @deprecated Use `v.int64()` instead. bigint, though stored as an int64 in the database. */
-export const int64 = v.int64();
-/** @deprecated Use `v.any()` instead. Any Convex value */
-export const any = v.any();
-/** @deprecated Use `v.null()` instead. Null value. Underscore is so it doesn't shadow the null builtin */
-export const null_ = v.null();
-/** @deprecated Use `v.*()` instead. */
-export const { id, object, array, bytes, literal, optional, union } = v;
-/** @deprecated Use `v.bytes()` instead. ArrayBuffer validator. */
-export const arrayBuffer = v.bytes();
-
 /**
  * Utility to get the validators for fields associated with a table.
  * e.g. for systemFields("users") it would return:
@@ -292,6 +271,7 @@ export type SystemFields<TableName extends string> = ReturnType<
 >;
 
 /**
+ * @deprecated Use `schema.doc` or `docValidator` instead. (convex@1.44+)
  * Utility to add system fields to an object with fields mapping to validators.
  * e.g. withSystemFields("users", { name: v.string() }) would return:
  * { name: v.string(), _id: v.id("users"), _creationTime: v.number() }
@@ -418,6 +398,7 @@ function intersectValidators(
   return specificFields;
 }
 
+/** @deprecated Use `schema.doc` instead. (convex@1.44+) */
 export const doc = <
   Schema extends SchemaDefinition<any, boolean>,
   TableName extends TableNamesInDataModel<
@@ -450,6 +431,7 @@ export const doc = <
 };
 
 /**
+ * @deprecated Use `schema.doc` and `schema.id` instead. (convex@1.44+)
  * Creates a validator with a type-safe `.id(table)` and a new `.doc(table)`.
  * Can be used instead of `v` for function arugments & return validators.
  * However, it cannot be used as part of defining a schema, since it would be
