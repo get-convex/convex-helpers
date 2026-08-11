@@ -555,13 +555,12 @@ export type CustomBuilder<
            */
           skipConvexValidation?: boolean;
         } & {
-          [key in keyof ExtraArgs as key extends
-            | "args"
-            | "handler"
-            | "skipConvexValidation"
-            | "returns"
-            ? never
-            : key]: ExtraArgs[key];
+          [
+            key in keyof ExtraArgs as key extends
+              "args" | "handler" | "skipConvexValidation" | "returns"
+              ? never
+              : key
+          ]: ExtraArgs[key];
         })
       | {
           (
@@ -678,9 +677,9 @@ export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                             ? VUnion<
                                 ConvexValidatorFromZod<T[number]>["type"],
                                 {
-                                  -readonly [Index in keyof T]: ConvexValidatorFromZod<
-                                    T[Index]
-                                  >;
+                                  -readonly [
+                                    Index in keyof T
+                                  ]: ConvexValidatorFromZod<T[Index]>;
                                 },
                                 "required",
                                 ConvexValidatorFromZod<T[number]>["fieldPaths"]
@@ -778,7 +777,9 @@ export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                       >
                                                     ? VObject<
                                                         ObjectType<{
-                                                          [key in keyof ZodShape]: ZodShape[key] extends z.ZodTypeAny
+                                                          [
+                                                            key in keyof ZodShape
+                                                          ]: ZodShape[key] extends z.ZodTypeAny
                                                             ? ConvexValidatorFromZod<
                                                                 ZodShape[key]
                                                               >
@@ -786,7 +787,9 @@ export type ConvexValidatorFromZod<Z extends z.ZodTypeAny> =
                                                         }> &
                                                           z.BRAND<Brand>,
                                                         {
-                                                          [key in keyof ZodShape]: ConvexValidatorFromZod<
+                                                          [
+                                                            key in keyof ZodShape
+                                                          ]: ConvexValidatorFromZod<
                                                             ZodShape[key]
                                                           >;
                                                         }
@@ -1102,9 +1105,9 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
                             ? VUnion<
                                 ConvexValidatorFromZodOutput<T[number]>["type"],
                                 {
-                                  -readonly [Index in keyof T]: ConvexValidatorFromZodOutput<
-                                    T[Index]
-                                  >;
+                                  -readonly [
+                                    Index in keyof T
+                                  ]: ConvexValidatorFromZodOutput<T[Index]>;
                                 },
                                 "required",
                                 ConvexValidatorFromZodOutput<
@@ -1202,7 +1205,9 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
                                                     >
                                                   ? VObject<
                                                       ObjectType<{
-                                                        [key in keyof ZodShape]: ZodShape[key] extends z.ZodTypeAny
+                                                        [
+                                                          key in keyof ZodShape
+                                                        ]: ZodShape[key] extends z.ZodTypeAny
                                                           ? ConvexValidatorFromZodOutput<
                                                               ZodShape[key]
                                                             >
@@ -1210,7 +1215,9 @@ export type ConvexValidatorFromZodOutput<Z extends z.ZodTypeAny> =
                                                       }> &
                                                         z.BRAND<Brand>,
                                                       {
-                                                        [key in keyof ZodShape]: ConvexValidatorFromZodOutput<
+                                                        [
+                                                          key in keyof ZodShape
+                                                        ]: ConvexValidatorFromZodOutput<
                                                           ZodShape[key]
                                                         >;
                                                       }

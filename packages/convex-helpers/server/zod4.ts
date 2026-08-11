@@ -811,13 +811,12 @@ export type CustomBuilder<
            */
           skipConvexValidation?: boolean;
         } & {
-          [key in keyof ExtraArgs as key extends
-            | "args"
-            | "handler"
-            | "skipConvexValidation"
-            | "returns"
-            ? never
-            : key]: ExtraArgs[key];
+          [
+            key in keyof ExtraArgs as key extends
+              "args" | "handler" | "skipConvexValidation" | "returns"
+              ? never
+              : key
+          ]: ExtraArgs[key];
         })
       | {
           (
@@ -1089,7 +1088,8 @@ export type ConvexValidatorFromZodOutput<
 type ConvexValidatorFromZodCommon<
   Z extends zCore.$ZodType,
   IsOptional extends "required" | "optional",
-> = // Basic types
+> =
+  // Basic types
   Z extends Zid<infer TableName>
     ? VId<GenericId<TableName>>
     : Z extends zCore.$ZodString
@@ -1897,9 +1897,9 @@ export type ZodFromValidatorBase<V extends GenericValidator> =
                                     readonly [
                                       ZodValidatorFromConvex<A>,
                                       ...{
-                                        [K in keyof Rest]: ZodValidatorFromConvex<
-                                          Rest[K]
-                                        >;
+                                        [
+                                          K in keyof Rest
+                                        ]: ZodValidatorFromConvex<Rest[K]>;
                                       },
                                     ]
                                   >

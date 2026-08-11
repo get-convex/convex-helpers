@@ -41,8 +41,7 @@ test("withoutSystemFields when fields aren't present", () => {
 
 test("withoutSystemFields type when it's a union", () => {
   const obj = { a: "a" } as
-    | { a: string }
-    | { _id: string; _creationTime: number };
+    { a: string } | { _id: string; _creationTime: number };
   const without = withoutSystemFields(obj);
   expect(without).toEqual({ a: "a" });
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type

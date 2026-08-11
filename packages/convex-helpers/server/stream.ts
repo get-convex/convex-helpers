@@ -1933,15 +1933,14 @@ function compareKeys(key1: Key, key2: Key): number {
 function serializeCursor(key: IndexKey): string {
   return JSON.stringify(
     convexToJson(
-      key.map(
-        (v): Value =>
-          v === undefined
-            ? "undefined"
-            : typeof v === "string" && v.endsWith("undefined")
-              ? // in the unlikely case their string was "undefined"
-                // or "_undefined" etc, we escape it.
-                "_" + v
-              : v,
+      key.map((v): Value =>
+        v === undefined
+          ? "undefined"
+          : typeof v === "string" && v.endsWith("undefined")
+            ? // in the unlikely case their string was "undefined"
+              // or "_undefined" etc, we escape it.
+              "_" + v
+            : v,
       ),
     ),
   );

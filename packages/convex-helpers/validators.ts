@@ -131,9 +131,7 @@ export function partial<
   | PartialVObject<Object["type"], Object["fields"], Object["isOptional"]>;
 export function partial(
   fieldsOrObjOrUnion:
-    | PropertyValidators
-    | VObject<any, any, any>
-    | VUnion<any, any[], any>,
+    PropertyValidators | VObject<any, any, any> | VUnion<any, any[], any>,
 ) {
   if (fieldsOrObjOrUnion.isConvexValidator) {
     if (fieldsOrObjOrUnion.kind === "object") {
@@ -328,8 +326,7 @@ export type AddFieldsToValidator<
         V["fieldPaths"] &
           {
             [Property in keyof Fields & string]:
-              | `${Property}.${Fields[Property]["fieldPaths"]}`
-              | Property;
+              `${Property}.${Fields[Property]["fieldPaths"]}` | Property;
           }[keyof Fields & string] &
           string
       >;
@@ -373,9 +370,7 @@ export function addFieldsToValidator<
 >(validator: V, fields: Fields): AddFieldsToValidator<V, Fields>;
 export function addFieldsToValidator<
   V extends
-    | PropertyValidators
-    | VObject<any, any, any>
-    | VUnion<any, any[], any>,
+    PropertyValidators | VObject<any, any, any> | VUnion<any, any[], any>,
   Fields extends PropertyValidators,
 >(validatorOrFields: V, fields: Fields) {
   const validator = asObjectValidator(validatorOrFields);

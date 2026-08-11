@@ -352,9 +352,9 @@ type IdFilePaths<
   InTableName extends TableNamesInDataModel<DataModel>,
   TableName extends TableNamesInDataModel<DataModel> | SystemTableNames,
 > = {
-  [FieldName in FieldPaths<
-    NamedTableInfo<DataModel, InTableName>
-  >]: FieldTypeFromFieldPath<
+  [
+    FieldName in FieldPaths<NamedTableInfo<DataModel, InTableName>>
+  ]: FieldTypeFromFieldPath<
     DocumentByName<DataModel, InTableName>,
     FieldName
   > extends GenericId<TableName>
@@ -371,11 +371,13 @@ type LookupAndIdFilePaths<
   DataModel extends GenericDataModel,
   TableName extends TablesWithLookups<DataModel>,
 > = {
-  [FieldPath in IdFilePaths<
-    DataModel,
-    TableName,
-    TableNamesInDataModel<DataModel> | SystemTableNames
-  >]: LookupFieldPaths<DataModel, TableName> extends FieldPath ? never : true;
+  [
+    FieldPath in IdFilePaths<
+      DataModel,
+      TableName,
+      TableNamesInDataModel<DataModel> | SystemTableNames
+    >
+  ]: LookupFieldPaths<DataModel, TableName> extends FieldPath ? never : true;
 }[IdFilePaths<
   DataModel,
   TableName,
@@ -437,12 +439,12 @@ export async function getManyVia<
     TableNamesInDataModel<DataModel> | SystemTableNames
   >,
   IndexName extends UserIndexes<DataModel, JoinTableName>,
-  TargetTableName extends FieldTypeFromFieldPath<
+  TargetTableName extends (FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
     ToField
   > extends GenericId<infer TargetTableName>
     ? TargetTableName
-    : never,
+    : never),
 >(
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,
@@ -499,12 +501,12 @@ export async function getManyViaOrThrow<
     TableNamesInDataModel<DataModel> | SystemTableNames
   >,
   IndexName extends UserIndexes<DataModel, JoinTableName>,
-  TargetTableName extends FieldTypeFromFieldPath<
+  TargetTableName extends (FieldTypeFromFieldPath<
     DocumentByName<DataModel, JoinTableName>,
     ToField
   > extends GenericId<infer TargetTableName>
     ? TargetTableName
-    : never,
+    : never),
 >(
   db: GenericDatabaseReader<DataModel>,
   table: JoinTableName,

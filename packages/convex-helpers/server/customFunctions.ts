@@ -600,9 +600,11 @@ export type CustomBuilder<
             ...args: ArgsForHandlerType<OneOrZeroArgs, CustomMadeArgs>
           ) => ReturnValue;
         } & {
-          [key in keyof ExtraArgs as key extends "args" | "returns" | "handler"
-            ? never
-            : key]: ExtraArgs[key];
+          [
+            key in keyof ExtraArgs as key extends "args" | "returns" | "handler"
+              ? never
+              : key
+          ]: ExtraArgs[key];
         })
       | {
           (

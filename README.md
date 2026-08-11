@@ -6,37 +6,36 @@ find the npm package in [./packages/convex-helpers](./packages/convex-helpers).
 
 ## Index
 
-| In the [`convex-helpers`](./packages/convex-helpers/README.md) [npm package](https://www.npmjs.com/package/convex-helpers):
-| ------------------------------------------------------------------------------------------------------------------
-| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)
-| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)
-| [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)
-| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)
-| [Rate limiting](./packages/convex-helpers/README.md#rate-limiting)
-| [Sessions: client-generated](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage)
-| [Richer useQuery](./packages/convex-helpers/README.md#richer-usequery)
-| [Row-level security](./packages/convex-helpers/README.md#row-level-security)
-| [Zod validation](./packages/convex-helpers/README.md#zod-validation)
-| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)
-| [CRUD](./packages/convex-helpers/README.md#crud-utilities)
-| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)
-| [Filter db queries with JS](./packages/convex-helpers/README.md#filter)
-| [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)
-| [Stream and combine data from multiple queries](./packages/convex-helpers/README.md#composable-querystreams)
-| [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)
-| [TypeScript API Generator](./packages/convex-helpers/README.md#typescript-api-generation)
-| [OpenAPI Spec Generator](./packages/convex-helpers/README.md#open-api-spec-generation)
-| [Triggers](./packages/convex-helpers/README.md#triggers)
-| [CORS for HttpRouter](./packages/convex-helpers/README.md#cors-support-for-httprouter)
-| [Standard Schema support](./packages/convex-helpers/README.md#standard-schema)
+| In the [`convex-helpers`](./packages/convex-helpers/README.md) [npm package](https://www.npmjs.com/package/convex-helpers): |
+| --------------------------------------------------------------------------------------------------------------------------- |
+| [Custom Functions](./packages/convex-helpers/README.md#custom-functions)                                                    |
+| [Relationship helpers](./packages/convex-helpers/README.md#relationship-helpers)                                            |
+| [Stateful Migrations](./packages/convex-helpers/README.md#stateful-migrations)                                              |
+| [Action retry wrapper](./packages/convex-helpers/README.md#action-retries)                                                  |
+| [Rate limiting](./packages/convex-helpers/README.md#rate-limiting)                                                          |
+| [Sessions: client-generated](./packages/convex-helpers/README.md#session-tracking-via-client-side-sessionid-storage)        |
+| [Richer useQuery](./packages/convex-helpers/README.md#richer-usequery)                                                      |
+| [Row-level security](./packages/convex-helpers/README.md#row-level-security)                                                |
+| [Zod validation](./packages/convex-helpers/README.md#zod-validation)                                                        |
+| [Hono for HTTP endpoints](./packages/convex-helpers/README.md#hono-for-advanced-http-endpoint-definitions)                  |
+| [CRUD](./packages/convex-helpers/README.md#crud-utilities)                                                                  |
+| [Validator utilities](./packages/convex-helpers/README.md#validator-utilities)                                              |
+| [Filter db queries with JS](./packages/convex-helpers/README.md#filter)                                                     |
+| [Manual pagination](./packages/convex-helpers/README.md#manual-pagination)                                                  |
+| [Stream and combine data from multiple queries](./packages/convex-helpers/README.md#composable-querystreams)                |
+| [Query caching with ConvexQueryCacheProvider](./packages/convex-helpers/README.md#query-caching)                            |
+| [TypeScript API Generator](./packages/convex-helpers/README.md#typescript-api-generation)                                   |
+| [OpenAPI Spec Generator](./packages/convex-helpers/README.md#open-api-spec-generation)                                      |
+| [Triggers](./packages/convex-helpers/README.md#triggers)                                                                    |
+| [CORS for HttpRouter](./packages/convex-helpers/README.md#cors-support-for-httprouter)                                      |
+| [Standard Schema support](./packages/convex-helpers/README.md#standard-schema)                                              |
 
-| In this directory for copy-pasting:
-| -----------------------------------
-| [Sessions: via a server table](#server-persisted-session-data)
-| [Testing with a local backend](#testing-with-a-local-backend)
-| [Presence](#presence)
-| [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting)
-| [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)
+| In this directory for copy-pasting:                                                     |
+| --------------------------------------------------------------------------------------- |
+| [Sessions: via a server table](#server-persisted-session-data)                          |
+| [Testing with a local backend](#testing-with-a-local-backend)                           |
+| [Throttling via single-flighting](#throttling-client-side-requests-by-single-flighting) |
+| [Stable query results via useStableQuery](#stable-query-results-via-usestablequery)     |
 
 ## 👉 `convex-helpers` [npm package](https://www.npmjs.com/package/convex-helpers) 👈
 
@@ -112,7 +111,9 @@ You'll need the [useStableQuery.ts](./src/hooks/useStableQuery.ts) file.
 
 ## Presence
 
-See the [Stack post on implementing presence](https://stack.convex.dev/presence-with-convex) for details on how to implement presence in your app.
+Note: you should use the new [Presence Component](https://convex.dev/components/presence).
+k
+See the [Stack post on implementing presence](https://stack.convex.dev/presence-with-convex) for an older approach on building it yourself. Some files in this repo are based on that post, but you should use the new component instead.
 
 Related files:
 

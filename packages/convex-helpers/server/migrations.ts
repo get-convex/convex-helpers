@@ -584,12 +584,7 @@ export type MigrationStatus<TableName extends string> = (
   | { name: string; status: "not found"; workerId: undefined; isDone: false }
 ) & {
   workerStatus?:
-    | "pending"
-    | "inProgress"
-    | "success"
-    | "failed"
-    | "canceled"
-    | undefined;
+    "pending" | "inProgress" | "success" | "failed" | "canceled" | undefined;
   batchSize?: any;
   next?: any;
 };
