@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.123
+
+- Deprecates some validator utilities now that convex@1.44 has schema.doc and schema.id
+
 ## 0.1.122
 
 - Support TypeScript 7.
