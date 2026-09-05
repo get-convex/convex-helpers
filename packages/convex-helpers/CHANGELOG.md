@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.124
 
 - `validate` now normalizes system table ids (e.g. `v.id("_storage")`) with
   `db.system.normalizeId` instead of throwing when passed a real `db`.
