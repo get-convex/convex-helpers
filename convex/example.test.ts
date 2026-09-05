@@ -13,6 +13,18 @@ describe("testingExample", () => {
     await t.close();
   });
 
+  test("validates system table ids with a real db", async () => {
+    const storageId = await t.action(api.testingFunctions.storeFile, {});
+    expect(
+      await t.query(api.testingFunctions.validateStorageId, { storageId }),
+    ).toBe(true);
+    expect(
+      await t.query(api.testingFunctions.validateStorageId, {
+        storageId: "not an id",
+      }),
+    ).toBe(false);
+  });
+
   test("counter", async () => {
     expect(await t.query(api.counter.getCounter, { counterName: "foo" })).toBe(
       0,

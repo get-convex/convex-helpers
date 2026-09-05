@@ -2,8 +2,8 @@ import type {
   DataModelFromSchemaDefinition,
   Expand,
   GenericDatabaseReader,
-  GenericDataModel,
   SchemaDefinition,
+  SystemTableNames,
   TableNamesInDataModel,
 } from "convex/server";
 import type {
@@ -604,8 +604,9 @@ export function validate<T extends Validator<any, any, any>>(
   opts?: {
     /* If true, throw an error if the value is not valid. */
     throw?: boolean;
-    /* If provided, v.id validation will check that the id is for the table. */
-    db?: GenericDatabaseReader<GenericDataModel>;
+    /* If provided, v.id validation will check that the id is for the table.
+    Any GenericDatabaseReader works here, e.g. from a query or mutation ctx. */
+    db?: GenericDatabaseReader<any>;
     /* If true, allow fields that are not in an object validator. */
     allowUnknownFields?: boolean;
     /* A prefix for the path of the value being validated, for error reporting.
@@ -680,7 +681,13 @@ export function validate<T extends Validator<any, any, any>>(
           valid = false;
         } else if (opts?.db) {
           expected = `Id<${validator.tableName}>`;
-          const id = opts.db.normalizeId(validator.tableName, value);
+          // System tables can only be accessed via db.system.
+          const id = validator.tableName.startsWith("_")
+            ? opts.db.system.normalizeId(
+                validator.tableName as SystemTableNames,
+                value,
+              )
+            : opts.db.normalizeId(validator.tableName, value);
           if (!id) {
             valid = false;
           }

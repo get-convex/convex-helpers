@@ -455,6 +455,22 @@ describe("validate", () => {
     });
   });
 
+  test("validates system table id validator", async () => {
+    const storageIdValidator = v.id("_storage");
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["test"]));
+      expect(validate(storageIdValidator, storageId, { db: ctx.db })).toBe(
+        true,
+      );
+      expect(validate(storageIdValidator, "not an id", { db: ctx.db })).toBe(
+        false,
+      );
+      const userId = await ctx.db.insert("users", { tokenIdentifier: "test" });
+      expect(validate(storageIdValidator, userId, { db: ctx.db })).toBe(false);
+    });
+  });
+
   test("throws validation errors when configured", () => {
     expect(() => validate(v.string(), 123, { throw: true })).toThrow(
       ValidationError,
