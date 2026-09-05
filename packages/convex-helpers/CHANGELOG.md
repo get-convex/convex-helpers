@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `validate` now normalizes system table ids (e.g. `v.id("_storage")`) with
+  `db.system.normalizeId` instead of throwing when passed a real `db`.
+
 ## 0.1.123
 
 - Deprecates some validator utilities now that convex@1.44 has schema.doc and schema.id

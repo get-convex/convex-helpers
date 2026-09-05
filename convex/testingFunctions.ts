@@ -3,6 +3,8 @@ import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
+import { validate } from "convex-helpers/validators";
+import { v } from "convex/values";
 import { action, mutation, query } from "./_generated/server";
 import schema from "./schema";
 
@@ -43,6 +45,19 @@ export const testingAction = customAction(action, {
       );
     }
     return { ctx: {}, args: {} };
+  },
+});
+
+export const storeFile = testingAction({
+  handler: async (ctx) => {
+    return ctx.storage.store(new Blob(["test file contents"]));
+  },
+});
+
+export const validateStorageId = testingQuery({
+  args: { storageId: v.string() },
+  handler: async (ctx, args) => {
+    return validate(v.id("_storage"), args.storageId, { db: ctx.db });
   },
 });
 
