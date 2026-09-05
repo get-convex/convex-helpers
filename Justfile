@@ -24,29 +24,38 @@ reset-local-backend:
 # (*) Run the open source convex backend, downloading first if necessary.
 run-local-backend:
   #!/usr/bin/env sh
+  set -eu
   if [ ! -x ./convex-local-backend ]; then
-    if [ "$(uname)" == "Darwin" ]; then
-      if [ "$(uname -m)" == "arm64" ]; then
+    case "$(uname -s)-$(uname -m)" in
+      Darwin-arm64)
         pkg=convex-local-backend-aarch64-apple-darwin.zip
-      elif [ "$(uname -m)" == "x86_64" ]; then
+        ;;
+      Darwin-x86_64)
         pkg=convex-local-backend-x86_64-apple-darwin.zip
-      fi
-    elif [ "$(uname -m)" == "x86_64" ]; then
-      pkg=convex-local-backend-x86_64-unknown-linux-gnu.zip
-    fi
-    if [ -z "$pkg" ]; then
-      echo "Download or build the convex-local-backend: https://github.com/get-convex/convex-backend"
-      exit 1
-    fi
-    curl  -L -O "https://github.com/get-convex/convex-backend/releases/latest/download/$pkg"
-    unzip "$pkg"
+        ;;
+      Linux-aarch64|Linux-arm64)
+        pkg=convex-local-backend-aarch64-unknown-linux-gnu.zip
+        ;;
+      Linux-x86_64)
+        pkg=convex-local-backend-x86_64-unknown-linux-gnu.zip
+        ;;
+      *)
+        echo "Download or build the convex-local-backend: https://github.com/get-convex/convex-backend" >&2
+        exit 1
+        ;;
+    esac
+    curl -fL -O "https://github.com/get-convex/convex-backend/releases/latest/download/$pkg"
+    unzip -o "$pkg"
   fi
-  ./convex-local-backend
+  # Public development credentials matching the admin key in `just convex` and convex.sh.
+  # https://github.com/get-convex/convex-backend/tree/main/crates/keybroker/dev
+  exec ./convex-local-backend \
+    --interface 127.0.0.1 \
+    --instance-name carnitas \
+    --instance-secret 4361726e697461732c206c69746572616c6c79206d65616e696e6720226c6974
 
-# Taken from https://github.com/get-convex/convex-backend/blob/main/Justfile
 # (*) Run convex CLI commands like `convex dev` against local backend from `just run-local-backend`.
-# This uses the default admin key for local backends, which is safe as long as the backend is
-# running locally.
+# This uses the public development admin key matching the credentials in `just run-local-backend`.
 convex *ARGS:
   npx convex "$@" --admin-key 0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd --url "http://127.0.0.1:3210"
 
