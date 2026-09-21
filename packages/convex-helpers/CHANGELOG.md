@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `open-api-spec` supports `v.bytes()` instead of aborting with "bytes unsupported":
+  `{ "$bytes": "<base64>" }` in args and a base64 string in returned values, as the
+  HTTP API's `json` format has them.
+
 ## 0.1.124
 
 - `validate` now normalizes system table ids (e.g. `v.id("_storage")`) with
