@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Zod 4 support: the return type of `zodOutputToConvex` now uses the output
+  type of the schemas nested in objects, arrays, records, unions and tuples
+  (e.g. a `z.codec`, `z.pipe` or `.default()` field), matching the validator
+  it returns at runtime.
+
 ## 0.1.124
 
 - `validate` now normalizes system table ids (e.g. `v.id("_storage")`) with
