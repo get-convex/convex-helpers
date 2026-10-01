@@ -598,6 +598,151 @@ describe("stream", () => {
       ]);
     });
   });
+
+  test.each(["asc", "desc"] as const)(
+    "flatMap pagination preserves later outer items (%s)",
+    async (order) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        // The join keys run opposite to the outer stream's ordering.
+        for (const a of [1, 2, 3]) {
+          const c = 4 - a;
+          await ctx.db.insert("foo", { a, b: 0, c });
+          for (const d of [1, 2, 3]) {
+            await ctx.db.insert("bar", { c, d, e: 0 });
+          }
+        }
+        const query = stream(ctx.db, schema)
+          .query("foo")
+          .withIndex("abc")
+          .order(order)
+          // Mapped values need not contain their original index fields.
+          .map(async (doc) => ({ joinKey: doc.c }))
+          .flatMap(
+            async (doc) =>
+              stream(ctx.db, schema)
+                .query("bar")
+                .withIndex("cde", (q) => q.eq("c", doc.joinKey))
+                .order(order),
+            ["c", "d", "e"],
+          );
+        const all = await query.collect();
+        expect(all).toHaveLength(9);
+
+        const first = await query.paginate({ cursor: null, numItems: 1 });
+        const rest = await query.paginate({
+          cursor: first.continueCursor,
+          numItems: 10,
+        });
+        expect([...first.page, ...rest.page]).toEqual(all);
+        expect(rest.isDone).toBe(true);
+
+        for (const numItems of [1, 2, 4]) {
+          let cursor: string | null = null;
+          const paged = [];
+          for (let i = 0; i <= all.length; i++) {
+            const page = await query.paginate({ cursor, numItems });
+            const reread = await query.paginate({
+              cursor,
+              endCursor: page.continueCursor,
+              numItems,
+            });
+            expect(reread.page).toEqual(page.page);
+            paged.push(...page.page);
+            if (page.isDone) break;
+            expect(page.continueCursor).not.toBe(cursor);
+            cursor = page.continueCursor;
+          }
+          expect(paged).toEqual(all);
+        }
+
+        // Exercise both bounds within one outer item, across adjacent items,
+        // and with an entire outer item strictly between them.
+        const cursors: (string | null)[] = [null];
+        for (let i = 0; i < all.length; i++) {
+          const page = await query.paginate({
+            cursor: cursors[i]!,
+            numItems: 1,
+          });
+          cursors.push(page.continueCursor);
+        }
+        for (const [start, end] of [
+          [1, 2],
+          [2, 5],
+          [1, 8],
+        ] as const) {
+          const page = await query.paginate({
+            cursor: cursors[start]!,
+            endCursor: cursors[end]!,
+            numItems: 1,
+          });
+          expect(page.page).toEqual(all.slice(start, end));
+          if (page.splitCursor) {
+            const left = await query.paginate({
+              cursor: cursors[start]!,
+              endCursor: page.splitCursor,
+              numItems: 1,
+            });
+            const right = await query.paginate({
+              cursor: page.splitCursor,
+              endCursor: cursors[end]!,
+              numItems: 1,
+            });
+            expect([...left.page, ...right.page]).toEqual(page.page);
+          }
+        }
+      });
+    },
+  );
+
+  test.each(["asc", "desc"] as const)(
+    "flatMap resumes merged inner streams after a skipped outer item (%s)",
+    async (order) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        for (const a of [1, 2, 3]) {
+          await ctx.db.insert("foo", { a, b: 0, c: a });
+          for (const d of [1, 2]) {
+            await ctx.db.insert("bar", { c: a, d, e: 0 });
+          }
+        }
+        const query = stream(ctx.db, schema)
+          .query("foo")
+          .withIndex("abc")
+          .order(order)
+          .filterWith(async (doc) => doc.a === 2)
+          .flatMap(
+            async (doc) =>
+              mergedStream(
+                [1, 2].map((d) =>
+                  stream(ctx.db, schema)
+                    .query("bar")
+                    .withIndex("cde", (q) => q.eq("c", doc.c).eq("d", d))
+                    .order(order),
+                ),
+                ["e"],
+              ),
+            ["e"],
+          );
+        const all = await query.collect();
+        expect(all).toHaveLength(2);
+        const first = await query.paginate({
+          cursor: null,
+          numItems: 10,
+          maximumRowsRead: 1,
+        });
+        expect(first.page).toEqual([]);
+        expect(first.isDone).toBe(false);
+        const rest = await query.paginate({
+          cursor: first.continueCursor,
+          numItems: 10,
+        });
+        expect(rest.page).toEqual(all);
+        expect(rest.isDone).toBe(true);
+      });
+    },
+  );
+
   test("streamIndexRange returns correct subset", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {

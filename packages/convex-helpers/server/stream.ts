@@ -1293,13 +1293,13 @@ class FlatMapStreamIterator<
     count: number;
     bandwidth: number; // bandwidth from reading outer doc
   } | null = null;
-  #mapper: (doc: T) => Promise<QueryStream<U>>;
+  #mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
   #trackBandwidth: boolean;
 
   constructor(
     outerStream: QueryStream<T>,
-    mapper: (doc: T) => Promise<QueryStream<U>>,
+    mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
     trackBandwidth: boolean,
   ) {
@@ -1329,7 +1329,7 @@ class FlatMapStreamIterator<
     if (t === null) {
       innerStream = this.singletonSkipInnerStream();
     } else {
-      innerStream = await this.#mapper(t);
+      innerStream = await this.#mapper(t, indexKey);
       if (
         !equalIndexFields(innerStream.getIndexFields(), this.#mappedIndexFields)
       ) {
@@ -1393,11 +1393,11 @@ class FlatMapStream<
   U extends GenericStreamItem,
 > extends QueryStream<U> {
   #stream: QueryStream<T>;
-  #mapper: (doc: T) => Promise<QueryStream<U>>;
+  #mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
   constructor(
     stream: QueryStream<T>,
-    mapper: (doc: T) => Promise<QueryStream<U>>,
+    mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
   ) {
     super();
@@ -1443,19 +1443,38 @@ class FlatMapStream<
       upperBoundInclusive:
         innerUpperBound.length === 0 ? indexBounds.upperBoundInclusive : true,
     };
-    const innerIndexBounds = {
-      lowerBound: innerLowerBound,
-      lowerBoundInclusive:
-        innerLowerBound.length === 0 ? true : indexBounds.lowerBoundInclusive,
-      upperBound: innerUpperBound,
-      upperBoundInclusive:
-        innerUpperBound.length === 0 ? true : indexBounds.upperBoundInclusive,
-    };
     return new FlatMapStream(
       this.#stream.narrow(outerIndexBounds),
-      async (t) => {
-        const innerStream = await this.#mapper(t);
-        return innerStream.narrow(innerIndexBounds);
+      async (t, indexKey) => {
+        const innerStream = await this.#mapper(t, indexKey);
+        // An inner bound only constrains the outer item at that edge of the
+        // range. Other outer items retain their entire inner streams. Use the
+        // iterator's key, since map() can change or remove indexed fields.
+        const atLowerBound =
+          innerLowerBound.length > 0 &&
+          compareKeys(
+            { value: indexKey, kind: "exact" },
+            { value: outerLowerBound, kind: "exact" },
+          ) === 0;
+        const atUpperBound =
+          innerUpperBound.length > 0 &&
+          compareKeys(
+            { value: indexKey, kind: "exact" },
+            { value: outerUpperBound, kind: "exact" },
+          ) === 0;
+        if (!atLowerBound && !atUpperBound) {
+          return innerStream;
+        }
+        return innerStream.narrow({
+          lowerBound: atLowerBound ? innerLowerBound : [],
+          lowerBoundInclusive: atLowerBound
+            ? indexBounds.lowerBoundInclusive
+            : true,
+          upperBound: atUpperBound ? innerUpperBound : [],
+          upperBoundInclusive: atUpperBound
+            ? indexBounds.upperBoundInclusive
+            : true,
+        });
       },
       this.#mappedIndexFields,
     );
