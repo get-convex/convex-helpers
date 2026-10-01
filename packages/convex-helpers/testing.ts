@@ -2,6 +2,7 @@ import { ConvexClient } from "convex/browser";
 import type {
   FunctionArgs,
   FunctionReference,
+  FunctionReference_future,
   FunctionReturnType,
   UserIdentity,
 } from "convex/server";
@@ -75,21 +76,31 @@ export class ConvexTestingHelper {
     };
   }
 
-  async mutation<Mutation extends FunctionReference<"mutation">>(
+  async mutation<
+    Mutation extends
+      FunctionReference<"mutation"> | FunctionReference_future<"mutation">,
+  >(
     mutation: Mutation,
     args: FunctionArgs<Mutation>,
   ): Promise<Awaited<FunctionReturnType<Mutation>>> {
     return this.client.mutation(mutation, args);
   }
 
-  async query<Query extends FunctionReference<"query", "public">>(
+  async query<
+    Query extends
+      | FunctionReference<"query", "public">
+      | FunctionReference_future<"query", "public">,
+  >(
     query: Query,
     args: FunctionArgs<Query>,
   ): Promise<Awaited<FunctionReturnType<Query>>> {
     return this.client.query(query, args);
   }
 
-  async action<Action extends FunctionReference<"action">>(
+  async action<
+    Action extends
+      FunctionReference<"action"> | FunctionReference_future<"action">,
+  >(
     action: Action,
     args: FunctionArgs<Action>,
   ): Promise<Awaited<FunctionReturnType<Action>>> {

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Support Convex 1.46's `FunctionReference_future` in query hooks and function
+  wrappers, including composing cached `useQueries` with `makeUseQueryWithStatus`.
+  Requires `convex` ^1.46.0.
+
 ## 0.1.124
 
 - `validate` now normalizes system table ids (e.g. `v.id("_storage")`) with
