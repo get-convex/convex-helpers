@@ -97,6 +97,7 @@ import type {
   DocumentByInfo,
   DocumentByName,
   FunctionReference,
+  FunctionReference_future,
   GenericDatabaseReader,
   GenericDatabaseWriter,
   GenericDataModel,
@@ -161,6 +162,10 @@ type MigrationTableNames<DataModel extends GenericDataModel> = {
     ? K
     : ErrorMessage<"Add migrationsTable to your schema">;
 }[TableNamesInDataModel<DataModel>];
+
+type MigrationReference =
+  | FunctionReference<"mutation", "internal", MigrationArgs>
+  | FunctionReference_future<"mutation", "internal", MigrationArgs>;
 
 /**
  * Makes the migration wrapper, with types for your own tables.
@@ -527,7 +532,7 @@ export function makeMigration<
  */
 export async function startMigration(
   ctx: { scheduler: Scheduler },
-  fnRef: FunctionReference<"mutation", "internal", MigrationArgs>,
+  fnRef: MigrationReference,
   opts?: {
     startCursor?: string | null;
     batchSize?: number;
@@ -569,7 +574,7 @@ export async function startMigration(
  */
 export async function startMigrationsSerially(
   ctx: { scheduler: Scheduler },
-  fnRefs: FunctionReference<"mutation", "internal", MigrationArgs>[],
+  fnRefs: MigrationReference[],
 ) {
   if (fnRefs.length === 0) return;
   const [fnRef, ...rest] = fnRefs;
@@ -608,7 +613,7 @@ export async function getStatus<
     limit,
   }: {
     migrationTable: MigrationTable;
-    migrations?: FunctionReference<"mutation", "internal", MigrationArgs>[];
+    migrations?: MigrationReference[];
     limit?: number;
   },
 ): Promise<MigrationStatus<MigrationTable>[]> {
@@ -659,7 +664,7 @@ export async function getStatus<
 export async function cancelMigration<DataModel extends GenericDataModel>(
   ctx: { db: GenericDatabaseReader<DataModel>; scheduler: Scheduler },
   migrationTable: MigrationTableNames<DataModel>,
-  migration: FunctionReference<"mutation", "internal", MigrationArgs> | string,
+  migration: MigrationReference | string,
 ) {
   const name =
     typeof migration === "string" ? migration : getFunctionName(migration);

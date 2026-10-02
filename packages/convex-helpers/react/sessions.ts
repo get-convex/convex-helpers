@@ -26,6 +26,7 @@ import React, {
 import type {
   FunctionArgs,
   FunctionReference,
+  FunctionReference_future,
   FunctionReturnType,
   PaginationOptions,
   PaginationResult,
@@ -67,10 +68,9 @@ const SessionContext = React.createContext<{
   ssrFriendly?: boolean;
 } | null>(null);
 
-type SessionFunction<
-  T extends "query" | "mutation" | "action",
-  Args = any,
-> = FunctionReference<T, "public", { sessionId: SessionId } & Args>;
+type SessionFunction<T extends "query" | "mutation" | "action", Args = any> =
+  | FunctionReference<T, "public", { sessionId: SessionId } & Args>
+  | FunctionReference_future<T, "public", { sessionId: SessionId } & Args>;
 
 type ArgsWithoutSession<
   Fn extends SessionFunction<"query" | "mutation" | "action">,
@@ -258,13 +258,17 @@ export function useSessionPaginatedQuery<
   return usePaginatedQuery(query, argsObject, options);
 }
 
-type SessionMutation<Mutation extends FunctionReference<"mutation">> = (
+type SessionMutation<
+  Mutation extends
+    FunctionReference<"mutation"> | FunctionReference_future<"mutation">,
+> = (
   ...args: SessionArgsArray<Mutation>
 ) => Promise<FunctionReturnType<Mutation>>;
 
 // Similar to ReactMutation, but with a sessionId parameter.
 interface ReactSessionMutation<
-  Mutation extends FunctionReference<"mutation">,
+  Mutation extends
+    FunctionReference<"mutation"> | FunctionReference_future<"mutation">,
 > extends SessionMutation<Mutation> {
   withOptimisticUpdate(
     optimisticUpdate: OptimisticUpdate<FunctionArgs<Mutation>>,
