@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.125
 
 - Support Convex 1.46's `FunctionReference_future` in query hooks and function
   wrappers, including composing cached `useQueries` with `makeUseQueryWithStatus`.
