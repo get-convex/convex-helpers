@@ -301,7 +301,7 @@ export abstract class QueryStream<
     );
   }
   /**
-   * Similar to flatMap on an array, but iterate over a stream, and the for each
+   * Similar to flatMap on an array, but iterate over a stream, and then for each
    * element, iterate over the stream created by the mapper function.
    *
    * Ordered by the original stream order, then the mapped stream. Similar to
