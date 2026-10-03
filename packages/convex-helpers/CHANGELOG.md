@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.126
+
+- (fix:streams) Preserve flatMap rows when resuming from cursor (#1014)
+
 ## 0.1.125
 
 - Support Convex 1.46's `FunctionReference_future` in query hooks and function
