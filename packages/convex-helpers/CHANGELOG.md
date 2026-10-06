@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.127-alpha.0
+
+- (fix:streams) Enforce query bounds on empty stream intersection scenarios (#1017)
+
 ## 0.1.126
 
 - (fix:streams) Preserve flatMap rows when resuming from cursor (#1014)
