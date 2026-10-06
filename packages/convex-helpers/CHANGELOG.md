@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.128 (unreleased)
 
 - Zod 4 support: fixed the TypeScript return type of `zodOutputToConvex` for
   schemas nested in objects, arrays, records, unions and tuples (and inside
