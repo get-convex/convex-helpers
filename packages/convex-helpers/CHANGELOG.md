@@ -1,11 +1,30 @@
 # Changelog
 
+## Unreleased
+
+- Zod 4 support: fixed the TypeScript return type of `zodOutputToConvex` for
+  schemas nested in objects, arrays, records, unions and tuples (and inside
+  `.readonly()`, `z.lazy()`, `.catch()` and `.nonoptional()`). These nested
+  schemas were typed from their input, like in `zodToConvex`, so a nested
+  `z.codec`, `z.pipe` or `.default()` got the wrong type. The return type now
+  matches the validator returned at runtime. Thanks to @vinnysaj for the fix!
+
+## 0.1.127
+
+- (fix:streams) Preserve empty stream intersections and their index metadata (#1017)
+
+## 0.1.126
+
+- (fix:streams) Preserve flatMap rows when resuming from cursor (#1014)
+
+## 0.1.125
+
+- Support Convex 1.46's `FunctionReference_future` in query hooks and function
+  wrappers, including composing cached `useQueries` with `makeUseQueryWithStatus`.
+  Requires `convex` ^1.46.0.
+
 ## 0.1.124
 
-- Zod 4 support: the return type of `zodOutputToConvex` now uses the output
-  type of the schemas nested in objects, arrays, records, unions and tuples
-  (e.g. a `z.codec`, `z.pipe` or `.default()` field), matching the validator
-  it returns at runtime.
 - `validate` now normalizes system table ids (e.g. `v.id("_storage")`) with
   `db.system.normalizeId` instead of throwing when passed a real `db`.
 
