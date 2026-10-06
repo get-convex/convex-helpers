@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Zod 4 support: fixed the TypeScript return type of `zodOutputToConvex` for
+  schemas nested in objects, arrays, records, unions and tuples (and inside
+  `.readonly()`, `z.lazy()`, `.catch()` and `.nonoptional()`). These nested
+  schemas were typed from their input, like in `zodToConvex`, so a nested
+  `z.codec`, `z.pipe` or `.default()` got the wrong type. The return type now
+  matches the validator returned at runtime. Thanks to @vinnysaj for the fix!
+
 ## 0.1.127
 
 - (fix:streams) Preserve empty stream intersections and their index metadata (#1017)
