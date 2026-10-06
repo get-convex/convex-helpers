@@ -588,6 +588,38 @@ function scenarios(
   );
 
   const nonzero = owned.filter((row) => row.score !== 0);
+  const filteredInner = positive.filter((row) => row.bucket === 1);
+  result.push(
+    make(
+      "filtered outer flatMap",
+      outer
+        .filterWith(async (group) => group.bucket === 1)
+        .flatMap(
+          async (group) =>
+            streams
+              .query("rows")
+              .withIndex("tenant_bucket_score", (q) =>
+                q
+                  .eq("tenant", group.tenant)
+                  .eq("bucket", group.bucket)
+                  .gte("score", 0),
+              )
+              .order(order),
+          ["tenant", "bucket", "score", "_creationTime", "_id"],
+        ),
+      filteredInner,
+      ownGroups
+        .filter((group) => group.bucket === 1)
+        .flatMap((group) =>
+          filteredInner.map((doc) => ({
+            doc,
+            key: [...keyOf(group), ...keyOf(doc)],
+          })),
+        ),
+      ownGroups,
+      ownGroups.map((group) => [...keyOf(group), ...Array(5).fill(null)]),
+    ),
+  );
   result.push(
     make(
       "flatMap merged inner",
@@ -742,9 +774,6 @@ function scenarios(
       ]),
     ),
   );
-  for (const scenario of result) {
-    if (scenario.name.includes("flatMap")) scenario.budgetedWalk = false;
-  }
   return result;
 }
 
@@ -773,12 +802,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Discovered by the randomized budgeted pagination walk. Keep the minimal
-// reproducer visible without marking the isolation properties as expected failures.
-// An empty inner stream yields a placeholder with an all-null suffix; resuming
-// that cursor revisits the same outer item and can return the same cursor forever.
-// Remove .fails when placeholder cursors advance past an exhausted outer item.
-test.fails.each([
+// An empty inner stream yields a placeholder with an all-null suffix. Resuming
+// must advance past an empty outer item when a read limit stops at that placeholder.
+test.each([
   { order: "asc", maximumRowsRead: 1 },
   { order: "desc", maximumRowsRead: 1 },
   { order: "asc", maximumBytesRead: 1 },
@@ -816,6 +842,88 @@ test.fails.each([
         ...limit,
       });
       expect(second.isDone).toBe(true);
+    });
+  },
+);
+
+test.each(["asc", "desc"] as const)(
+  "a skipped inner cursor preserves its position after inserts (%s)",
+  async (order) => {
+    const t = convexTest(schema, modules);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("groups", { tenant: "m", bucket: 0 });
+      const db = stream(ctx.db, schema);
+      const query = db
+        .query("groups")
+        .withIndex("tenant_bucket", (q) => q.eq("tenant", "m"))
+        .order(order)
+        .flatMap(
+          async (group) =>
+            db
+              .query("rows")
+              .withIndex("tenant_bucket_score", (q) =>
+                q
+                  .eq("tenant", group.tenant)
+                  .eq("bucket", group.bucket)
+                  .gte("score", 0),
+              )
+              .order(order),
+          ["tenant", "bucket", "score", "_creationTime", "_id"],
+        );
+      const first = await query.paginate({
+        cursor: null,
+        numItems: 1,
+        maximumRowsRead: 1,
+      });
+      expect(first.page).toEqual([]);
+      expect(first.isDone).toBe(false);
+      // Newly inserted rows fall on the appropriate side of the placeholder's
+      // index position. Adjacent pages must still contain them exactly once.
+      const inserted = await ctx.db.insert("rows", {
+        tenant: "m",
+        nested: { tenant: "m" },
+        bucket: 0,
+        score: 1,
+        secret: "new allowed row",
+      });
+      await ctx.db.insert("rows", {
+        tenant: "z",
+        nested: { tenant: "z" },
+        bucket: 0,
+        score: 1,
+        secret: "foreign row",
+      });
+      await ctx.db.insert("rows", {
+        tenant: "m",
+        nested: { tenant: "m" },
+        bucket: 0,
+        score: -1,
+        secret: "excluded row",
+      });
+      const nextBucket = order === "asc" ? 1 : -1;
+      await ctx.db.insert("groups", { tenant: "m", bucket: nextBucket });
+      const later = await ctx.db.insert("rows", {
+        tenant: "m",
+        nested: { tenant: "m" },
+        bucket: nextBucket,
+        score: 1,
+        secret: "next outer row",
+      });
+      const resumed = await query.paginate({
+        cursor: first.continueCursor,
+        numItems: 10,
+      });
+      expect(resumed.page.map((doc) => doc._id)).toEqual(
+        order === "asc" ? [inserted, later] : [later],
+      );
+      const refreshed = await query.paginate({
+        cursor: null,
+        endCursor: first.continueCursor,
+        numItems: 10,
+      });
+      expect(refreshed.page.map((doc) => doc._id)).toEqual(
+        order === "asc" ? [] : [inserted],
+      );
     });
   },
 );
