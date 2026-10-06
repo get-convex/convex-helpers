@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.127-alpha.0
+## 0.1.127
 
 - (fix:streams) Preserve empty stream intersections and their index metadata (#1017)
 
