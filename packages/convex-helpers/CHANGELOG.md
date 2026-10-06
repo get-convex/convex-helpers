@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.127-alpha.0
+
+- (fix:streams) Preserve empty stream intersections and their index metadata (#1017)
+
 ## 0.1.126
 
 - (fix:streams) Preserve flatMap rows when resuming from cursor (#1014)

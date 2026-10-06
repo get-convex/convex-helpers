@@ -26,7 +26,7 @@ export type PageRequest<
   table: T;
   /** Where the page starts. Default or empty array is the start of the table. */
   startIndexKey?: IndexKey;
-  /** Whether the startIndexKey is inclusive. Default is false. */
+  /** Whether the startIndexKey is inclusive. Default is false. Ignored for an empty key. */
   startInclusive?: boolean;
   /** Where the page ends. If provided, all documents up to this key will be
    * included, if possible. targetMaxRows will be ignored (but absoluteMaxRows
@@ -34,7 +34,7 @@ export type PageRequest<
    * An empty array means the end of the table.
    */
   endIndexKey?: IndexKey;
-  /** Whether the endIndexKey is inclusive. Default is true.*/
+  /** Whether the endIndexKey is inclusive. Default is true. Ignored for an empty key. */
   endInclusive?: boolean;
   /** Maximum number of rows to return, as long as endIndexKey is not provided.
    * Default is 100.
@@ -137,9 +137,13 @@ export async function* streamQuery<
   );
   const startIndexKey = request.startIndexKey ?? [];
   const endIndexKey = request.endIndexKey ?? [];
-  const startInclusive = request.startInclusive ?? false;
+  // This API uses empty keys as unbounded endpoints regardless of inclusivity.
+  // Stream bounds instead interpret an exclusive empty prefix as an empty range.
+  const startInclusive =
+    startIndexKey.length === 0 || (request.startInclusive ?? false);
   const order = request.order === "desc" ? "desc" : "asc";
-  const endInclusive = request.endInclusive ?? true;
+  const endInclusive =
+    endIndexKey.length === 0 || (request.endInclusive ?? true);
   if (
     indexFields.length < startIndexKey.length ||
     indexFields.length < endIndexKey.length
