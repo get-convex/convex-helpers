@@ -27,6 +27,7 @@ import {
   testZodOutputToConvex,
   testZodToConvex,
   testZodToConvexInputAndOutput,
+  testZodToConvexInputVsOutput,
 } from "./zod4.zodtoconvex.test";
 
 describe("zodToConvex + zodOutputToConvex", () => {
@@ -1035,19 +1036,17 @@ describe("codec or pipe nested in another schema", () => {
   });
 
   test("array element", () => {
-    testZodToConvex(z.array(stringToNumberCodec), v.array(v.string()));
-    testZodOutputToConvex(z.array(stringToNumberCodec), v.array(v.number()));
+    testZodToConvexInputVsOutput(z.array(stringToNumberCodec), {
+      input: v.array(v.string()),
+      output: v.array(v.number()),
+    });
   });
 
   test("nullable array element", () => {
-    testZodToConvex(
-      z.array(z.nullable(stringToNumberCodec)),
-      v.array(v.union(v.string(), v.null())),
-    );
-    testZodOutputToConvex(
-      z.array(z.nullable(stringToNumberCodec)),
-      v.array(v.union(v.number(), v.null())),
-    );
+    testZodToConvexInputVsOutput(z.array(z.nullable(stringToNumberCodec)), {
+      input: v.array(v.union(v.string(), v.null())),
+      output: v.array(v.union(v.number(), v.null())),
+    });
   });
 
   test("object in an array", () => {
@@ -1064,30 +1063,24 @@ describe("codec or pipe nested in another schema", () => {
         z.object({ n: z.number() }),
       ),
     );
-    testZodToConvex(schema, v.array(v.any())); // the input is a transform
-    testZodOutputToConvex(schema, v.array(v.object({ n: v.number() })));
+    testZodToConvexInputVsOutput(schema, {
+      input: v.array(v.any()), // the input is a transform
+      output: v.array(v.object({ n: v.number() })),
+    });
   });
 
   test("union member", () => {
-    testZodToConvex(
-      z.union([stringToNumberCodec, z.null()]),
-      v.union(v.string(), v.null()),
-    );
-    testZodOutputToConvex(
-      z.union([stringToNumberCodec, z.null()]),
-      v.union(v.number(), v.null()),
-    );
+    testZodToConvexInputVsOutput(z.union([stringToNumberCodec, z.null()]), {
+      input: v.union(v.string(), v.null()),
+      output: v.union(v.number(), v.null()),
+    });
   });
 
   test("tuple item", () => {
-    testZodToConvex(
-      z.tuple([stringToNumberCodec]),
-      v.array(v.union(v.string())),
-    );
-    testZodOutputToConvex(
-      z.tuple([stringToNumberCodec]),
-      v.array(v.union(v.number())),
-    );
+    testZodToConvexInputVsOutput(z.tuple([stringToNumberCodec]), {
+      input: v.array(v.union(v.string())),
+      output: v.array(v.union(v.number())),
+    });
   });
 
   test("record value", () => {
@@ -1101,42 +1094,40 @@ describe("codec or pipe nested in another schema", () => {
   });
 
   test("record value, key = literal", () => {
-    testZodToConvex(
+    testZodToConvexInputVsOutput(
       z.record(z.literal(["a", "b"]), stringToNumberCodec),
-      v.object({ a: v.string(), b: v.string() }),
-    );
-    testZodOutputToConvex(
-      z.record(z.literal(["a", "b"]), stringToNumberCodec),
-      v.object({ a: v.number(), b: v.number() }),
+      {
+        input: v.object({ a: v.string(), b: v.string() }),
+        output: v.object({ a: v.number(), b: v.number() }),
+      },
     );
   });
 
   test("readonly", () => {
-    testZodToConvex(z.readonly(stringToNumberCodec), v.string());
-    testZodOutputToConvex(z.readonly(stringToNumberCodec), v.number());
+    testZodToConvexInputVsOutput(z.readonly(stringToNumberCodec), {
+      input: v.string(),
+      output: v.number(),
+    });
   });
 
   test("lazy", () => {
-    testZodToConvex(
+    testZodToConvexInputVsOutput(
       z.lazy(() => stringToNumberCodec),
-      v.string(),
-    );
-    testZodOutputToConvex(
-      z.lazy(() => stringToNumberCodec),
-      v.number(),
+      { input: v.string(), output: v.number() },
     );
   });
 
   test("catch", () => {
-    testZodToConvex(z.catch(stringToNumberCodec, 0), v.string());
-    testZodOutputToConvex(z.catch(stringToNumberCodec, 0), v.number());
+    testZodToConvexInputVsOutput(z.catch(stringToNumberCodec, 0), {
+      input: v.string(),
+      output: v.number(),
+    });
   });
 
   test("non-optional", () => {
-    testZodToConvex(z.nonoptional(z.optional(stringToNumberCodec)), v.string());
-    testZodOutputToConvex(
+    testZodToConvexInputVsOutput(
       z.nonoptional(z.optional(stringToNumberCodec)),
-      v.number(),
+      { input: v.string(), output: v.number() },
     );
   });
 });
