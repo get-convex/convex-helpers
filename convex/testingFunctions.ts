@@ -5,14 +5,14 @@ import {
 } from "convex-helpers/server/customFunctions";
 import { validate } from "convex-helpers/validators";
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
+import { action, env, mutation, query } from "./_generated/server";
 import schema from "./schema";
 
 // Wrappers to use for function that should only be called from tests
 export const testingQuery = customQuery(query, {
   args: {},
   input: async (_ctx, _args) => {
-    if (process.env.IS_TEST === undefined) {
+    if (env.IS_TEST === undefined) {
       throw new Error(
         "Calling a test only function in an unexpected environment",
       );
@@ -24,12 +24,12 @@ export const testingQuery = customQuery(query, {
 export const testingMutation = customMutation(mutation, {
   args: {},
   input: async (_ctx, _args, { devOnly }: { devOnly: boolean }) => {
-    if (process.env.IS_TEST === undefined) {
+    if (env.IS_TEST === undefined) {
       throw new Error(
         "Calling a test only function in an unexpected environment",
       );
     }
-    if (devOnly && process.env.IS_PROD) {
+    if (devOnly && env.IS_PROD) {
       throw new Error("This function is only available in development");
     }
     return { ctx: {}, args: {} };
@@ -39,7 +39,7 @@ export const testingMutation = customMutation(mutation, {
 export const testingAction = customAction(action, {
   args: {},
   input: async (_ctx, _args) => {
-    if (process.env.IS_TEST === undefined) {
+    if (env.IS_TEST === undefined) {
       throw new Error(
         "Calling a test only function in an unexpected environment",
       );

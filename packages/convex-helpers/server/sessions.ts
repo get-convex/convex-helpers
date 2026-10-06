@@ -55,6 +55,7 @@
 import type {
   FunctionArgs,
   FunctionReference,
+  FunctionReference_future,
   FunctionReturnType,
   GenericActionCtx,
   GenericDataModel,
@@ -69,15 +70,18 @@ export type SessionId = string & { __SessionId: true };
 export const vSessionId = v.string() as Validator<SessionId>;
 export const SessionIdArg = { sessionId: vSessionId };
 
-type SessionFunction<
-  T extends "query" | "mutation" | "action",
-  Args = any,
-> = FunctionReference<
-  T,
-  "public" | "internal",
-  { sessionId: SessionId } & Args,
-  any
->;
+type SessionFunction<T extends "query" | "mutation" | "action", Args = any> =
+  | FunctionReference<
+      T,
+      "public" | "internal",
+      { sessionId: SessionId } & Args,
+      any
+    >
+  | FunctionReference_future<
+      T,
+      "public" | "internal",
+      { sessionId: SessionId } & Args
+    >;
 
 type SessionArgsArray<
   Fn extends SessionFunction<"query" | "mutation" | "action", any>,

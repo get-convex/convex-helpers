@@ -1,7 +1,10 @@
 import type { BetterOmit, EmptyObject } from "./index.js";
 import type { ConvexClient, ConvexHttpClient } from "convex/browser";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import type { FunctionReference } from "convex/server";
+import type {
+  FunctionReference,
+  FunctionReference_future,
+} from "convex/server";
 import type { Value } from "convex/values";
 
 export type ArgsArray<
@@ -34,7 +37,10 @@ export function withArgs<A extends Record<string, Value>>(
   injectedArgs: A,
 ) {
   return {
-    query<Query extends FunctionReference<"query">>(
+    query<
+      Query extends
+        FunctionReference<"query"> | FunctionReference_future<"query">,
+    >(
       query: Query,
       ...args: ArgsArray<A, FunctionArgs<Query>>
     ): Promise<Awaited<FunctionReturnType<Query>>> {
@@ -43,7 +49,10 @@ export function withArgs<A extends Record<string, Value>>(
         ...injectedArgs,
       } as FunctionArgs<Query>);
     },
-    mutation<Mutation extends FunctionReference<"mutation">>(
+    mutation<
+      Mutation extends
+        FunctionReference<"mutation"> | FunctionReference_future<"mutation">,
+    >(
       mutation: Mutation,
       ...args: ArgsArray<A, FunctionArgs<Mutation>>
     ): Promise<Awaited<FunctionReturnType<Mutation>>> {
@@ -52,7 +61,10 @@ export function withArgs<A extends Record<string, Value>>(
         ...injectedArgs,
       } as FunctionArgs<Mutation>);
     },
-    action<Action extends FunctionReference<"action">>(
+    action<
+      Action extends
+        FunctionReference<"action"> | FunctionReference_future<"action">,
+    >(
       action: Action,
       ...args: ArgsArray<A, FunctionArgs<Action>>
     ): Promise<Awaited<FunctionReturnType<Action>>> {

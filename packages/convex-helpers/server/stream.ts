@@ -301,7 +301,7 @@ export abstract class QueryStream<
     );
   }
   /**
-   * Similar to flatMap on an array, but iterate over a stream, and the for each
+   * Similar to flatMap on an array, but iterate over a stream, and then for each
    * element, iterate over the stream created by the mapper function.
    *
    * Ordered by the original stream order, then the mapped stream. Similar to
@@ -845,7 +845,7 @@ export class OrderedStreamQuery<
       minUpperBound = indexBounds.upperBound;
       minUpperBoundInclusive = indexBounds.upperBoundInclusive;
     }
-    return streamIndexRange(
+    const narrowed = streamIndexRange(
       db,
       schema,
       table,
@@ -858,6 +858,14 @@ export class OrderedStreamQuery<
       },
       order,
     );
+    // Retain fixed index fields when the intersection is empty.
+    return narrowed instanceof EmptyStream
+      ? new EmptyStream<DocumentByName<DM<Schema>, T>>(
+          order,
+          this.getIndexFields(),
+          this.getEqualityIndexFilter(),
+        )
+      : narrowed;
   }
 }
 
@@ -877,6 +885,21 @@ export function streamIndexRange<
   order: "asc" | "desc",
 ): QueryStream<DocumentByName<DM<Schema>, T>> {
   const indexFields = getIndexFields(table, index, schema);
+  // Empty intersections have no subranges to split.
+  if (
+    compareKeys(
+      {
+        value: bounds.lowerBound,
+        kind: bounds.lowerBoundInclusive ? "predecessor" : "successor",
+      },
+      {
+        value: bounds.upperBound,
+        kind: bounds.upperBoundInclusive ? "successor" : "predecessor",
+      },
+    ) >= 0
+  ) {
+    return new EmptyStream(order, indexFields);
+  }
   const splitBounds = splitRange(
     indexFields,
     order,
@@ -1293,13 +1316,13 @@ class FlatMapStreamIterator<
     count: number;
     bandwidth: number; // bandwidth from reading outer doc
   } | null = null;
-  #mapper: (doc: T) => Promise<QueryStream<U>>;
+  #mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
   #trackBandwidth: boolean;
 
   constructor(
     outerStream: QueryStream<T>,
-    mapper: (doc: T) => Promise<QueryStream<U>>,
+    mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
     trackBandwidth: boolean,
   ) {
@@ -1329,7 +1352,7 @@ class FlatMapStreamIterator<
     if (t === null) {
       innerStream = this.singletonSkipInnerStream();
     } else {
-      innerStream = await this.#mapper(t);
+      innerStream = await this.#mapper(t, indexKey);
       if (
         !equalIndexFields(innerStream.getIndexFields(), this.#mappedIndexFields)
       ) {
@@ -1393,11 +1416,11 @@ class FlatMapStream<
   U extends GenericStreamItem,
 > extends QueryStream<U> {
   #stream: QueryStream<T>;
-  #mapper: (doc: T) => Promise<QueryStream<U>>;
+  #mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
   constructor(
     stream: QueryStream<T>,
-    mapper: (doc: T) => Promise<QueryStream<U>>,
+    mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
   ) {
     super();
@@ -1443,19 +1466,38 @@ class FlatMapStream<
       upperBoundInclusive:
         innerUpperBound.length === 0 ? indexBounds.upperBoundInclusive : true,
     };
-    const innerIndexBounds = {
-      lowerBound: innerLowerBound,
-      lowerBoundInclusive:
-        innerLowerBound.length === 0 ? true : indexBounds.lowerBoundInclusive,
-      upperBound: innerUpperBound,
-      upperBoundInclusive:
-        innerUpperBound.length === 0 ? true : indexBounds.upperBoundInclusive,
-    };
     return new FlatMapStream(
       this.#stream.narrow(outerIndexBounds),
-      async (t) => {
-        const innerStream = await this.#mapper(t);
-        return innerStream.narrow(innerIndexBounds);
+      async (t, indexKey) => {
+        const innerStream = await this.#mapper(t, indexKey);
+        // An inner bound only constrains the outer item at that edge of the
+        // range. Other outer items retain their entire inner streams. Use the
+        // iterator's key, since map() can change or remove indexed fields.
+        const atLowerBound =
+          innerLowerBound.length > 0 &&
+          compareKeys(
+            { value: indexKey, kind: "exact" },
+            { value: outerLowerBound, kind: "exact" },
+          ) === 0;
+        const atUpperBound =
+          innerUpperBound.length > 0 &&
+          compareKeys(
+            { value: indexKey, kind: "exact" },
+            { value: outerUpperBound, kind: "exact" },
+          ) === 0;
+        if (!atLowerBound && !atUpperBound) {
+          return innerStream;
+        }
+        return innerStream.narrow({
+          lowerBound: atLowerBound ? innerLowerBound : [],
+          lowerBoundInclusive: atLowerBound
+            ? indexBounds.lowerBoundInclusive
+            : true,
+          upperBound: atUpperBound ? innerUpperBound : [],
+          upperBoundInclusive: atUpperBound
+            ? indexBounds.upperBoundInclusive
+            : true,
+        });
       },
       this.#mappedIndexFields,
     );
@@ -1569,10 +1611,16 @@ export class SingletonStream<
 export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
   #order: "asc" | "desc";
   #indexFields: string[];
-  constructor(order: "asc" | "desc", indexFields: string[]) {
+  #equalityIndexFilter: Value[];
+  constructor(
+    order: "asc" | "desc",
+    indexFields: string[],
+    equalityIndexFilter: Value[] = [],
+  ) {
     super();
     this.#order = order;
     this.#indexFields = indexFields;
+    this.#equalityIndexFilter = equalityIndexFilter;
   }
   iterWithKeys(_trackBandwidth = false): StreamIterable<T> {
     return {
@@ -1592,7 +1640,7 @@ export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
     return this.#indexFields;
   }
   getEqualityIndexFilter(): Value[] {
-    return [];
+    return this.#equalityIndexFilter;
   }
   narrow(_indexBounds: IndexBounds) {
     return this;

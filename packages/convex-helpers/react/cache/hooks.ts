@@ -2,7 +2,6 @@ import type {
   OptionalRestArgsOrSkip,
   PaginatedQueryArgs,
   PaginatedQueryReference,
-  RequestForQueries,
   UsePaginatedQueryReturnType,
 } from "convex/react";
 import {
@@ -14,6 +13,7 @@ import {
 import type {
   FunctionArgs,
   FunctionReference,
+  FunctionReference_future,
   FunctionReturnType,
   paginationOptsValidator,
   PaginationResult,
@@ -88,7 +88,11 @@ const uuid =
  * @public
  */
 export function useQueries(
-  queries: RequestForQueries,
+  // Follow the SDK's reference types, excluding its internal pagination options.
+  queries: Record<
+    string,
+    Pick<Parameters<typeof useQueriesCore>[0][string], "query" | "args">
+  >,
 ): Record<string, any | undefined | Error> {
   const { registry } = useContext(ConvexQueryCacheContext);
   if (registry === null) {
@@ -139,7 +143,9 @@ export function useQueries(
  *
  * @public
  */
-export function useQuery<Query extends FunctionReference<"query">>(
+export function useQuery<
+  Query extends FunctionReference<"query"> | FunctionReference_future<"query">,
+>(
   query: Query,
   ...queryArgs: OptionalRestArgsOrSkip<Query>
 ): FunctionReturnType<Query> | undefined {
@@ -170,10 +176,9 @@ export function useQuery<Query extends FunctionReference<"query">>(
  * @param args Arguments to the function, like { foo: "bar" }
  * @returns A string key that uniquely identifies the query and its arguments.
  */
-function createQueryKey<Query extends FunctionReference<"query">>(
-  query: Query,
-  args: FunctionArgs<Query>,
-): string {
+function createQueryKey<
+  Query extends FunctionReference<"query"> | FunctionReference_future<"query">,
+>(query: Query, args: FunctionArgs<Query>): string {
   const queryString = getFunctionName(query);
   const key = [queryString, convexToJson(args)];
   const queryKey = JSON.stringify(key);

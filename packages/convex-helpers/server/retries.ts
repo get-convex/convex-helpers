@@ -5,6 +5,7 @@
  */
 import type {
   FunctionReference,
+  FunctionReference_future,
   FunctionVisibility,
   Scheduler,
   DefaultFunctionArgs,
@@ -91,12 +92,19 @@ export function makeActionRetrier(
    *   Defaults to 16.
    */
   async function runWithRetries<
-    Action extends FunctionReference<
-      "action",
-      Visibility,
-      Args,
-      null | Promise<null> | void | Promise<void>
-    >,
+    Action extends
+      | FunctionReference<
+          "action",
+          Visibility,
+          Args,
+          null | Promise<null> | void | Promise<void>
+        >
+      | FunctionReference_future<
+          "action",
+          Visibility,
+          Args,
+          null | Promise<null> | void | Promise<void>
+        >,
     Args extends DefaultFunctionArgs,
     Visibility extends FunctionVisibility = "internal",
   >(

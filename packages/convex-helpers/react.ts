@@ -14,6 +14,7 @@ import {
 } from "convex/react";
 import type {
   FunctionReference,
+  FunctionReference_future,
   FunctionReturnType,
   PaginationOptions,
   paginationOptsValidator,
@@ -100,7 +101,10 @@ export const useQuery = makeUseQueryWithStatus(useQueries);
  * @returns A useQuery function that returns an object with status, data, error, isSuccess, isPending, isError.
  */
 export function makeUseQueryWithStatus(useQueriesHook: typeof useQueries) {
-  return function useQuery<Query extends FunctionReference<"query">>(
+  return function useQuery<
+    Query extends
+      FunctionReference<"query"> | FunctionReference_future<"query">,
+  >(
     query: Query,
     ...queryArgs: OptionalRestArgsOrSkip<Query>
   ):

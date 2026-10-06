@@ -1,7 +1,7 @@
 import { HonoWithConvex, HttpRouterWithHono } from "convex-helpers/server/hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { ActionCtx, httpAction, query } from "./_generated/server";
+import { ActionCtx, env, httpAction, query } from "./_generated/server";
 import { api } from "./_generated/api";
 
 const app: HonoWithConvex<ActionCtx> = new Hono();
@@ -68,6 +68,6 @@ export default http;
 export const siteUrl = query({
   args: {},
   handler: async () => {
-    return process.env.CONVEX_SITE_URL;
+    return env.CONVEX_SITE_URL;
   },
 });

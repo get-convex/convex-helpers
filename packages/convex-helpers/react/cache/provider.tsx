@@ -1,6 +1,10 @@
 "use client";
 import { useConvex, ConvexReactClient } from "convex/react";
-import type { FunctionArgs, FunctionReference } from "convex/server";
+import type {
+  FunctionArgs,
+  FunctionReference,
+  FunctionReference_future,
+} from "convex/server";
 import type { FC, PropsWithChildren } from "react";
 import { createContext, useMemo } from "react";
 
@@ -109,7 +113,10 @@ class CacheRegistry {
   }
 
   // Enable a new subscription.
-  start<Query extends FunctionReference<"query">>(
+  start<
+    Query extends
+      FunctionReference<"query"> | FunctionReference_future<"query">,
+  >(
     id: string,
     queryKey: string,
     query: Query,
