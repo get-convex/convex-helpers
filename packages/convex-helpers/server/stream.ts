@@ -845,7 +845,7 @@ export class OrderedStreamQuery<
       minUpperBound = indexBounds.upperBound;
       minUpperBoundInclusive = indexBounds.upperBoundInclusive;
     }
-    return streamIndexRange(
+    const narrowed = streamIndexRange(
       db,
       schema,
       table,
@@ -858,6 +858,15 @@ export class OrderedStreamQuery<
       },
       order,
     );
+    // Keep equality metadata even when clipping removes the whole range, so
+    // merged streams can still remove the same fixed index fields.
+    return narrowed instanceof EmptyStream
+      ? new EmptyStream<DocumentByName<DM<Schema>, T>>(
+          order,
+          this.getIndexFields(),
+          this.getEqualityIndexFilter(),
+        )
+      : narrowed;
   }
 }
 
@@ -877,6 +886,25 @@ export function streamIndexRange<
   order: "asc" | "desc",
 ): QueryStream<DocumentByName<DM<Schema>, T>> {
   const indexFields = getIndexFields(table, index, schema);
+  // Clipping a subrange with a cursor can put its lower bound at or beyond its
+  // upper bound. Splitting that empty interval would create nonempty queries
+  // for the bound's suffixes, outside the original range.
+  // Include empty prefixes: their predecessor/successor represent -/+ infinity,
+  // so an exclusive empty bound (including the terminal cursor "[]") is empty.
+  if (
+    compareKeys(
+      {
+        value: bounds.lowerBound,
+        kind: bounds.lowerBoundInclusive ? "predecessor" : "successor",
+      },
+      {
+        value: bounds.upperBound,
+        kind: bounds.upperBoundInclusive ? "successor" : "predecessor",
+      },
+    ) >= 0
+  ) {
+    return new EmptyStream(order, indexFields);
+  }
   const splitBounds = splitRange(
     indexFields,
     order,
@@ -1588,10 +1616,16 @@ export class SingletonStream<
 export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
   #order: "asc" | "desc";
   #indexFields: string[];
-  constructor(order: "asc" | "desc", indexFields: string[]) {
+  #equalityIndexFilter: Value[];
+  constructor(
+    order: "asc" | "desc",
+    indexFields: string[],
+    equalityIndexFilter: Value[] = [],
+  ) {
     super();
     this.#order = order;
     this.#indexFields = indexFields;
+    this.#equalityIndexFilter = equalityIndexFilter;
   }
   iterWithKeys(_trackBandwidth = false): StreamIterable<T> {
     return {
@@ -1611,7 +1645,7 @@ export class EmptyStream<T extends GenericStreamItem> extends QueryStream<T> {
     return this.#indexFields;
   }
   getEqualityIndexFilter(): Value[] {
-    return [];
+    return this.#equalityIndexFilter;
   }
   narrow(_indexBounds: IndexBounds) {
     return this;

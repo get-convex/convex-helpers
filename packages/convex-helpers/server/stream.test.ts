@@ -50,6 +50,121 @@ for (let a = 0; a < 3; a++) {
   }
 }
 
+describe("pagination cursor isolation", () => {
+  const tenantSchema = defineSchema({
+    companies: defineTable({}),
+    contacts: defineTable({
+      companyId: v.id("companies"),
+      createdAt: v.number(),
+    }).index("by_company_createdAt", ["companyId", "createdAt"]),
+  });
+
+  async function setup() {
+    const t = convexTest(tenantSchema, modules);
+    const companies = await t.run(async (ctx) => {
+      const ids = [];
+      for (let i = 0; i < 3; i++) {
+        const companyId = await ctx.db.insert("companies", {});
+        ids.push(companyId);
+        for (let createdAt = 0; createdAt < 3; createdAt++) {
+          await ctx.db.insert("contacts", { companyId, createdAt });
+        }
+      }
+      return ids.sort();
+    });
+    return { t, companies };
+  }
+
+  test.each(["asc", "desc"] as const)(
+    "foreign cursors stay within the declared tenant range (%s)",
+    async (order) => {
+      const { t, companies } = await setup();
+      await t.run(async (ctx) => {
+        const db = stream(ctx.db, tenantSchema);
+        const query = db
+          .query("contacts")
+          .withIndex("by_company_createdAt", (q) =>
+            q.eq("companyId", companies[1]!),
+          )
+          .order(order);
+        const expected = await query.collect();
+        expect(expected).toHaveLength(3);
+        const foreignCompanies =
+          order === "asc"
+            ? [companies[2]!, companies[0]!]
+            : [companies[0]!, companies[2]!];
+        for (const foreignCompany of foreignCompanies) {
+          const foreignPage = await db
+            .query("contacts")
+            .withIndex("by_company_createdAt", (q) =>
+              q.eq("companyId", foreignCompany),
+            )
+            .order(order)
+            .paginate({ cursor: null, numItems: 2 });
+          // Both complete document cursors and shorter index prefixes must
+          // intersect the static bounds, never expand them.
+          const key = JSON.parse(foreignPage.continueCursor);
+          for (const cursor of [
+            foreignPage.continueCursor,
+            JSON.stringify(key.slice(0, 1)),
+            JSON.stringify(key.slice(0, 2)),
+          ]) {
+            const pastTenant =
+              order === "asc"
+                ? foreignCompany > companies[1]!
+                : foreignCompany < companies[1]!;
+            const page = await query.paginate({ cursor, numItems: 10 });
+            expect(page.page).toEqual(pastTenant ? [] : expected);
+            expect(page.isDone).toBe(true);
+            const endingPage = await query.paginate({
+              cursor: null,
+              endCursor: cursor,
+              numItems: 10,
+            });
+            expect(endingPage.page).toEqual(pastTenant ? expected : []);
+          }
+        }
+      });
+    },
+  );
+
+  test.each(["asc", "desc"] as const)(
+    "the terminal empty cursor cannot escape the tenant range (%s)",
+    async (order) => {
+      const { t, companies } = await setup();
+      await t.run(async (ctx) => {
+        const query = stream(ctx.db, tenantSchema)
+          .query("contacts")
+          .withIndex("by_company_createdAt", (q) =>
+            q.eq("companyId", companies[1]!),
+          )
+          .order(order);
+        const complete = await query.paginate({ cursor: null, numItems: 10 });
+        expect(complete.page).toHaveLength(3);
+        expect(
+          complete.page.every((doc) => doc.companyId === companies[1]),
+        ).toBe(true);
+        expect(complete.isDone).toBe(true);
+        expect(complete.continueCursor).toBe("[]");
+        const resumed = await query.paginate({
+          cursor: complete.continueCursor,
+          numItems: 1,
+        });
+        expect(resumed.page).toEqual([]);
+        expect(resumed.isDone).toBe(true);
+        expect(resumed.continueCursor).toBe("[]");
+        const endingPage = await query.paginate({
+          cursor: null,
+          endCursor: "[]",
+          numItems: 1,
+        });
+        expect(endingPage.page).toEqual(complete.page);
+        expect(endingPage.isDone).toBe(true);
+      });
+    },
+  );
+});
+
 describe("reflect", () => {
   test("reflection", async () => {
     const t = convexTest(schema, modules);
@@ -542,6 +657,47 @@ describe("stream", () => {
     });
   });
 
+  test.each(["asc", "desc"] as const)(
+    "merged pagination preserves fixed fields when a range becomes empty (%s)",
+    async (order) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        for (const doc of MANY_DOCS) await ctx.db.insert("foo", doc);
+        const db = stream(ctx.db, schema);
+        const query = mergedStream(
+          [
+            db
+              .query("foo")
+              .withIndex("abc", (q) => q.eq("a", 1).lte("b", 0))
+              .order(order),
+            db
+              .query("foo")
+              .withIndex("abc", (q) => q.eq("a", 2).gte("b", 2))
+              .order(order),
+          ],
+          ["b", "c"],
+        );
+        const expected = MANY_DOCS.filter(
+          ({ a, b }) => (a === 1 && b === 0) || (a === 2 && b === 2),
+        );
+        if (order === "desc") expected.reverse();
+        let cursor: string | null = null;
+        for (const [i, doc] of expected.entries()) {
+          const remaining = await query.paginate({ cursor, numItems: 100 });
+          expect(remaining.page.map(stripSystemFields)).toEqual(
+            expected.slice(i),
+          );
+          const page = await query.paginate({ cursor, numItems: 1 });
+          expect(page.page.map(stripSystemFields)).toEqual([doc]);
+          cursor = page.continueCursor;
+        }
+        const last = await query.paginate({ cursor, numItems: 1 });
+        expect(last.page).toEqual([]);
+        expect(last.isDone).toBe(true);
+      });
+    },
+  );
+
   test("map stream", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
@@ -696,6 +852,82 @@ describe("stream", () => {
   );
 
   test.each(["asc", "desc"] as const)(
+    "nested flatMap keeps each cursor prefix until that level advances (%s)",
+    async (order) => {
+      const nestedSchema = defineSchema({
+        a: defineTable({ a: v.number() }).index("a", ["a"]),
+        b: defineTable({ b: v.number() }).index("b", ["b"]),
+        c: defineTable({ c: v.number() }).index("c", ["c"]),
+      });
+      const t = convexTest(nestedSchema, modules);
+      await t.run(async (ctx) => {
+        for (const value of [0, 1, 2]) {
+          await ctx.db.insert("a", { a: value });
+          await ctx.db.insert("b", { b: value });
+          await ctx.db.insert("c", { c: value });
+        }
+        const db = stream(ctx.db, nestedSchema);
+        const a = db.query("a").withIndex("a").order(order);
+        const b = db.query("b").withIndex("b").order(order);
+        const c = db.query("c").withIndex("c").order(order);
+        const ab = a.flatMap(
+          async (aDoc) => b.map(async (bDoc) => ({ a: aDoc.a, b: bDoc.b })),
+          b.getIndexFields(),
+        );
+        const bc = b.flatMap(
+          async (bDoc) => c.map(async (cDoc) => ({ b: bDoc.b, c: cDoc.c })),
+          c.getIndexFields(),
+        );
+        // Exercise both (a.flatMap(b)).flatMap(c) and a.flatMap(b.flatMap(c)).
+        const queries = [
+          ab.flatMap(
+            async (abDoc) => c.map(async (cDoc) => ({ ...abDoc, c: cDoc.c })),
+            c.getIndexFields(),
+          ),
+          a.flatMap(
+            async (aDoc) => bc.map(async (bcDoc) => ({ a: aDoc.a, ...bcDoc })),
+            bc.getIndexFields(),
+          ),
+        ];
+        const expected = MANY_DOCS.slice();
+        if (order === "desc") expected.reverse();
+        for (const query of queries) {
+          expect(await query.collect()).toEqual(expected);
+          const cursors: (string | null)[] = [null];
+          for (const [i, doc] of expected.entries()) {
+            const cursor = cursors[i]!;
+            const remaining = await query.paginate({ cursor, numItems: 100 });
+            expect(remaining.page).toEqual(expected.slice(i));
+            expect(remaining.isDone).toBe(true);
+            const page = await query.paginate({ cursor, numItems: 1 });
+            expect(page.page).toEqual([doc]);
+            cursors.push(page.continueCursor);
+          }
+          // Finish c, then b, before advancing a; also clip at the upper edge.
+          for (const [start, end] of [
+            [13, 14],
+            [13, 17],
+            [13, 22],
+          ] as const) {
+            const page = await query.paginate({
+              cursor: cursors[start]!,
+              endCursor: cursors[end]!,
+              numItems: 1,
+            });
+            expect(page.page).toEqual(expected.slice(start, end));
+          }
+          const last = await query.paginate({
+            cursor: cursors.at(-1)!,
+            numItems: 1,
+          });
+          expect(last.page).toEqual([]);
+          expect(last.isDone).toBe(true);
+        }
+      });
+    },
+  );
+
+  test.each(["asc", "desc"] as const)(
     "flatMap resumes merged inner streams after a skipped outer item (%s)",
     async (order) => {
       const t = convexTest(schema, modules);
@@ -766,6 +998,161 @@ describe("stream", () => {
       expect(result.map(stripSystemFields)).toEqual([{ a: 1, b: 5, c: 0 }]);
     });
   });
+
+  test.each(["asc", "desc"] as const)(
+    "streamIndexRange resumes within and beyond a bounded prefix (%s)",
+    async (order) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        for (const doc of MANY_DOCS) await ctx.db.insert("foo", doc);
+        const query = streamIndexRange(
+          ctx.db,
+          schema,
+          "foo",
+          "abc",
+          {
+            lowerBound: [1, 1],
+            lowerBoundInclusive: true,
+            upperBound: [],
+            upperBoundInclusive: true,
+          },
+          order,
+        );
+        const expected = MANY_DOCS.filter(
+          ({ a, b }) => a > 1 || (a === 1 && b >= 1),
+        );
+        if (order === "desc") expected.reverse();
+        expect((await query.collect()).map(stripSystemFields)).toEqual(
+          expected,
+        );
+        let cursor: string | null = null;
+        for (const [i, doc] of expected.entries()) {
+          const remaining = await query.paginate({ cursor, numItems: 100 });
+          expect(remaining.page.map(stripSystemFields)).toEqual(
+            expected.slice(i),
+          );
+          expect(remaining.isDone).toBe(true);
+          const page = await query.paginate({ cursor, numItems: 1 });
+          expect(page.page.map(stripSystemFields)).toEqual([doc]);
+          cursor = page.continueCursor;
+        }
+        const last = await query.paginate({ cursor, numItems: 1 });
+        expect(last.page).toEqual([]);
+        expect(last.isDone).toBe(true);
+      });
+    },
+  );
+
+  test.each(["asc", "desc"] as const)(
+    "streamIndexRange handles empty intervals and inclusive prefixes (%s)",
+    async (order) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        for (const doc of MANY_DOCS) await ctx.db.insert("foo", doc);
+        for (const lowerBoundInclusive of [true, false]) {
+          for (const upperBoundInclusive of [true, false]) {
+            for (const [lowerBound, upperBound] of [
+              [[2, 0, 1], [1]],
+              [[2], [1, 2, 1]],
+              [
+                [1, 1],
+                [1, 1],
+              ],
+              [
+                [1, 1],
+                [1, 1, 1],
+              ],
+              [
+                [1, 1, 1],
+                [1, 1],
+              ],
+            ] as const) {
+              const query = streamIndexRange(
+                ctx.db,
+                schema,
+                "foo",
+                "abc",
+                {
+                  lowerBound: [...lowerBound],
+                  lowerBoundInclusive,
+                  upperBound: [...upperBound],
+                  upperBoundInclusive,
+                },
+                order,
+              );
+              const expected = MANY_DOCS.filter(({ a, b, c }) => {
+                if (a !== 1 || b !== 1 || lowerBound[0] === 2) return false;
+                const aboveLower =
+                  lowerBound.length === 3
+                    ? lowerBoundInclusive
+                      ? c >= 1
+                      : c > 1
+                    : lowerBoundInclusive;
+                const belowUpper =
+                  upperBound.length === 3
+                    ? upperBoundInclusive
+                      ? c <= 1
+                      : c < 1
+                    : upperBoundInclusive;
+                return aboveLower && belowUpper;
+              });
+              if (order === "desc") expected.reverse();
+              expect((await query.collect()).map(stripSystemFields)).toEqual(
+                expected,
+              );
+            }
+          }
+        }
+      });
+    },
+  );
+
+  test.each(["asc", "desc"] as const)(
+    "exclusive empty prefixes produce empty index ranges (%s)",
+    async (order) => {
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        for (const doc of MANY_DOCS) await ctx.db.insert("foo", doc);
+        for (const [lowerBound, upperBound] of [
+          [[], []],
+          [[], [1]],
+          [[1], []],
+        ]) {
+          for (const lowerBoundInclusive of [true, false]) {
+            for (const upperBoundInclusive of [true, false]) {
+              if (
+                (lowerBound.length !== 0 || lowerBoundInclusive) &&
+                (upperBound.length !== 0 || upperBoundInclusive)
+              ) {
+                continue;
+              }
+              const query = streamIndexRange(
+                ctx.db,
+                schema,
+                "foo",
+                "abc",
+                {
+                  lowerBound,
+                  lowerBoundInclusive,
+                  upperBound,
+                  upperBoundInclusive,
+                },
+                order,
+              );
+              expect(await query.collect()).toEqual([]);
+            }
+          }
+        }
+        const unbounded = stream(ctx.db, schema)
+          .query("foo")
+          .withIndex("abc")
+          .order(order);
+        const page = await unbounded.paginate({ cursor: "[]", numItems: 1 });
+        expect(page.page).toEqual([]);
+        expect(page.isDone).toBe(true);
+      });
+    },
+  );
 
   test("paginate with 0 numItems", async () => {
     const t = convexTest(schema, modules);
