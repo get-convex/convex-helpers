@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Triggers: `patch`, `replace` and `delete` with an explicit table name now
+  skip the trigger path when the table has no registered triggers, as `insert`
+  already does. They no longer read the document before and after the write.
 - Zod 4 support: fixed the TypeScript return type of `zodOutputToConvex` for
   schemas nested in objects, arrays, records, unions and tuples (and inside
   `.readonly()`, `z.lazy()`, `.catch()` and `.nonoptional()`). These nested

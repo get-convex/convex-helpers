@@ -279,6 +279,9 @@ export function writerWithTriggers<
       // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
       return await innerDb.patch(id, value);
     }
+    if (!triggers.registered[tableName]) {
+      return await innerDb.patch(tableName, id, value);
+    }
     return await _execThenTrigger(
       ctx,
       innerDb,
@@ -321,6 +324,9 @@ export function writerWithTriggers<
       // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here
       return await innerDb.replace(id, value);
     }
+    if (!triggers.registered[tableName]) {
+      return await innerDb.replace(tableName, id, value);
+    }
     return await _execThenTrigger(
       ctx,
       innerDb,
@@ -357,6 +363,9 @@ export function writerWithTriggers<
     if (!tableName) {
       // eslint-disable-next-line @convex-dev/explicit-table-ids -- tableName not available here–
       return await innerDb.delete(id);
+    }
+    if (!triggers.registered[tableName]) {
+      return await innerDb.delete(tableName, id);
     }
     return await _execThenTrigger(
       ctx,

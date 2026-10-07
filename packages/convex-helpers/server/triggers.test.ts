@@ -1,5 +1,5 @@
 import { customCtx, customMutation } from "./customFunctions.js";
-import { Triggers } from "./triggers.js";
+import { Triggers, writerWithTriggers } from "./triggers.js";
 import { wrapDatabaseWriter } from "./rowLevelSecurity.js";
 import { convexTest } from "convex-test";
 import type {
@@ -282,5 +282,55 @@ test("triggers.wrapDB preserves `this` binding for RLS-wrapped db", async () => 
   expect(result).toStrictEqual({
     normalizedIsNonNull: true,
     readBackMatches: true,
+  });
+});
+
+test("writes to a table without triggers skip the trigger path", async () => {
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx) => {
+    const reads: string[] = [];
+    const innerDb = new Proxy(ctx.db, {
+      get(target, prop, receiver) {
+        if (prop === "get") {
+          return (table: any, id: any) => {
+            reads.push(table);
+            return target.get(table, id);
+          };
+        }
+        const value = Reflect.get(target, prop, receiver);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    const changes: string[] = [];
+    const localTriggers = new Triggers<DataModel>();
+    localTriggers.register("users", async (_ctx, change) => {
+      changes.push(change.operation);
+    });
+    const db = writerWithTriggers(ctx, innerDb, localTriggers);
+
+    const countId = await db.insert("userCount", { count: 0 });
+    await db.patch("userCount", countId, { count: 1 });
+    await db.replace("userCount", countId, { count: 2 });
+    expect((await ctx.db.get("userCount", countId))!.count).toBe(2);
+    await db.delete("userCount", countId);
+    expect(await ctx.db.get("userCount", countId)).toBeNull();
+    expect(reads).toStrictEqual([]);
+    expect(changes).toStrictEqual([]);
+
+    // Writes to a table with triggers still read the document around the write.
+    const userId = await db.insert("users", {
+      firstName: "John",
+      lastName: "Doe",
+      fullName: "John Doe",
+    });
+    await db.patch("users", userId, { firstName: "Jane" });
+    await db.replace("users", userId, {
+      firstName: "Jane",
+      lastName: "Roe",
+      fullName: "Jane Roe",
+    });
+    await db.delete("users", userId);
+    expect(changes).toStrictEqual(["insert", "update", "update", "delete"]);
+    expect(reads.length).toBeGreaterThan(0);
   });
 });
