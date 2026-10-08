@@ -1319,12 +1319,15 @@ class FlatMapStreamIterator<
   #mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
   #trackBandwidth: boolean;
+  #skipEmptyAt: IndexKey | undefined;
+  #pendingBandwidth = 0;
 
   constructor(
     outerStream: QueryStream<T>,
     mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
     trackBandwidth: boolean,
+    skipEmptyAt?: IndexKey,
   ) {
     this.#outerIterator = outerStream
       .iterWithKeys(trackBandwidth)
@@ -1333,6 +1336,16 @@ class FlatMapStreamIterator<
     this.#mapper = mapper;
     this.#mappedIndexFields = mappedIndexFields;
     this.#trackBandwidth = trackBandwidth;
+    this.#skipEmptyAt = skipEmptyAt;
+  }
+  skipEmptyAt(indexKey: IndexKey): boolean {
+    return (
+      this.#skipEmptyAt !== undefined &&
+      compareKeys(
+        { value: indexKey, kind: "exact" },
+        { value: this.#skipEmptyAt, kind: "exact" },
+      ) === 0
+    );
   }
   singletonSkipInnerStream(): QueryStream<U> {
     // If the outer stream is a filtered value, yield a singleton
@@ -1350,7 +1363,9 @@ class FlatMapStreamIterator<
     const [t, indexKey, bandwidth] = item;
     let innerStream: QueryStream<U>;
     if (t === null) {
-      innerStream = this.singletonSkipInnerStream();
+      innerStream = this.skipEmptyAt(indexKey)
+        ? new EmptyStream(this.#outerStream.getOrder(), this.#mappedIndexFields)
+        : this.singletonSkipInnerStream();
     } else {
       innerStream = await this.#mapper(t, indexKey);
       if (
@@ -1389,6 +1404,12 @@ class FlatMapStreamIterator<
     if (result.done) {
       if (this.#currentOuterItem.count > 0) {
         this.#currentOuterItem = null;
+      } else if (this.skipEmptyAt(this.#currentOuterItem.indexKey)) {
+        // Resuming already included this outer item. Emitting its placeholder
+        // again can repeat the cursor (or move it backwards). Carry the cost of
+        // rereading it to the next result and advance to the next outer item.
+        this.#pendingBandwidth += this.#currentOuterItem.bandwidth;
+        this.#currentOuterItem = null;
       } else {
         // The inner stream was completely empty, so we should inject a null
         // (which will be skipped by everything except the maximumRowsRead count)
@@ -1406,7 +1427,10 @@ class FlatMapStreamIterator<
     const bandwidth =
       (this.#currentOuterItem.count === 1
         ? this.#currentOuterItem.bandwidth
-        : 0) + innerBandwidth;
+        : 0) +
+      innerBandwidth +
+      this.#pendingBandwidth;
+    this.#pendingBandwidth = 0;
     return { done: false, value: [u, fullIndexKey, bandwidth] };
   }
 }
@@ -1418,20 +1442,24 @@ class FlatMapStream<
   #stream: QueryStream<T>;
   #mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>;
   #mappedIndexFields: string[];
+  #skipEmptyAt: IndexKey | undefined;
   constructor(
     stream: QueryStream<T>,
     mapper: (doc: T, indexKey: IndexKey) => Promise<QueryStream<U>>,
     mappedIndexFields: string[],
+    skipEmptyAt?: IndexKey,
   ) {
     super();
     this.#stream = stream;
     this.#mapper = mapper;
     this.#mappedIndexFields = mappedIndexFields;
+    this.#skipEmptyAt = skipEmptyAt;
   }
   iterWithKeys(trackBandwidth = false): StreamIterable<U> {
     const outerStream = this.#stream;
     const mapper = this.#mapper;
     const mappedIndexFields = this.#mappedIndexFields;
+    const skipEmptyAt = this.#skipEmptyAt;
     return {
       [Symbol.asyncIterator]() {
         return new FlatMapStreamIterator(
@@ -1439,6 +1467,7 @@ class FlatMapStream<
           mapper,
           mappedIndexFields,
           trackBandwidth,
+          skipEmptyAt,
         );
       },
     };
@@ -1458,6 +1487,35 @@ class FlatMapStream<
     const outerUpperBound = indexBounds.upperBound.slice(0, outerLength);
     const innerLowerBound = indexBounds.lowerBound.slice(outerLength);
     const innerUpperBound = indexBounds.upperBound.slice(outerLength);
+    // An exclusive start inside an outer item must still visit its remaining
+    // inner rows, but must not emit another placeholder if none remain. Retain
+    // the furthest such start when narrowing an already narrowed stream.
+    const startBound =
+      this.getOrder() === "asc"
+        ? {
+            outer: outerLowerBound,
+            inner: innerLowerBound,
+            inclusive: indexBounds.lowerBoundInclusive,
+          }
+        : {
+            outer: outerUpperBound,
+            inner: innerUpperBound,
+            inclusive: indexBounds.upperBoundInclusive,
+          };
+    let skipEmptyAt = this.#skipEmptyAt;
+    if (
+      startBound.inner.length > 0 &&
+      !startBound.inclusive &&
+      (skipEmptyAt === undefined ||
+        compareKeys(
+          { value: startBound.outer, kind: "exact" },
+          { value: skipEmptyAt, kind: "exact" },
+        ) *
+          (this.getOrder() === "asc" ? 1 : -1) >
+          0)
+    ) {
+      skipEmptyAt = startBound.outer;
+    }
     const outerIndexBounds = {
       lowerBound: outerLowerBound,
       lowerBoundInclusive:
@@ -1500,6 +1558,7 @@ class FlatMapStream<
         });
       },
       this.#mappedIndexFields,
+      skipEmptyAt,
     );
   }
 }
