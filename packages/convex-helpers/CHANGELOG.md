@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.128
 
 - Triggers: `patch`, `replace` and `delete` with an explicit table name now
   skip the trigger path when the table has no registered triggers, as `insert`
@@ -11,6 +11,7 @@
   schemas were typed from their input, like in `zodToConvex`, so a nested
   `z.codec`, `z.pipe` or `.default()` got the wrong type. The return type now
   matches the validator returned at runtime. Thanks to @vinnysaj for the fix!
+- fix(stream): Ensure cursors advance past exhausted flatMap items on resume (#1018)
 
 ## 0.1.127
 
