@@ -1,0 +1,95 @@
+name: Release
+
+# Publishes convex-helpers to npm when an `npm/<version>` tag is pushed, using
+# npm **trusted publishing** (OIDC) -- no npm token is stored on a laptop or in
+# this repo's secrets. Provenance is attested as part of the publish.
+#
+# The npm dist-tag is derived from the version, so prereleases stay off
+# `latest`: 0.1.129-alpha.0 publishes under `alpha`, a plain 0.1.129 under
+# `latest`.
+#
+# One-time setup on npmjs.com: convex-helpers -> Settings -> Trusted Publisher
+# -> GitHub Actions, pointing at repo get-convex/convex-helpers and workflow
+# file `release.yml`. Until that is configured, this workflow cannot publish.
+#
+# Cut a release with `npm run release` (or `./publish.sh`), which bumps the
+# version and pushes the tag. If this workflow fails, nothing was published --
+# delete the tag, fix the problem, and release again:
+#   git push --delete origin npm/<version> && git tag -d npm/<version>
+
+on:
+  push:
+    tags:
+      - "npm/*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.repository == 'get-convex/convex-helpers'
+
+    permissions:
+      contents: read
+      id-token: write # OIDC token for npm trusted publishing
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Node setup
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: ".nvmrc"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Resolve version and dist-tag
+        id: release
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          version=$(node -p "require('./packages/convex-helpers/package.json').version")
+
+          # Guard against tagging a commit whose package.json says otherwise,
+          # which would publish a version nobody asked for.
+          if [ "${TAG_NAME#npm/}" != "$version" ]; then
+            echo "::error::Tag $TAG_NAME does not match package.json version $version"
+            exit 1
+          fi
+
+          # 0.1.129-alpha.0 -> alpha, 0.1.129 -> latest
+          if [[ "$version" == *-* ]]; then
+            dist_tag="${version#*-}"
+            dist_tag="${dist_tag%%.*}"
+          else
+            dist_tag="latest"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$dist_tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing convex-helpers@$version under dist-tag: $dist_tag"
+
+      - name: Build
+        run: |
+          npm ci
+          npm run build
+
+      - name: Lint and test
+        run: |
+          npm run lint
+          npm run test
+
+      # `npm run build` copies the (already bumped) package.json into dist/,
+      # so dist/ is the publishable package.
+      - name: Publish
+        working-directory: packages/convex-helpers/dist
+        run: npm publish --provenance --tag "$DIST_TAG"
+        env:
+          DIST_TAG: ${{ steps.release.outputs.dist_tag }}

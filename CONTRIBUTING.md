@@ -59,9 +59,21 @@ In general you can run `./publish.sh` to go through the publish workflow, or
 It will prompt you for a new version. If you've already adjusted the version,
 you can just hit enter.
 
-When it shows the publish preview, ensure the files all look like they're there.
-After you confirm to publish, it will publish to npm, make a git commit,
-tag the commit with the version, and push the current branch & that tag.
+Publishing happens in CI, not locally. The script runs the same checks CI will
+run, bumps the version, commits, and pushes an `npm/<version>` tag. That tag
+triggers [`.github/workflows/release.yml`](./.github/workflows/release.yml),
+which builds and publishes to npm using npm
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC), so no
+npm token is stored on a laptop or in this repo's secrets, and the published
+package carries a provenance attestation.
+
+If the release workflow fails, nothing was published. Delete the tag, fix the
+problem, and release again:
+
+```sh
+git push --delete origin npm/<version>
+git tag -d npm/<version>
+```
 
 ### Alpha releases
 
@@ -69,5 +81,7 @@ For alpha releases, you can run `./publish.sh alpha` or `npm run alpha`.
 
 Or run this beforehand to bump the version:
 `npm version prerelease --preid alpha && git add package*`.
-Only use alpha, otherwise npm won't tag it correctly and it might suggest it as
-`convex-helpers@latest` instead of just as `convex-helpers@alpha`.
+
+The release workflow derives the npm dist-tag from the version, so any preid
+stays off `latest`: `0.1.129-alpha.0` publishes under `alpha`,
+`0.1.129-beta.0` under `beta`.
