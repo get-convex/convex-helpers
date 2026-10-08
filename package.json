@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "classnames": "^2.3.2",
+    "convex": "1.46.0",
     "convex-helpers": "file:packages/convex-helpers/dist",
     "hono": "^4.3.6",
     "react": "^19.2.4",
@@ -55,7 +56,6 @@
     "@vitejs/plugin-react": "6.0.5",
     "@vitest/coverage-v8": "5.0.0",
     "chokidar-cli": "3.0.0",
-    "convex": "1.46.0",
     "convex-test": "0.0.54",
     "eslint": "9.39.5",
     "eslint-plugin-react": "7.37.5",
