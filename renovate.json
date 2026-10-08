@@ -17,8 +17,5 @@
       "matchDepTypes": ["devDependencies"],
       "automerge": true
     }
-  ],
-  "constraints": {
-    "npm": "^11.0.0"
-  }
+  ]
 }

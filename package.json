@@ -25,6 +25,9 @@
     "alpha": "./publish.sh alpha",
     "release": "./publish.sh"
   },
+  "engines": {
+    "npm": ">=11.0.0"
+  },
   "dependencies": {
     "classnames": "^2.3.2",
     "convex-helpers": "file:packages/convex-helpers/dist",
