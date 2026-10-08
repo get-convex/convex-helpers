@@ -5,10 +5,9 @@ set -e
 npm whoami || npm login
 
 rm -rf packages/convex-helpers/node_modules
-npm i
 npm run clean
+npm ci
 npm run build
-npm i
 npm run lint
 npm run test
 git diff --exit-code || {
@@ -56,8 +55,7 @@ else
   npm publish
 fi
 popd >/dev/null
-npm i
-git add package.json package-lock.json packages/convex-helpers/package.json
+git add packages/convex-helpers/package.json
 # If there's nothing to commit, continue
 git commit -m "npm $version" || true
 git tag "npm/$version"
