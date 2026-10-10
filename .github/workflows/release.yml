@@ -8,10 +8,6 @@ name: Release
 # `latest`: 0.1.129-alpha.0 publishes under `alpha`, a plain 0.1.129 under
 # `latest`.
 #
-# One-time setup on npmjs.com: convex-helpers -> Settings -> Trusted Publisher
-# -> GitHub Actions, pointing at repo get-convex/convex-helpers and workflow
-# file `release.yml`. Until that is configured, this workflow cannot publish.
-#
 # Cut a release with `npm run release`, which bumps the version and pushes the
 # tag. If this workflow fails, nothing was published -- delete the tag, fix the
 # problem, and release again:
