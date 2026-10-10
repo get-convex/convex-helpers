@@ -12,9 +12,9 @@ name: Release
 # -> GitHub Actions, pointing at repo get-convex/convex-helpers and workflow
 # file `release.yml`. Until that is configured, this workflow cannot publish.
 #
-# Cut a release with `npm run release` (or `./publish.sh`), which bumps the
-# version and pushes the tag. If this workflow fails, nothing was published --
-# delete the tag, fix the problem, and release again:
+# Cut a release with `npm run release`, which bumps the version and pushes the
+# tag. If this workflow fails, nothing was published -- delete the tag, fix the
+# problem, and release again:
 #   git push --delete origin npm/<version> && git tag -d npm/<version>
 
 on:
