@@ -110,5 +110,8 @@ convex-local-backend*
 .mypy_cache
 __pycache__/
 
+# vim swapfiles, e.g. left behind if the release changelog edit is interrupted
+*.swp
+
 # Claude Code local settings
 .claude/settings.local.json
