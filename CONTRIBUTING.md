@@ -72,20 +72,27 @@ npm run release
 
 This command:
 
-1. Checks for a clean working tree and runs `clean`, `ci`, `build`, `lint`, and
-   `test` before changing release files.
-2. Runs `npm run version-packages`: Changesets updates `package.json` and
-   `CHANGELOG.md` and consumes release notes, then npm synchronizes the lockfile.
-3. Commits the release files, creates an annotated `npm/<version>` tag, and
-   atomically pushes the current branch and that tag to `origin`.
+1. Reads the next version from Changesets and calls `npm version <version>`.
+   npm checks for a clean working tree.
+2. The `preversion` hook validates the requested version, runs `clean`, `ci`,
+   `build`, `lint`, and `test`, then consumes the changesets into `CHANGELOG.md`.
+3. npm updates the package version and lockfile. The `version` hook formats and
+   stages the changelog and changesets; npm creates the release commit and
+   annotated `npm/<version>` tag.
+4. The `postversion` hook atomically pushes the current branch and that tag to
+   `origin`.
 
 The tag triggers [`.github/workflows/release.yml`](./.github/workflows/release.yml),
 which builds, checks, and publishes from the root using npm
 [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC). Local
 release commands do not publish to npm or need an npm publishing token.
 
-Use Changesets instead of `npm version` or editing the changelog by hand. To
-preview generated release files without committing or pushing, use
+You can also run `npm version patch` (or another bump) directly when it matches
+the pending changesets. It runs the same hooks, including pushing the release.
+The `preversion` hook rejects bumps that disagree with Changesets, so the version
+and changelog stay consistent. `npm run release` selects the bump for you.
+
+To preview generated release files without committing or pushing, use
 `npm run version-packages` on a disposable branch. The release command expects
 unconsumed changesets, so discard that preview before running `npm run release`.
 

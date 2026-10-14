@@ -173,7 +173,10 @@
     "changeset:status": "changeset status",
     "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts && prettier --write CHANGELOG.md package.json package-lock.json .changeset",
     "release:check": "npm run clean && npm ci && npm run build && npm run lint && npm run test",
-    "test:release": "node --test scripts/release.test.mjs"
+    "test:release": "node --test scripts/release.test.mjs",
+    "preversion": "node scripts/release.mjs --check && npm run release:check && changeset version",
+    "version": "prettier --write CHANGELOG.md package.json package-lock.json .changeset && git add CHANGELOG.md .changeset",
+    "postversion": "git push --atomic origin HEAD \"refs/tags/npm/$npm_package_version\""
   },
   "repository": {
     "type": "git",

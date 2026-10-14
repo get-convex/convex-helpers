@@ -6,9 +6,11 @@ change. Commit the generated Markdown file with the implementation.
 
 Docs-only and development-tooling changes do not need a changeset.
 
-Maintainers run `npm run release` to validate the tree, consume pending changesets,
-update the root package version and changelog, and push the release commit and
-`npm/<version>` tag. Publishing still happens in GitHub Actions.
+Maintainers run `npm run release` to select the next version from Changesets and
+invoke `npm version`. Its lifecycle hooks validate the tree and generate the
+changelog; npm updates the version and lockfile, commits, and tags the release.
+The `postversion` hook pushes the commit and `npm/<version>` tag. Publishing still
+happens in GitHub Actions.
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md#releasing) for stable and alpha releases,
 and the [Changesets guide](https://changesets.dev/guide/) for the file format.

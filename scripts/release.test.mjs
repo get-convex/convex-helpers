@@ -27,6 +27,7 @@ function fixture(t, changes = ["patch"]) {
   const remote = path.join(temp, "remote.git");
   mkdirSync(path.join(cwd, "scripts"), { recursive: true });
   mkdirSync(path.join(cwd, ".changeset"));
+  cpSync(path.join(root, ".npmrc"), path.join(cwd, ".npmrc"));
   cpSync(
     path.join(root, "scripts/release.mjs"),
     path.join(cwd, "scripts/release.mjs"),
@@ -97,11 +98,13 @@ function fixture(t, changes = ["patch"]) {
     run("git", ["commit", "--quiet", "-m", "fixture"]);
   };
   commit();
-  const release = () => spawnSync("npm", ["run", "release"], options);
+  run("git", ["branch", "main"]);
+  const release = (args = ["run", "release"]) =>
+    spawnSync("npm", args, options);
   const version = () =>
     JSON.parse(readFileSync(path.join(cwd, "package.json"))).version;
-  const assertReleased = (expected) => {
-    const result = release();
+  const assertReleased = (expected, args) => {
+    const result = release(args);
     assert.equal(result.status, 0, result.stdout + result.stderr);
     assert.equal(version(), expected);
     const lock = JSON.parse(readFileSync(path.join(cwd, "package-lock.json")));
@@ -155,10 +158,10 @@ test("alpha releases can be promoted to stable without a new changeset", (t) => 
 
 test("dirty trees are rejected before versioning", (t) => {
   const f = fixture(t);
-  writeFileSync(path.join(f.cwd, "uncommitted.txt"), "unfinished");
+  writeFileSync(path.join(f.cwd, "CHANGELOG.md"), "unfinished");
   const result = f.release();
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Commit or stash/);
+  assert.match(result.stderr, /Git working directory not clean/);
   assert.equal(f.version(), "0.1.128");
   assert.equal(f.run("git", ["tag"]), "");
 });
@@ -179,6 +182,21 @@ test("failed checks leave version and changesets untouched", (t) => {
 test("no pending changesets cannot produce a release tag", (t) => {
   const f = fixture(t, []);
   assert.notEqual(f.release().status, 0);
+  assert.equal(f.version(), "0.1.128");
+  assert.equal(f.run("git", ["status", "--porcelain"]), "");
+  assert.equal(f.run("git", ["tag"]), "");
+});
+
+test("npm version patch runs the same release hooks when it matches the notes", (t) => {
+  const f = fixture(t);
+  f.assertReleased("0.1.129", ["version", "patch"]);
+});
+
+test("npm version cannot override the version required by the release notes", (t) => {
+  const f = fixture(t, ["minor"]);
+  const result = f.release(["version", "patch"]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Changesets requires version 0.2.0/);
   assert.equal(f.version(), "0.1.128");
   assert.equal(f.run("git", ["status", "--porcelain"]), "");
   assert.equal(f.run("git", ["tag"]), "");
