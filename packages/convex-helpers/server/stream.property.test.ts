@@ -74,7 +74,7 @@ type Scenario = {
   extraKeys?: IndexKey[];
   // Distinct pagination positions at the end of a group, not within a document.
   distinctLength?: number;
-  // Known budget/progress failures are captured by small .fails regressions.
+  // An empty budget-limited distinct page may intentionally skip a group.
   budgetedWalk?: false;
 };
 type Cursor = { wire: string; key: IndexKey };
@@ -306,6 +306,13 @@ async function check(
     [
       ...scenario.entries.map((entry) => entry.key),
       ...(scenario.extraKeys ?? []),
+      // Empty distinct pages can expose just the group boundary, omitting the
+      // rejected row's remaining index fields.
+      ...(scenario.distinctLength === undefined
+        ? []
+        : scenario.entries.map((entry) =>
+            entry.key.slice(0, scenario.distinctLength),
+          )),
     ].map((key) => cursor(key).wire),
   );
   for (const output of [result!.continueCursor, result!.splitCursor]) {
@@ -934,18 +941,15 @@ test.each(["asc", "desc"] as const)(
   },
 );
 
-// DistinctStream truncates a continuation to the group prefix even when the
-// budget stopped on a filtered-out row before any member of that group was
-// emitted. That skips the group's later matching row in either scan direction.
-// Still reproducible on main at d9dedf7 (0.1.128), after the flatMap fix.
-// Remove .fails when filtered and emitted continuations can be distinguished.
-test.fails.each([
+// An empty budget-limited distinct page advances past its last examined group,
+// even if that group has unread matching rows. This keeps legacy cursor semantics.
+test.each([
   { order: "asc", maximumRowsRead: 1 },
   { order: "desc", maximumRowsRead: 1 },
   { order: "asc", maximumBytesRead: 1 },
   { order: "desc", maximumBytesRead: 1 },
 ] as const)(
-  "filtered distinct resumes within an unfinished group: %j",
+  "empty filtered distinct pages advance past the last examined group: %j",
   async ({ order, ...limit }) => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
@@ -977,7 +981,9 @@ test.fails.each([
         numItems: 1,
         ...limit,
       });
-      expect(second.page).toEqual(unlimited.page);
+      expect(second.page).toEqual([]);
+      expect(second.isDone).toBe(true);
+      expect(JSON.parse(first.continueCursor)).toEqual(["m", 0]);
     });
   },
 );
@@ -1142,6 +1148,77 @@ describe.each(seeds)("stream cursor properties (seed %i)", (seed) => {
   );
 
   test.each(["asc", "desc"] as const)(
+    "distinct budgeted walks omit groups only after empty pages (%s)",
+    async (order) => {
+      const { t, rows, groups, rng } = await fixture(seed, ["a", "m", "z"]);
+      await t.run(async (ctx) => {
+        const { db, reads } = observer(ctx.db);
+        const scenario = scenarios(db, rows, groups, order).find(
+          (variant) => variant.name === "filter then distinct",
+        )!;
+        const expected = scenario.entries.flatMap((entry) =>
+          entry.doc ? [entry.doc._id] : [],
+        );
+        for (const budget of ["rows", "bytes"] as const) {
+          let start: Cursor | null = null;
+          const actual: string[] = [];
+          const omitted = new Set<string>();
+          const seen = new Set<string>();
+          let done = false;
+          for (let page = 0; page < rows.length + 1; page++) {
+            const result: PaginationResult<Row> = (await check(
+              scenario,
+              reads,
+              {
+                cursor: start?.wire ?? null,
+                numItems: rng.int(3) + 1,
+                ...(budget === "rows"
+                  ? { maximumRowsRead: rng.int(4) + 1 }
+                  : { maximumBytesRead: rng.pick([1, 300, 600]) }),
+              },
+              `seed ${seed}, distinct ${budget} page ${page}`,
+            ))!;
+            const end: Cursor | null = result.isDone
+              ? null
+              : {
+                  wire: result.continueCursor,
+                  key: JSON.parse(result.continueCursor) as IndexKey,
+                };
+            const inPageRange = modelPage(scenario, start, end, Infinity).map(
+              (doc) => doc._id,
+            );
+            if (result.page.length > 0 || result.isDone) {
+              // A nonempty page must include every representative through its
+              // last result. Later partially searched groups remain for retry.
+              expect(result.page.map((doc) => doc._id)).toEqual(inPageRange);
+              if (!result.isDone) {
+                expect(result.continueCursor).toBe(
+                  cursor(keyOf(result.page.at(-1)!)).wire,
+                );
+              }
+            } else {
+              expect(result.pageStatus).toBe("SplitRequired");
+              const lastRead = rows.find((doc) => doc._id === reads.at(-1))!;
+              expect(end!.key).toEqual([lastRead.tenant, lastRead.bucket]);
+              for (const id of inPageRange) omitted.add(id);
+            }
+            actual.push(...result.page.map((doc) => doc._id));
+            if (result.isDone) {
+              done = true;
+              break;
+            }
+            expect(seen.has(result.continueCursor)).toBe(false);
+            seen.add(result.continueCursor);
+            start = end;
+          }
+          expect(done).toBe(true);
+          expect(actual).toEqual(expected.filter((id) => !omitted.has(id)));
+        }
+      });
+    },
+  );
+
+  test.each(["asc", "desc"] as const)(
     "valid composed pagination is complete and makes progress (%s)",
     async (order) => {
       const { t, rows, groups, rng } = await fixture(seed, ["a", "m", "z"]);
@@ -1166,7 +1243,8 @@ describe.each(seeds)("stream cursor properties (seed %i)", (seed) => {
               {
                 cursor: next,
                 numItems: rng.int(3) + 1,
-                // Known budget/progress regressions are tested separately.
+                // Empty distinct pages may intentionally omit groups. Test complete
+                // walks without budgets; budget behavior is covered separately.
                 // Adversarial safety tests still exercise budgets on every variant.
                 maximumRowsRead:
                   scenario.budgetedWalk === false
