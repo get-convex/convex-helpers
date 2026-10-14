@@ -65,6 +65,9 @@ describe("manual pagination", () => {
   test.each(["asc", "desc"] as const)(
     "empty endpoints remain unbounded when marked exclusive (%s)",
     async (order) => {
+      // getPage uses [] to mean no cutoff at that end of the index. Inclusivity
+      // only applies to nonempty keys, so [] must not turn a normal scan into an
+      // empty range. The opposite endpoint and page limits still apply.
       const t = convexTest(schema, modules);
       await t.run(async (ctx) => {
         for (const doc of MANY_DOCS) await ctx.db.insert("foo", doc);

@@ -126,8 +126,10 @@ const tenants: Row["tenant"][] = [
   { tag: 1 },
 ];
 
-// Encode the documented stream wire representation. The oracle below compares
-// documents to prefixes directly; it never calls stream bounds/splitting helpers.
+// Encode the stream wire representation, including serializeCursor's undefined
+// escaping. Keep this test-local so fabricated client cursors do not depend on
+// the production cursor helpers. Valid pagination also exercises cursors emitted
+// by the library itself.
 function cursor(key: IndexKey): Cursor {
   return {
     key,
@@ -149,6 +151,10 @@ function keyOf(doc: Row | Group): IndexKey {
     ? [doc.tenant, doc.bucket, doc.score, doc._creationTime, doc._id]
     : [doc.tenant, doc.bucket, doc._creationTime, doc._id];
 }
+// This is deliberately independent of stream.ts's compareKeys. It uses ordinary
+// lexicographic ordering; inBounds compares document prefixes and then applies
+// inclusivity directly, without the library's predecessor/successor machinery.
+// Sharing that machinery would let the oracle reproduce the same boundary bug.
 function compare(a: IndexKey, b: IndexKey): number {
   for (let i = 0; i < Math.min(a.length, b.length); i++) {
     const order = compareValues(a[i], b[i]);
@@ -931,6 +937,7 @@ test.each(["asc", "desc"] as const)(
 // DistinctStream truncates a continuation to the group prefix even when the
 // budget stopped on a filtered-out row before any member of that group was
 // emitted. That skips the group's later matching row in either scan direction.
+// Still reproducible on main at d9dedf7 (0.1.128), after the flatMap fix.
 // Remove .fails when filtered and emitted continuations can be distinguished.
 test.fails.each([
   { order: "asc", maximumRowsRead: 1 },
