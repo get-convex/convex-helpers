@@ -62,6 +62,50 @@ describe("manual pagination", () => {
     });
   });
 
+  test.each(["asc", "desc"] as const)(
+    "empty endpoints remain unbounded when marked exclusive (%s)",
+    async (order) => {
+      // getPage uses [] to mean no cutoff at that end of the index. Inclusivity
+      // only applies to nonempty keys, so [] must not turn a normal scan into an
+      // empty range. The opposite endpoint and page limits still apply.
+      const t = convexTest(schema, modules);
+      await t.run(async (ctx) => {
+        for (const doc of MANY_DOCS) await ctx.db.insert("foo", doc);
+        for (const { startIndexKey, endIndexKey, expected } of [
+          { startIndexKey: [], endIndexKey: [], expected: MANY_DOCS.slice() },
+          {
+            startIndexKey: [],
+            endIndexKey: [1],
+            expected: MANY_DOCS.filter(({ a }) =>
+              order === "asc" ? a < 1 : a > 1,
+            ),
+          },
+          {
+            startIndexKey: [1],
+            endIndexKey: [],
+            expected: MANY_DOCS.filter(({ a }) =>
+              order === "asc" ? a > 1 : a < 1,
+            ),
+          },
+        ]) {
+          if (order === "desc") expected.reverse();
+          const { page, hasMore } = await getPage(ctx, {
+            table: "foo",
+            index: "abc",
+            schema,
+            order,
+            startIndexKey,
+            endIndexKey,
+            startInclusive: false,
+            endInclusive: false,
+          });
+          expect(page.map(stripSystemFields)).toEqual(expected);
+          expect(hasMore).toBe(false);
+        }
+      });
+    },
+  );
+
   test("middle page with exclusive/inclusive bounds", async () => {
     const t = convexTest(schema, modules);
     await t.run(async (ctx) => {
