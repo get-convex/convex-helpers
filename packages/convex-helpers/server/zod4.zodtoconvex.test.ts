@@ -510,6 +510,19 @@ describe("zodToConvex + zodOutputToConvex", () => {
       );
     });
 
+    test("key = numeric enum", () => {
+      testZodToConvexInputAndOutput(
+        z.partialRecord(
+          z.enum({
+            user: 0,
+            admin: 1,
+          }),
+          z.number(),
+        ),
+        v.record(v.string(), v.number()),
+      );
+    });
+
     test("key = union of literals, optional", () => {
       testZodToConvexInputAndOutput(
         z.partialRecord(
