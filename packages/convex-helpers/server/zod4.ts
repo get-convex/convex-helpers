@@ -1515,13 +1515,22 @@ type ConvexValidatorFromZodRecord<
             Key extends zCore.$partial ? "partial" : "full",
             Side
           >
-        : // key = v.any() / otehr
-          VRecord<
-            Record<string, NotUndefined<zCore.infer<Value>>>,
-            VString<string, "required">,
-            VRequired<ConvexValidatorFromZodSide<Value, "required", Side>>,
-            IsOptional
-          >;
+        : // key = z.enum()
+          Key extends zCore.$ZodEnum
+          ? ConvexObjectValidatorFromRecord<
+              zCore.infer<Key> extends string ? zCore.infer<Key> : never,
+              Value,
+              IsOptional,
+              Key extends zCore.$partial ? "partial" : "full",
+              Side
+            >
+          : // key = v.any() / otehr
+            VRecord<
+              Record<string, NotUndefined<zCore.infer<Value>>>,
+              VString<string, "required">,
+              VRequired<ConvexValidatorFromZodSide<Value, "required", Side>>,
+              IsOptional
+            >;
 
 type IsConvexUnencodableType<Z extends zCore.$ZodType> = Z extends
   | zCore.$ZodDate
@@ -1687,7 +1696,9 @@ function zodToConvexCommon<Z extends zCore.$ZodType>(
   if (validator instanceof zCore.$ZodRecord) {
     const { keyType, valueType } = validator._zod.def;
 
-    const isPartial = keyType._zod.values === undefined;
+    const isPartial =
+      (validator._zod.def as { partial?: boolean }).partial === true ||
+      keyType._zod.values === undefined;
 
     // Convert value type, stripping optional
     const valueValidator = toConvex(valueType);
