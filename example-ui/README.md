@@ -1,9 +1,9 @@
 # convex-helpers
 
 A collection of useful code to complement the official packages.
-This directory contains the example frontend, and [`../convex/`](../convex/)
-contains its backend. The npm package lives in
-[`../packages/convex-helpers/`](../packages/convex-helpers/).
+The repository root defines the npm package. This directory contains the example
+frontend, and [`../convex/`](../convex/) contains its backend. Package sources live
+in [`../packages/convex-helpers/`](../packages/convex-helpers/).
 
 The sections that follow are examples from which you can copy code.
 
