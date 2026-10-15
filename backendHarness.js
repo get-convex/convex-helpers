@@ -1,5 +1,33 @@
-const http = require("http");
-const { spawn, exec, execSync } = require("child_process");
+/**
+## Testing with a local backend
+
+[`convex/example.test.ts`](./convex/example.test.ts) demonstrates testing Convex functions by running them against a local backend.
+
+See [this Stack article](https://stack.convex.dev/testing-with-local-oss-backend) for more information.
+
+To set these up for yourself:
+
+- Either [download a pre-built binary(recommended)](https://github.com/get-convex/convex-backend/releases),
+  or [build it from source](https://stack.convex.dev/building-the-oss-backend).
+  `just run-local-backend` will attempt to download the binary automatically.
+- Create a `clearAll` function to reset data between tests (see [`convex/testingFunctions.ts`](./convex/testingFunctions.ts) for an example)
+- Start writing tests using [`ConvexTestingHelper.ts`](./packages/convex-helpers/testing.ts)
+- Make sure to call `clearAll` between tests and configure your testing framework to run one test at
+  a time to ensure test isolation
+
+To run tests, run this from the root of the repo:
+```sh
+node backendHarness.js 'just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts'
+```
+This command does the following:
+- Sets up a fresh local backend (see [backendHarness.js](./backendHarness.js))
+- Sets the `IS_TEST` environment variable to enable calling test only functions
+- Deploys code to the backend
+- Runs the tests
+- Tears down the backend
+*/
+import http from "node:http";
+import { spawn, exec, execSync } from "node:child_process";
 
 // Run a command against a fresh local backend, handling setting up and tearing down the backend.
 

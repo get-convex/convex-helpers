@@ -29,7 +29,7 @@ jobs:
 
       - name: Build
         run: |
-          npm i
+          npm ci
           npm run build
 
       - name: Cache Convex local binary
@@ -40,7 +40,7 @@ jobs:
 
       - name: Publish pkg-pr-new
         run: |
-          npx pkg-pr-new publish ./packages/convex-helpers/dist
+          npx pkg-pr-new publish .
 
       - name: Run lint and test
         run: |
