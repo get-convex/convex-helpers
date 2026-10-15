@@ -8,10 +8,10 @@ name: Release
 # `latest`: 0.1.129-alpha.0 publishes under `alpha`, a plain 0.1.129 under
 # `latest`.
 #
-# Cut a release with `npm run release`, which bumps the version and pushes the
-# tag. If this workflow fails, nothing was published -- delete the tag, fix the
-# problem, and release again:
-#   git push --delete origin npm/<version> && git tag -d npm/<version>
+# Cut a release with `npm run release`, which consumes Changesets release notes,
+# commits the version and changelog, and pushes the npm/<version> tag.
+# If publishing fails, inspect the workflow and registry before retrying; a
+# failure after publication does not undo the npm release.
 
 on:
   push:
