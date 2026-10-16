@@ -4,8 +4,54 @@
 
 A collection of useful code to complement the official packages.
 
+## Which helper do I need?
+
+Find the problem, then import from the path shown. Each subpath is its own entry
+point. This table is written for people and coding agents alike: if a row says
+to prefer a component, use the component in new code.
+
+| Problem                                                                           | Import                                                                                                            | Section                                                                 |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Several functions repeat an auth check, user lookup, or extra arguments           | `customQuery`, `customMutation`, `customAction` from `convex-helpers/server/customFunctions`                      | [Custom Functions](#custom-functions)                                   |
+| Derived fields, counters, or audit rows must update on every write to a table     | `Triggers` from `convex-helpers/server/triggers`                                                                  | [Triggers](#triggers)                                                   |
+| The same per-document access rule repeats across functions                        | `wrapDatabaseReader`, `wrapDatabaseWriter` from `convex-helpers/server/rowLevelSecurity`                          | [Row-level security](#row-level-security)                               |
+| Follow references, back references, or a join table                               | `getAll`, `getOneFrom`, `getManyFrom`, `getManyVia` from `convex-helpers/server/relationships`                    | [Relationship helpers](#relationship-helpers)                           |
+| Paginate a union of index ranges, or filter/join in TypeScript and still paginate | `stream`, `mergedStream` from `convex-helpers/server/stream`                                                      | [Composable QueryStreams](#composable-querystreams)                     |
+| Paginate more than once in one query                                              | `paginator` from `convex-helpers/server/pagination`                                                               | [Manual Pagination](#manual-pagination)                                 |
+| A TypeScript predicate on a small, index-narrowed result                          | `filter` from `convex-helpers/server/filter`                                                                      | [Filter](#filter)                                                       |
+| Validate arguments with Zod                                                       | `zCustomQuery`, `zid` from `convex-helpers/server/zod4` (or `zod3`)                                               | [Zod Validation](#zod-validation)                                       |
+| Reuse validators derived from your schema                                         | `doc`, `typedV`, `partial`, `literals`, `nullable` from `convex-helpers/validators`                               | [Validator utilities](#validator-utilities)                             |
+| Internal create/read/update/delete for a table                                    | `crud` from `convex-helpers/server/crud`                                                                          | [CRUD utilities](#crud-utilities)                                       |
+| Browsers on another origin call your HTTP actions                                 | `corsRouter` from `convex-helpers/server/cors`                                                                    | [CORS support](#cors-support-for-httprouter)                            |
+| HTTP routes with path parameters or middleware                                    | `HttpRouterWithHono` from `convex-helpers/server/hono`                                                            | [Hono](#hono-for-advanced-http-endpoint-definitions)                    |
+| Track a visitor before sign-in                                                    | `useSessionQuery` etc. from `convex-helpers/react/sessions`; `SessionIdArg` from `convex-helpers/server/sessions` | [Session tracking](#session-tracking-via-client-side-sessionid-storage) |
+| A React query with explicit `status` and `error`                                  | `useQuery` from `convex-helpers/react`                                                                            | [Richer useQuery](#richer-usequery)                                     |
+| Keep recent query subscriptions alive across navigation                           | `ConvexQueryCacheProvider`, `useQuery` from `convex-helpers/react/cache`                                          | [Query Caching](#query-caching)                                         |
+| Use a Convex validator where a library expects Standard Schema                    | `toStandardSchema` from `convex-helpers/standardSchema`                                                           | [Standard Schema](#standard-schema)                                     |
+| Map over documents, drop nulls, pick or omit fields                               | `asyncMap`, `pruneNull`, `nullThrows`, `pick`, `omit` from `convex-helpers`                                       | [index.ts](./index.ts)                                                  |
+| A typed `api` object or an OpenAPI spec for another repo or language              | `npx convex-helpers ts-api-spec`, `npx convex-helpers open-api-spec`                                              | [TypeScript API Generation](#typescript-api-generation)                 |
+
+Prefer a component for these. The helpers remain for existing code:
+
+| Helper                             | Use instead                                                                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `convex-helpers/server/retries`    | [`@convex-dev/action-retrier`](https://www.convex.dev/components/retrier), or retries in [`@convex-dev/workpool`](https://www.convex.dev/components/workpool) |
+| `convex-helpers/server/rateLimit`  | [`@convex-dev/rate-limiter`](https://www.convex.dev/components/rate-limiter)                                                                                  |
+| `convex-helpers/server/migrations` | [`@convex-dev/migrations`](https://www.convex.dev/components/migrations)                                                                                      |
+
+Calling a third-party API for many items (LLMs, embeddings, webhooks)? That is
+a job for components, not helpers: queue items with
+[`@convex-dev/batch-worker`](https://www.convex.dev/components/batch-worker),
+run requests with bounded concurrency and retries on
+[`@convex-dev/workpool`](https://www.convex.dev/components/workpool), stay under
+provider limits with
+[`@convex-dev/rate-limiter`](https://www.convex.dev/components/rate-limiter), and
+cache repeated calls with
+[`@convex-dev/action-cache`](https://www.convex.dev/components/action-cache).
+
 Table of contents:
 
+- [Which helper do I need?](#which-helper-do-i-need)
 - [Custom Functions](#custom-functions)
 - [Relationship helpers](#relationship-helpers)
 - [Action retries](#action-retries)
