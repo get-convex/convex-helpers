@@ -40,15 +40,15 @@ run-local-backend:
         pkg=convex-local-backend-x86_64-unknown-linux-gnu.zip
         ;;
       *)
-        echo "Download or build the convex-local-backend: https://github.com/get-convex/convex-backend" >&2
+        echo "Download or build the convex-local-backend: https://github.com/convex/convex-backend" >&2
         exit 1
         ;;
     esac
-    curl -fL -O "https://github.com/get-convex/convex-backend/releases/latest/download/$pkg"
+    curl -fL -O "https://github.com/convex/convex-backend/releases/latest/download/$pkg"
     unzip -o "$pkg"
   fi
   # Public development credentials matching the admin key in `just convex` and convex.sh.
-  # https://github.com/get-convex/convex-backend/tree/main/crates/keybroker/dev
+  # https://github.com/convex/convex-backend/tree/main/crates/keybroker/dev
   exec ./convex-local-backend \
     --interface 127.0.0.1 \
     --instance-name carnitas \

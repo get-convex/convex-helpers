@@ -83,7 +83,7 @@ See [this Stack article](https://stack.convex.dev/testing-with-local-oss-backend
 
 To set these up for yourself:
 
-- Either [download a pre-built binary(recommended)](https://github.com/get-convex/convex-backend/releases),
+- Either [download a pre-built binary(recommended)](https://github.com/convex/convex-backend/releases),
   or [build it from source](https://stack.convex.dev/building-the-oss-backend).
   `just run-local-backend` will attempt to download the binary automatically.
 - Create a `clearAll` function to reset data between tests (see [`convex/testingFunctions.ts`](./convex/testingFunctions.ts) for an example)

@@ -215,7 +215,7 @@ describe("convexToZod", () => {
     });
   });
 
-  // https://github.com/get-convex/convex-helpers/issues/861
+  // https://github.com/convex/convex-helpers/issues/861
   test("regression: literals helper", () => {
     testConvexToZod(
       v.object({
@@ -231,7 +231,7 @@ describe("convexToZod", () => {
     );
   });
 
-  // https://github.com/get-convex/convex-helpers/issues/861#issuecomment-3593231904
+  // https://github.com/convex/convex-helpers/issues/861#issuecomment-3593231904
   test("regression: spreading an enum into v.union", () => {
     enum Role {
       Guest = "guest",
