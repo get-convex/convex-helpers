@@ -252,6 +252,11 @@ export abstract class QueryStream<
   // Values that must match a prefix of the index key.
   abstract getEqualityIndexFilter(): Value[];
 
+  /** @internal A cursor with the same pagination boundary as this index key. */
+  getPaginationKey(indexKey: IndexKey): IndexKey {
+    return indexKey;
+  }
+
   /// Methods for creating new streams as modifications of the current stream.
 
   /**
@@ -334,6 +339,12 @@ export abstract class QueryStream<
    * distinct index fields.
    *
    * This can be used to perform a loose index scan.
+   *
+   * When choosing a new page boundary, a read-limited nonempty page resumes
+   * after its last returned item, retrying later groups with a fresh budget.
+   * An empty page advances past
+   * the last group examined, even if that group has unread matching items.
+   * Read limits apply to the whole page, not separately to each group.
    */
   distinct(distinctIndexFields: string[]): QueryStream<T> {
     return new DistinctStream(this, distinctIndexFields);
@@ -403,6 +414,8 @@ export abstract class QueryStream<
     });
     const page: T[] = [];
     const indexKeys: IndexKey[] = [];
+    const resultKeys: IndexKey[] = [];
+    let lastResultIndex = -1;
     let hasMore = opts.endCursor && opts.endCursor !== "[]";
     let continueCursor = opts.endCursor ?? "[]";
     const maxBytesToRead = opts.maximumBytesRead;
@@ -414,6 +427,8 @@ export abstract class QueryStream<
     )) {
       if (doc !== null) {
         page.push(doc);
+        resultKeys.push(indexKey);
+        lastResultIndex = indexKeys.length;
       }
       indexKeys.push(indexKey);
       totalBytesRead += bandwidth;
@@ -425,29 +440,55 @@ export abstract class QueryStream<
       }
       if (hitLimit || (maxRows !== undefined && page.length >= maxRows)) {
         hasMore = true;
-        continueCursor = serializeCursor(indexKey);
+        // Retry work after the last result when choosing a new boundary. Keep
+        // existing progress semantics for refreshes with a fixed endCursor.
+        // Empty pages still advance; distinct uses a whole-group boundary.
+        continueCursor = serializeCursor(
+          opts.endCursor
+            ? indexKey
+            : (resultKeys.at(-1) ?? this.getPaginationKey(indexKey)),
+        );
         break;
       }
     }
     let pageStatus: "SplitRecommended" | "SplitRequired" | undefined =
       undefined;
     let splitCursor: IndexKey | undefined = undefined;
+    // Distinct groups need splits at returned representatives. Ordinary
+    // streams can retain their existing midpoint among scanned rows, provided
+    // it does not lie beyond a continuation moved back to the last result.
+    const grouped =
+      resultKeys.length > 0 &&
+      this.getPaginationKey(resultKeys[0]!).length < resultKeys[0]!.length;
+    const splitKeys = grouped ? resultKeys : indexKeys;
+    const splitIndex = Math.min(
+      Math.floor((splitKeys.length - 1) / 2),
+      !grouped && hitLimit && !opts.endCursor && lastResultIndex >= 0
+        ? lastResultIndex
+        : Infinity,
+    );
     if (hitLimit) {
       pageStatus = "SplitRequired";
-      splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
+      splitCursor = splitKeys[splitIndex];
     } else if (
       indexKeys.length >= SOFT_MAX_SCAN_LEN ||
       page.length > opts.numItems + 1
     ) {
       pageStatus = "SplitRecommended";
-      splitCursor = indexKeys[Math.floor((indexKeys.length - 1) / 2)];
+      splitCursor = splitKeys[splitIndex];
     }
     return {
       page,
       isDone: !hasMore,
       continueCursor,
       pageStatus,
-      splitCursor: splitCursor ? serializeCursor(splitCursor) : undefined,
+      splitCursor: splitCursor
+        ? serializeCursor(
+            resultKeys.length > 0
+              ? splitCursor
+              : this.getPaginationKey(splitCursor),
+          )
+        : undefined,
     };
   }
   async collect() {
@@ -1481,6 +1522,13 @@ class FlatMapStream<
   getIndexFields(): string[] {
     return [...this.#stream.getIndexFields(), ...this.#mappedIndexFields];
   }
+  override getPaginationKey(indexKey: IndexKey): IndexKey {
+    // map/filter retain the outer pagination boundary. A real flatMap needs
+    // its full inner position to avoid skipping remaining inner results.
+    return this.#mappedIndexFields.length === 0
+      ? this.#stream.getPaginationKey(indexKey)
+      : indexKey;
+  }
   narrow(indexBounds: IndexBounds) {
     const outerLength = this.#stream.getIndexFields().length;
     const outerLowerBound = indexBounds.lowerBound.slice(0, outerLength);
@@ -1891,6 +1939,9 @@ class DistinctStream<T extends GenericStreamItem> extends QueryStream<T> {
         };
       },
     };
+  }
+  override getPaginationKey(indexKey: IndexKey): IndexKey {
+    return indexKey.slice(0, this.#distinctIndexFieldsLength);
   }
   override narrow(indexBounds: IndexBounds): QueryStream<T> {
     const indexBoundsPrefix: IndexBounds = {
