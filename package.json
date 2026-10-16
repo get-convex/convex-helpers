@@ -22,8 +22,9 @@
     "testFunctionsExistingBackend": "just convex deploy && just convex env set IS_TEST true && vitest --run convex/example.test.ts",
     "testFunctions": "node backendHarness.js 'npm run testFunctionsExistingBackend'",
     "arethetypeswrong": "cd packages/convex-helpers/dist && attw $(npm pack) --ignore-rules cjs-resolves-to-esm",
-    "alpha": "./publish.sh alpha",
-    "release": "./publish.sh"
+    "release:preflight": "test -z \"$(git status --porcelain)\" || { echo 'Uncommitted changes; commit or stash them before releasing.' >&2; exit 1; }; rm -rf packages/convex-helpers/node_modules; npm run clean && npm ci && npm run build && npm run lint && npm run test",
+    "alpha": "cd packages/convex-helpers && npm version prerelease --preid alpha",
+    "release": "cd packages/convex-helpers && npm version patch"
   },
   "engines": {
     "npm": ">=11.0.0"

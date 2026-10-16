@@ -54,20 +54,38 @@ Run commands from this folder (root of repo).
 **NOTE**: make sure you aren't running `npm run dev` anywhere when you're
 publishing to avoid races with re-generating files while publishing.
 
-In general you can run `./publish.sh` to go through the publish workflow, or
-`npm run release` to do a release.
-It will prompt you for a new version. If you've already adjusted the version,
-you can just hit enter.
+Run `npm run release` to cut a patch release. To release a specific version,
+run `npm version <version>` from `packages/convex-helpers` instead -- the
+lifecycle hooks below run either way.
 
-When it shows the publish preview, ensure the files all look like they're there.
-After you confirm to publish, it will publish to npm, make a git commit,
-tag the commit with the version, and push the current branch & that tag.
+Publishing happens in CI, not locally. `npm version` drives three hooks:
+
+- `preversion` refuses to run with a dirty tree, then runs the same checks CI
+  will run (`clean`, `ci`, `build`, `lint`, `test`).
+- `version` opens `CHANGELOG.md` in vim with a section for the new release
+  already added -- renaming `## Unreleased` if present, otherwise inserting a
+  new heading at the top. Write the entries, save, and it is formatted and
+  staged for you.
+- `postversion` commits, tags `npm/<version>`, and pushes the branch and tag.
+
+That tag triggers [`.github/workflows/release.yml`](./.github/workflows/release.yml),
+which builds and publishes to npm using npm
+[trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC), so no
+npm token is stored on a laptop or in this repo's secrets, and the published
+package carries a provenance attestation.
+
+If the release workflow fails, nothing was published. Delete the tag, fix the
+problem, and release again:
+
+```sh
+git push --delete origin npm/<version>
+git tag -d npm/<version>
+```
 
 ### Alpha releases
 
-For alpha releases, you can run `./publish.sh alpha` or `npm run alpha`.
+For alpha releases, run `npm run alpha`.
 
-Or run this beforehand to bump the version:
-`npm version prerelease --preid alpha && git add package*`.
-Only use alpha, otherwise npm won't tag it correctly and it might suggest it as
-`convex-helpers@latest` instead of just as `convex-helpers@alpha`.
+The release workflow derives the npm dist-tag from the version, so any preid
+stays off `latest`: `0.1.129-alpha.0` publishes under `alpha`,
+`0.1.129-beta.0` under `beta`.

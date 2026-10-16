@@ -141,7 +141,9 @@
     "build": "node generate-exports.mjs && mkdir -p dist && npm run build:bin && cp -r *.ts server react ./package.json ./tsconfig.json ./README.md ../../LICENSE ./.npmignore dist/ && cd dist/ && rm **/*.test.* && rm -r server/_generated && tsc",
     "dev": "chokidar '*.ts' 'server/**/*.ts' 'react/**/*.ts*' 'tsconfig*.json' 'package.json' -i '**/*.test.ts' -c 'cd ../.. && npm run build' --initial",
     "typecheck": "tsc --noEmit",
-    "version": "pbcopy <<<$npm_package_version; $(git config core.editor || echo vim) CHANGELOG.md && prettier --write CHANGELOG.md && git add CHANGELOG.md"
+    "preversion": "cd ../.. && npm run release:preflight",
+    "version": "vim -c 'if search(\"^## Unreleased$\",\"nw\") | %s/^## Unreleased$/## '$npm_package_version'/ | else | call append(1, [\"\", \"## '$npm_package_version'\"]) | endif | call search(\"^## '$npm_package_version'$\",\"w\")' CHANGELOG.md && prettier --write CHANGELOG.md && git add CHANGELOG.md package.json || { git checkout -- package.json; exit 1; }",
+    "postversion": "git commit -m \"npm $npm_package_version\" && git tag \"npm/$npm_package_version\" && git push origin HEAD && git push origin \"npm/$npm_package_version\" && echo \"\\nPushed npm/$npm_package_version. CI is building and publishing it:\\n  https://github.com/get-convex/convex-helpers/actions/workflows/release.yml\""
   },
   "repository": {
     "type": "git",
