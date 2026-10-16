@@ -145,7 +145,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/get-convex/convex-helpers.git",
+    "url": "git+https://github.com/convex/convex-helpers.git",
     "directory": "packages/convex-helpers"
   },
   "keywords": [
@@ -159,9 +159,9 @@
   "author": "Ian Macartney <ian@convex.dev>",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/get-convex/convex-helpers/issues"
+    "url": "https://github.com/convex/convex-helpers/issues"
   },
-  "homepage": "https://github.com/get-convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
+  "homepage": "https://github.com/convex/convex-helpers/tree/main/packages/convex-helpers/README.md",
   "peerDependencies": {
     "@standard-schema/spec": "^1.0.0",
     "convex": "^1.46.0",

@@ -34,7 +34,7 @@ export class ConvexTestingHelper {
     );
     this._adminKey =
       options.adminKey ??
-      // default admin key for local backends - from https://github.com/get-convex/convex-backend/blob/main/Justfile
+      // default admin key for local backends - from https://github.com/convex/convex-backend/blob/main/Justfile
       "0135d8598650f8f5cb0f30c34ec2e2bb62793bc28717c8eb6fb577996d50be5f4281b59181095065c5d0f86a2c31ddbe9b597ec62b47ded69782cd";
   }
 
