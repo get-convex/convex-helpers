@@ -576,13 +576,15 @@ export const pretendRequired = <T extends Validator<any, "required", any>>(
 ): T => v.optional(optionalType) as unknown as T;
 
 export class ValidationError extends Error {
-  constructor(
-    public expected: string,
-    public got: string,
-    public path?: string,
-  ) {
+  expected: string;
+  got: string;
+  path?: string | undefined;
+  constructor(expected: string, got: string, path?: string) {
     const message = `Validator error${path ? ` for ${path}` : ""}: Expected \`${expected}\`, got \`${got}\``;
     super(message);
+    this.expected = expected;
+    this.got = got;
+    this.path = path;
     this.name = "ValidationError";
   }
 }
